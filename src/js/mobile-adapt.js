@@ -4,8 +4,10 @@
 //              + 输入法适配（v3.6.x 最小干预，不再锁 .phone 高度）+ 弹层滚动穿透锁
 (function () {
   // 只在真实手机窄屏启用（桌面模拟器外壳不受影响）
+  // v3.5.137：900px——Moto G100 等 2400px 物理屏 / DPR 2.75-3 的 CSS 视口约 800-873px，
+  // 原 768px 上限会误判为桌面（显示 390px 小手机框 + 两侧灰底）
   let isMobile = false;
-  try { isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches; } catch (e) {}
+  try { isMobile = window.matchMedia && window.matchMedia('(max-width: 900px)').matches; } catch (e) {}
   if (!isMobile) return;
 
   // v3.6.x：iOS 检测——iOS Safari 上不启用 contenteditable 转换器（见下方 ceConvert 说明）

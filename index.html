@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Mochi">
 <meta name="format-detection" content="telephone=no,address=no,email=no">
 <style>
-/* ===== 基础：重置 / 变量 / 手机外框 / 通用 ===== */
+﻿/* ===== 基础：重置 / 变量 / 手机外框 / 通用 ===== */
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
   --ink:#111111; --muted:#8a8a8a; --line:#e6e6e6;
@@ -113,7 +113,7 @@ html,body { overflow-x:hidden;
 /* 窄屏（真实手机 / 小窗口 / 折叠屏展开）：去掉模拟器外壳，直接全屏显示
    v3.5.133：上限 480→768px——折叠屏展开（约 673-717px）和平板竖屏不再显示
    桌面模拟器外壳（390px 小框 + 两侧灰底），改为手机全屏布局 */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   html, body { padding:0; min-height:100vh; min-height:100svh; min-height:100dvh; }
   .phone {
     width:100vw; height:100vh; height:100svh; height:100dvh;
@@ -132,7 +132,7 @@ html,body { overflow-x:hidden;
 
 /* iOS Safari：输入框聚焦时不自动放大页面（字号 <16px 会触发自动缩放；
    这里统一提到 16px，页面本身不放大，输入体验不跳） */
-@media (max-width: 480px) {
+@media (max-width: 900px) {
   .chat-input, .chat-search-input, .chat-ask-input,
   .modal-input, .modal-textarea,
   .mem-add-input, .div-input, .ta-add input, .tc-input, .qa-input,
@@ -149,7 +149,7 @@ html,body { overflow-x:hidden;
 }
 
 /* iOS 全面屏底部安全区：底部 tabbar（桌面页）+ 聊天输入栏不被 Home 指示条遮挡 */
-@media (max-width: 480px) {
+@media (max-width: 900px) {
   .tabbar {
     margin-bottom:env(safe-area-inset-bottom, 0px);
   }
@@ -197,7 +197,7 @@ html,body { overflow-x:hidden;
    （与系统状态栏重复的一栏，正是「有空隙/双状态栏」观感来源）。
    开启后隐藏它，内容顶到系统状态栏下方；系统状态栏由 iOS 接管安全区。
    只影响真实手机窄屏，桌面模拟器外壳不受影响 */
-@media (max-width: 480px) {
+@media (max-width: 900px) {
   .ios-fs-active .phone { padding-top: env(safe-area-inset-top, 0px); }
   .ios-fs-active .phone .statusbar { display: none; }
 }
@@ -232,7 +232,7 @@ html,body { overflow-x:hidden;
 .cc-ip-sub { font-size:12px; color:#888; min-height:16px; }
 
 /* 安卓：轻点涟漪/选择高亮统一为无，避免闪烁 */
-@media (max-width: 480px) {
+@media (max-width: 900px) {
   button, .app, .set-row, .tab, .msg, .feed-post, .mail-item {
     -webkit-tap-highlight-color:transparent;
   }
@@ -3181,7 +3181,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 13:47</div>
+      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 13:49</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -20393,8 +20393,10 @@ if (ckRefresh) {
 //              + 输入法适配（v3.6.x 最小干预，不再锁 .phone 高度）+ 弹层滚动穿透锁
 (function () {
   // 只在真实手机窄屏启用（桌面模拟器外壳不受影响）
+  // v3.5.137：900px——Moto G100 等 2400px 物理屏 / DPR 2.75-3 的 CSS 视口约 800-873px，
+  // 原 768px 上限会误判为桌面（显示 390px 小手机框 + 两侧灰底）
   let isMobile = false;
-  try { isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches; } catch (e) {}
+  try { isMobile = window.matchMedia && window.matchMedia('(max-width: 900px)').matches; } catch (e) {}
   if (!isMobile) return;
 
   // v3.6.x：iOS 检测——iOS Safari 上不启用 contenteditable 转换器（见下方 ceConvert 说明）
