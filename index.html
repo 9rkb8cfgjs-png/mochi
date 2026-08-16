@@ -129,11 +129,8 @@ padding:0 18px 18px;
 }
 }
 @media (max-width: 900px) {
-.chat-input, .chat-search-input, .chat-ask-input,
-.modal-input, .modal-textarea,
-.mem-add-input, .div-input, .ta-add input, .tc-input, .qa-input,
-.mail-compose-input, .feed-comment-input,
-input[type="text"], input[type="search"], input[type="number"], textarea {
+.phone input:not([readonly]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([type="date"]):not([type="time"]):not([type="datetime-local"]):not([type="month"]):not([type="week"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+.phone textarea:not([readonly]) {
 font-size:16px;
 }
 html, body { touch-action:manipulation; }
@@ -2791,7 +2788,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.5.139 · 部署于 2026-08-16 19:33</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.0 · 部署于 2026-08-16 21:05</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3433,7 +3430,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.5.139</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.0</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -4991,6 +4988,27 @@ try {
 const tx = db.transaction(STORE, 'readwrite');
 tx.objectStore(STORE).clear();
 tx.oncomplete = () => resolve(true);
+tx.onerror = () => resolve(false);
+tx.onabort = () => resolve(false);
+} catch (e) { resolve(false); }
+})).catch(() => false);
+};
+window.idbReplaceAll = function (entries) {
+const list = (entries || []).filter(e => e && e.k !== undefined && e.k !== null);
+if (!list.length) return window.idbClearAll();
+return open().then(db => new Promise((resolve) => {
+try {
+const tx = db.transaction(STORE, 'readwrite');
+const os = tx.objectStore(STORE);
+let bad = false;
+os.clear();
+try {
+list.forEach(e => { os.put(e.v, e.k); });
+} catch (e) {
+bad = true;
+try { tx.abort(); } catch (e2) {}
+}
+tx.oncomplete = () => resolve(!bad);
 tx.onerror = () => resolve(false);
 tx.onabort = () => resolve(false);
 } catch (e) { resolve(false); }
@@ -9881,8 +9899,8 @@ imported += cards.length;
 });
 });
 }
-const RE_IMG = /^data:image\/(png|jpe?g|gif|webp);base64,/;
-const RE_AUDIO = /^data:audio\/[a-zA-Z0-9.+-]+;base64,/;
+const RE_IMG = /^data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]*$/;
+const RE_AUDIO = /^data:audio\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]*$/;
 let dropped = 0;
 ['image', 'sticker'].forEach(cat => {
 (byCat[cat] || []).forEach(pair => {
@@ -10032,7 +10050,8 @@ toast('已导入 ' + imported + ' 条字卡' + (newGroups ? '，新建 ' + newGr
 }, {
 textarea: true,
 textareaPlaceholder: '【日常】\n你今天真好看\n我想你了',
-txtImport: true
+txtImport: true,
+groups: (groups[cur] || []).map(g => g[0])
 });
 }
 });
@@ -10604,6 +10623,7 @@ const st = val.closest('.stepper');
 if (!st) return;
 const k = st.dataset.k;
 if (!k) return;
+val.dataset.ceDone = '1';
 const intAttr = (name, def) => { const v = parseInt(st.getAttribute(name), 10); return Number.isNaN(v) ? def : v; };
 const min = intAttr('data-min', 0);
 const max = intAttr('data-max', 100);
@@ -10611,10 +10631,10 @@ const step = parseFloat(st.dataset.step) || 1;
 const fmt = (v) => step < 1 ? Number(v).toFixed(2) : String(Math.round(Number(v)));
 val.setAttribute('inputmode', 'decimal'); // 手机上弹数字键盘
 const startEdit = () => {
-if (!val.readOnly) return;
 val.readOnly = false;
 try { val.focus(); val.select(); } catch (e) {}
 };
+val.addEventListener('pointerdown', function () { if (val.readOnly) val.readOnly = false; }, { passive: true });
 const commit = () => {
 let v = parseFloat(val.value);
 if (isNaN(v)) v = min;
@@ -10949,6 +10969,7 @@ if (!picked) return null;
 return { content: picked.content, group: grp.group, emoji: grp.emoji, rarity: picked.rarity };
 };
 window.triggerEmotionChain = function () {
+if (!enabled('mood')) return null;
 const out = [];
 const mood = window.getMoodCard();
 if (mood) out.push({ type: 'mood', content: mood.content, meta: mood });
@@ -11043,6 +11064,8 @@ mcEnabled.checked = (ls.get('mc-enabled') === null) ? true : ls.get('mc-enabled'
 mcEnabled.addEventListener('change', () => {
 ls.set('mc-enabled', mcEnabled.checked ? '1' : '0');
 setEnabled('mood', mcEnabled.checked);
+setEnabled('heart', mcEnabled.checked);
+setEnabled('intent', mcEnabled.checked);
 });
 let mcGroup = '';
 let mcQ = '';
@@ -12691,6 +12714,10 @@ window.openModal(name + ' 的今日留言', '', () => {}, {
 noInput: true,
 staticText: '今日心情：' + e2.mood + '（' + e2.cat + '）\nTA 正在：' + e2.activity + '\n\nTA 留言：\n' + e2.message
 });
+setTimeout(() => {
+const mask = document.getElementById('modal-mask');
+if (mask && !mask.hidden) mask.hidden = true;
+}, 8000);
 }
 }, 800);
 }
@@ -18638,6 +18665,14 @@ window.openModal('请恢复竖屏', '', () => {}, { noInput: true, staticText: m
 try { new Notification('请恢复竖屏', { body: msg }); } catch (e) {}
 }
 }
+function showSystemFsNote() {
+const msg = '全屏模式已关闭，下次启动不会自动进入全屏。\n\n当前应用是以「全屏显示」方式从主屏幕打开的（系统级全屏），浏览器的地址栏/工具栏由系统控制，需退出应用或从主屏幕重新打开后才会显示。';
+if (window.openModal) {
+window.openModal('全屏模式已关闭', '', () => {}, { noInput: true, staticText: msg });
+} else {
+try { new Notification('全屏模式已关闭', { body: msg }); } catch (e) {}
+}
+}
 function forcePortrait(tries, cb) {
 if (window.innerWidth <= window.innerHeight) { if (cb) cb(); return; } // 已竖屏
 lockFsOrient();
@@ -18702,9 +18737,13 @@ else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
 } catch (e) {}
 }
 let _sysToggle = false;
+let _userFsOff = false;
 function syncToggle(userIntent) {
 const el = document.getElementById('sf-fullscreen');
-if (el) { if (!userIntent) _sysToggle = true; el.checked = fsVisualActive(); }
+if (el) {
+if (!userIntent) _sysToggle = true;
+el.checked = (_userFsOff && !isFullscreen()) ? false : fsVisualActive();
+}
 if (!userIntent) setTimeout(() => { _sysToggle = false; }, 0);
 }
 function applyFsInputHacks() {
@@ -18772,6 +18811,7 @@ const fsToggle = document.getElementById('sf-fullscreen');
 if (fsToggle) {
 fsToggle.addEventListener('change', () => {
 if (fsToggle.checked) {
+_userFsOff = false;
 if (isIOS) {
 if (inIosStandalone) { applyIosFs(true); showIosGuide(); }
 else { fsToggle.checked = false; showIosGuide(); }
@@ -18813,13 +18853,17 @@ showFsFailTip();
 }, 900);
 } else {
 if (isIOS && inIosStandalone) { applyIosFs(false); return; }
-if (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches) {
-fsToggle.checked = true;
-return;
-}
+_userFsOff = true;
 applyFsCss(false);
 exitFs();
 syncFsClass();
+store.set(FS_KEY, '0');
+setTimeout(() => {
+if (!_userFsOff) return;
+const t = document.getElementById('sf-fullscreen');
+const stillSysFs = window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches;
+if (t && !t.checked && stillSysFs) showSystemFsNote();
+}, 300);
 }
 });
 try { relabelIosToggle(); } catch (e) {}
@@ -19059,14 +19103,23 @@ if (k && k.indexOf(uid + ':') === 0) backup[k] = localStorage.getItem(k);
 }
 } catch (e) { backup = null; }
 const idbRestored = new Promise((resolve) => {
+if (!data.idb || typeof data.idb !== 'object') { resolve(true); return; }
+const idbKeys = Object.keys(data.idb).filter(k => k.indexOf(uid + ':') === 0);
+if (!idbKeys.length) { resolve(true); return; }
+if (window.idbReplaceAll) {
+impShow('正在导入…', '正在原子写入大文件（字卡/聊天/音乐等）…', 8);
+const pairs = idbKeys.map(k => ({ k: k, v: data.idb[k] }));
+window.idbReplaceAll(pairs).then(ok => {
+if (ok) impShow('正在导入…', '大文件写入完成', 60);
+else { try { data.idb = {}; } catch (e) {} }
+resolve(ok);
+});
+return;
+}
 if (!window.idbSet) { resolve(true); return; }
 const clearFirst = (window.idbClearAll && window.idbClearAll()) || Promise.resolve(true);
 clearFirst.then((cleared) => {
-if (cleared !== true && !data.idb) { resolve(true); return; }
 if (cleared !== true) { resolve(false); return; }
-if (!data.idb) { resolve(true); return; }
-const idbKeys = Object.keys(data.idb).filter(k => k.indexOf(uid + ':') === 0);
-if (!idbKeys.length) { resolve(true); return; }
 let p = Promise.resolve();
 let failed = 0;
 let done = 0;
@@ -19098,6 +19151,11 @@ Object.keys(backup).forEach(k => localStorage.setItem(k, backup[k]));
 }
 }
 idbRestored.then((idbOk) => {
+if (!idbOk) {
+impHide();
+toast('导入失败：大文件写入未成功，原有数据已保留，请重试');
+return;
+}
 impShow('正在导入…', '正在写入设置与聊天记录', 62);
 const lsKeys = Object.keys(data.ls).filter(k => k.indexOf(uid + ':') === 0);
 let entries = lsKeys.map(k => ({ k: k, len: byteLen(data.ls[k]) + byteLen(k) }));
@@ -19583,7 +19641,7 @@ setTimeout(function () { if (_kbActive && _vv && window.innerHeight - _vv.height
 });
 } catch (e) {}
 }
-const FLOAT_SELECTORS = ['#tc-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#desk-msg', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions'];
+const FLOAT_SELECTORS = ['#tc-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions'];
 let locked = false;
 function applyLock() {
 const anyOpen = FLOAT_SELECTORS.some(function (sel) {

@@ -116,6 +116,16 @@
       try { new Notification('请恢复竖屏', { body: msg }); } catch (e) {}
     }
   }
+  // v3.6.x：已安装应用以 display_override fullscreen 直启（系统级全屏）时，
+  // JS 无法用 API 退出系统全屏——开关关闭后说明现状，避免「关了没反应」的困惑
+  function showSystemFsNote() {
+    const msg = '全屏模式已关闭，下次启动不会自动进入全屏。\n\n当前应用是以「全屏显示」方式从主屏幕打开的（系统级全屏），浏览器的地址栏/工具栏由系统控制，需退出应用或从主屏幕重新打开后才会显示。';
+    if (window.openModal) {
+      window.openModal('全屏模式已关闭', '', () => {}, { noInput: true, staticText: msg });
+    } else {
+      try { new Notification('全屏模式已关闭', { body: msg }); } catch (e) {}
+    }
+  }
   // v3.6.x：把方向锁回竖屏。浏览器退出全屏后不一定自动回竖屏
   //（自动旋转关闭时系统方向会卡在横屏）——退出后主动持续 lock 竖屏多次，
   // 全部无效再提示用户手动处理。
@@ -197,9 +207,18 @@
   // v3.5.113：userIntent=true 时是用户主动切换（写入存储）；
   //   系统级退出（切后台/手势 Esc）只同步 UI 显示，不覆盖用户「开全屏」的持久化意图
   let _sysToggle = false;
+  // v3.6.x：用户本会话主动关闭全屏的意图标记——display_override fullscreen
+  // 安装态下 display-mode 媒体查询恒为真，若系统全屏变化据此同步开关，会把
+  // 用户已关闭的状态又弹回开启（关了又弹回死循环）；原生全屏仍实时反映
+  let _userFsOff = false;
   function syncToggle(userIntent) {
     const el = document.getElementById('sf-fullscreen');
-    if (el) { if (!userIntent) _sysToggle = true; el.checked = fsVisualActive(); }
+    if (el) {
+      if (!userIntent) _sysToggle = true;
+      // v3.6.x：用户主动关闭后，系统全屏变化不再把开关弹回开启（仅原生全屏
+      // 仍按实际状态显示）；未主动关闭时维持原行为（反映视觉激活态）
+      el.checked = (_userFsOff && !isFullscreen()) ? false : fsVisualActive();
+    }
     if (!userIntent) setTimeout(() => { _sysToggle = false; }, 0);
   }
   // v3.5.109：Chrome 安卓全屏模式下输入框聚焦会错误弹出浏览器「密码/安全提示」条（位置错乱）。
@@ -281,6 +300,7 @@
   if (fsToggle) {
     fsToggle.addEventListener('change', () => {
       if (fsToggle.checked) {
+        _userFsOff = false;
         // v3.6.x：iOS 分支优先——standalone 走隐藏模拟状态栏，浏览器内引导安装
         if (isIOS) {
           if (inIosStandalone) { applyIosFs(true); showIosGuide(); }
@@ -340,16 +360,25 @@
         }, 900);
       } else {
         if (isIOS && inIosStandalone) { applyIosFs(false); return; }
-        // v3.6.x：display_override fullscreen 直启（已安装应用）时系统级全屏无法用
-        // API 退出——开关不可关闭，回弹到开启态，避免「关了还在全屏」的假状态
-        if (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches) {
-          fsToggle.checked = true;
-          return;
-        }
-        // 无论原生全屏还是 CSS 兜底，关闭时都退出并清兜底类
+        // v3.6.x：修复 OPPO Edge 等安卓浏览器「全屏无法关闭」——旧逻辑先判
+        // display-mode: fullscreen 再决定是否允许关闭，而这些浏览器在 Fullscreen
+        // API 激活期间也会匹配该媒体查询（反映当前全屏态而非安装态），导致关闭
+        // 分支永远命中、开关弹回开启、全屏无法退出。改为先无条件退出（原生全屏
+        // + CSS 兜底一起清）并持久化关闭；若退出后仍处于系统级全屏（安装态
+        // display_override fullscreen，JS 无法退出）再给说明提示。
+        _userFsOff = true;
         applyFsCss(false);
         exitFs();
         syncFsClass();
+        store.set(FS_KEY, '0');
+        // 已安装应用以 display_override fullscreen 直启时系统全屏无法用 API 退出——
+        // 300ms 后复核：开关已关但仍在系统全屏 → 提示现状（避免「关了没反应」）
+        setTimeout(() => {
+          if (!_userFsOff) return;
+          const t = document.getElementById('sf-fullscreen');
+          const stillSysFs = window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches;
+          if (t && !t.checked && stillSysFs) showSystemFsNote();
+        }, 300);
       }
     });
     try { relabelIosToggle(); } catch (e) {}

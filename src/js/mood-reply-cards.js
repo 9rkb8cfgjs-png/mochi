@@ -144,6 +144,9 @@
   // ---- 触发链：情绪→心意→意图（星言 genReply 的 Step I 对应）----
   // 返回 { type:'mood'|'heart'|'intent', content, meta } 或 null
   window.triggerEmotionChain = function () {
+    // v3.6.x：总开关关闭时整链停发——防御存量状态（mh-mood=0 而 mh-heart/intent
+    //   仍是 1/空 的旧数据，光靠写键兜不住已存的关闭态）
+    if (!enabled('mood')) return null;
     const out = [];
     // 每类独立判定：情绪（70%+衰减）、心意（40%）、意图（20%）各自有概率触发，可同时 1~3 类
     const mood = window.getMoodCard();
@@ -250,7 +253,12 @@
     mcEnabled.checked = (ls.get('mc-enabled') === null) ? true : ls.get('mc-enabled') === '1';
     mcEnabled.addEventListener('change', () => {
       ls.set('mc-enabled', mcEnabled.checked ? '1' : '0');
+      // v3.6.x：总开关同时控制情绪/心意/交流意图三类字卡——此前只写 mh-mood，
+      //   而心意卡/意图卡无独立 UI 开关、默认开启且不依赖情绪卡命中（各按 40% 独立
+      //   判定），导致关掉「使用情绪字卡」后联系人仍会发心意/意图卡（用户反馈）
       setEnabled('mood', mcEnabled.checked);
+      setEnabled('heart', mcEnabled.checked);
+      setEnabled('intent', mcEnabled.checked);
     });
 
     let mcGroup = '';

@@ -120,6 +120,13 @@
     if (!st) return;
     const k = st.dataset.k;
     if (!k) return;
+    // v3.6.x：OPPO Edge 等安卓浏览器「无法直接输入概率」修复——
+    // stp-val 平时 readonly（防自动填充条，mobile-adapt 转换器据此跳过它），
+    // 但点击进入编辑后 readOnly 被解除，若期间触发全量转换（body 子节点变化，
+    // 如首次创建 cc-toast 提示节点），它会被 contenteditable 化（ce-box），
+    // 而这些浏览器对 ce-box 聚焦/输入失效（与雨见浏览器搜索框同源问题）→
+    // 直接输入失效。预标记 ceDone 永久跳过转换，保持原生 input。
+    val.dataset.ceDone = '1';
     const intAttr = (name, def) => { const v = parseInt(st.getAttribute(name), 10); return Number.isNaN(v) ? def : v; };
     const min = intAttr('data-min', 0);
     const max = intAttr('data-max', 100);
@@ -127,10 +134,14 @@
     const fmt = (v) => step < 1 ? Number(v).toFixed(2) : String(Math.round(Number(v)));
     val.setAttribute('inputmode', 'decimal'); // 手机上弹数字键盘
     const startEdit = () => {
-      if (!val.readOnly) return;
       val.readOnly = false;
       try { val.focus(); val.select(); } catch (e) {}
     };
+    // v3.6.x：pointerdown 提前解除只读——部分安卓浏览器（OPPO Edge 等）在手势
+    // 开始时输入框是 readonly 就判定「只读字段不弹键盘」，随后 JS 再解除只读 +
+    // focus() 也唤不出软键盘（表现为点数值框没反应/无法输入）。pointerdown 先于
+    // 浏览器默认聚焦执行，键盘可正常弹出；click 仍负责聚焦全选。
+    val.addEventListener('pointerdown', function () { if (val.readOnly) val.readOnly = false; }, { passive: true });
     const commit = () => {
       let v = parseFloat(val.value);
       if (isNaN(v)) v = min;

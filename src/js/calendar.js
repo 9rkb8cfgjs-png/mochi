@@ -222,6 +222,14 @@
             noInput: true,
             staticText: '今日心情：' + e2.mood + '（' + e2.cat + '）\nTA 正在：' + e2.activity + '\n\nTA 留言：\n' + e2.message
           });
+          // v3.6.x：自动关闭——今日留言是提醒类弹窗，openModal 遮罩会锁全页面滚动，
+          // 不自动关的话用户没注意到弹窗时整个应用表现为「页面卡住、滑动失效」
+          // （iPad 夸克反馈：短暂滑动失效→全部页面卡住→过会儿正常→又卡）。
+          // 8 秒后自动收起；用户仍可点确定/背景/返回键立即关闭。
+          setTimeout(() => {
+            const mask = document.getElementById('modal-mask');
+            if (mask && !mask.hidden) mask.hidden = true;
+          }, 8000);
         }
       }, 800);
     }

@@ -382,7 +382,10 @@
   // v3.5.116：补上更多功能面板/搜索/帮我决定/占卜/头像互动/查岗半框；
   // 管理分组弹层（.mg-mask）是动态创建的，用类选择器 + body 观察兜底
   // v3.5.123：补 #modal-mask（通用弹窗）/ #msg-actions（气泡操作菜单）
-  const FLOAT_SELECTORS = ['#tc-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#desk-msg', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions'];
+  // v3.6.x：去掉 #desk-msg——新消息横幅只是顶部 fixed 小提示条（6 秒自动隐藏，
+  //   不遮挡滚动区域），把它当浮层锁滚动会让整个页面在横幅弹出的 6 秒内滑不动，
+  //   用户感知为「页面卡住/滑动失效」（iPad 夸克反馈）。横幅自身交互由 chat.js 处理。
+  const FLOAT_SELECTORS = ['#tc-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions'];
   let locked = false;
   function applyLock() {
     const anyOpen = FLOAT_SELECTORS.some(function (sel) {

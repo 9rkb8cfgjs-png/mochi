@@ -155,13 +155,20 @@ html { margin:0; padding:0; }
    只影响真实手机窄屏，桌面模拟器外壳不受影响 */
 
 /* iOS Safari：输入框聚焦时不自动放大页面（字号 <16px 会触发自动缩放；
-   这里统一提到 16px，页面本身不放大，输入体验不跳） */
+   这里统一提到 16px，页面本身不放大，输入体验不跳）。
+   v3.6.x：原写法按类名逐个列（.chat-input/.tc-input/.card-search-input/…），
+   但 chat-main/chat-pages 等后加载文件（以及本文件更靠后的 .modal-textarea 等）
+   以相同特异性重新声明了更小字号 → 后加载生效，iOS 聚焦仍整页放大且缩不回去
+   （实测中招：字卡库 4 个搜索框 13px、批量导入/气泡 CSS 弹窗 textarea 13px、
+   聊天记录搜索 14px、气泡框大小/字体链接输入 13px、纪念日/占卜/查岗/写信/
+   朋友圈评论/TA问题输入 13-15px，搜索框还缺 type 属性连 input[type="text"]
+   都匹配不到）。这里改用 .phone 前缀 + :not 过滤的输入框通配把「可编辑文本
+   输入框」统一钉到 16px——特异性 (0,2,1) 高于所有同类类选择器，与加载顺序无关；
+   只改字号、不动其他样式。排除 readonly 步进值 / checkbox / range / file /
+   颜色/日期选择器等，避免误改视觉。 */
 @media (max-width: 900px) {
-  .chat-input, .chat-search-input, .chat-ask-input,
-  .modal-input, .modal-textarea,
-  .mem-add-input, .div-input, .ta-add input, .tc-input, .qa-input,
-  .mail-compose-input, .feed-comment-input,
-  input[type="text"], input[type="search"], input[type="number"], textarea {
+  .phone input:not([readonly]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([type="date"]):not([type="time"]):not([type="datetime-local"]):not([type="month"]):not([type="week"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+  .phone textarea:not([readonly]) {
     font-size:16px;
   }
   /* 双击/双指不再触发页面缩放（viewport 已锁，这里再兜一层） */
