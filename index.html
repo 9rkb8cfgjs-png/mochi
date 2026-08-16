@@ -2708,7 +2708,9 @@ display:flex; align-items:center; justify-content:center;
 .stp-val {
 width:48px; text-align:center; font-size:13px; font-weight:600;
 border:none; background:transparent; color:var(--ink); outline:none;
+border-bottom:1px dashed rgba(0,0,0,.25); border-radius:0;
 }
+.stp-val:not([readonly]) { border-bottom:1px solid var(--ink); color:var(--ink); }
 .toggle { position:relative; display:inline-block; width:44px; height:26px; flex-shrink:0; }
 .toggle input { opacity:0; width:0; height:0; }
 .tk {
@@ -2788,7 +2790,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.29 · 部署于 2026-08-16 21:28</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.30 · 部署于 2026-08-16 21:50</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3430,7 +3432,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.29</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.30</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -10623,18 +10625,31 @@ const st = val.closest('.stepper');
 if (!st) return;
 const k = st.dataset.k;
 if (!k) return;
-val.dataset.ceDone = '1';
+val.removeAttribute('readonly'); // 转换器跳过 readonly，须先移除
+val.setAttribute('inputmode', 'decimal'); // 手机上弹数字键盘（转换器复制到 ce-box）
 const intAttr = (name, def) => { const v = parseInt(st.getAttribute(name), 10); return Number.isNaN(v) ? def : v; };
 const min = intAttr('data-min', 0);
 const max = intAttr('data-max', 100);
 const step = parseFloat(st.dataset.step) || 1;
 const fmt = (v) => step < 1 ? Number(v).toFixed(2) : String(Math.round(Number(v)));
-val.setAttribute('inputmode', 'decimal'); // 手机上弹数字键盘
-const startEdit = () => {
-val.readOnly = false;
-try { val.focus(); val.select(); } catch (e) {}
+const selectAll = () => {
+try {
+const box = val.__ceBox;
+if (box) {
+const r = document.createRange();
+r.selectNodeContents(box);
+const sel = window.getSelection();
+sel.removeAllRanges();
+sel.addRange(r);
+} else {
+val.select();
+}
+} catch (e) {}
 };
-val.addEventListener('pointerdown', function () { if (val.readOnly) val.readOnly = false; }, { passive: true });
+val.addEventListener('click', function () {
+try { val.focus(); } catch (e) {} // ce-box 聚焦由转换器代理
+selectAll();
+});
 const commit = () => {
 let v = parseFloat(val.value);
 if (isNaN(v)) v = min;
@@ -10643,11 +10658,15 @@ if (step < 1) v = Math.round(v / step) * step;
 else v = Math.round(v);
 val.value = fmt(v);
 window.saveReplyCfg(k, val.value);
-val.readOnly = true;
 };
-val.addEventListener('click', startEdit);
 val.addEventListener('change', commit);
 val.addEventListener('blur', commit);
+val.addEventListener('keydown', function (e) {
+if (e.key === 'Enter' && !e.isComposing) {
+e.preventDefault();
+try { val.blur(); } catch (err) {}
+}
+});
 });
 ['py-en', 'as-en', 'dnd-en', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
 const el = document.getElementById(k);
@@ -11245,24 +11264,75 @@ renderPage();
 library.forEach(m => {
 const seedId = m ? String(m.neteaseId || '') : '';
 if (!m || !seedId || (seedId !== '2613048732' && seedId !== '27538343')) return;
-if (!m.url || m.url.indexOf('music.163.com') < 0) {
+if (!m.url || m.url.indexOf('https://music.163.com') !== 0) {
 m.url = 'https://music.163.com/song/media/outer/url?id=' + seedId + '.mp3';
 m.source = 'url';
 saveLibrary();
 try { if (window.idbDelete) window.idbDelete(uid + ':music-file:' + m.id); } catch (e) {}
 }
 });
+{
+const SEED_DEFS = [
+{ id: 2613048732, name: 'Moonlit Dream', artist: 'DLSS · shell（月光梦）', cover: 'https://p2.music.126.net/cXuoNwFzgFoQF7bGvC2mIQ==/109951169832660411.jpg' },
+{ id: 27538343, name: 'Baby', artist: 'EXO-K', cover: '' }
+];
+let healed = false;
+SEED_DEFS.forEach((s, i) => {
+const has = library.some(m => m && String(m.neteaseId || '') === String(s.id));
+if (has) return;
+const id = 'sm_seed_' + Date.now() + '_' + i + '_h';
+library.push({ id: id, neteaseId: String(s.id), name: s.name, artist: s.artist, cover: s.cover || '', url: 'https://music.163.com/song/media/outer/url?id=' + s.id + '.mp3', source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
+healed = true;
+});
+if (healed) saveLibrary();
+}
+}
+const DEMO_NOTES = [
+[523,523,587,587,659,659,587,523,523,587,587,659,659,587,659,698,784,784,698,698,659,659,587],
+[659,659,698,784,784,698,659,587,523,523,587,659,659,587,587,659,784,784,880,880,784,659,587]
+];
+function genDemoWavJS(idx) {
+try {
+const sr = 8000, dur = 0.42;
+const notes = DEMO_NOTES[idx === 0 ? 0 : 1] || DEMO_NOTES[0];
+const total = sr * 14;
+const pcm = new Int16Array(total);
+let t = 0;
+notes.forEach((f) => {
+const nStart = Math.floor(t * sr);
+const nEnd = Math.min(Math.floor((t + dur) * sr), total);
+for (let i = nStart; i < nEnd; i++) {
+const tt = (i / sr) - t;
+const env = Math.min(1, tt / 0.02) * Math.pow(0.001, Math.max(0, tt - 0.02) / (dur - 0.02));
+pcm[i] = Math.max(-1, Math.min(1, Math.sin(2 * Math.PI * f * tt) * env * 0.5)) * 32767;
+}
+t += dur * 0.9;
+});
+const n = total;
+const wav = new DataView(new ArrayBuffer(44 + n * 2));
+const ws = (o, s) => { for (let i = 0; i < s.length; i++) wav.setUint8(o + i, s.charCodeAt(i)); };
+ws(0, 'RIFF'); wav.setUint32(4, 36 + n * 2, true); ws(8, 'WAVE');
+ws(12, 'fmt '); wav.setUint32(16, 16, true); wav.setUint16(20, 1, true); wav.setUint16(22, 1, true);
+wav.setUint32(24, sr, true); wav.setUint32(28, sr * 2, true); wav.setUint16(32, 2, true); wav.setUint16(34, 16, true);
+ws(36, 'data'); wav.setUint32(40, n * 2, true);
+for (let i = 0; i < n; i++) wav.setInt16(44 + i * 2, pcm[i], true);
+const bytes = new Uint8Array(wav.buffer);
+let bin = '';
+for (let i = 0; i < bytes.length; i += 8192) {
+bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+}
+return 'data:audio/wav;base64,' + btoa(bin);
+} catch (e) { return ''; }
 }
 function genDemoAudio(idx) {
 return new Promise((resolve) => {
+const fallback = () => { try { resolve(genDemoWavJS(idx) || ''); } catch (e) { resolve(''); } };
 try {
 const AC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-if (!AC) { resolve(''); return; }
+if (!AC) { fallback(); return; }
 const sr = 22050;
 const ctx = new AC(1, sr * 14, sr);
-const notes = idx === 0
-? [523,523,587,587,659,659,587,523,523,587,587,659,659,587,659,698,784,784,698,698,659,659,587]
-: [659,659,698,784,784,698,659,587,523,523,587,659,659,587,587,659,784,784,880,880,784,659,587];
+const notes = DEMO_NOTES[idx === 0 ? 0 : 1] || DEMO_NOTES[0];
 let t = ctx.currentTime;
 const dur = 0.42;
 notes.forEach((f) => {
@@ -11279,7 +11349,10 @@ osc.start(t);
 osc.stop(t + dur + 0.05);
 t += dur * 0.9;
 });
-ctx.startRendering().then((buf) => {
+let cbDone = false;
+const finishRender = (buf) => {
+if (cbDone) return; cbDone = true;
+try {
 const ch = buf.getChannelData(0);
 const n = ch.length;
 const wav = new DataView(new ArrayBuffer(44 + n * 2));
@@ -11291,10 +11364,24 @@ writeStr(36, 'data'); wav.setUint32(40, n * 2, true);
 for (let i = 0; i < n; i++) wav.setInt16(44 + i * 2, Math.max(-1, Math.min(1, ch[i])) * 32767, true);
 const bytes = new Uint8Array(wav.buffer);
 let bin = '';
-for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+for (let i = 0; i < bytes.length; i += 8192) {
+bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+}
 resolve('data:audio/wav;base64,' + btoa(bin));
-}).catch(() => resolve(''));
-} catch (e) { resolve(''); }
+} catch (e) { fallback(); }
+};
+try {
+const hasPromise = typeof ctx.startRendering === 'function' && ctx.startRendering.length === 0 && 'Promise' in window;
+if (hasPromise) {
+const rp = ctx.startRendering();
+if (rp && typeof rp.then === 'function') rp.then(finishRender).catch(fallback);
+else { ctx.oncomplete = (ev) => { try { finishRender(ev.renderedBuffer); } catch (e) { fallback(); } }; }
+} else {
+ctx.oncomplete = (ev) => { try { finishRender(ev.renderedBuffer); } catch (e) { fallback(); } };
+ctx.startRendering();
+}
+} catch (e) { fallback(); }
+} catch (e) { fallback(); }
 });
 }
 const KNOWN_NETEASE = {
@@ -11789,6 +11876,7 @@ toast('外链播放失败，已改用内置示例旋律');
 playDemoFor(m, idx);
 return;
 }
+if (idx >= 0) return; // 兜底合成/播放进行中，静默等待结果
 toast('播放失败：网络链接可能已失效');
 };
 audio.onloadedmetadata = function () {
@@ -15183,6 +15271,9 @@ syncKeepUI();
 if (keepEnabled) startKeepAlive(false);
 })();
 let notifyEnabled = false;
+const NOTIFY_ICON = (function () {
+try { return new URL('./icon-192.png', location.href).href; } catch (e) { return ''; }
+})();
 function showSysNotification(title, opts) {
 opts = opts || {};
 return new Promise(function (resolve) {
@@ -15191,13 +15282,26 @@ if (!('Notification' in window) || Notification.permission !== 'granted') { reso
 if ('serviceWorker' in navigator && navigator.serviceWorker) {
 const swOpts = Object.assign({}, opts);
 if (!swOpts.urgency) swOpts.urgency = 'high';
+if (!swOpts.icon && NOTIFY_ICON) swOpts.icon = NOTIFY_ICON;
 navigator.serviceWorker.ready.then(function (reg) {
-reg.showNotification(title, swOpts).then(function () { resolve(true); }, function () { resolve(false); });
+reg.showNotification(title, swOpts).then(function () { resolve(true); }, function () {
+if (swOpts.icon) {
+const noIcon = Object.assign({}, swOpts);
+delete noIcon.icon;
+reg.showNotification(title, noIcon).then(function () { resolve(true); }, function () { resolve(false); });
+} else {
+resolve(false);
+}
+});
 }).catch(function () {
-try { new Notification(title, opts); resolve(true); } catch (e) { resolve(false); }
+const noIcon = Object.assign({}, opts);
+delete noIcon.icon;
+try { new Notification(title, noIcon); resolve(true); } catch (e) { resolve(false); }
 });
 } else {
-try { new Notification(title, opts); resolve(true); } catch (e) { resolve(false); }
+const noIcon = Object.assign({}, opts);
+delete noIcon.icon;
+try { new Notification(title, noIcon); resolve(true); } catch (e) { resolve(false); }
 }
 } catch (e) { resolve(false); }
 });
@@ -15357,12 +15461,12 @@ const name = store.get('lbl-partner') || 'TA';
 let t = '';
 if (ts) {
 const d = new Date(ts);
-t = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+t = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
 }
 const body = text && text.length > 40 ? text.slice(0, 40) + '…' : (text || '收到一条新消息');
 const opts = { body: (t ? t + '  ' : '') + body };
 const avatar = store.get('avatar-partner') || '';
-if (avatar && /^https?:\/\//i.test(avatar)) opts.icon = avatar;
+if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) opts.icon = avatar;
 showSysNotification(name, opts);
 };
 })();
@@ -19411,6 +19515,8 @@ box.className = 'ce-box ' + (inp.className || '');
 box.setAttribute('contenteditable', 'true');
 box.setAttribute('spellcheck', 'false');
 box.dataset.for = inp.id || '';
+var inpMode = inp.getAttribute('inputmode');
+if (inpMode) box.setAttribute('inputmode', inpMode);
 var ph = inp.getAttribute('placeholder') || '';
 if (ph) box.setAttribute('data-ph', ph);
 if (inp.tagName === 'TEXTAREA') {

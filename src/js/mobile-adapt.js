@@ -59,6 +59,10 @@
     box.setAttribute('contenteditable', 'true');
     box.setAttribute('spellcheck', 'false');
     box.dataset.for = inp.id || '';
+    // v3.5.138：复制 inputmode——数字输入框（回复设置 stepper 等设了 inputmode=decimal）
+    // 转成 ce-box 后仍弹数字键盘，否则手机弹全键盘
+    var inpMode = inp.getAttribute('inputmode');
+    if (inpMode) box.setAttribute('inputmode', inpMode);
     var ph = inp.getAttribute('placeholder') || '';
     if (ph) box.setAttribute('data-ph', ph);
     // 高度：textarea 按行数估算，input 用原高度/默认

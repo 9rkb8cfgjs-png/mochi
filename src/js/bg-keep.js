@@ -149,6 +149,11 @@
 
   // ================= 后台通知 =================
   let notifyEnabled = false;
+  // v3.5.139：系统通知默认图标（mochi 图标）——不传 icon 时 Chrome 安卓用黑色圆形
+  // 占位图标 + 标题文字，表现为"黑色圆圈、字在圆圈外"；统一补上图标让通知显示正常
+  const NOTIFY_ICON = (function () {
+    try { return new URL('./icon-192.png', location.href).href; } catch (e) { return ''; }
+  })();
   // v3.5.135：统一走 Service Worker 显示通知——Chrome Android 规范：页面在后台（隐藏）
   //   时，页面脚本直接 new Notification() 会被静默抑制（通知不弹也不报错），
   //   标准做法是 navigator.serviceWorker.ready → reg.showNotification()（SW 独立于页面，
@@ -165,13 +170,31 @@
           // 下拉通知栏；配合系统「横幅通知」权限即为微信式顶部弹窗
           const swOpts = Object.assign({}, opts);
           if (!swOpts.urgency) swOpts.urgency = 'high';
+          // v3.5.139：调用方未指定图标时默认用 mochi 图标（避免黑色圆圈占位）
+          if (!swOpts.icon && NOTIFY_ICON) swOpts.icon = NOTIFY_ICON;
           navigator.serviceWorker.ready.then(function (reg) {
-            reg.showNotification(title, swOpts).then(function () { resolve(true); }, function () { resolve(false); });
+            reg.showNotification(title, swOpts).then(function () { resolve(true); }, function () {
+              // v3.5.138：带图标发送失败（个别机型对 dataURL 图标/图片处理异常）时，
+              // 去掉图标重发一次——保证通知不因头像问题整条丢失
+              if (swOpts.icon) {
+                const noIcon = Object.assign({}, swOpts);
+                delete noIcon.icon;
+                reg.showNotification(title, noIcon).then(function () { resolve(true); }, function () { resolve(false); });
+              } else {
+                resolve(false);
+              }
+            });
           }).catch(function () {
-            try { new Notification(title, opts); resolve(true); } catch (e) { resolve(false); }
+            // SW 不可用回退页面路径：去掉图标（页面 Notification 对 dataURL 图标不稳定，
+            // 带上会导致整条通知失败，v3.5.118 教训）
+            const noIcon = Object.assign({}, opts);
+            delete noIcon.icon;
+            try { new Notification(title, noIcon); resolve(true); } catch (e) { resolve(false); }
           });
         } else {
-          try { new Notification(title, opts); resolve(true); } catch (e) { resolve(false); }
+          const noIcon = Object.assign({}, opts);
+          delete noIcon.icon;
+          try { new Notification(title, noIcon); resolve(true); } catch (e) { resolve(false); }
         }
       } catch (e) { resolve(false); }
     });
@@ -351,7 +374,7 @@
   });
 
   // 供 chat.js 调用：收到 TA 新消息且页面不在前台时弹浏览器通知
-  // 通知显示：联系人头像 + 昵称 + 消息发送时间 + 内容
+  // 通知显示：联系人头像 + 昵称 + 消息发送时间（精确到秒）+ 内容
   window.bgNotifyCheck = function (text, ts) {
     if (!notifyEnabled) return;
     if (document.visibilityState === 'visible') return;
@@ -360,14 +383,16 @@
     let t = '';
     if (ts) {
       const d = new Date(ts);
-      t = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      // v3.5.138：时间精确到秒（原只有 时:分）
+      t = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
     }
     const body = text && text.length > 40 ? text.slice(0, 40) + '…' : (text || '收到一条新消息');
     const opts = { body: (t ? t + '  ' : '') + body };
-    // v3.5.118：通知图标只在使用 http(s) URL 时附带——头像存的是 dataURL，
-    //   Android Chrome 对 dataURL 图标支持不稳定，会导致整个通知发送异常
+    // v3.5.138：头像无论 dataURL 还是 http(s) URL 都作为通知图标（走 SW 路径，
+    //   dataURL 图标可正常显示；个别机型异常时 showSysNotification 已做去图标降级重发，
+    //   不会因头像拖垮整条通知）
     const avatar = store.get('avatar-partner') || '';
-    if (avatar && /^https?:\/\//i.test(avatar)) opts.icon = avatar;
+    if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) opts.icon = avatar;
     // v3.5.135：核心修复——后台消息通知必须走 Service Worker showNotification：
     //   页面在后台（隐藏）时 Chrome 会静默抑制页面脚本的 new Notification()，
     //   这是此功能此前"开关全开也弹不出来"的代码级根因。

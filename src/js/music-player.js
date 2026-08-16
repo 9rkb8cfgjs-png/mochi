@@ -97,10 +97,12 @@
     // 旧版本曾把种子歌曲强制替换成本地 14 秒旋律并清空 url——检测这类旧数据，
     // 自动恢复网易云外链（source:'url'），让默认歌曲回到完整版；
     // 本地旋律仅在外链播放失败时兜底（见 setupHandlers / playTrack）。
+    // v3.6.x：旧数据可能是 http:// 前缀（GitHub Pages 是 HTTPS，http 音频会被浏览器
+    // 按混合内容拦截，表现为"点击播放没反应/没声音"）——统一规范成 https://
     library.forEach(m => {
       const seedId = m ? String(m.neteaseId || '') : '';
       if (!m || !seedId || (seedId !== '2613048732' && seedId !== '27538343')) return;
-      if (!m.url || m.url.indexOf('music.163.com') < 0) {
+      if (!m.url || m.url.indexOf('https://music.163.com') !== 0) {
         m.url = 'https://music.163.com/song/media/outer/url?id=' + seedId + '.mp3';
         m.source = 'url';
         saveLibrary();
@@ -108,21 +110,82 @@
         try { if (window.idbDelete) window.idbDelete(uid + ':music-file:' + m.id); } catch (e) {}
       }
     });
+    // v3.6.x：种子歌自愈——若 2 首内置示例歌在本地丢失（清除数据/备份恢复后
+    // music-seed-done 已置位不再补种、或记录损坏），重新补回默认歌单，
+    // 保证「默认歌单」始终有歌可播
+    {
+      const SEED_DEFS = [
+        { id: 2613048732, name: 'Moonlit Dream', artist: 'DLSS · shell（月光梦）', cover: 'https://p2.music.126.net/cXuoNwFzgFoQF7bGvC2mIQ==/109951169832660411.jpg' },
+        { id: 27538343, name: 'Baby', artist: 'EXO-K', cover: '' }
+      ];
+      let healed = false;
+      SEED_DEFS.forEach((s, i) => {
+        const has = library.some(m => m && String(m.neteaseId || '') === String(s.id));
+        if (has) return;
+        const id = 'sm_seed_' + Date.now() + '_' + i + '_h';
+        library.push({ id: id, neteaseId: String(s.id), name: s.name, artist: s.artist, cover: s.cover || '', url: 'https://music.163.com/song/media/outer/url?id=' + s.id + '.mp3', source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
+        healed = true;
+      });
+      if (healed) saveLibrary();
+    }
   }
 
   // ================= 内置示例旋律：本地合成（无版权、不联网、永不失效） =================
-  // 用 Web Audio 离线渲染一小段钢琴音色旋律，编码为 WAV dataURL 存入 IndexedDB
+  // 主路径用 Web Audio 离线渲染一小段钢琴音色旋律（22050Hz），编码为 WAV dataURL；
+  // v3.6.x：任何失败路径（OfflineAudioContext 不可用/渲染失败/btoa 异常）都降级到
+  //   genDemoWavJS 纯 JS 生成——保证默认歌单外链失败时兜底旋律一定可播，不再出现
+  //   「已改用内置示例旋律」后仍提示「播放失败」。
+  // 两段旋律（第一首小星星式上行，第二首欢快式）
+  const DEMO_NOTES = [
+    [523,523,587,587,659,659,587,523,523,587,587,659,659,587,659,698,784,784,698,698,659,659,587],
+    [659,659,698,784,784,698,659,587,523,523,587,659,659,587,587,659,784,784,880,880,784,659,587]
+  ];
+  // 纯 JS 合成：正弦波 + 包络 → 16bit WAV dataURL（不依赖 WebAudio / btoa 大串分段安全）
+  function genDemoWavJS(idx) {
+    try {
+      const sr = 8000, dur = 0.42;
+      const notes = DEMO_NOTES[idx === 0 ? 0 : 1] || DEMO_NOTES[0];
+      const total = sr * 14;
+      const pcm = new Int16Array(total);
+      let t = 0;
+      notes.forEach((f) => {
+        const nStart = Math.floor(t * sr);
+        const nEnd = Math.min(Math.floor((t + dur) * sr), total);
+        for (let i = nStart; i < nEnd; i++) {
+          const tt = (i / sr) - t;
+          // 20ms 起音 + 指数衰减包络
+          const env = Math.min(1, tt / 0.02) * Math.pow(0.001, Math.max(0, tt - 0.02) / (dur - 0.02));
+          pcm[i] = Math.max(-1, Math.min(1, Math.sin(2 * Math.PI * f * tt) * env * 0.5)) * 32767;
+        }
+        t += dur * 0.9;
+      });
+      const n = total;
+      const wav = new DataView(new ArrayBuffer(44 + n * 2));
+      const ws = (o, s) => { for (let i = 0; i < s.length; i++) wav.setUint8(o + i, s.charCodeAt(i)); };
+      ws(0, 'RIFF'); wav.setUint32(4, 36 + n * 2, true); ws(8, 'WAVE');
+      ws(12, 'fmt '); wav.setUint32(16, 16, true); wav.setUint16(20, 1, true); wav.setUint16(22, 1, true);
+      wav.setUint32(24, sr, true); wav.setUint32(28, sr * 2, true); wav.setUint16(32, 2, true); wav.setUint16(34, 16, true);
+      ws(36, 'data'); wav.setUint32(40, n * 2, true);
+      for (let i = 0; i < n; i++) wav.setInt16(44 + i * 2, pcm[i], true);
+      const bytes = new Uint8Array(wav.buffer);
+      let bin = '';
+      // 分块拼接：String.fromCharCode.apply 有参数上限，8KB 块安全
+      for (let i = 0; i < bytes.length; i += 8192) {
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+      }
+      return 'data:audio/wav;base64,' + btoa(bin);
+    } catch (e) { return ''; }
+  }
   function genDemoAudio(idx) {
     return new Promise((resolve) => {
+      // v3.6.x：OfflineAudioContext 不可用 → 直接纯 JS 合成，兜底必播
+      const fallback = () => { try { resolve(genDemoWavJS(idx) || ''); } catch (e) { resolve(''); } };
       try {
         const AC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-        if (!AC) { resolve(''); return; }
+        if (!AC) { fallback(); return; }
         const sr = 22050;
         const ctx = new AC(1, sr * 14, sr);
-        // 两段简单旋律（第一首小星星式上行，第二首欢快式）
-        const notes = idx === 0
-          ? [523,523,587,587,659,659,587,523,523,587,587,659,659,587,659,698,784,784,698,698,659,659,587]
-          : [659,659,698,784,784,698,659,587,523,523,587,659,659,587,587,659,784,784,880,880,784,659,587];
+        const notes = DEMO_NOTES[idx === 0 ? 0 : 1] || DEMO_NOTES[0];
         let t = ctx.currentTime;
         const dur = 0.42;
         notes.forEach((f) => {
@@ -139,22 +202,42 @@
           osc.stop(t + dur + 0.05);
           t += dur * 0.9;
         });
-        ctx.startRendering().then((buf) => {
-          const ch = buf.getChannelData(0);
-          const n = ch.length;
-          const wav = new DataView(new ArrayBuffer(44 + n * 2));
-          const writeStr = (o, s) => { for (let i = 0; i < s.length; i++) wav.setUint8(o + i, s.charCodeAt(i)); };
-          writeStr(0, 'RIFF'); wav.setUint32(4, 36 + n * 2, true); writeStr(8, 'WAVE');
-          writeStr(12, 'fmt '); wav.setUint32(16, 16, true); wav.setUint16(20, 1, true); wav.setUint16(22, 1, true);
-          wav.setUint32(24, sr, true); wav.setUint32(28, sr * 2, true); wav.setUint16(32, 2, true); wav.setUint16(34, 16, true);
-          writeStr(36, 'data'); wav.setUint32(40, n * 2, true);
-          for (let i = 0; i < n; i++) wav.setInt16(44 + i * 2, Math.max(-1, Math.min(1, ch[i])) * 32767, true);
-          const bytes = new Uint8Array(wav.buffer);
-          let bin = '';
-          for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-          resolve('data:audio/wav;base64,' + btoa(bin));
-        }).catch(() => resolve(''));
-      } catch (e) { resolve(''); }
+        // v3.6.x：startRendering 兼容——老 WebKit/低端安卓内核返回 undefined（不返回
+        // Promise），直接 .then 会抛错导致合成失败、种子歌"不能播放"；先设 oncomplete
+        // 回调再调用（Promise 内核同样走 then），事件不会丢。渲染/btoa 任何异常都降级。
+        let cbDone = false;
+        const finishRender = (buf) => {
+          if (cbDone) return; cbDone = true;
+          try {
+            const ch = buf.getChannelData(0);
+            const n = ch.length;
+            const wav = new DataView(new ArrayBuffer(44 + n * 2));
+            const writeStr = (o, s) => { for (let i = 0; i < s.length; i++) wav.setUint8(o + i, s.charCodeAt(i)); };
+            writeStr(0, 'RIFF'); wav.setUint32(4, 36 + n * 2, true); writeStr(8, 'WAVE');
+            writeStr(12, 'fmt '); wav.setUint32(16, 16, true); wav.setUint16(20, 1, true); wav.setUint16(22, 1, true);
+            wav.setUint32(24, sr, true); wav.setUint32(28, sr * 2, true); wav.setUint16(32, 2, true); wav.setUint16(34, 16, true);
+            writeStr(36, 'data'); wav.setUint32(40, n * 2, true);
+            for (let i = 0; i < n; i++) wav.setInt16(44 + i * 2, Math.max(-1, Math.min(1, ch[i])) * 32767, true);
+            const bytes = new Uint8Array(wav.buffer);
+            let bin = '';
+            for (let i = 0; i < bytes.length; i += 8192) {
+              bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+            }
+            resolve('data:audio/wav;base64,' + btoa(bin));
+          } catch (e) { fallback(); }
+        };
+        try {
+          const hasPromise = typeof ctx.startRendering === 'function' && ctx.startRendering.length === 0 && 'Promise' in window;
+          if (hasPromise) {
+            const rp = ctx.startRendering();
+            if (rp && typeof rp.then === 'function') rp.then(finishRender).catch(fallback);
+            else { ctx.oncomplete = (ev) => { try { finishRender(ev.renderedBuffer); } catch (e) { fallback(); } }; }
+          } else {
+            ctx.oncomplete = (ev) => { try { finishRender(ev.renderedBuffer); } catch (e) { fallback(); } };
+            ctx.startRendering();
+          }
+        } catch (e) { fallback(); }
+      } catch (e) { fallback(); }
     });
   }
 
@@ -678,6 +761,8 @@
     audio.onerror = function () {
       // v3.5.112：网易云外链播放失败 → 若为内置种子歌曲，自动回退本地合成旋律；
       // 本地旋律也失败时不再递归（demoFallbackBusy 置位）
+      // v3.6.x：onerror 可能被触发多次（不同错误码）——兜底进行中时后续 error 静默，
+      // 不再重复提示「播放失败：网络链接可能已失效」干扰
       const idx = seedIdxOf(m);
       if (idx >= 0 && !demoFallbackBusy) {
         demoFallbackBusy = true;
@@ -685,6 +770,7 @@
         playDemoFor(m, idx);
         return;
       }
+      if (idx >= 0) return; // 兜底合成/播放进行中，静默等待结果
       toast('播放失败：网络链接可能已失效');
     };
     audio.onloadedmetadata = function () {
