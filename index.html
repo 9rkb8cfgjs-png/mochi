@@ -3241,7 +3241,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 14:26</div>
+      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 14:27</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -14064,14 +14064,14 @@ window.getReplyCard = function () {
           '<div class="div-h-item" data-hi="' + i + '">' +
           '<div class="div-h-main"><div class="div-h-title">' + (h.mode === 'tarot' ? '塔罗' : '雷诺曼') + ' · ' + h.count + ' 张' +
           (h.question ? ' · 问：' + String(h.question).replace(/</g, '&lt;') : '') + '</div>' +
-          '<div class="div-h-sub">' + fmtDT(h.ts) + ' · ' + h.cards.map(c => c.name + (c.rev ? '(逆)' : '')).join('、') + '</div></div>' +
+          '<div class="div-h-sub">' + fmtDT(h.ts) + ' · ' + (Array.isArray(h.cards) ? h.cards.map(c => ((c && c.name) || '') + (c && c.rev ? '(逆)' : '')).join('、') : '') + '</div></div>' +
           '<button class="div-h-view" data-hi="' + i + '">查看</button>' +
           '<button class="div-h-del" data-hi="' + i + '">✕</button>' +
           '</div>').join('')
       : '';
     el.querySelectorAll('.div-h-view').forEach(b => b.addEventListener('click', () => {
       const h = histLoad()[parseInt(b.dataset.hi, 10)];
-      if (h) renderDrawResult(h.cards, h.mode, h.question, h.summary);
+      if (h && Array.isArray(h.cards)) renderDrawResult(h.cards, h.mode, h.question, h.summary);
     }));
     el.querySelectorAll('.div-h-del').forEach(b => b.addEventListener('click', () => {
       const list = histLoad();
@@ -19101,6 +19101,8 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
             textCount[m.text] = (textCount[m.text] || 0) + 1;
           }
           (m.mood || []).forEach(md => {
+            // v3.6.x：脏数据防御——mood 条目非对象（导入/损坏数据）时跳过，避免统计页中断
+            if (!md || typeof md !== 'object') return;
             if (md.tag === '交流意图') intent[md.label] = (intent[md.label] || 0) + 1;
             else if (md.tag === '心意') heart[md.label] = (heart[md.label] || 0) + 1;
             else emotion[md.label] = (emotion[md.label] || 0) + 1;
@@ -19571,7 +19573,8 @@ if (ckRefresh) {
   // 空数组，直接写会丢历史）。暂存待写，恢复完成后与 IDB 合并去重再写入。
   let histReady = false;
   let histPending = null;
-  function loadHistory() { try { return JSON.parse(store.get(HISTORY_KEY) || '[]'); } catch (e) { return []; } }
+  // v3.6.x：历史数据损坏（非数组）时返回空数组，避免 unshift/map 抛错中断
+  function loadHistory() { try { const v = JSON.parse(store.get(HISTORY_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
   function saveHistory(h) {
     if (!histReady) {
       try { histPending = Array.isArray(h) ? h.slice() : []; } catch (e) {}

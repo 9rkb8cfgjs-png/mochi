@@ -203,6 +203,8 @@
             textCount[m.text] = (textCount[m.text] || 0) + 1;
           }
           (m.mood || []).forEach(md => {
+            // v3.6.x：脏数据防御——mood 条目非对象（导入/损坏数据）时跳过，避免统计页中断
+            if (!md || typeof md !== 'object') return;
             if (md.tag === '交流意图') intent[md.label] = (intent[md.label] || 0) + 1;
             else if (md.tag === '心意') heart[md.label] = (heart[md.label] || 0) + 1;
             else emotion[md.label] = (emotion[md.label] || 0) + 1;
