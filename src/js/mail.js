@@ -419,21 +419,50 @@
   // 向写信/回信输入框追加内容（插入到光标处）
   function mailInsertInto(textarea, s) {
     if (!textarea) return;
-    try {
-      // v3.5.133：ceConvert 后 textarea 是隐藏 ghost，selectionStart 恒 0（永远插到信末）——
-      // 优先用 contenteditable box 的真实光标偏移
-      let start = textarea.selectionStart;
-      if (textarea.__ceBox) {
-        try {
-          const sel = window.getSelection();
-          if (sel && sel.rangeCount && textarea.__ceBox.contains(sel.anchorNode)) {
-            const r = sel.getRangeAt(0).cloneRange();
-            r.selectNodeContents(textarea.__ceBox);
-            r.setEnd(sel.anchorNode, sel.anchorOffset);
-            start = r.toString().length;
-          }
-        } catch (e) {}
+    // v3.5.135：contenteditable 转换模式（__ceBox）——插入**图片缩略图**而非纯文本，
+    // 否则输入框里显示一大串 base64 字母；隐藏的 span 保留完整标记文本供 value 读取
+    if (textarea.__ceBox) {
+      try {
+        const box = textarea.__ceBox;
+        box.focus();
+        const sel = window.getSelection();
+        let node = box;
+        let offset = 0;
+        if (sel && sel.rangeCount && box.contains(sel.anchorNode)) {
+          offset = sel.anchorOffset;
+          node = sel.anchorNode;
+        }
+        const range = document.createRange();
+        range.setStart(node, offset);
+        range.collapse(true);
+        // 图片缩略图（dataURL 直接作 src；sticker 小图/图片大图都用中等缩略）
+        const img = document.createElement('img');
+        img.src = String(s).replace(/^(?:sticker|image):/, '');
+        img.style.cssText = 'max-width:120px;max-height:120px;border-radius:8px;vertical-align:middle;margin:2px;display:inline-block;';
+        img.contentEditable = 'false';
+        // 隐藏文本占位（完整标记文本，供 value getter 读回存储）
+        const span = document.createElement('span');
+        span.className = 'mail-media-mark';
+        span.style.display = 'none';
+        span.textContent = s;
+        span.contentEditable = 'false';
+        range.insertNode(img);
+        range.insertNode(span);
+        range.insertNode(document.createTextNode(' '));
+        // 光标移到插入内容之后
+        range.setStartAfter(span);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        // 触发 input 事件（业务可能监听）
+        try { textarea.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+        return;
+      } catch (e) {
+        // 回退到文本插入
       }
+    }
+    try {
+      let start = textarea.selectionStart;
       if (typeof start !== 'number' || isNaN(start)) start = textarea.value.length;
       const end = start;
       textarea.value = textarea.value.slice(0, start) + s + textarea.value.slice(end);

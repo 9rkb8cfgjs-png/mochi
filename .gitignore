@@ -1,2 +1,5 @@
 # 本地工具（MinGit 便携版，不需要提交）
 .mingit/
+
+# ZCode 工具目录
+.zcode/

@@ -2,7 +2,7 @@
 // 类型A：是/否/半对 随机决定；类型B：自定义选项随机决定
 // 思考时间倒计时、最多选几个（可多选）、决定结果、历史记录
 // 结果可发送到聊天（联系人回复样式）
-// 功能参考：@FelixFelicis（9416318007）
+// 功能参考：小红书@FelixFelicis（9416318007）
 (function () {
   const uid = 'xy-home-v2';
   const store = window.xyStore(uid);
@@ -82,7 +82,7 @@
       '<div class="dc-panel" data-dpanel="history" hidden>' +
       '<div class="sm-set-row"><span>结果发送到聊天</span><label class="toggle"><input type="checkbox" id="dec-reply-chat"><span class="tk"></span></label></div>' +
       '<div id="dec-history"></div></div>' +
-      '<div class="dc-credit">帮我决定功能参考：@FelixFelicis（9416318007）</div>';
+      '<div class="dc-credit">帮我决定功能参考：小红书@FelixFelicis（9416318007）</div>';
   }
   // 恢复设置：思考时间 / 最多选几个 / 结果发送到聊天
   function applySettings() {

@@ -145,6 +145,22 @@
         // 产生的是块级 <div> 结构，textContent 不保留换行（返回「选项1选项2」），
         // 依赖换行分割的业务（帮我决定选项、批量输入等按行读取）会拿到 1 行 → 误报
         // 「至少需要 2 个选项」。innerText 会把 div/br 还原为 \n，与原生 textarea 一致。
+        // v3.5.135：邮件媒体标记（隐藏 span.mail-media-mark 存 sticker:/image: 文本）
+        // display:none 时 innerText 读不到——按 DOM 顺序重组保证图片与文字顺序一致；
+        // 仅对含标记的 box 生效（其他输入框保持原 innerText/textContent 逻辑不变）
+        try {
+          if (box.querySelector('span.mail-media-mark')) {
+            let out = '';
+            box.childNodes.forEach(function (n) {
+              if (n.nodeType === 3) { out += n.textContent; return; }
+              if (n.nodeType === 1) {
+                if (n.classList && n.classList.contains('mail-media-mark')) out += (out ? ' ' : '') + n.textContent;
+                else if (n.tagName === 'DIV' || n.tagName === 'BR') out += '\n';
+              }
+            });
+            return out;
+          }
+        } catch (e) {}
         if (isMulti) {
           try { return (box.innerText || box.textContent || ''); } catch (e) {}
         }
