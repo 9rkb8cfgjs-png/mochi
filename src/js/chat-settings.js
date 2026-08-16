@@ -156,7 +156,8 @@
         BUBBLE_SIZES.map(p => '<option value="' + p.value + '"' + (p.value === cur ? ' selected' : '') + '>' + p.label + '</option>').join('') +
         '</select></div>' +
         '<div class="sm-fld"><label>自定义（格式：上下 左右，如 <code>8px 10px</code>）</label>' +
-        '<input class="tc-input" id="cs-pad-input" value="' + cur + '"></div>' +
+        // v3.6.x：回填值做 HTML 转义——用户可写的值含 " 会破坏 value 属性（与 cs-font-name 一致）
+        '<input class="tc-input" id="cs-pad-input" value="' + String(cur).replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"></div>' +
         '<div class="sm-set-hint">示例：紧凑 8px 10px · 标准 11px 14px · 宽松 14px 18px</div>' +
         '<div class="mail-actions"><button class="cc-tool" id="cs-pad-cancel">取消</button><button class="cc-tool" id="cs-pad-ok">应用</button></div>');
       document.getElementById('cs-pad-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
@@ -168,7 +169,11 @@
         let v = (document.getElementById('cs-pad-input').value || '').trim();
         if (!v) { toast('请输入气泡框大小'); return; }
         // 规范化：数字+px 或 纯数字（默认px）
-        v = v.replace(/(\d+(?:\.\d+)?)(?!px)\b/g, '$1px');
+        // v3.6.x：原正则会把 "1.5px" 改坏成 "1px.5px"（回溯拆开小数）——改为分词处理，
+        // 已带 px 的 token 不动，纯数字补 px，避免无效 CSS 静默回退默认
+        v = String(v).split(/[,\s]+/).filter(Boolean).map(function (tok) {
+          return /^-?\d+(?:\.\d+)?px$/.test(tok) ? tok : tok.replace(/^(-?\d+(?:\.\d+)?)$/, '$1px');
+        }).join(' ');
         store.set('cs-bubble-size', v);
         document.getElementById('tc-mask').hidden = true;
         applySettings();

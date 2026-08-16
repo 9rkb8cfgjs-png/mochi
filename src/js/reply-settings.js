@@ -90,8 +90,10 @@
   // stepper 交互
   document.querySelectorAll('.stepper').forEach(st => {
     const k = st.dataset.k;
-    const min = parseInt(st.dataset.min, 10);
-    const max = parseInt(st.dataset.max, 10);
+    // v3.6.x：data-min/max 缺失时兜底默认值，避免 NaN 写进存储（± 按钮失效、显示 NaN）
+    const intAttr = (name, def) => { const v = parseInt(st.getAttribute(name), 10); return Number.isNaN(v) ? def : v; };
+    const min = intAttr('data-min', 0);
+    const max = intAttr('data-max', 100);
     const step = parseFloat(st.dataset.step) || 1;
     const val = st.querySelector('.stp-val');
     const fmt = (v) => step < 1 ? v.toFixed(2) : v;
@@ -115,8 +117,9 @@
     if (!st) return;
     const k = st.dataset.k;
     if (!k) return;
-    const min = parseInt(st.dataset.min, 10);
-    const max = parseInt(st.dataset.max, 10);
+    const intAttr = (name, def) => { const v = parseInt(st.getAttribute(name), 10); return Number.isNaN(v) ? def : v; };
+    const min = intAttr('data-min', 0);
+    const max = intAttr('data-max', 100);
     const step = parseFloat(st.dataset.step) || 1;
     const fmt = (v) => step < 1 ? Number(v).toFixed(2) : String(Math.round(Number(v)));
     val.setAttribute('inputmode', 'decimal'); // 手机上弹数字键盘

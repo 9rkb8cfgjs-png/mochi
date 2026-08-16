@@ -43,7 +43,11 @@
   function ceConvert(inp) {
     if (!inp || inp.dataset.ceDone || inp.readOnly) return;
     var t = inp.type;
-    if (inp.type === 'checkbox' || t === 'range' || t === 'file' || t === 'color' || t === 'hidden') return;
+    // v3.6.x：原生选择器类型（date/time/datetime-local/…）不转换——转成 contenteditable
+    // 后失去原生选择面板，且 contenteditable 不会派发 change 事件，恋爱纪念日这类
+    // 依赖原生 picker 的输入会彻底失效（安卓 Chrome/Edge 上无法设置、桌面组件不更新）
+    if (t === 'checkbox' || t === 'range' || t === 'file' || t === 'color' || t === 'hidden' ||
+        t === 'date' || t === 'time' || t === 'datetime-local' || t === 'month' || t === 'week') return;
     inp.dataset.ceDone = '1';
     // 退场为幽灵锚点（占位1px不可见，保留 id 供现有代码 getElementById）
     inp.classList.add('ce-ghost');
@@ -151,7 +155,7 @@
         // display:none 时 innerText 读不到——按 DOM 顺序重组保证图片与文字顺序一致；
         // 仅对含标记的 box 生效（其他输入框保持原 innerText/textContent 逻辑不变）
         try {
-          if (box.querySelector('span.mail-media-mark')) {
+          if (box.querySelector('span.mail-media-mark') || box.querySelector('img[src*="data:image"]')) {
             let out = '';
             let lastWasMedia = false; // 上一段是媒体标记 → 后续文字补空格，防止 base64 与文字粘连
             box.childNodes.forEach(function (n) {

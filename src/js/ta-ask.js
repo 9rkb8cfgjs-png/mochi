@@ -208,8 +208,10 @@
     window.openModal('回答TA的询问', '', (v) => {
       const answer = (v || '').trim();
       if (!answer) { toast('请输入回答'); return; }
+      const fixedIdx = locateCardIdx(msgIdx, 'ask-card', 'askStatus');
+      if (fixedIdx < 0) return;
       if (window.chatAskReply) {
-        window.chatAskReply(msgIdx, answer);
+        window.chatAskReply(fixedIdx, answer);
         // 记入历史（保存全部，不截断），含 TA 的回复
         const d = taAskLoad();
         d.history.push({ q: question, a: answer, reply: '收到你的回答。', ts: Date.now() });
@@ -1028,6 +1030,8 @@ window.openTCPanel = openTCPanel;
 
   // 好奇回答弹窗（快捷回复 + 自由输入）
   window.openCurious = function (msgIdx) {
+    msgIdx = locateCardIdx(msgIdx, 'ask-curious', 'curiousStatus');
+    if (msgIdx < 0) return;
     let rec = null;
     try {
       const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
@@ -1067,6 +1071,8 @@ window.openTCPanel = openTCPanel;
     setTimeout(() => inp.focus(), 60);
   };
   function submitCurious(msgIdx, answer) {
+    msgIdx = locateCardIdx(msgIdx, 'ask-curious', 'curiousStatus');
+    if (msgIdx < 0) return;
     let rec = null;
     try {
       const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
@@ -1416,6 +1422,8 @@ window.openTCPanel = openTCPanel;
 
   // 吐槽回应弹窗
   window.openRoast = function (msgIdx) {
+    msgIdx = locateCardIdx(msgIdx, 'ask-roast', 'roastStatus');
+    if (msgIdx < 0) return;
     let rec = null;
     try {
       const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
@@ -1444,6 +1452,8 @@ window.openTCPanel = openTCPanel;
     setTimeout(() => inp.focus(), 60);
   };
   function submitRoast(msgIdx, answer) {
+    msgIdx = locateCardIdx(msgIdx, 'ask-roast', 'roastStatus');
+    if (msgIdx < 0) return;
     let rec = null;
     try {
       const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));

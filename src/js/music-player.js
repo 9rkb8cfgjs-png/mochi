@@ -650,7 +650,13 @@
     audio.preload = 'auto';
     setupHandlers(m);
     const p = audio.play();
-    if (p && p.catch) p.catch(() => {});
+    if (p && p.catch) {
+      p.catch(() => {
+        // v3.6.x：安卓自动播放策略会拒绝非用户手势触发的 play()——不再静默吞掉，
+        // 把播放图标回退为暂停态，避免「显示在播却无声」的假象
+        try { syncPlayIcons(false); } catch (e) {}
+      });
+    }
     updatePlayerBar();
     renderLibrary();
     startProgress();
@@ -756,7 +762,10 @@
       toast('音乐库还没有歌曲');
       return;
     }
-    if (audio.paused) audio.play().catch(() => {});
+    if (audio.paused) {
+      const p = audio.play();
+      if (p && p.catch) p.catch(() => { try { syncPlayIcons(false); } catch (e) {} });
+    }
     else audio.pause();
   }
   // v3.5.129：来电联动——暂停音乐 + 隐藏悬浮小框（否则铃声和音乐同时响、
@@ -770,7 +779,10 @@
         if (audio && !audio.paused) audio.pause();
         if (el) { el.dataset.callHold = el.hidden ? '1' : '0'; el.hidden = true; }
       } else {
-        if (callHoldPlaying && audio && currentId) audio.play().catch(() => {});
+        if (callHoldPlaying && audio && currentId) {
+          const p = audio.play();
+          if (p && p.catch) p.catch(() => { try { syncPlayIcons(false); } catch (e) {} });
+        }
         callHoldPlaying = false;
         if (el && el.dataset.callHold === '0') { el.hidden = false; delete el.dataset.callHold; }
         else if (el) delete el.dataset.callHold;
@@ -801,6 +813,8 @@
     const list = playableList();
     if (!list.length) return;
     const idx = list.findIndex(x => x.id === currentId);
+    // v3.6.x：当前歌不在可播列表（idx=-1）时取最后一首，而不是 (idx-1+len)%len=len-2 的倒数第二首
+    if (idx < 0) { playTrack(list[list.length - 1].id); return; }
     playTrack(list[(idx - 1 + list.length) % list.length].id);
   }
   function cycleMode() {
@@ -1045,8 +1059,9 @@
     if (!window.openTCPanel) return;
     const plOpts = playlists.map(p => '<option value="' + p.id + '"' + (m.playlistId === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('');
     window.openTCPanel('管理音乐', '' +
-      '<div class="sm-fld"><label>歌曲名称</label><input class="tc-input" id="sm-e-name" value="' + esc(m.name || '') + '"></div>' +
-      '<div class="sm-fld"><label>歌手</label><input class="tc-input" id="sm-e-artist" value="' + esc(m.artist || '') + '"></div>' +
+      // v3.6.x：回填值做属性级转义——歌名/歌手含 " 会提前闭合 value 属性破坏表单（esc 只转义 <）
+      '<div class="sm-fld"><label>歌曲名称</label><input class="tc-input" id="sm-e-name" value="' + String(m.name || '').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"></div>' +
+      '<div class="sm-fld"><label>歌手</label><input class="tc-input" id="sm-e-artist" value="' + String(m.artist || '').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"></div>' +
       '<div class="sm-fld"><label>所属歌单</label><select class="tc-input" id="sm-e-pl"><option value="default">我的音乐库</option>' + plOpts + '</select></div>' +
       '<div class="mail-actions"><button class="cc-tool" id="sm-e-del">删除</button><button class="cc-tool" id="sm-e-cancel">取消</button><button class="cc-tool" id="sm-e-ok">保存</button></div>');
     document.getElementById('sm-e-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
@@ -1132,6 +1147,9 @@
   // 歌曲结束：TA 可能接动作（切歌/随机/换模式）
   function maybeTAAutoAction() {
     if (!taActive || !currentId) return false;
+    // v3.6.x：记录结束的这首歌——延迟抢播回调必须校验 currentId 仍是它，
+    // 否则只要播放器还活跃（currentId 恒非 null），用户 300ms 内手动切歌也会被 TA 抢播覆盖
+    const endedId = currentId;
     // 加权：继续 70 / 下一首 15 / 随机 10 / 换模式 5
     const r = Math.random() * 100;
     const name = partnerName();
@@ -1147,7 +1165,7 @@
         if (window.chatAddSystem) window.chatAddSystem(name + ' 切到了下一首《' + (t.name || '未知歌曲') + '》');
         addRecord(t.id, 'TA 切到了下一首');
         // v3.5.129：延迟回调校验 currentId——期间用户手动切了歌就不再抢播
-        setTimeout(() => { if (currentId !== null) playTrack(t.id); }, 300);
+        setTimeout(() => { if (currentId === endedId) playTrack(t.id); }, 300);
         return true;
       }
       return false;
@@ -1158,7 +1176,7 @@
         const t = list[Math.floor(Math.random() * list.length)];
         if (window.chatAddSystem) window.chatAddSystem(name + ' 随机挑了一首《' + (t.name || '未知歌曲') + '》');
         addRecord(t.id, 'TA 随机挑了一首');
-        setTimeout(() => { if (currentId !== null) playTrack(t.id); }, 300);
+        setTimeout(() => { if (currentId === endedId) playTrack(t.id); }, 300);
         return true;
       }
       return false;

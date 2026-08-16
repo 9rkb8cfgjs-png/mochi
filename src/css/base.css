@@ -199,10 +199,14 @@ html,body { overflow-x:hidden;
   .phone .page.full .div-h-title, .phone .page.full .stats-top-name { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
 }
 
-/* Fullscreen API 激活（fs-active 类，由 fullscreen.js 控制）时同样挖孔安全区 */
-.fs-active .phone .page.full .chat-head { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
-.fs-active .phone .page.full .gs-title, .fs-active .phone .page.full .card-tabs,
-.fs-active .phone .page.full .div-h-title, .fs-active .phone .page.full .stats-top-name { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+/* Fullscreen API 激活（fs-active 类，由 fullscreen.js 控制）时同样挖孔安全区；
+   Via 等浏览器 CSS 兜底全屏（fs-css-active 类）观感与原生全屏一致，同样应用 */
+.fs-active .phone .page.full .chat-head,
+.fs-css-active .phone .page.full .chat-head { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+.fs-active .phone .page.full .gs-title, .fs-css-active .phone .page.full .gs-title,
+.fs-active .phone .page.full .card-tabs, .fs-css-active .phone .page.full .card-tabs,
+.fs-active .phone .page.full .div-h-title, .fs-css-active .phone .page.full .div-h-title,
+.fs-active .phone .page.full .stats-top-name, .fs-css-active .phone .page.full .stats-top-name { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
 
 /* 真全屏 / Fullscreen API 时，底部 tab 页（主页/字卡库/设置）同样留顶部安全区：
    安卓挖孔屏 env() 返回 0 时保留 12px 兜底（与 .page.full 顶栏一致）；
@@ -210,15 +214,15 @@ html,body { overflow-x:hidden;
 @media (display-mode: fullscreen) {
   .phone { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
 }
-.fs-active .phone { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+.fs-active .phone, .fs-css-active .phone { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
 
 /* v3.6.x：iOS 独立应用「全屏模式」（ios-fs-active 类，由 fullscreen.js 控制）——
-   iOS 无 Fullscreen API、系统状态栏永远无法隐藏，唯一能藏的是应用内模拟状态栏
-   （与系统状态栏重复的一栏，正是「有空隙/双状态栏」观感来源）。
-   开启后隐藏它，内容顶到系统状态栏下方；系统状态栏由 iOS 接管安全区。
+   iOS 无 Fullscreen API、系统状态栏永远无法隐藏，应用内模拟状态栏已在手机端统一
+   隐藏（见上方「非全屏模式直接可用」）；本类只负责保持顶部安全区与全屏页一致
+   （calc(10px + env)），开关切换不产生顶部间距跳动。
    只影响真实手机窄屏，桌面模拟器外壳不受影响 */
 @media (max-width: 900px) {
-  .ios-fs-active .phone { padding-top: env(safe-area-inset-top, 0px); }
+  .ios-fs-active .phone { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
   .ios-fs-active .phone .statusbar { display: none; }
 }
 

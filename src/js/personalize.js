@@ -746,7 +746,10 @@
       }));
       // 确定添加
       memMask.querySelector('.mem-add-ok').addEventListener('click', () => {
-        const nameInput = memMask.querySelector('.mem-add-input');
+        // v3.6.x：用 input.mem-add-input 精确命中输入框锚点——手机端（安卓 Chrome/Edge）
+        // contenteditable 转换器会在原 input 前插一个同类的 .ce-box div，querySelector('.mem-add-input')
+        // 会先匹配到这个 div（div.value 恒为 undefined），导致名称永远为空、纪念日添加不了
+        const nameInput = memMask.querySelector('input.mem-add-input');
         const name = (nameInput.value || '').trim();
         if (!name) { nameInput.focus(); toast('请填写名称'); return; }
         if (!memSelDate) { toast('请选择日期'); return; }
@@ -764,7 +767,7 @@
     memMask.hidden = false;
     memSelDate = memToday();
     memSelType = 'auto';
-    const nameInput = memMask.querySelector('.mem-add-input');
+    const nameInput = memMask.querySelector('input.mem-add-input');
     nameInput.value = '';
     memMask.querySelectorAll('.mem-type-pill').forEach(x => x.classList.toggle('sel', x.getAttribute('data-type') === 'auto'));
     mvY = 0; mvM = -1;

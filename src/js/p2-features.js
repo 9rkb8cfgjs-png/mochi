@@ -331,12 +331,14 @@ function renderCheckinHistory() {
     const msg = document.getElementById('ck-msg');
     const status = document.getElementById('ck-status');
     const name = store.get('lbl-partner') || 'TA';
-    if (place) place.textContent = ck.place;
-    if (action) action.textContent = ck.action;
-    if (msg) msg.textContent = ck.msg;
+    // v3.6.x：关闭系统预设且某分类无自定义字卡时该字段为空——显示空串而非字面量 "undefined"
+    if (place) place.textContent = ck.place || '';
+    if (action) action.textContent = ck.action || '';
+    if (msg) msg.textContent = ck.msg || '';
     if (status) status.textContent = name + ' 的日常';
   }
   function recordCheckin(ck) {
+    // v3.6.x：undefined 字段不写入记录（JSON.stringify 自动丢弃 undefined 键）
     const entry = { t: fmtTime(Date.now()), place: ck.place, action: ck.action, msg: ck.msg, ts: Date.now() };
     try {
       const h = JSON.parse(store.get('checkin-history') || '[]');
@@ -353,8 +355,10 @@ function renderCheckinHistory() {
     renderCheckinUI(ck);
     const name = store.get('lbl-partner') || 'TA';
     // 日常更新显示在聊天消息里（普通气泡消息，持久化）
+    // v3.6.x：只拼接存在的字段，避免 "在咖啡店 · undefined" 写进聊天记录
     if (window.chatAddIn) {
-      window.chatAddIn(ck.place + ' · ' + ck.action + (ck.msg ? ' · ' + ck.msg : ''));
+      const line = [ck.place, ck.action, ck.msg].filter(Boolean).join(' · ');
+      if (line) window.chatAddIn(line);
     }
     // 更新提示系统消息 + 概率触发「提醒你来查岗」
     if (window.chatAddSystem) {
@@ -370,9 +374,9 @@ function renderCheckinHistory() {
     const p = document.getElementById('ck-p-place');
     const a = document.getElementById('ck-p-action');
     const m = document.getElementById('ck-p-msg');
-    if (p) p.textContent = ck.place;
-    if (a) a.textContent = ck.action;
-    if (m) m.textContent = ck.msg;
+    if (p) p.textContent = ck.place || '';
+    if (a) a.textContent = ck.action || '';
+    if (m) m.textContent = ck.msg || '';
   }
   // 供聊天页「点联系人头像打开查岗半框」使用
   window.openCkPanel = function () {
@@ -393,9 +397,9 @@ function renderCheckinHistory() {
       const p = document.getElementById('ck-p-place');
       const a = document.getElementById('ck-p-action');
       const m = document.getElementById('ck-p-msg');
-      if (p) p.textContent = cur.place;
-      if (a) a.textContent = cur.action;
-      if (m) m.textContent = cur.msg;
+      if (p) p.textContent = cur.place || '';
+      if (a) a.textContent = cur.action || '';
+      if (m) m.textContent = cur.msg || '';
     } else {
       doCheckin();
     }

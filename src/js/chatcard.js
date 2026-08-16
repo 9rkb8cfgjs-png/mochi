@@ -200,6 +200,9 @@
     });
   }
 
+  // v3.6.x：HTML 转义——文件名/字卡内容/分组名是用户输入，直接拼 innerHTML 会破坏结构或注入
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
   // 字卡项 HTML：图片 dataURL 显示缩略图，否则文字（删除统一走【管理字卡】）
   function cardItemHtml(c) {
     // 语音字卡：文件名|||音频数据（播放按钮：播放中显示动态波形 + 高亮）
@@ -209,16 +212,16 @@
       const name = (parts[0] || '音频').replace(/\.[^.]+$/, '');
       const src = parts[1] || '';
       return '<div class="cc-ico" style="background:rgba(0,0,0,.05)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></div>' +
-        '<div class="cc-txt"><div class="t" style="color:var(--muted)">' + name + '</div></div>' +
-        '<button class="cc-play" data-src="' + src + '" title="播放">' +
+        '<div class="cc-txt"><div class="t" style="color:var(--muted)">' + esc(name) + '</div></div>' +
+        '<button class="cc-play" data-src="' + esc(src) + '" title="播放">' +
         '<span class="cc-play-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>' +
         '<span class="cc-play-bars"><i></i><i></i><i></i></span></button>';
     }
     if (typeof c === 'string' && c.indexOf('data:') === 0) {
       // 图片字卡：缩略图 + 点击查看大图（无文字标签）
-      return '<div class="cc-ico cc-imgbox"><img class="cc-img" src="' + c + '" alt="图片"></div>';
+      return '<div class="cc-ico cc-imgbox"><img class="cc-img" src="' + esc(c) + '" alt="图片"></div>';
     }
-    return '<div class="cc-txt"><div class="t">' + c + '</div></div>';
+    return '<div class="cc-txt"><div class="t">' + esc(c) + '</div></div>';
   }
 
   function render() {
@@ -254,7 +257,7 @@
     shown.forEach(([gname, arr]) => {
       const h = document.createElement('div');
       h.className = 'cc-group-header';
-      h.innerHTML = '<span class="ccg-name">' + gname + '</span><span class="ccg-count">' + arr.length + '</span>';
+      h.innerHTML = '<span class="ccg-name">' + esc(gname) + '</span><span class="ccg-count">' + arr.length + '</span>';
       // 分组删除统一在【管理分组】里操作，这里不再显示删除按钮
       list.appendChild(h);
       arr.forEach((c, i) => {

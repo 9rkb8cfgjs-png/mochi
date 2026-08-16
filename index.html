@@ -216,10 +216,14 @@ html,body { overflow-x:hidden;
   .phone .page.full .div-h-title, .phone .page.full .stats-top-name { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
 }
 
-/* Fullscreen API 激活（fs-active 类，由 fullscreen.js 控制）时同样挖孔安全区 */
-.fs-active .phone .page.full .chat-head { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
-.fs-active .phone .page.full .gs-title, .fs-active .phone .page.full .card-tabs,
-.fs-active .phone .page.full .div-h-title, .fs-active .phone .page.full .stats-top-name { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+/* Fullscreen API 激活（fs-active 类，由 fullscreen.js 控制）时同样挖孔安全区；
+   Via 等浏览器 CSS 兜底全屏（fs-css-active 类）观感与原生全屏一致，同样应用 */
+.fs-active .phone .page.full .chat-head,
+.fs-css-active .phone .page.full .chat-head { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+.fs-active .phone .page.full .gs-title, .fs-css-active .phone .page.full .gs-title,
+.fs-active .phone .page.full .card-tabs, .fs-css-active .phone .page.full .card-tabs,
+.fs-active .phone .page.full .div-h-title, .fs-css-active .phone .page.full .div-h-title,
+.fs-active .phone .page.full .stats-top-name, .fs-css-active .phone .page.full .stats-top-name { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
 
 /* 真全屏 / Fullscreen API 时，底部 tab 页（主页/字卡库/设置）同样留顶部安全区：
    安卓挖孔屏 env() 返回 0 时保留 12px 兜底（与 .page.full 顶栏一致）；
@@ -227,15 +231,15 @@ html,body { overflow-x:hidden;
 @media (display-mode: fullscreen) {
   .phone { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
 }
-.fs-active .phone { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+.fs-active .phone, .fs-css-active .phone { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
 
 /* v3.6.x：iOS 独立应用「全屏模式」（ios-fs-active 类，由 fullscreen.js 控制）——
-   iOS 无 Fullscreen API、系统状态栏永远无法隐藏，唯一能藏的是应用内模拟状态栏
-   （与系统状态栏重复的一栏，正是「有空隙/双状态栏」观感来源）。
-   开启后隐藏它，内容顶到系统状态栏下方；系统状态栏由 iOS 接管安全区。
+   iOS 无 Fullscreen API、系统状态栏永远无法隐藏，应用内模拟状态栏已在手机端统一
+   隐藏（见上方「非全屏模式直接可用」）；本类只负责保持顶部安全区与全屏页一致
+   （calc(10px + env)），开关切换不产生顶部间距跳动。
    只影响真实手机窄屏，桌面模拟器外壳不受影响 */
 @media (max-width: 900px) {
-  .ios-fs-active .phone { padding-top: env(safe-area-inset-top, 0px); }
+  .ios-fs-active .phone { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
   .ios-fs-active .phone .statusbar { display: none; }
 }
 
@@ -3232,7 +3236,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 14:13</div>
+      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 14:21</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -5814,6 +5818,19 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
     if (pages.clientWidth) pages.scrollLeft = idx * pages.clientWidth;
   });
 
+  // v3.6.x：桌面页隐藏时（切到聊天/设置等）旋转，resize 里 clientWidth=0 会跳过——
+  // 返回桌面时按新宽度重设一次，避免 scrollLeft 停在两页之间、圆点与内容错位
+  const phonePage = document.getElementById('page-phone');
+  if (phonePage) {
+    const mo = new MutationObserver(() => {
+      if (!phonePage.hidden && pages.clientWidth) {
+        pages.scrollLeft = idx * pages.clientWidth;
+        sync();
+      }
+    });
+    mo.observe(phonePage, { attributes: true, attributeFilter: ['hidden'] });
+  }
+
   sync();
 })();
 
@@ -6723,7 +6740,10 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       }));
       // 确定添加
       memMask.querySelector('.mem-add-ok').addEventListener('click', () => {
-        const nameInput = memMask.querySelector('.mem-add-input');
+        // v3.6.x：用 input.mem-add-input 精确命中输入框锚点——手机端（安卓 Chrome/Edge）
+        // contenteditable 转换器会在原 input 前插一个同类的 .ce-box div，querySelector('.mem-add-input')
+        // 会先匹配到这个 div（div.value 恒为 undefined），导致名称永远为空、纪念日添加不了
+        const nameInput = memMask.querySelector('input.mem-add-input');
         const name = (nameInput.value || '').trim();
         if (!name) { nameInput.focus(); toast('请填写名称'); return; }
         if (!memSelDate) { toast('请选择日期'); return; }
@@ -6741,7 +6761,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
     memMask.hidden = false;
     memSelDate = memToday();
     memSelType = 'auto';
-    const nameInput = memMask.querySelector('.mem-add-input');
+    const nameInput = memMask.querySelector('input.mem-add-input');
     nameInput.value = '';
     memMask.querySelectorAll('.mem-type-pill').forEach(x => x.classList.toggle('sel', x.getAttribute('data-type') === 'auto'));
     mvY = 0; mvM = -1;
@@ -10235,6 +10255,9 @@ function partialRetractMsg(msgEl, side) {
     });
   }
 
+  // v3.6.x：HTML 转义——文件名/字卡内容/分组名是用户输入，直接拼 innerHTML 会破坏结构或注入
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
   // 字卡项 HTML：图片 dataURL 显示缩略图，否则文字（删除统一走【管理字卡】）
   function cardItemHtml(c) {
     // 语音字卡：文件名|||音频数据（播放按钮：播放中显示动态波形 + 高亮）
@@ -10244,16 +10267,16 @@ function partialRetractMsg(msgEl, side) {
       const name = (parts[0] || '音频').replace(/\.[^.]+$/, '');
       const src = parts[1] || '';
       return '<div class="cc-ico" style="background:rgba(0,0,0,.05)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></div>' +
-        '<div class="cc-txt"><div class="t" style="color:var(--muted)">' + name + '</div></div>' +
-        '<button class="cc-play" data-src="' + src + '" title="播放">' +
+        '<div class="cc-txt"><div class="t" style="color:var(--muted)">' + esc(name) + '</div></div>' +
+        '<button class="cc-play" data-src="' + esc(src) + '" title="播放">' +
         '<span class="cc-play-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>' +
         '<span class="cc-play-bars"><i></i><i></i><i></i></span></button>';
     }
     if (typeof c === 'string' && c.indexOf('data:') === 0) {
       // 图片字卡：缩略图 + 点击查看大图（无文字标签）
-      return '<div class="cc-ico cc-imgbox"><img class="cc-img" src="' + c + '" alt="图片"></div>';
+      return '<div class="cc-ico cc-imgbox"><img class="cc-img" src="' + esc(c) + '" alt="图片"></div>';
     }
-    return '<div class="cc-txt"><div class="t">' + c + '</div></div>';
+    return '<div class="cc-txt"><div class="t">' + esc(c) + '</div></div>';
   }
 
   function render() {
@@ -10289,7 +10312,7 @@ function partialRetractMsg(msgEl, side) {
     shown.forEach(([gname, arr]) => {
       const h = document.createElement('div');
       h.className = 'cc-group-header';
-      h.innerHTML = '<span class="ccg-name">' + gname + '</span><span class="ccg-count">' + arr.length + '</span>';
+      h.innerHTML = '<span class="ccg-name">' + esc(gname) + '</span><span class="ccg-count">' + arr.length + '</span>';
       // 分组删除统一在【管理分组】里操作，这里不再显示删除按钮
       list.appendChild(h);
       arr.forEach((c, i) => {
@@ -11134,7 +11157,8 @@ function partialRetractMsg(msgEl, side) {
         BUBBLE_SIZES.map(p => '<option value="' + p.value + '"' + (p.value === cur ? ' selected' : '') + '>' + p.label + '</option>').join('') +
         '</select></div>' +
         '<div class="sm-fld"><label>自定义（格式：上下 左右，如 <code>8px 10px</code>）</label>' +
-        '<input class="tc-input" id="cs-pad-input" value="' + cur + '"></div>' +
+        // v3.6.x：回填值做 HTML 转义——用户可写的值含 " 会破坏 value 属性（与 cs-font-name 一致）
+        '<input class="tc-input" id="cs-pad-input" value="' + String(cur).replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"></div>' +
         '<div class="sm-set-hint">示例：紧凑 8px 10px · 标准 11px 14px · 宽松 14px 18px</div>' +
         '<div class="mail-actions"><button class="cc-tool" id="cs-pad-cancel">取消</button><button class="cc-tool" id="cs-pad-ok">应用</button></div>');
       document.getElementById('cs-pad-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
@@ -11146,7 +11170,11 @@ function partialRetractMsg(msgEl, side) {
         let v = (document.getElementById('cs-pad-input').value || '').trim();
         if (!v) { toast('请输入气泡框大小'); return; }
         // 规范化：数字+px 或 纯数字（默认px）
-        v = v.replace(/(\d+(?:\.\d+)?)(?!px)\b/g, '$1px');
+        // v3.6.x：原正则会把 "1.5px" 改坏成 "1px.5px"（回溯拆开小数）——改为分词处理，
+        // 已带 px 的 token 不动，纯数字补 px，避免无效 CSS 静默回退默认
+        v = String(v).split(/[,\s]+/).filter(Boolean).map(function (tok) {
+          return /^-?\d+(?:\.\d+)?px$/.test(tok) ? tok : tok.replace(/^(-?\d+(?:\.\d+)?)$/, '$1px');
+        }).join(' ');
         store.set('cs-bubble-size', v);
         document.getElementById('tc-mask').hidden = true;
         applySettings();
@@ -11433,8 +11461,10 @@ function partialRetractMsg(msgEl, side) {
   // stepper 交互
   document.querySelectorAll('.stepper').forEach(st => {
     const k = st.dataset.k;
-    const min = parseInt(st.dataset.min, 10);
-    const max = parseInt(st.dataset.max, 10);
+    // v3.6.x：data-min/max 缺失时兜底默认值，避免 NaN 写进存储（± 按钮失效、显示 NaN）
+    const intAttr = (name, def) => { const v = parseInt(st.getAttribute(name), 10); return Number.isNaN(v) ? def : v; };
+    const min = intAttr('data-min', 0);
+    const max = intAttr('data-max', 100);
     const step = parseFloat(st.dataset.step) || 1;
     const val = st.querySelector('.stp-val');
     const fmt = (v) => step < 1 ? v.toFixed(2) : v;
@@ -11458,8 +11488,9 @@ function partialRetractMsg(msgEl, side) {
     if (!st) return;
     const k = st.dataset.k;
     if (!k) return;
-    const min = parseInt(st.dataset.min, 10);
-    const max = parseInt(st.dataset.max, 10);
+    const intAttr = (name, def) => { const v = parseInt(st.getAttribute(name), 10); return Number.isNaN(v) ? def : v; };
+    const min = intAttr('data-min', 0);
+    const max = intAttr('data-max', 100);
     const step = parseFloat(st.dataset.step) || 1;
     const fmt = (v) => step < 1 ? Number(v).toFixed(2) : String(Math.round(Number(v)));
     val.setAttribute('inputmode', 'decimal'); // 手机上弹数字键盘
@@ -12729,7 +12760,13 @@ window.getReplyCard = function () {
     audio.preload = 'auto';
     setupHandlers(m);
     const p = audio.play();
-    if (p && p.catch) p.catch(() => {});
+    if (p && p.catch) {
+      p.catch(() => {
+        // v3.6.x：安卓自动播放策略会拒绝非用户手势触发的 play()——不再静默吞掉，
+        // 把播放图标回退为暂停态，避免「显示在播却无声」的假象
+        try { syncPlayIcons(false); } catch (e) {}
+      });
+    }
     updatePlayerBar();
     renderLibrary();
     startProgress();
@@ -12835,7 +12872,10 @@ window.getReplyCard = function () {
       toast('音乐库还没有歌曲');
       return;
     }
-    if (audio.paused) audio.play().catch(() => {});
+    if (audio.paused) {
+      const p = audio.play();
+      if (p && p.catch) p.catch(() => { try { syncPlayIcons(false); } catch (e) {} });
+    }
     else audio.pause();
   }
   // v3.5.129：来电联动——暂停音乐 + 隐藏悬浮小框（否则铃声和音乐同时响、
@@ -12849,7 +12889,10 @@ window.getReplyCard = function () {
         if (audio && !audio.paused) audio.pause();
         if (el) { el.dataset.callHold = el.hidden ? '1' : '0'; el.hidden = true; }
       } else {
-        if (callHoldPlaying && audio && currentId) audio.play().catch(() => {});
+        if (callHoldPlaying && audio && currentId) {
+          const p = audio.play();
+          if (p && p.catch) p.catch(() => { try { syncPlayIcons(false); } catch (e) {} });
+        }
         callHoldPlaying = false;
         if (el && el.dataset.callHold === '0') { el.hidden = false; delete el.dataset.callHold; }
         else if (el) delete el.dataset.callHold;
@@ -12880,6 +12923,8 @@ window.getReplyCard = function () {
     const list = playableList();
     if (!list.length) return;
     const idx = list.findIndex(x => x.id === currentId);
+    // v3.6.x：当前歌不在可播列表（idx=-1）时取最后一首，而不是 (idx-1+len)%len=len-2 的倒数第二首
+    if (idx < 0) { playTrack(list[list.length - 1].id); return; }
     playTrack(list[(idx - 1 + list.length) % list.length].id);
   }
   function cycleMode() {
@@ -13124,8 +13169,9 @@ window.getReplyCard = function () {
     if (!window.openTCPanel) return;
     const plOpts = playlists.map(p => '<option value="' + p.id + '"' + (m.playlistId === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('');
     window.openTCPanel('管理音乐', '' +
-      '<div class="sm-fld"><label>歌曲名称</label><input class="tc-input" id="sm-e-name" value="' + esc(m.name || '') + '"></div>' +
-      '<div class="sm-fld"><label>歌手</label><input class="tc-input" id="sm-e-artist" value="' + esc(m.artist || '') + '"></div>' +
+      // v3.6.x：回填值做属性级转义——歌名/歌手含 " 会提前闭合 value 属性破坏表单（esc 只转义 <）
+      '<div class="sm-fld"><label>歌曲名称</label><input class="tc-input" id="sm-e-name" value="' + String(m.name || '').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"></div>' +
+      '<div class="sm-fld"><label>歌手</label><input class="tc-input" id="sm-e-artist" value="' + String(m.artist || '').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"></div>' +
       '<div class="sm-fld"><label>所属歌单</label><select class="tc-input" id="sm-e-pl"><option value="default">我的音乐库</option>' + plOpts + '</select></div>' +
       '<div class="mail-actions"><button class="cc-tool" id="sm-e-del">删除</button><button class="cc-tool" id="sm-e-cancel">取消</button><button class="cc-tool" id="sm-e-ok">保存</button></div>');
     document.getElementById('sm-e-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
@@ -13211,6 +13257,9 @@ window.getReplyCard = function () {
   // 歌曲结束：TA 可能接动作（切歌/随机/换模式）
   function maybeTAAutoAction() {
     if (!taActive || !currentId) return false;
+    // v3.6.x：记录结束的这首歌——延迟抢播回调必须校验 currentId 仍是它，
+    // 否则只要播放器还活跃（currentId 恒非 null），用户 300ms 内手动切歌也会被 TA 抢播覆盖
+    const endedId = currentId;
     // 加权：继续 70 / 下一首 15 / 随机 10 / 换模式 5
     const r = Math.random() * 100;
     const name = partnerName();
@@ -13226,7 +13275,7 @@ window.getReplyCard = function () {
         if (window.chatAddSystem) window.chatAddSystem(name + ' 切到了下一首《' + (t.name || '未知歌曲') + '》');
         addRecord(t.id, 'TA 切到了下一首');
         // v3.5.129：延迟回调校验 currentId——期间用户手动切了歌就不再抢播
-        setTimeout(() => { if (currentId !== null) playTrack(t.id); }, 300);
+        setTimeout(() => { if (currentId === endedId) playTrack(t.id); }, 300);
         return true;
       }
       return false;
@@ -13237,7 +13286,7 @@ window.getReplyCard = function () {
         const t = list[Math.floor(Math.random() * list.length)];
         if (window.chatAddSystem) window.chatAddSystem(name + ' 随机挑了一首《' + (t.name || '未知歌曲') + '》');
         addRecord(t.id, 'TA 随机挑了一首');
-        setTimeout(() => { if (currentId !== null) playTrack(t.id); }, 300);
+        setTimeout(() => { if (currentId === endedId) playTrack(t.id); }, 300);
         return true;
       }
       return false;
@@ -13934,17 +13983,62 @@ window.getReplyCard = function () {
     return line;
   }
   // ---- 占卜记录（保存全部历史；IndexedDB 权威，localStorage 快照） ----
+  // v3.6.x：恢复窗口保护——IDB 权威恢复完成前不落盘，防止用空数组覆盖
+  // IndexedDB 里的全部历史（历史超 200KB 只存 IDB，恢复完成前 store.get 读到
+  // 空数组，直接写会丢历史）。暂存待写，恢复完成后与 IDB 合并去重再写入。
+  let histReady = false;
+  let histPending = null;
   function histLoad() {
     let list = [];
     try { list = JSON.parse(store.get('divine-history') || '[]'); } catch (e) { list = []; }
     // 旧版本裸键迁移（v3.5.92 前历史存无前缀键，一次性搬入适配层）
+    // v3.6.x：迁移写入走 histSave（带恢复窗口保护），避免迁移期间覆盖 IDB 权威历史
     if (!Array.isArray(list) || !list.length) {
       try { list = JSON.parse(localStorage.getItem('divine-history') || '[]'); } catch (e) { list = []; }
-      if (Array.isArray(list) && list.length) store.set('divine-history', JSON.stringify(list));
+      if (Array.isArray(list) && list.length) histSave(list);
     }
     return Array.isArray(list) ? list : [];
   }
-  function histSave(list) { store.set('divine-history', JSON.stringify(list)); }
+  function histSave(list) {
+    const data = JSON.stringify(list);
+    if (!histReady) {
+      try { histPending = Array.isArray(list) ? list.slice() : []; } catch (e) {}
+      return;
+    }
+    try { store.set('divine-history', data); } catch (e) {}
+  }
+  // 恢复完成后：合并恢复窗口内暂存的抽牌记录（按 ts 去重），再落盘 + 重绘
+  function flushPendingHist() {
+    if (!histPending) return;
+    const pending = histPending;
+    histPending = null;
+    if (!pending.length) return;
+    const finish = (base) => {
+      try { store.set('divine-history', JSON.stringify(base)); } catch (e) {}
+      try { renderHistory(); } catch (e) {}
+    };
+    const merge = (base) => {
+      const have = {};
+      base.forEach(x => { if (x && x.ts !== undefined) have[x.ts] = true; });
+      pending.forEach(x => { if (x && x.ts !== undefined && !have[x.ts]) { base.push(x); have[x.ts] = true; } });
+      finish(base);
+    };
+    if (window.idbGet) {
+      window.idbGet('xy-home-v2:divine-history').then(v => {
+        let base = [];
+        try { const p = typeof v === 'string' ? JSON.parse(v) : v; if (Array.isArray(p)) base = p; } catch (e) {}
+        merge(base);
+      }).catch(() => merge(histLoad()));
+    } else {
+      merge(histLoad());
+    }
+  }
+  try {
+    document.addEventListener('mochi-restore-done', function () {
+      histReady = true;
+      flushPendingHist();
+    });
+  } catch (e) {}
   function fmtDT(ts) {
     const d = new Date(ts);
     const p = (n) => (n < 10 ? '0' + n : '' + n);
@@ -14563,9 +14657,27 @@ window.getReplyCard = function () {
   setTimeout(maybeTriggerTAAsk, 60000);
   setInterval(maybeTriggerTAAsk, 240000);
 
+  // v3.6.x：异步 IDB 合并（chat.js loadMsgs）可能让自动弹窗持有过期 msgIdx——
+  // 打开/作答前先校验索引指向的仍是同类卡片；已错位则从末尾回退找最近的
+  // 未作答同类卡片（自动触发场景卡片就是最新一条；点击卡片场景索引恒有效，不受影响）
+  function locateCardIdx(msgIdx, special, statusKey) {
+    let arr = [];
+    try { arr = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]')); } catch (e) {}
+    if (!Array.isArray(arr)) arr = [];
+    const rec = arr[msgIdx];
+    if (rec && rec.special === special) return msgIdx;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const r = arr[i];
+      if (r && r.special === special && !r[statusKey]) return i;
+    }
+    return -1;
+  }
+
   // ---- 回答弹窗（点击聊天里的询问卡片触发） ----
   window.openAskReply = function (msgIdx) {
     if (!window.openModal) return;
+    msgIdx = locateCardIdx(msgIdx, 'ask-card', 'askStatus');
+    if (msgIdx < 0) return;
     // 读聊天记录拿问题
     let question = '';
     try {
@@ -14575,8 +14687,10 @@ window.getReplyCard = function () {
     window.openModal('回答TA的询问', '', (v) => {
       const answer = (v || '').trim();
       if (!answer) { toast('请输入回答'); return; }
+      const fixedIdx = locateCardIdx(msgIdx, 'ask-card', 'askStatus');
+      if (fixedIdx < 0) return;
       if (window.chatAskReply) {
-        window.chatAskReply(msgIdx, answer);
+        window.chatAskReply(fixedIdx, answer);
         // 记入历史（保存全部，不截断），含 TA 的回复
         const d = taAskLoad();
         d.history.push({ q: question, a: answer, reply: '收到你的回答。', ts: Date.now() });
@@ -14954,6 +15068,8 @@ window.openTCPanel = openTCPanel;
 
   // 打开选择题（读聊天记录里的卡片）
   window.openTC = function (msgIdx) {
+    msgIdx = locateCardIdx(msgIdx, 'ask-choose', 'choiceStatus');
+    if (msgIdx < 0) return;
     let rec = null;
     try {
       const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
@@ -14976,6 +15092,8 @@ window.openTCPanel = openTCPanel;
   };
   // 提交选择
   function submitTC(msgIdx, optIdx) {
+    msgIdx = locateCardIdx(msgIdx, 'ask-choose', 'choiceStatus');
+    if (msgIdx < 0) return;
     let rec = null;
     try {
       const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
@@ -15391,6 +15509,8 @@ window.openTCPanel = openTCPanel;
 
   // 好奇回答弹窗（快捷回复 + 自由输入）
   window.openCurious = function (msgIdx) {
+    msgIdx = locateCardIdx(msgIdx, 'ask-curious', 'curiousStatus');
+    if (msgIdx < 0) return;
     let rec = null;
     try {
       const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
@@ -15430,6 +15550,8 @@ window.openTCPanel = openTCPanel;
     setTimeout(() => inp.focus(), 60);
   };
   function submitCurious(msgIdx, answer) {
+    msgIdx = locateCardIdx(msgIdx, 'ask-curious', 'curiousStatus');
+    if (msgIdx < 0) return;
     let rec = null;
     try {
       const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
@@ -15779,6 +15901,8 @@ window.openTCPanel = openTCPanel;
 
   // 吐槽回应弹窗
   window.openRoast = function (msgIdx) {
+    msgIdx = locateCardIdx(msgIdx, 'ask-roast', 'roastStatus');
+    if (msgIdx < 0) return;
     let rec = null;
     try {
       const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
@@ -15807,6 +15931,8 @@ window.openTCPanel = openTCPanel;
     setTimeout(() => inp.focus(), 60);
   };
   function submitRoast(msgIdx, answer) {
+    msgIdx = locateCardIdx(msgIdx, 'ask-roast', 'roastStatus');
+    if (msgIdx < 0) return;
     let rec = null;
     try {
       const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
@@ -16874,9 +17000,18 @@ window.openTCPanel = openTCPanel;
       endCall('未接听');
     }
   });
+  // v3.6.x：通话弹层开始时先关闭大图查看器——img-view-mask z-index 高于 call-mask，
+  // 不关的话来电/去电面板被大图完全盖住，接听/拒绝按钮点不到
+  function closeImageOverlay() {
+    try {
+      const iv = document.getElementById('img-view-mask');
+      if (iv) iv.hidden = true;
+    } catch (e) {}
+  }
   // 来电
   function incomingCall() {
     if (currentCall) return;
+    closeImageOverlay();
     // v3.5.60：来电播放设置的铃声音效
     if (window.playSfx) window.playSfx('ring');
     // v3.5.129：来电暂停音乐 + 隐藏悬浮小框（避免铃声+音乐同响、小框遮挡接听按钮）
@@ -16943,7 +17078,8 @@ window.openTCPanel = openTCPanel;
   function userHangup() {
     if (!currentCall) return;
     if (currentCall.status === 'ringing') { currentCall.status = 'ended'; endCall('已取消'); return; }
-    currentCall.durationSec = Math.floor((Date.now() - currentCall.startTime) / 1000);
+    // v3.6.x：未接通（呼叫中取消）不算时长——endCall 只在 connectedTime 存在时才标注时长
+    if (currentCall.connectedTime) currentCall.durationSec = Math.floor((Date.now() - currentCall.startTime) / 1000);
     currentCall.status = 'ended';
     endCall('已挂断');
   }
@@ -16952,6 +17088,10 @@ window.openTCPanel = openTCPanel;
     if (currentCall) { toast('已有通话中'); return; }
     const name = partnerName();
     currentCall = { direction: 'out', status: 'calling', startTime: Date.now(), durationSec: 0 };
+    // v3.6.x：绑定本次通话对象——结果定时器回调里校验 currentCall === callRef，
+    // 否则「挂断后 3 秒内重拨」会让上一次的随机结果套到新通话上
+    const callRef = currentCall;
+    closeImageOverlay();
     fillAv(avEl, partnerAv());
     if (nameEl) nameEl.textContent = name;
     if (statusEl) statusEl.textContent = '正在呼叫...';
@@ -16962,23 +17102,24 @@ window.openTCPanel = openTCPanel;
     const r = Math.random() * 100;
     const cc = callCfg();
     setTimeout(() => {
-      if (!currentCall || currentCall.status !== 'calling') return;
+      // v3.6.x：必须是本次通话仍在呼叫中才执行（挂断后重拨不套用旧结果）
+      if (currentCall !== callRef || callRef.status !== 'calling') return;
       if (r < cc.busy) {
-        currentCall.status = 'ended'; endCall('忙线中');
+        callRef.status = 'ended'; endCall('忙线中');
       } else if (r < cc.busy + cc.reject) {
-        currentCall.status = 'ended'; endCall('对方已拒绝');
+        callRef.status = 'ended'; endCall('对方已拒绝');
       } else if (r < cc.busy + cc.reject + cc.pickup) {
-        currentCall.status = 'connected';
+        callRef.status = 'connected';
         if (statusEl) statusEl.textContent = '正在通话...';
         startCallDuration();
         setTimeout(() => {
-          if (currentCall && currentCall.status === 'connected') {
+          if (currentCall === callRef && callRef.status === 'connected') {
             if (mask) mask.hidden = true;
             if (mini) { if (miniName) miniName.textContent = partnerName(); fillAv(miniAv, partnerAv()); mini.hidden = false; }
           }
         }, 2000);
       } else {
-        currentCall.status = 'ended'; endCall('未接通');
+        callRef.status = 'ended'; endCall('未接通');
       }
     }, 1800 + Math.random() * 1500);
   };
@@ -17239,7 +17380,8 @@ window.openTCPanel = openTCPanel;
             }
           }
         }, delayMs);
-        list[idx]._replyTimer = timer;
+        // v3.6.x：不再把定时器 id 写进持久化的信件对象（_replyTimer 只在本会话有效，
+        // 序列化后会残留垃圾字段，且导出/导入备份会带上无意义的数字）
       }
       save(list);
       viewLetter = null;
@@ -19064,12 +19206,14 @@ function renderCheckinHistory() {
     const msg = document.getElementById('ck-msg');
     const status = document.getElementById('ck-status');
     const name = store.get('lbl-partner') || 'TA';
-    if (place) place.textContent = ck.place;
-    if (action) action.textContent = ck.action;
-    if (msg) msg.textContent = ck.msg;
+    // v3.6.x：关闭系统预设且某分类无自定义字卡时该字段为空——显示空串而非字面量 "undefined"
+    if (place) place.textContent = ck.place || '';
+    if (action) action.textContent = ck.action || '';
+    if (msg) msg.textContent = ck.msg || '';
     if (status) status.textContent = name + ' 的日常';
   }
   function recordCheckin(ck) {
+    // v3.6.x：undefined 字段不写入记录（JSON.stringify 自动丢弃 undefined 键）
     const entry = { t: fmtTime(Date.now()), place: ck.place, action: ck.action, msg: ck.msg, ts: Date.now() };
     try {
       const h = JSON.parse(store.get('checkin-history') || '[]');
@@ -19086,8 +19230,10 @@ function renderCheckinHistory() {
     renderCheckinUI(ck);
     const name = store.get('lbl-partner') || 'TA';
     // 日常更新显示在聊天消息里（普通气泡消息，持久化）
+    // v3.6.x：只拼接存在的字段，避免 "在咖啡店 · undefined" 写进聊天记录
     if (window.chatAddIn) {
-      window.chatAddIn(ck.place + ' · ' + ck.action + (ck.msg ? ' · ' + ck.msg : ''));
+      const line = [ck.place, ck.action, ck.msg].filter(Boolean).join(' · ');
+      if (line) window.chatAddIn(line);
     }
     // 更新提示系统消息 + 概率触发「提醒你来查岗」
     if (window.chatAddSystem) {
@@ -19103,9 +19249,9 @@ function renderCheckinHistory() {
     const p = document.getElementById('ck-p-place');
     const a = document.getElementById('ck-p-action');
     const m = document.getElementById('ck-p-msg');
-    if (p) p.textContent = ck.place;
-    if (a) a.textContent = ck.action;
-    if (m) m.textContent = ck.msg;
+    if (p) p.textContent = ck.place || '';
+    if (a) a.textContent = ck.action || '';
+    if (m) m.textContent = ck.msg || '';
   }
   // 供聊天页「点联系人头像打开查岗半框」使用
   window.openCkPanel = function () {
@@ -19126,9 +19272,9 @@ function renderCheckinHistory() {
       const p = document.getElementById('ck-p-place');
       const a = document.getElementById('ck-p-action');
       const m = document.getElementById('ck-p-msg');
-      if (p) p.textContent = cur.place;
-      if (a) a.textContent = cur.action;
-      if (m) m.textContent = cur.msg;
+      if (p) p.textContent = cur.place || '';
+      if (a) a.textContent = cur.action || '';
+      if (m) m.textContent = cur.msg || '';
     } else {
       doCheckin();
     }
@@ -19397,8 +19543,50 @@ if (ckRefresh) {
     const p = (n) => (n < 10 ? '0' + n : '' + n);
     return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
+  // v3.6.x：恢复窗口保护——IDB 权威恢复完成前不落盘，防止用空数组覆盖
+  // IndexedDB 里的全部历史（历史超 200KB 只存 IDB，恢复完成前 store.get 读到
+  // 空数组，直接写会丢历史）。暂存待写，恢复完成后与 IDB 合并去重再写入。
+  let histReady = false;
+  let histPending = null;
   function loadHistory() { try { return JSON.parse(store.get(HISTORY_KEY) || '[]'); } catch (e) { return []; } }
-  function saveHistory(h) { store.set(HISTORY_KEY, JSON.stringify(h)); }
+  function saveHistory(h) {
+    if (!histReady) {
+      try { histPending = Array.isArray(h) ? h.slice() : []; } catch (e) {}
+      return;
+    }
+    store.set(HISTORY_KEY, JSON.stringify(h));
+  }
+  function flushPendingHist() {
+    if (!histPending) return;
+    const pending = histPending;
+    histPending = null;
+    if (!pending.length) return;
+    const finish = (base) => {
+      try { store.set(HISTORY_KEY, JSON.stringify(base)); } catch (e) {}
+      try { renderHistory(); } catch (e) {}
+    };
+    const merge = (base) => {
+      const have = {};
+      base.forEach(x => { if (x && x.ts !== undefined) have[x.ts] = true; });
+      pending.forEach(x => { if (x && x.ts !== undefined && !have[x.ts]) { base.push(x); have[x.ts] = true; } });
+      finish(base);
+    };
+    if (window.idbGet) {
+      window.idbGet(uid + ':' + HISTORY_KEY).then(v => {
+        let base = [];
+        try { const p = typeof v === 'string' ? JSON.parse(v) : v; if (Array.isArray(p)) base = p; } catch (e) {}
+        merge(base);
+      }).catch(() => merge(loadHistory()));
+    } else {
+      merge(loadHistory());
+    }
+  }
+  try {
+    document.addEventListener('mochi-restore-done', function () {
+      histReady = true;
+      flushPendingHist();
+    });
+  } catch (e) {}
   // v3.6.x：思考时间 / 最多选几个 也持久化——之前每次打开面板都重置回默认值
   // （关掉面板再打开，「帮我决定时间」又得重新设置）
   function loadSettings() {
@@ -19820,10 +20008,23 @@ if (ckRefresh) {
   );
 
   function fsSupported() {
-    return typeof document.documentElement.requestFullscreen === 'function';
+    // v3.6.x：webkit 前缀也判为支持（老版安卓 WebView/Chromium 只有 webkitRequestFullscreen）
+    return typeof document.documentElement.requestFullscreen === 'function'
+        || typeof document.documentElement.webkitRequestFullscreen === 'function';
   }
   function isFullscreen() {
     return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+  // v3.6.x：开关的「视觉激活」判定——原生全屏 / CSS 兜底全屏 / iOS 兜底 /
+  // display-mode 全屏（display_override fullscreen 直启）任一成立即视为开启。
+  // 修复：Via 等浏览器走 CSS 兜底后开关被 fullscreenchange 误关（syncToggle 只看
+  // isFullscreen()，兜底时已退出原生全屏 → 开关显示关闭但兜底实际生效，状态对不上）
+  function fsVisualActive() {
+    const d = document.documentElement;
+    return isFullscreen()
+      || d.classList.contains('fs-css-active')
+      || d.classList.contains('ios-fs-active')
+      || !!(window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches);
   }
   // v3.6.x：Via 等浏览器网页全屏默认转横屏（视频式全屏），与本应用竖屏设计冲突。
   // 进入全屏后用 Screen Orientation API 锁竖屏；锁定失败且视口已横屏 → 退出原生
@@ -19867,6 +20068,17 @@ if (ckRefresh) {
       try { new Notification('竖屏全屏提示', { body: msg }); } catch (e) {}
     }
   }
+  let _fsFailTipShown = false;
+  function showFsFailTip() {
+    if (_fsFailTipShown) return;
+    _fsFailTipShown = true;
+    const msg = '当前浏览器未允许进入全屏，已自动关闭该开关。\n\n可重试一次；或使用 Chrome/Edge 并允许全屏权限，或添加到主屏幕后从桌面图标打开。';
+    if (window.openModal) {
+      window.openModal('无法进入全屏', '', () => {}, { noInput: true, staticText: msg });
+    } else {
+      try { new Notification('无法进入全屏', { body: msg }); } catch (e) {}
+    }
+  }
   // 全屏态复核：锁竖屏失败且视口被浏览器强制成横屏 → 退出恢复竖屏 + CSS 兜底
   function checkFsLandscape() {
     if (!isFullscreen()) return;
@@ -19887,9 +20099,10 @@ if (ckRefresh) {
         lockFsOrient();
         setTimeout(checkFsLandscape, 600);
       };
-      if (p && p.then) p.then(tryLock, tryLock);
-      else setTimeout(tryLock, 300);
+      if (p && p.then) { p.then(tryLock, tryLock); return p; }
+      setTimeout(tryLock, 300);
     } catch (e) {}
+    return null;
   }
   function exitFs() {
     try {
@@ -19904,7 +20117,7 @@ if (ckRefresh) {
   let _sysToggle = false;
   function syncToggle(userIntent) {
     const el = document.getElementById('sf-fullscreen');
-    if (el) { if (!userIntent) _sysToggle = true; el.checked = isFullscreen(); }
+    if (el) { if (!userIntent) _sysToggle = true; el.checked = fsVisualActive(); }
     if (!userIntent) setTimeout(() => { _sysToggle = false; }, 0);
   }
   // v3.5.109：Chrome 安卓全屏模式下输入框聚焦会错误弹出浏览器「密码/安全提示」条（位置错乱）。
@@ -19993,9 +20206,9 @@ if (ckRefresh) {
           return;
         }
         if (!fsSupported()) {
-          // iOS Safari 不支持 Fullscreen API（webkitRequestFullscreen 仅部分 iPad 场景）
+          // 非 iOS 且不支持全屏 API（老 WebView）：无法全屏，回滚并提示
           fsToggle.checked = false;
-          try { new Notification('iOS 不支持系统全屏', { body: 'iPhone 安装到主屏幕后由系统全屏接管，状态栏无法隐藏' }); } catch (e) {}
+          try { new Notification('当前浏览器不支持全屏', { body: '请使用 Chrome/Edge 浏览器，或添加到主屏幕后从桌面图标打开' }); } catch (e) {}
           return;
         }
         // 重新尝试原生全屏前清掉上次的 CSS 兜底（enterFs 内部按需回退）
@@ -20003,6 +20216,17 @@ if (ckRefresh) {
         applyFsCss(false, false);
         enterFs();
         syncFsClass();
+        // v3.6.x：原生全屏可能被浏览器拦截（无手势/权限/WebView）——900ms 后
+        // 仍既未进入全屏也未走 CSS 兜底则回滚开关（避免「已开全屏却无效果」）。
+        // Via 横屏回退（checkFsLandscape ~600ms 应用 fs-css-active）先生效时
+        // fsVisualActive() 已为 true，本回调不会误回滚。
+        setTimeout(() => {
+          const t = document.getElementById('sf-fullscreen');
+          if (t && t.checked && !fsVisualActive()) {
+            t.checked = false;
+            showFsFailTip();
+          }
+        }, 900);
       } else {
         if (isIOS && inIosStandalone) { applyIosFs(false); return; }
         // 无论原生全屏还是 CSS 兜底，关闭时都退出并清兜底类
@@ -20022,6 +20246,10 @@ if (ckRefresh) {
   document.addEventListener('fullscreenchange', () => { syncToggle(false); applyFsInputHacks(); syncFsClass(); });
   document.addEventListener('webkitfullscreenchange', () => { syncToggle(false); applyFsInputHacks(); syncFsClass(); });
   syncFsClass();
+  // v3.6.x：启动时同步开关——display_override fullscreen 直启（无 Fullscreen API 调用、
+  // 不触发 fullscreenchange）时开关也应显示开启；此处在 MutationObserver 注册前执行，
+  // 不会误写持久化状态。
+  try { syncToggle(false); } catch (e) {}
   // v3.5.126：聚焦兜底已移除——autocomplete="off"/"new-password" 会被 Chrome
   //   当密码字段处理（new-password 更甚），反而弹「保存密码/管理密码」条。
   //   密码/自动填充提示的压制统一交给 mobile-adapt.js 的 readonly 起手方案
@@ -20653,7 +20881,11 @@ if (ckRefresh) {
   function ceConvert(inp) {
     if (!inp || inp.dataset.ceDone || inp.readOnly) return;
     var t = inp.type;
-    if (inp.type === 'checkbox' || t === 'range' || t === 'file' || t === 'color' || t === 'hidden') return;
+    // v3.6.x：原生选择器类型（date/time/datetime-local/…）不转换——转成 contenteditable
+    // 后失去原生选择面板，且 contenteditable 不会派发 change 事件，恋爱纪念日这类
+    // 依赖原生 picker 的输入会彻底失效（安卓 Chrome/Edge 上无法设置、桌面组件不更新）
+    if (t === 'checkbox' || t === 'range' || t === 'file' || t === 'color' || t === 'hidden' ||
+        t === 'date' || t === 'time' || t === 'datetime-local' || t === 'month' || t === 'week') return;
     inp.dataset.ceDone = '1';
     // 退场为幽灵锚点（占位1px不可见，保留 id 供现有代码 getElementById）
     inp.classList.add('ce-ghost');
@@ -20761,7 +20993,7 @@ if (ckRefresh) {
         // display:none 时 innerText 读不到——按 DOM 顺序重组保证图片与文字顺序一致；
         // 仅对含标记的 box 生效（其他输入框保持原 innerText/textContent 逻辑不变）
         try {
-          if (box.querySelector('span.mail-media-mark')) {
+          if (box.querySelector('span.mail-media-mark') || box.querySelector('img[src*="data:image"]')) {
             let out = '';
             let lastWasMedia = false; // 上一段是媒体标记 → 后续文字补空格，防止 base64 与文字粘连
             box.childNodes.forEach(function (n) {

@@ -171,7 +171,8 @@
             }
           }
         }, delayMs);
-        list[idx]._replyTimer = timer;
+        // v3.6.x：不再把定时器 id 写进持久化的信件对象（_replyTimer 只在本会话有效，
+        // 序列化后会残留垃圾字段，且导出/导入备份会带上无意义的数字）
       }
       save(list);
       viewLetter = null;

@@ -249,9 +249,18 @@
       endCall('未接听');
     }
   });
+  // v3.6.x：通话弹层开始时先关闭大图查看器——img-view-mask z-index 高于 call-mask，
+  // 不关的话来电/去电面板被大图完全盖住，接听/拒绝按钮点不到
+  function closeImageOverlay() {
+    try {
+      const iv = document.getElementById('img-view-mask');
+      if (iv) iv.hidden = true;
+    } catch (e) {}
+  }
   // 来电
   function incomingCall() {
     if (currentCall) return;
+    closeImageOverlay();
     // v3.5.60：来电播放设置的铃声音效
     if (window.playSfx) window.playSfx('ring');
     // v3.5.129：来电暂停音乐 + 隐藏悬浮小框（避免铃声+音乐同响、小框遮挡接听按钮）
@@ -318,7 +327,8 @@
   function userHangup() {
     if (!currentCall) return;
     if (currentCall.status === 'ringing') { currentCall.status = 'ended'; endCall('已取消'); return; }
-    currentCall.durationSec = Math.floor((Date.now() - currentCall.startTime) / 1000);
+    // v3.6.x：未接通（呼叫中取消）不算时长——endCall 只在 connectedTime 存在时才标注时长
+    if (currentCall.connectedTime) currentCall.durationSec = Math.floor((Date.now() - currentCall.startTime) / 1000);
     currentCall.status = 'ended';
     endCall('已挂断');
   }
@@ -327,6 +337,10 @@
     if (currentCall) { toast('已有通话中'); return; }
     const name = partnerName();
     currentCall = { direction: 'out', status: 'calling', startTime: Date.now(), durationSec: 0 };
+    // v3.6.x：绑定本次通话对象——结果定时器回调里校验 currentCall === callRef，
+    // 否则「挂断后 3 秒内重拨」会让上一次的随机结果套到新通话上
+    const callRef = currentCall;
+    closeImageOverlay();
     fillAv(avEl, partnerAv());
     if (nameEl) nameEl.textContent = name;
     if (statusEl) statusEl.textContent = '正在呼叫...';
@@ -337,23 +351,24 @@
     const r = Math.random() * 100;
     const cc = callCfg();
     setTimeout(() => {
-      if (!currentCall || currentCall.status !== 'calling') return;
+      // v3.6.x：必须是本次通话仍在呼叫中才执行（挂断后重拨不套用旧结果）
+      if (currentCall !== callRef || callRef.status !== 'calling') return;
       if (r < cc.busy) {
-        currentCall.status = 'ended'; endCall('忙线中');
+        callRef.status = 'ended'; endCall('忙线中');
       } else if (r < cc.busy + cc.reject) {
-        currentCall.status = 'ended'; endCall('对方已拒绝');
+        callRef.status = 'ended'; endCall('对方已拒绝');
       } else if (r < cc.busy + cc.reject + cc.pickup) {
-        currentCall.status = 'connected';
+        callRef.status = 'connected';
         if (statusEl) statusEl.textContent = '正在通话...';
         startCallDuration();
         setTimeout(() => {
-          if (currentCall && currentCall.status === 'connected') {
+          if (currentCall === callRef && callRef.status === 'connected') {
             if (mask) mask.hidden = true;
             if (mini) { if (miniName) miniName.textContent = partnerName(); fillAv(miniAv, partnerAv()); mini.hidden = false; }
           }
         }, 2000);
       } else {
-        currentCall.status = 'ended'; endCall('未接通');
+        callRef.status = 'ended'; endCall('未接通');
       }
     }, 1800 + Math.random() * 1500);
   };

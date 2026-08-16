@@ -220,17 +220,62 @@
     return line;
   }
   // ---- 占卜记录（保存全部历史；IndexedDB 权威，localStorage 快照） ----
+  // v3.6.x：恢复窗口保护——IDB 权威恢复完成前不落盘，防止用空数组覆盖
+  // IndexedDB 里的全部历史（历史超 200KB 只存 IDB，恢复完成前 store.get 读到
+  // 空数组，直接写会丢历史）。暂存待写，恢复完成后与 IDB 合并去重再写入。
+  let histReady = false;
+  let histPending = null;
   function histLoad() {
     let list = [];
     try { list = JSON.parse(store.get('divine-history') || '[]'); } catch (e) { list = []; }
     // 旧版本裸键迁移（v3.5.92 前历史存无前缀键，一次性搬入适配层）
+    // v3.6.x：迁移写入走 histSave（带恢复窗口保护），避免迁移期间覆盖 IDB 权威历史
     if (!Array.isArray(list) || !list.length) {
       try { list = JSON.parse(localStorage.getItem('divine-history') || '[]'); } catch (e) { list = []; }
-      if (Array.isArray(list) && list.length) store.set('divine-history', JSON.stringify(list));
+      if (Array.isArray(list) && list.length) histSave(list);
     }
     return Array.isArray(list) ? list : [];
   }
-  function histSave(list) { store.set('divine-history', JSON.stringify(list)); }
+  function histSave(list) {
+    const data = JSON.stringify(list);
+    if (!histReady) {
+      try { histPending = Array.isArray(list) ? list.slice() : []; } catch (e) {}
+      return;
+    }
+    try { store.set('divine-history', data); } catch (e) {}
+  }
+  // 恢复完成后：合并恢复窗口内暂存的抽牌记录（按 ts 去重），再落盘 + 重绘
+  function flushPendingHist() {
+    if (!histPending) return;
+    const pending = histPending;
+    histPending = null;
+    if (!pending.length) return;
+    const finish = (base) => {
+      try { store.set('divine-history', JSON.stringify(base)); } catch (e) {}
+      try { renderHistory(); } catch (e) {}
+    };
+    const merge = (base) => {
+      const have = {};
+      base.forEach(x => { if (x && x.ts !== undefined) have[x.ts] = true; });
+      pending.forEach(x => { if (x && x.ts !== undefined && !have[x.ts]) { base.push(x); have[x.ts] = true; } });
+      finish(base);
+    };
+    if (window.idbGet) {
+      window.idbGet('xy-home-v2:divine-history').then(v => {
+        let base = [];
+        try { const p = typeof v === 'string' ? JSON.parse(v) : v; if (Array.isArray(p)) base = p; } catch (e) {}
+        merge(base);
+      }).catch(() => merge(histLoad()));
+    } else {
+      merge(histLoad());
+    }
+  }
+  try {
+    document.addEventListener('mochi-restore-done', function () {
+      histReady = true;
+      flushPendingHist();
+    });
+  } catch (e) {}
   function fmtDT(ts) {
     const d = new Date(ts);
     const p = (n) => (n < 10 ? '0' + n : '' + n);

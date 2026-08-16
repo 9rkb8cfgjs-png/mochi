@@ -43,5 +43,18 @@
     if (pages.clientWidth) pages.scrollLeft = idx * pages.clientWidth;
   });
 
+  // v3.6.x：桌面页隐藏时（切到聊天/设置等）旋转，resize 里 clientWidth=0 会跳过——
+  // 返回桌面时按新宽度重设一次，避免 scrollLeft 停在两页之间、圆点与内容错位
+  const phonePage = document.getElementById('page-phone');
+  if (phonePage) {
+    const mo = new MutationObserver(() => {
+      if (!phonePage.hidden && pages.clientWidth) {
+        pages.scrollLeft = idx * pages.clientWidth;
+        sync();
+      }
+    });
+    mo.observe(phonePage, { attributes: true, attributeFilter: ['hidden'] });
+  }
+
   sync();
 })();

@@ -24,10 +24,23 @@
   );
 
   function fsSupported() {
-    return typeof document.documentElement.requestFullscreen === 'function';
+    // v3.6.x：webkit 前缀也判为支持（老版安卓 WebView/Chromium 只有 webkitRequestFullscreen）
+    return typeof document.documentElement.requestFullscreen === 'function'
+        || typeof document.documentElement.webkitRequestFullscreen === 'function';
   }
   function isFullscreen() {
     return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+  // v3.6.x：开关的「视觉激活」判定——原生全屏 / CSS 兜底全屏 / iOS 兜底 /
+  // display-mode 全屏（display_override fullscreen 直启）任一成立即视为开启。
+  // 修复：Via 等浏览器走 CSS 兜底后开关被 fullscreenchange 误关（syncToggle 只看
+  // isFullscreen()，兜底时已退出原生全屏 → 开关显示关闭但兜底实际生效，状态对不上）
+  function fsVisualActive() {
+    const d = document.documentElement;
+    return isFullscreen()
+      || d.classList.contains('fs-css-active')
+      || d.classList.contains('ios-fs-active')
+      || !!(window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches);
   }
   // v3.6.x：Via 等浏览器网页全屏默认转横屏（视频式全屏），与本应用竖屏设计冲突。
   // 进入全屏后用 Screen Orientation API 锁竖屏；锁定失败且视口已横屏 → 退出原生
@@ -71,6 +84,17 @@
       try { new Notification('竖屏全屏提示', { body: msg }); } catch (e) {}
     }
   }
+  let _fsFailTipShown = false;
+  function showFsFailTip() {
+    if (_fsFailTipShown) return;
+    _fsFailTipShown = true;
+    const msg = '当前浏览器未允许进入全屏，已自动关闭该开关。\n\n可重试一次；或使用 Chrome/Edge 并允许全屏权限，或添加到主屏幕后从桌面图标打开。';
+    if (window.openModal) {
+      window.openModal('无法进入全屏', '', () => {}, { noInput: true, staticText: msg });
+    } else {
+      try { new Notification('无法进入全屏', { body: msg }); } catch (e) {}
+    }
+  }
   // 全屏态复核：锁竖屏失败且视口被浏览器强制成横屏 → 退出恢复竖屏 + CSS 兜底
   function checkFsLandscape() {
     if (!isFullscreen()) return;
@@ -91,9 +115,10 @@
         lockFsOrient();
         setTimeout(checkFsLandscape, 600);
       };
-      if (p && p.then) p.then(tryLock, tryLock);
-      else setTimeout(tryLock, 300);
+      if (p && p.then) { p.then(tryLock, tryLock); return p; }
+      setTimeout(tryLock, 300);
     } catch (e) {}
+    return null;
   }
   function exitFs() {
     try {
@@ -108,7 +133,7 @@
   let _sysToggle = false;
   function syncToggle(userIntent) {
     const el = document.getElementById('sf-fullscreen');
-    if (el) { if (!userIntent) _sysToggle = true; el.checked = isFullscreen(); }
+    if (el) { if (!userIntent) _sysToggle = true; el.checked = fsVisualActive(); }
     if (!userIntent) setTimeout(() => { _sysToggle = false; }, 0);
   }
   // v3.5.109：Chrome 安卓全屏模式下输入框聚焦会错误弹出浏览器「密码/安全提示」条（位置错乱）。
@@ -197,9 +222,9 @@
           return;
         }
         if (!fsSupported()) {
-          // iOS Safari 不支持 Fullscreen API（webkitRequestFullscreen 仅部分 iPad 场景）
+          // 非 iOS 且不支持全屏 API（老 WebView）：无法全屏，回滚并提示
           fsToggle.checked = false;
-          try { new Notification('iOS 不支持系统全屏', { body: 'iPhone 安装到主屏幕后由系统全屏接管，状态栏无法隐藏' }); } catch (e) {}
+          try { new Notification('当前浏览器不支持全屏', { body: '请使用 Chrome/Edge 浏览器，或添加到主屏幕后从桌面图标打开' }); } catch (e) {}
           return;
         }
         // 重新尝试原生全屏前清掉上次的 CSS 兜底（enterFs 内部按需回退）
@@ -207,6 +232,17 @@
         applyFsCss(false, false);
         enterFs();
         syncFsClass();
+        // v3.6.x：原生全屏可能被浏览器拦截（无手势/权限/WebView）——900ms 后
+        // 仍既未进入全屏也未走 CSS 兜底则回滚开关（避免「已开全屏却无效果」）。
+        // Via 横屏回退（checkFsLandscape ~600ms 应用 fs-css-active）先生效时
+        // fsVisualActive() 已为 true，本回调不会误回滚。
+        setTimeout(() => {
+          const t = document.getElementById('sf-fullscreen');
+          if (t && t.checked && !fsVisualActive()) {
+            t.checked = false;
+            showFsFailTip();
+          }
+        }, 900);
       } else {
         if (isIOS && inIosStandalone) { applyIosFs(false); return; }
         // 无论原生全屏还是 CSS 兜底，关闭时都退出并清兜底类
@@ -226,6 +262,10 @@
   document.addEventListener('fullscreenchange', () => { syncToggle(false); applyFsInputHacks(); syncFsClass(); });
   document.addEventListener('webkitfullscreenchange', () => { syncToggle(false); applyFsInputHacks(); syncFsClass(); });
   syncFsClass();
+  // v3.6.x：启动时同步开关——display_override fullscreen 直启（无 Fullscreen API 调用、
+  // 不触发 fullscreenchange）时开关也应显示开启；此处在 MutationObserver 注册前执行，
+  // 不会误写持久化状态。
+  try { syncToggle(false); } catch (e) {}
   // v3.5.126：聚焦兜底已移除——autocomplete="off"/"new-password" 会被 Chrome
   //   当密码字段处理（new-password 更甚），反而弹「保存密码/管理密码」条。
   //   密码/自动填充提示的压制统一交给 mobile-adapt.js 的 readonly 起手方案

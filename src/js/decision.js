@@ -23,8 +23,50 @@
     const p = (n) => (n < 10 ? '0' + n : '' + n);
     return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
+  // v3.6.x：恢复窗口保护——IDB 权威恢复完成前不落盘，防止用空数组覆盖
+  // IndexedDB 里的全部历史（历史超 200KB 只存 IDB，恢复完成前 store.get 读到
+  // 空数组，直接写会丢历史）。暂存待写，恢复完成后与 IDB 合并去重再写入。
+  let histReady = false;
+  let histPending = null;
   function loadHistory() { try { return JSON.parse(store.get(HISTORY_KEY) || '[]'); } catch (e) { return []; } }
-  function saveHistory(h) { store.set(HISTORY_KEY, JSON.stringify(h)); }
+  function saveHistory(h) {
+    if (!histReady) {
+      try { histPending = Array.isArray(h) ? h.slice() : []; } catch (e) {}
+      return;
+    }
+    store.set(HISTORY_KEY, JSON.stringify(h));
+  }
+  function flushPendingHist() {
+    if (!histPending) return;
+    const pending = histPending;
+    histPending = null;
+    if (!pending.length) return;
+    const finish = (base) => {
+      try { store.set(HISTORY_KEY, JSON.stringify(base)); } catch (e) {}
+      try { renderHistory(); } catch (e) {}
+    };
+    const merge = (base) => {
+      const have = {};
+      base.forEach(x => { if (x && x.ts !== undefined) have[x.ts] = true; });
+      pending.forEach(x => { if (x && x.ts !== undefined && !have[x.ts]) { base.push(x); have[x.ts] = true; } });
+      finish(base);
+    };
+    if (window.idbGet) {
+      window.idbGet(uid + ':' + HISTORY_KEY).then(v => {
+        let base = [];
+        try { const p = typeof v === 'string' ? JSON.parse(v) : v; if (Array.isArray(p)) base = p; } catch (e) {}
+        merge(base);
+      }).catch(() => merge(loadHistory()));
+    } else {
+      merge(loadHistory());
+    }
+  }
+  try {
+    document.addEventListener('mochi-restore-done', function () {
+      histReady = true;
+      flushPendingHist();
+    });
+  } catch (e) {}
   // v3.6.x：思考时间 / 最多选几个 也持久化——之前每次打开面板都重置回默认值
   // （关掉面板再打开，「帮我决定时间」又得重新设置）
   function loadSettings() {
