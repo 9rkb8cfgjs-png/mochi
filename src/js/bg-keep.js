@@ -160,8 +160,13 @@
       try {
         if (!('Notification' in window) || Notification.permission !== 'granted') { resolve(false); return; }
         if ('serviceWorker' in navigator && navigator.serviceWorker) {
+          // v3.5.137：urgency:'high' 让通知以「高紧迫度」发送——Chrome 安卓上
+          // 高紧迫度通知更可能以悬浮（head-up）形式显示在屏幕上方，而不是只进
+          // 下拉通知栏；配合系统「横幅通知」权限即为微信式顶部弹窗
+          const swOpts = Object.assign({}, opts);
+          if (!swOpts.urgency) swOpts.urgency = 'high';
           navigator.serviceWorker.ready.then(function (reg) {
-            reg.showNotification(title, opts).then(function () { resolve(true); }, function () { resolve(false); });
+            reg.showNotification(title, swOpts).then(function () { resolve(true); }, function () { resolve(false); });
           }).catch(function () {
             try { new Notification(title, opts); resolve(true); } catch (e) { resolve(false); }
           });
@@ -319,15 +324,30 @@
 
   // v3.5.132：从后台回到前台时做一次状态检查——通知开但保活被关 / 权限被回收
   //   都是静默失效（页面照常运行、通知就是不弹），回到前台时主动提示一次
+  // v3.5.137：回到前台时补弹应用内横幅——后台期间收到的消息系统通知已进通知栏，
+  //   但页面切回前台时应用内顶部横幅（desk-msg）不会自动出现；这里根据未读数
+  //   在屏幕上方补一条横幅（点击默认进聊天），实现「切回即见新消息」的体验
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible') return;
     const saved = store.get('bg-notify');
-    if (saved !== '1') return;
-    const keep = document.getElementById('bg-keepalive');
-    const keepOn = keep ? keep.checked : store.get('bg-keepalive') === '1';
-    if (!keepOn) {
-      toast('提醒：后台保活已关闭，后台消息到不了，通知不会弹（设置里开启）');
+    if (saved === '1') {
+      const keep = document.getElementById('bg-keepalive');
+      const keepOn = keep ? keep.checked : store.get('bg-keepalive') === '1';
+      if (!keepOn) {
+        toast('提醒：后台保活已关闭，后台消息到不了，通知不会弹（设置里开启）');
+      }
     }
+    // 补弹应用内横幅：有未读新消息且不在聊天页（不依赖后台通知开关——应用内
+    // 横幅是页面内展示，只要消息进来了就该提示，像微信返回时显示未读）
+    try {
+      const chatPage = document.getElementById('page-chat');
+      const inChat = chatPage && !chatPage.hidden;
+      const unread = parseInt(store.get('chat-unread'), 10) || 0;
+      if (!inChat && unread > 0 && window.showDeskPopup) {
+        const name = store.get('lbl-partner') || 'TA';
+        window.showDeskPopup({ name: name, text: '你不在的时候收到 ' + unread + ' 条新消息' });
+      }
+    } catch (e) {}
   });
 
   // 供 chat.js 调用：收到 TA 新消息且页面不在前台时弹浏览器通知

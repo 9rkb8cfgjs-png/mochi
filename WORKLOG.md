@@ -13,6 +13,9 @@
 ## 记录
 
 ### 2026-08-16
+- [AI-B] 完成：手机端全量排查（只读检查，未改任何代码、未构建）——① `npm run verify` 10/10 基线通过；② 无头浏览器 390×844 / 360×640 GUI 实测：桌面/聊天收发/表情面板/字卡库搜索/桌面翻页(圆点)/日历/设置/昵称弹窗输入/聊天输入栏贴底全部正常；③ 专项边界测试 20/20：ce-box 转换器单行/多行显隐联动、emoji maxlength 按码点截断、多行按行读取、desk-msg 锁滚动联动、双浮层同开/逐个关闭锁不残留、浮层被移除后 touchstart 兜底解锁、聊天搜索框 ce-box 代理读写、信箱写信输入框转换。**结论：未发现需要修复的移动端 bug**；顺带确认 FULL_PAGES 不含 page-setting（设置页保留 tabbar 属设计行为，非 bug）、desk-msg 弹出时锁滚动属设计（6s 自动隐藏解锁）、tabbar 距 .phone 底 18px 是 padding-bottom 留白。临时测试脚本已删，工作区干净，无提交。
+
+### 2026-08-16
 - [AI-A] 完成：聊天记录「导出/导入」入口迁移到右上角三点 → 聊天设置「数据」分组（与「删除全部聊天记录」同组）——原输入栏更多面板里的「导出聊天/导入聊天」入口已移除（chat.js 删 more-export-chat/more-import-chat 处理器与 importChatFile/chatReadFileText，template.html 删对应按钮）。新增：chat.js `window.chatExportMsgs`（落盘+返回全量）/ `window.chatImportMsgs`（覆盖式导入：写 IDB 权威+清 LS 残留+复位分页窗口+就地重渲染，无需刷新）；chat-settings.js 绑定 cs-export-msgs / cs-import-msgs（导出下载 JSON，导入 FileReader 读取+校验+摘要二次确认）；template.html 数据分组新增两行。已 `node build.mjs` + `npm run verify` 10/10 + 临时 CDP 冒烟 11/12（1 项为测试脚本导航时序，非功能问题），临时脚本已删，**未提交**。
 - [AI-A] 完成：桌面第二页摸鱼组件周末文案修复——周日（getDay=0）原来显示「离周末还有 6 天」（v3.5.131 旧逻辑），现周六/周日统一显示「今天是周末」。涉及 `src/js/personalize.js`（weekend-days 区块）；已 `node build.mjs` + `npm run verify` 10/10，**未提交**（提交由构建者统一处理）。
 - [AI-B] 完成：移除整页 zoom 缩放（iOS 卡顿根因），恢复原版布局；已 `npm run build` 并用 `npm run verify` 验证 390×844 / 360×640 正常。

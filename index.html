@@ -2791,7 +2791,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.5.139 · 部署于 2026-08-16 18:57</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.5.139 · 部署于 2026-08-16 19:33</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -15162,8 +15162,10 @@ return new Promise(function (resolve) {
 try {
 if (!('Notification' in window) || Notification.permission !== 'granted') { resolve(false); return; }
 if ('serviceWorker' in navigator && navigator.serviceWorker) {
+const swOpts = Object.assign({}, opts);
+if (!swOpts.urgency) swOpts.urgency = 'high';
 navigator.serviceWorker.ready.then(function (reg) {
-reg.showNotification(title, opts).then(function () { resolve(true); }, function () { resolve(false); });
+reg.showNotification(title, swOpts).then(function () { resolve(true); }, function () { resolve(false); });
 }).catch(function () {
 try { new Notification(title, opts); resolve(true); } catch (e) { resolve(false); }
 });
@@ -15303,12 +15305,22 @@ toast('发送失败：\n' + env.join('\n'));
 document.addEventListener('visibilitychange', function () {
 if (document.visibilityState !== 'visible') return;
 const saved = store.get('bg-notify');
-if (saved !== '1') return;
+if (saved === '1') {
 const keep = document.getElementById('bg-keepalive');
 const keepOn = keep ? keep.checked : store.get('bg-keepalive') === '1';
 if (!keepOn) {
 toast('提醒：后台保活已关闭，后台消息到不了，通知不会弹（设置里开启）');
 }
+}
+try {
+const chatPage = document.getElementById('page-chat');
+const inChat = chatPage && !chatPage.hidden;
+const unread = parseInt(store.get('chat-unread'), 10) || 0;
+if (!inChat && unread > 0 && window.showDeskPopup) {
+const name = store.get('lbl-partner') || 'TA';
+window.showDeskPopup({ name: name, text: '你不在的时候收到 ' + unread + ' 条新消息' });
+}
+} catch (e) {}
 });
 window.bgNotifyCheck = function (text, ts) {
 if (!notifyEnabled) return;
