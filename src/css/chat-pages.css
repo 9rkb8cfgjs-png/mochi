@@ -69,6 +69,12 @@
 }
 .card-search svg { width:17px; height:17px; flex-shrink:0; }
 .card-search .ph { font-size:13px; letter-spacing:.5px; }
+/* 页内搜索输入框（v3.6.x：字卡库搜索不再弹窗，直接在搜索栏输入即筛） */
+.card-search-input {
+  flex:1; min-width:0; border:none; outline:none; background:transparent;
+  font-size:13px; font-family:inherit; color:var(--ink); padding:0;
+}
+.card-search-input::placeholder { color:var(--muted); letter-spacing:.5px; }
 
 .card-list { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; padding-bottom:6px; }
 .card-list::-webkit-scrollbar { display:none; }

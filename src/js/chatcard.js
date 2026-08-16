@@ -298,16 +298,18 @@
     });
   });
 
-  // 搜索
-  const search = document.querySelector('#page-custom-cards .card-search, .card-search');
-  if (search) {
-    search.addEventListener('click', () => {
-      if (window.openModal) {
-        window.openModal('搜索字卡' + (q ? '（确定可清除搜索）' : ''), q, (v) => {
-          q = (v || '').trim();
-          render();
-        });
-      }
+  // 搜索：页内输入框直接过滤（v3.6.x：不再弹窗，输入即筛，清空即恢复）
+  const searchInput = document.getElementById('cc-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      // 管理模式禁用搜索——搜索过滤会让勾选下标与原始数组错位，
+      // 删除/移动会误删别的卡片（数据丢失），输入立即清空
+      if (manageMode) { searchInput.value = ''; return; }
+      q = searchInput.value.trim();
+      render();
+    });
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { searchInput.value = ''; q = ''; render(); searchInput.blur(); }
     });
   }
 

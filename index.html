@@ -1647,6 +1647,12 @@ input.ce-ghost, textarea.ce-ghost {
 }
 .card-search svg { width:17px; height:17px; flex-shrink:0; }
 .card-search .ph { font-size:13px; letter-spacing:.5px; }
+/* 页内搜索输入框（v3.6.x：字卡库搜索不再弹窗，直接在搜索栏输入即筛） */
+.card-search-input {
+  flex:1; min-width:0; border:none; outline:none; background:transparent;
+  font-size:13px; font-family:inherit; color:var(--ink); padding:0;
+}
+.card-search-input::placeholder { color:var(--muted); letter-spacing:.5px; }
 
 .card-list { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; padding-bottom:6px; }
 .card-list::-webkit-scrollbar { display:none; }
@@ -3175,7 +3181,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 13:41</div>
+      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 13:47</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3734,7 +3740,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       </div>
       <div class="card-search glass">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <span class="ph">搜索字卡</span>
+        <input class="card-search-input" id="cc-search-input" placeholder="搜索字卡" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
       </div>
       <div class="card-list" id="cc-list">
         <!-- 字卡由 JS 按分类渲染 -->
@@ -10268,16 +10274,18 @@ function partialRetractMsg(msgEl, side) {
     });
   });
 
-  // 搜索
-  const search = document.querySelector('#page-custom-cards .card-search, .card-search');
-  if (search) {
-    search.addEventListener('click', () => {
-      if (window.openModal) {
-        window.openModal('搜索字卡' + (q ? '（确定可清除搜索）' : ''), q, (v) => {
-          q = (v || '').trim();
-          render();
-        });
-      }
+  // 搜索：页内输入框直接过滤（v3.6.x：不再弹窗，输入即筛，清空即恢复）
+  const searchInput = document.getElementById('cc-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      // 管理模式禁用搜索——搜索过滤会让勾选下标与原始数组错位，
+      // 删除/移动会误删别的卡片（数据丢失），输入立即清空
+      if (manageMode) { searchInput.value = ''; return; }
+      q = searchInput.value.trim();
+      render();
+    });
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { searchInput.value = ''; q = ''; render(); searchInput.blur(); }
     });
   }
 
