@@ -717,9 +717,11 @@
       }
       // v3.6.x：媒体类字卡 dataURL 白名单校验——导入 json 里混入的
       // `data:image/png" onerror=…` 之类（能通过 indexOf 前缀判断）会逃逸出
-      // 聊天渲染的 src 属性注入 HTML；这里只放行合法 base64 图片/音频，其余丢弃
-      const RE_IMG = /^data:image\/(png|jpe?g|gif|webp);base64,/;
-      const RE_AUDIO = /^data:audio\/[a-zA-Z0-9.+-]+;base64,/;
+      // 聊天渲染的 src 属性注入 HTML；这里只放行 base64 图片/音频，其余丢弃。
+      // 安全依据：base64 字符集（A-Za-z0-9+/=）不含引号/尖括号，无法逃逸属性；
+      // MIME 放宽到全部 image/*（png/jpeg/gif/webp/svg/x-icon 等旧库不误丢）
+      const RE_IMG = /^data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]*$/;
+      const RE_AUDIO = /^data:audio\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]*$/;
       let dropped = 0;
       ['image', 'sticker'].forEach(cat => {
         (byCat[cat] || []).forEach(pair => {
@@ -887,7 +889,11 @@
         }, {
           textarea: true,
           textareaPlaceholder: '【日常】\n你今天真好看\n我想你了',
-          txtImport: true
+          txtImport: true,
+          // v3.6.x：传入当前分类的现有分组——openModal 的「目标分组」下拉只在
+          // opts.groups 非空时显示；此前漏传，弹窗里永远没有分组选择框，
+          // 只能靠【组名】前缀识别（回调的 targetGroup 逻辑一直在但从未触发）
+          groups: (groups[cur] || []).map(g => g[0])
         });
       }
     });
