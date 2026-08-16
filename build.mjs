@@ -12,15 +12,17 @@ const read = (p) => readFileSync(join(root, 'src', p), 'utf8');
 
 // ===== 构建前健康检查（v3.6.x） =====
 // 防止把「未完成的改动 / 调试脚本」混进产物——历史教训：构建者跑 build 时工作区里
-// 有对方进行中的改动，产物悄悄带上半成品；tools/tmp-*.mjs 调试脚本也险些被 add -A 提交。
-// 检出时醒目警告（不阻止构建，构建者自行判断；AGENTS.md 约定构建前 git status 核对）。
+// 有对方进行中的改动，产物悄悄带上半成品；tools/tmp-*.mjs / smoke-*.mjs 调试脚本
+// 也险些被 add -A 提交。检出时醒目警告（不阻止构建，构建者自行判断；
+// AGENTS.md 约定构建前 git status 核对）。
 try {
   const out = execSync('git status --porcelain', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }) || '';
   const lines = out.split('\n').filter(Boolean);
-  const tmpUntracked = lines.filter(l => l.startsWith('??') && /tmp-[\w.-]*\.mjs/.test(l));
+  // 所有未跟踪的 .mjs 调试脚本（tmp-*/smoke-*/verify-* 等临时工具）
+  const tmpUntracked = lines.filter(l => l.startsWith('??') && /[\w.-]*\.mjs/.test(l));
   const modified = lines.filter(l => !l.startsWith('??'));
   if (tmpUntracked.length) {
-    console.warn('⚠️  检测到未跟踪调试脚本（tools/tmp-*.mjs，可能是临时工具）：\n  ' + tmpUntracked.join('\n  ') + '\n  请确认这些不要随产物提交（建议加进 .gitignore 或删除）。');
+    console.warn('⚠️  检测到未跟踪调试脚本（.mjs，可能是临时工具）：\n  ' + tmpUntracked.join('\n  ') + '\n  请确认这些不要随产物提交（建议加进 .gitignore 或删除）。');
   }
   if (modified.length) {
     console.warn('⚠️  工作区有未提交改动 ' + modified.length + ' 个文件：\n  ' + modified.map(l => '  ' + l.slice(0, 90)).join('\n') + '\n  构建产物会包含这些改动——请确认对方已保存完整（AGENTS.md：不夹带未完成的一半改动）。');
@@ -33,10 +35,16 @@ const pad = (n) => (n < 10 ? '0' + n : '' + n);
 const buildInfo = '部署于 ' + buildTime.getFullYear() + '-' + pad(buildTime.getMonth() + 1) + '-' + pad(buildTime.getDate()) +
   ' ' + pad(buildTime.getHours()) + ':' + pad(buildTime.getMinutes());
 const buildStamp = buildTime.getTime().toString(36); // sw 缓存名版本号（每次构建必变）
-// 应用版本号（设置页底部与开屏共用，升级版本时只改这一处）
-// v3.6.x：与 commit 版本号统一为 v3.6.x（此前 v3.5.139 与提交 v3.6.x 不一致，
-// 用户靠开屏版本号判断是否最新，两侧需人工对齐）
-const APP_VERSION = 'v3.6.0';
+// 应用版本号（设置页底部与开屏共用）
+// v3.6.x：自动从 git 提交数生成（v3.6.<提交数>）——此前手动维护 APP_VERSION，
+// 与提交 message 里的版本号经常不同步（混用 v3.5.x/v3.6.x）。现在每次提交后构建，
+// 版本号自动 +1、永不需要人工对齐；提交 message 前缀保持 v3.6.x 系列即可。
+// 非 git 环境（脚本被拷贝/CI 无 git）回退 v3.6.0 兜底。
+let APP_VERSION = 'v3.6.0';
+try {
+  const cnt = execSync('git rev-list --count HEAD', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  if (cnt && /^\d+$/.test(cnt)) APP_VERSION = 'v3.6.' + cnt;
+} catch (e) { /* 无 git：保持兜底 */ }
 
 // 按顺序拼接样式 / 脚本（顺序即生效顺序）
 const cssFiles = ['base.css', 'home.css', 'chat-main.css', 'chat-pages.css', 'setting.css', 'tabbar.css'];
