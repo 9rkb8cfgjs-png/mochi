@@ -128,6 +128,35 @@
     })).catch(() => false);
   };
 
+  // v3.6.x：原子替换全部键（导入备份用）——单事务内 clear() + 批量 put()。
+  // 事务成功 = 全部替换完成；任一步失败/中止 → 整个事务回滚，store 保持事务开始前的
+  // 旧数据。这取代「先 idbClearAll 清空、再逐条 idbSet」的导入流程——原流程清空与写入
+  // 之间有几分钟无原子窗口，中途崩溃/杀进程会留下半空库，旧数据无法恢复。
+  // 注意：不可克隆值（函数等）会让 put 同步抛 DataCloneError——必须捕获后主动 abort
+  // 事务（否则同步异常只跳过该次 put，已排队的 clear/put 仍会提交，等于部分替换）。
+  // entries: [{ k, v }, ...]；返回 Promise<boolean>（true=全部替换成功）
+  window.idbReplaceAll = function (entries) {
+    const list = (entries || []).filter(e => e && e.k !== undefined && e.k !== null);
+    if (!list.length) return window.idbClearAll();
+    return open().then(db => new Promise((resolve) => {
+      try {
+        const tx = db.transaction(STORE, 'readwrite');
+        const os = tx.objectStore(STORE);
+        let bad = false;
+        os.clear();
+        try {
+          list.forEach(e => { os.put(e.v, e.k); });
+        } catch (e) {
+          bad = true;
+          try { tx.abort(); } catch (e2) {}
+        }
+        tx.oncomplete = () => resolve(!bad);
+        tx.onerror = () => resolve(false);
+        tx.onabort = () => resolve(false);
+      } catch (e) { resolve(false); }
+    })).catch(() => false);
+  };
+
   // 存储适配层：各模块统一用它读写（接口与原 store 一致）。
   // IndexedDB 是权威持久层；localStorage 只是快速快照（配额满/隐私模式写失败也不丢数据——
   // 启动时从 IDB 恢复）；内存缓存兜底 localStorage 缺失的键。

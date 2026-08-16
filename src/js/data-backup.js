@@ -202,25 +202,34 @@
       }
     } catch (e) { backup = null; }
 
-    // ---- 2. 先恢复 IndexedDB（字卡 / 查岗 / 音乐文件等大件挪进 IDB，不占 localStorage 配额） ----
-    // 写入前先清空 IDB：否则备份里没有的旧键会残留，刷新后被 idbRestore 回填，等于没导入
+    // ---- 2. 原子恢复 IndexedDB（字卡 / 查岗 / 音乐文件等大件挪进 IDB，不占 localStorage 配额） ----
+    // v3.6.x：改用 idbReplaceAll（单事务 clear + 批量 put）——旧实现先 idbClearAll 清空、
+    // 再逐条 idbSet，清空与写入之间有几秒~几分钟无原子窗口，中途崩溃/杀进程会留下
+    // 半空库，旧数据无法恢复。单事务失败自动回滚到事务前（旧数据完整保留），
+    // 导入真正变成「要么全部替换、要么原样不动」。
     const idbRestored = new Promise((resolve) => {
+      if (!data.idb || typeof data.idb !== 'object') { resolve(true); return; }
+      const idbKeys = Object.keys(data.idb).filter(k => k.indexOf(uid + ':') === 0);
+      if (!idbKeys.length) { resolve(true); return; }
+      if (window.idbReplaceAll) {
+        impShow('正在导入…', '正在原子写入大文件（字卡/聊天/音乐等）…', 8);
+        const pairs = idbKeys.map(k => ({ k: k, v: data.idb[k] }));
+        window.idbReplaceAll(pairs).then(ok => {
+          if (ok) impShow('正在导入…', '大文件写入完成', 60);
+          else { try { data.idb = {}; } catch (e) {} }
+          resolve(ok);
+        });
+        return;
+      }
+      // 兜底：极端环境无 idbReplaceAll → 退回旧流程（先清空后逐条写，非原子）
       if (!window.idbSet) { resolve(true); return; }
       const clearFirst = (window.idbClearAll && window.idbClearAll()) || Promise.resolve(true);
       clearFirst.then((cleared) => {
-        // 清空失败 → 直接判失败（避免旧键残留 + 新键写入的混乱局面）
-        if (cleared !== true && !data.idb) { resolve(true); return; }
         if (cleared !== true) { resolve(false); return; }
-        if (!data.idb) { resolve(true); return; }
-        const idbKeys = Object.keys(data.idb).filter(k => k.indexOf(uid + ':') === 0);
-        if (!idbKeys.length) { resolve(true); return; }
         let p = Promise.resolve();
         let failed = 0;
         let done = 0;
         const total = idbKeys.length;
-        // 逐条顺序写入，避免手机内存压力；每写完一条更新进度
-        // v3.5.114：每条写完后释放 data.idb[k] 大字符串引用——手机内存有限，
-        //   119MB 备份全部驻留会撑爆峰值内存导致后续写入/刷新异常
         idbKeys.forEach(k => {
           p = p.then(() => window.idbSet(k, data.idb[k])).then(ok => {
             try { delete data.idb[k]; } catch (e) {}
@@ -252,6 +261,13 @@
     }
 
     idbRestored.then((idbOk) => {
+      // v3.6.x：IDB 原子替换失败 → 数据已由事务回滚保持原样，这里中止后续——
+      // 不再继续写 localStorage，否则会出现「localStorage 新数据 + IndexedDB 旧数据」混合态
+      if (!idbOk) {
+        impHide();
+        toast('导入失败：大文件写入未成功，原有数据已保留，请重试');
+        return;
+      }
       impShow('正在导入…', '正在写入设置与聊天记录', 62);
       // ---- 4. 写 localStorage 前先估算总字节；超配额时按体积从大到小丢弃大键 ----
       // 聊天记录双写（localStorage + IndexedDB）：导入时 IndexedDB 已恢复完整权威版

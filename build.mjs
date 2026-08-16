@@ -3,11 +3,29 @@
 // 拼装成单个可直接双击打开的 index.html（完整功能）。
 // 用法：在 mochi 目录下运行  node build.mjs
 import { readFileSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(join(root, 'src', p), 'utf8');
+
+// ===== 构建前健康检查（v3.6.x） =====
+// 防止把「未完成的改动 / 调试脚本」混进产物——历史教训：构建者跑 build 时工作区里
+// 有对方进行中的改动，产物悄悄带上半成品；tools/tmp-*.mjs 调试脚本也险些被 add -A 提交。
+// 检出时醒目警告（不阻止构建，构建者自行判断；AGENTS.md 约定构建前 git status 核对）。
+try {
+  const out = execSync('git status --porcelain', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }) || '';
+  const lines = out.split('\n').filter(Boolean);
+  const tmpUntracked = lines.filter(l => l.startsWith('??') && /tmp-[\w.-]*\.mjs/.test(l));
+  const modified = lines.filter(l => !l.startsWith('??'));
+  if (tmpUntracked.length) {
+    console.warn('⚠️  检测到未跟踪调试脚本（tools/tmp-*.mjs，可能是临时工具）：\n  ' + tmpUntracked.join('\n  ') + '\n  请确认这些不要随产物提交（建议加进 .gitignore 或删除）。');
+  }
+  if (modified.length) {
+    console.warn('⚠️  工作区有未提交改动 ' + modified.length + ' 个文件：\n  ' + modified.map(l => '  ' + l.slice(0, 90)).join('\n') + '\n  构建产物会包含这些改动——请确认对方已保存完整（AGENTS.md：不夹带未完成的一半改动）。');
+  }
+} catch (e) { /* 非 git 环境 / git 不可用：跳过检查 */ }
 
 // ===== 构建信息（开屏显示 + sw 缓存版本号，v3.5.54） =====
 const buildTime = new Date();
@@ -16,7 +34,9 @@ const buildInfo = '部署于 ' + buildTime.getFullYear() + '-' + pad(buildTime.g
   ' ' + pad(buildTime.getHours()) + ':' + pad(buildTime.getMinutes());
 const buildStamp = buildTime.getTime().toString(36); // sw 缓存名版本号（每次构建必变）
 // 应用版本号（设置页底部与开屏共用，升级版本时只改这一处）
-const APP_VERSION = 'v3.5.139';
+// v3.6.x：与 commit 版本号统一为 v3.6.x（此前 v3.5.139 与提交 v3.6.x 不一致，
+// 用户靠开屏版本号判断是否最新，两侧需人工对齐）
+const APP_VERSION = 'v3.6.0';
 
 // 按顺序拼接样式 / 脚本（顺序即生效顺序）
 const cssFiles = ['base.css', 'home.css', 'chat-main.css', 'chat-pages.css', 'setting.css', 'tabbar.css'];
