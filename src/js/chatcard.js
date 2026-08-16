@@ -450,6 +450,9 @@
     q = '';
     const qEl = document.getElementById('cc-search-input');
     if (qEl) qEl.value = '';
+    // v3.6.x：清空搜索后必须重新渲染——否则列表仍是搜索过滤后的子集，
+    // 勾选用的是过滤后索引，删除/移动按原始数组索引匹配会错位误删别的字卡
+    render();
     list.classList.add('cc-managing');
     document.querySelectorAll('.cc-toolbar').forEach(t => { t.style.display = 'none'; });
     if (!manageBar) {
