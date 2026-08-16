@@ -5,6 +5,10 @@
 //   · 从主屏幕打开（standalone）：开关改为隐藏应用内模拟状态栏（唯一还能藏的一栏），
 //     内容顶到系统状态栏下方、屏幕利用更满；状态持久化、切后台回来自动恢复。
 //   · 浏览器内打开：开关不可用，弹说明引导「添加到主屏幕」（iOS 唯一真全屏途径）。
+// v3.6.x：Via 等安卓浏览器网页全屏默认转横屏（视频式全屏），与本应用竖屏设计冲突。
+//   进入全屏后用 Screen Orientation API 锁竖屏（Chrome 在全屏态允许）；
+//   锁定失败且视口已横屏 → 退出原生全屏，走 CSS 兜底（fs-css-active）保持竖屏，
+//   并提示浏览器限制（浏览器自带「竖屏锁定」/ 添加到主屏幕）。
 (function () {
   const uid = 'xy-home-v2';
   const store = {
@@ -25,15 +29,75 @@
   function isFullscreen() {
     return !!(document.fullscreenElement || document.webkitFullscreenElement);
   }
+  // v3.6.x：Via 等浏览器网页全屏默认转横屏（视频式全屏），与本应用竖屏设计冲突。
+  // 进入全屏后用 Screen Orientation API 锁竖屏；锁定失败且视口已横屏 → 退出原生
+  // 全屏，改走 CSS 兜底（fs-css-active 类，保持竖屏），不再请求原生全屏。
+  const FB_KEY = 'fullscreen-fallback';
+  function lockFsOrient() {
+    try {
+      if (screen.orientation && screen.orientation.lock) {
+        const p = screen.orientation.lock('portrait');
+        if (p && p.then) {
+          p.then(() => {}, () => setTimeout(checkFsLandscape, 500));
+          return true;
+        }
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+  function unlockFsOrient() {
+    try {
+      if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+    } catch (e) {}
+  }
+  // v3.6.x：CSS 兜底全屏——进入/恢复时同步复选框（syncBox 默认 true）；
+  //   仅在「重试原生全屏前清理旧兜底」场景传 false（此时开关仍保持用户勾选态）
+  function applyFsCss(on, syncBox) {
+    document.documentElement.classList.toggle('fs-css-active', on);
+    store.set(FB_KEY, on ? '1' : '0');
+    if (syncBox === false) return;
+    const el = document.getElementById('sf-fullscreen');
+    if (el) el.checked = on;
+  }
+  let _fsTipShown = false;
+  function showFsFallbackTip() {
+    if (_fsTipShown) return;
+    _fsTipShown = true;
+    const msg = '当前浏览器的网页全屏会自动转成横屏，与本应用的竖屏设计冲突，已自动退出并保持竖屏。\n\n想真全屏（隐藏浏览器栏）请：\n· 浏览器工具栏开启「竖屏锁定」后再开全屏；\n· 或「添加到主屏幕」从桌面图标打开（竖屏全屏）。';
+    if (window.openModal) {
+      window.openModal('竖屏全屏提示', '', () => {}, { noInput: true, staticText: msg });
+    } else {
+      try { new Notification('竖屏全屏提示', { body: msg }); } catch (e) {}
+    }
+  }
+  // 全屏态复核：锁竖屏失败且视口被浏览器强制成横屏 → 退出恢复竖屏 + CSS 兜底
+  function checkFsLandscape() {
+    if (!isFullscreen()) return;
+    if (window.innerWidth <= window.innerHeight) return; // 已保持竖屏
+    exitFs();
+    applyFsCss(true);
+    showFsFallbackTip();
+  }
   function enterFs() {
     try {
       const el = document.documentElement;
-      if (el.requestFullscreen) el.requestFullscreen();
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      let p;
+      if (el.requestFullscreen) p = el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) p = el.webkitRequestFullscreen();
+      // 进入后锁竖屏（需全屏态 + 用户手势，此时均满足）；
+      // 无论锁屏 API 是否报成功，稍后都复核一次视口方向，仍横屏则回退
+      const tryLock = () => {
+        lockFsOrient();
+        setTimeout(checkFsLandscape, 600);
+      };
+      if (p && p.then) p.then(tryLock, tryLock);
+      else setTimeout(tryLock, 300);
     } catch (e) {}
   }
   function exitFs() {
     try {
+      unlockFsOrient();
       if (document.exitFullscreen) document.exitFullscreen();
       else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
     } catch (e) {}
@@ -138,10 +202,15 @@
           try { new Notification('iOS 不支持系统全屏', { body: 'iPhone 安装到主屏幕后由系统全屏接管，状态栏无法隐藏' }); } catch (e) {}
           return;
         }
+        // 重新尝试原生全屏前清掉上次的 CSS 兜底（enterFs 内部按需回退）
+        // 不重置复选框——开关此刻是用户刚勾上的状态
+        applyFsCss(false, false);
         enterFs();
         syncFsClass();
       } else {
         if (isIOS && inIosStandalone) { applyIosFs(false); return; }
+        // 无论原生全屏还是 CSS 兜底，关闭时都退出并清兜底类
+        applyFsCss(false);
         exitFs();
         syncFsClass();
       }
@@ -181,6 +250,8 @@
     enterFs();
   }
   function reenterFs() {
+    // v3.6.x：上次走的是 CSS 兜底（浏览器转横屏）→ 直接恢复兜底，不再请求原生全屏
+    if (store.get(FB_KEY) === '1') { applyFsCss(true); return; }
     if (store.get(FS_KEY) !== '1' || !fsSupported() || isFullscreen()) return;
     // Fullscreen API 需要用户手势；自动调用会被浏览器拦截——先试一次，
     // 被拦则等用户首次触摸/点击时再试（手势时刻的请求浏览器允许）

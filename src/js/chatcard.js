@@ -534,9 +534,27 @@
   }
 
   // ================= 导入数据（字卡库 json） =================
+  // v3.6.x：导入前先选模式——「追加字卡（自动去重）」保留现有字卡按分组合并、
+  // 重复内容自动去除；「替换字卡」清空当前字卡库、完全使用文件内容。
+  // 文件先完整解析、确认含有效字卡后才写入：格式错误/空文件不会改动现有字卡库
   const ccImportData = document.getElementById('cc-import-data');
   if (ccImportData) {
     ccImportData.addEventListener('click', () => {
+      if (window.openModal) {
+        window.openModal('导入字卡数据', '', (mode) => {
+          pickImportFile(mode);
+        }, {
+          noInput: true,
+          staticText: '选择导入方式：\n· 追加字卡：保留现有字卡，按分组并入，重复内容自动去除\n· 替换字卡：清空当前字卡库，完全使用文件内容',
+          pills: [
+            { label: '追加字卡（自动去重）', value: 'merge' },
+            { label: '替换字卡', value: 'replace' }
+          ],
+          pill: 'merge'
+        });
+      }
+    });
+    function pickImportFile(mode) {
       const input = document.createElement('input');
       input.type = 'file'; input.accept = '.json,application/json';
       input.onchange = () => {
@@ -547,134 +565,7 @@
           try {
             const data = JSON.parse(String(reader.result || ''));
             if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('格式错误');
-            // v3.5.72：识别星言简约版聊天字卡库导出 json（globalCards + cardGroups 结构）
-            //   v3.5.73 修正：专享字卡的字卡内容+分组也正常导入，仅不导入其绑定的联系人
-            //   （Mochi 无专享联系人概念，天然忽略联系人；不跳过任何字卡）
-            if (Array.isArray(data.globalCards)) {
-              const starToMochiCat = { custom: 'text', kaomoji: 'kaomoji', emojis: 'emoji', stickers: 'sticker', image: 'image', touch: 'poke', voices: 'voice' };
-              const groupById = {};
-              (Array.isArray(data.cardGroups) ? data.cardGroups : []).forEach(g => { if (g && g.id) groupById[g.id] = g; });
-              const imgs = (data.images && typeof data.images === 'object') ? data.images : {};
-              const voices = (data.voices && typeof data.voices === 'object') ? data.voices : {};
-              let imported = 0;
-              const pending = []; // {cat, groupName, cardText}
-              data.globalCards.forEach(c => {
-                if (!c || typeof c !== 'object') return;
-                let content = c.content;
-                if (typeof content === 'string' && content.indexOf('__img__') === 0) {
-                  content = imgs[c.id] || '';
-                } else if (typeof content === 'string' && content.indexOf('__voice__') === 0) {
-                  content = voices[c.id] || '';
-                }
-                if (typeof content !== 'string' || !content) return;
-                // 分类映射（未知分类归入主字卡）
-                const cat = starToMochiCat[c.category] || 'text';
-                // 分组名：cardGroups 匹配 groupId；无则用「默认」
-                let gname = '默认';
-                if (c.groupId && groupById[c.groupId]) gname = groupById[c.groupId].name || '默认';
-                else if (c.groupName) gname = c.groupName;
-                pending.push({ cat: cat, groupName: gname, card: content });
-                imported++;
-              });
-              if (!imported) { toast('星言文件里没有可导入的字卡'); return; }
-              // 按分类+分组合并
-              pending.forEach(p => {
-                if (!groups[p.cat]) groups[p.cat] = [];
-                let g = groups[p.cat].find(x => x[0] === p.groupName);
-                if (!g) { g = [p.groupName, []]; groups[p.cat].push(g); }
-                g[1].push(p.card);
-              });
-              saveGroups(groups);
-              renderGroupsBar();
-              render();
-              toast('导入成功 · ' + imported + ' 张字卡（星言格式，字卡内容与分组完整导入）');
-              return;
-            }
-            // v3.6.x：识别 milk 字卡库导出 json（customReplies/customReplyGroups/customEmojis/stickerLibrary 结构）
-            //   主字卡→text、Emoji→emoji、表情库→sticker、颜文字→kaomoji（如 milk 版本带该字段）；
-            //   分组 items 完整导入（分组名同名合并），未进分组的散字卡归入「未分组」，json 里没有的字段自动跳过
-            const milkCards = [
-              { cat: 'text',    field: 'customReplies', groups: ['customReplyGroups'] },
-              { cat: 'poke',    field: 'customPokes',   groups: ['customPokeGroups'] },
-              { cat: 'kaomoji', field: ['customKaomojis', 'customKaomoji', 'kaomojiLibrary'], groups: ['customKaomojiGroups', 'kaomojiGroups'] },
-              { cat: 'sticker', field: ['stickerLibrary', 'customStickers'], groups: ['customStickerGroups', 'stickerGroups'] },
-              { cat: 'emoji',   field: 'customEmojis', groups: [] }
-            ];
-            const isMilk = milkCards.some(mc => {
-              const f = Array.isArray(mc.field) ? mc.field : [mc.field];
-              return f.some(k => Array.isArray(data[k])) || mc.groups.some(k => Array.isArray(data[k]));
-            });
-            if (isMilk) {
-              const pickField = (keys) => {
-                const arr = Array.isArray(keys) ? keys : [keys];
-                for (const k of arr) if (Array.isArray(data[k])) return data[k];
-                return null;
-              };
-              // milk 分组（{id,name,color,disabled,items}）→ mochi 的 [分组名, 字卡数组]；未入组散卡归「未分组」
-              const milkGroupPairs = (flat, grpKey) => {
-                const pairs = [];
-                const inGroup = new Set();
-                const grpArr = grpKey ? data[grpKey] : null;
-                if (Array.isArray(grpArr)) {
-                  grpArr.forEach(g => {
-                    if (!g || typeof g !== 'object') return;
-                    const name = String(g.name || '未分组');
-                    const cards = Array.isArray(g.items) ? g.items.filter(c => typeof c === 'string' && c) : [];
-                    if (!cards.length) return;
-                    cards.forEach(c => inGroup.add(c));
-                    const exist = pairs.find(x => x[0] === name);
-                    if (exist) exist[1] = exist[1].concat(cards);
-                    else pairs.push([name, cards.slice()]);
-                  });
-                }
-                if (Array.isArray(flat)) {
-                  const loose = flat.filter(c => typeof c === 'string' && c && !inGroup.has(c));
-                  if (loose.length) pairs.push(['未分组', loose]);
-                }
-                return pairs;
-              };
-              let imported = 0;
-              milkCards.forEach(mc => {
-                const flat = pickField(mc.field);
-                const grpKey = mc.groups.find(k => Array.isArray(data[k])) || null;
-                const pairs = milkGroupPairs(flat, grpKey);
-                if (!pairs.length) return;
-                if (!groups[mc.cat]) groups[mc.cat] = [];
-                pairs.forEach(([name, cards]) => {
-                  const exist = groups[mc.cat].find(x => x[0] === name);
-                  if (exist) exist[1] = exist[1].concat(cards);
-                  else groups[mc.cat].push([name, cards.slice()]);
-                  imported += cards.length;
-                });
-              });
-              if (!imported) { toast('milk 文件里没有可导入的字卡'); return; }
-              saveGroups(groups);
-              renderGroupsBar();
-              render();
-              toast('导入成功 · ' + imported + ' 张字卡（milk 格式，分组完整导入）');
-              return;
-            }
-            let imported = 0;
-            ['text', 'kaomoji', 'emoji', 'sticker', 'image', 'poke', 'voice'].forEach(k => {
-              const arr = data[k];
-              if (!Array.isArray(arr)) return;
-              arr.forEach(g => {
-                if (!Array.isArray(g) || g.length < 2) return;
-                const name = String(g[0]);
-                const cards = Array.isArray(g[1]) ? g[1].filter(c => typeof c === 'string' && c) : [];
-                if (!cards.length) return;
-                if (!groups[k]) groups[k] = [];
-                const exist = groups[k].find(x => x[0] === name);
-                if (exist) exist[1] = exist[1].concat(cards);
-                else groups[k].push([name, cards.slice()]);
-                imported += cards.length;
-              });
-            });
-            if (!imported) { toast('未导入到有效字卡'); return; }
-            saveGroups(groups);
-            renderGroupsBar();
-            render();
-            toast('导入成功 · ' + imported + ' 张字卡');
+            applyImportData(data, mode);
           } catch (e) {
             toast('导入失败：文件格式不正确');
           }
@@ -682,6 +573,173 @@
         reader.readAsText(f);
       };
       input.click();
+    }
+    // 按模式写入：merge 分组内去重合并；replace 先清空再按文件填充；返回 {added, dup}
+    function writeImport(byCat, mode) {
+      let added = 0, dup = 0;
+      if (mode === 'replace') {
+        groups = { text: [], kaomoji: [], emoji: [], sticker: [], image: [], poke: [], voice: [] };
+        Object.keys(byCat).forEach(cat => {
+          const pairs = byCat[cat];
+          groups[cat] = pairs.map(([n, cs]) => [n, cs.slice()]);
+          pairs.forEach(([, cs]) => { added += cs.length; });
+        });
+      } else {
+        Object.keys(byCat).forEach(cat => {
+          if (!groups[cat]) groups[cat] = [];
+          byCat[cat].forEach(([name, cards]) => {
+            const exist = groups[cat].find(x => x[0] === name);
+            if (!exist) { groups[cat].push([name, cards.slice()]); added += cards.length; return; }
+            const seen = new Set(exist[1]);
+            cards.forEach(c => {
+              if (seen.has(c)) { dup++; return; }
+              seen.add(c); exist[1].push(c); added++;
+            });
+          });
+        });
+      }
+      return { added: added, dup: dup };
+    }
+    // 解析文件 → byCat（{ 分类: [[分组名, 字卡数组], ...] }），再按模式写入
+    function applyImportData(data, mode) {
+      const byCat = {};
+      let imported = 0;
+      let fmt = '';
+      // v3.5.72：识别星言简约版聊天字卡库导出 json（globalCards + cardGroups 结构）
+      //   v3.5.73 修正：专享字卡的字卡内容+分组也正常导入，仅不导入其绑定的联系人
+      //   （Mochi 无专享联系人概念，天然忽略联系人；不跳过任何字卡）
+      if (Array.isArray(data.globalCards)) {
+        fmt = '（星言格式）';
+        const starToMochiCat = { custom: 'text', kaomoji: 'kaomoji', emojis: 'emoji', stickers: 'sticker', image: 'image', touch: 'poke', voices: 'voice' };
+        const groupById = {};
+        (Array.isArray(data.cardGroups) ? data.cardGroups : []).forEach(g => { if (g && g.id) groupById[g.id] = g; });
+        const imgs = (data.images && typeof data.images === 'object') ? data.images : {};
+        const voices = (data.voices && typeof data.voices === 'object') ? data.voices : {};
+        data.globalCards.forEach(c => {
+          if (!c || typeof c !== 'object') return;
+          let content = c.content;
+          if (typeof content === 'string' && content.indexOf('__img__') === 0) {
+            content = imgs[c.id] || '';
+          } else if (typeof content === 'string' && content.indexOf('__voice__') === 0) {
+            content = voices[c.id] || '';
+          }
+          if (typeof content !== 'string' || !content) return;
+          // 分类映射（未知分类归入主字卡）
+          const cat = starToMochiCat[c.category] || 'text';
+          // 分组名：cardGroups 匹配 groupId；无则用「默认」
+          let gname = '默认';
+          if (c.groupId && groupById[c.groupId]) gname = groupById[c.groupId].name || '默认';
+          else if (c.groupName) gname = c.groupName;
+          if (!byCat[cat]) byCat[cat] = [];
+          let g = byCat[cat].find(x => x[0] === gname);
+          if (!g) { g = [gname, []]; byCat[cat].push(g); }
+          g[1].push(content);
+          imported++;
+        });
+      }
+      // v3.6.x：识别 milk 字卡库导出 json（customReplies/customReplyGroups/customEmojis/stickerLibrary 结构）
+      const milkCards = [
+        { cat: 'text',    field: 'customReplies', groups: ['customReplyGroups'] },
+        { cat: 'poke',    field: 'customPokes',   groups: ['customPokeGroups'] },
+        { cat: 'kaomoji', field: ['customKaomojis', 'customKaomoji', 'kaomojiLibrary'], groups: ['customKaomojiGroups', 'kaomojiGroups'] },
+        { cat: 'sticker', field: ['stickerLibrary', 'customStickers'], groups: ['customStickerGroups', 'stickerGroups'] },
+        { cat: 'emoji',   field: 'customEmojis', groups: [] }
+      ];
+      if (!fmt && milkCards.some(mc => {
+        const f = Array.isArray(mc.field) ? mc.field : [mc.field];
+        return f.some(k => Array.isArray(data[k])) || mc.groups.some(k => Array.isArray(data[k]));
+      })) {
+        fmt = '（milk 格式）';
+        const pickField = (keys) => {
+          const arr = Array.isArray(keys) ? keys : [keys];
+          for (const k of arr) if (Array.isArray(data[k])) return data[k];
+          return null;
+        };
+        // milk 分组（{id,name,color,disabled,items}）→ mochi 的 [分组名, 字卡数组]；未入组散卡归「未分组」
+        const milkGroupPairs = (flat, grpKey) => {
+          const pairs = [];
+          const inGroup = new Set();
+          const grpArr = grpKey ? data[grpKey] : null;
+          if (Array.isArray(grpArr)) {
+            grpArr.forEach(g => {
+              if (!g || typeof g !== 'object') return;
+              const name = String(g.name || '未分组');
+              const cards = Array.isArray(g.items) ? g.items.filter(c => typeof c === 'string' && c) : [];
+              if (!cards.length) return;
+              cards.forEach(c => inGroup.add(c));
+              const exist = pairs.find(x => x[0] === name);
+              if (exist) exist[1] = exist[1].concat(cards);
+              else pairs.push([name, cards.slice()]);
+            });
+          }
+          if (Array.isArray(flat)) {
+            const loose = flat.filter(c => typeof c === 'string' && c && !inGroup.has(c));
+            if (loose.length) pairs.push(['未分组', loose]);
+          }
+          return pairs;
+        };
+        milkCards.forEach(mc => {
+          const flat = pickField(mc.field);
+          const grpKey = mc.groups.find(k => Array.isArray(data[k])) || null;
+          const pairs = milkGroupPairs(flat, grpKey);
+          if (!pairs.length) return;
+          if (!byCat[mc.cat]) byCat[mc.cat] = [];
+          pairs.forEach(([name, cards]) => { byCat[mc.cat].push([name, cards.slice()]); imported += cards.length; });
+        });
+      }
+      // 本应用格式（mochi 字卡库导出 json）
+      if (!fmt) {
+        ['text', 'kaomoji', 'emoji', 'sticker', 'image', 'poke', 'voice'].forEach(k => {
+          const arr = data[k];
+          if (!Array.isArray(arr)) return;
+          arr.forEach(g => {
+            if (!Array.isArray(g) || g.length < 2) return;
+            const name = String(g[0]);
+            const cards = Array.isArray(g[1]) ? g[1].filter(c => typeof c === 'string' && c) : [];
+            if (!cards.length) return;
+            if (!byCat[k]) byCat[k] = [];
+            const exist = byCat[k].find(x => x[0] === name);
+            if (exist) exist[1] = exist[1].concat(cards);
+            else byCat[k].push([name, cards.slice()]);
+            imported += cards.length;
+          });
+        });
+      }
+      if (!imported) { toast('文件里没有可导入的字卡'); return; }
+      const res = writeImport(byCat, mode);
+      saveGroups(groups);
+      renderGroupsBar();
+      render();
+      if (mode === 'replace') toast('已替换字卡库 · 共 ' + res.added + ' 张字卡' + fmt);
+      else toast('已导入 ' + res.added + ' 张字卡' + fmt + (res.dup ? '，自动去重 ' + res.dup + ' 条' : ''));
+    }
+  }
+
+  // ================= 清除全部字卡（v3.6.x） =================
+  // 一键清空所有分类的全部字卡（保留空分组结构）；危险操作，需二次确认
+  const ccClearAll = document.getElementById('cc-clear-all');
+  if (ccClearAll) {
+    ccClearAll.addEventListener('click', () => {
+      if (window.openModal) {
+        const total = totalCount(groups);
+        window.openModal('清除全部字卡？', '', () => {
+          // 各分类清空字卡数组（分组保留，内置分组名不消失）
+          Object.keys(groups).forEach(t => {
+            groups[t] = (groups[t] || []).map(g => [g[0], []]);
+          });
+          // 退出管理模式、清空搜索与分组筛选，回到全部视图
+          if (manageMode) exitManage();
+          q = '';
+          curGroup = '';
+          const si = document.getElementById('cc-search-input');
+          if (si) si.value = '';
+          selected.clear();
+          saveGroups(groups);
+          renderGroupsBar();
+          render();
+          toast('已清除全部字卡');
+        }, { noInput: true, staticText: '将删除全部 ' + total + ' 张字卡（主字卡、颜文字、emoji、表情包、图片、拍一拍、语音），且无法恢复。确定继续吗？' });
+      }
     });
   }
 

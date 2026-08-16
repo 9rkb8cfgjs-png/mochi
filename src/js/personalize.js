@@ -934,7 +934,14 @@
         const days = [];
         let prevMine = 0, prevTa = 0;
         // v3.5.131：按日期数值排序（原字符串排序在跨月时错乱——'2026-10-1' < '2026-8-16'）
-        const byDate = (a, b) => (Date.parse(a.date + 'T00:00:00') || 0) - (Date.parse(b.date + 'T00:00:00') || 0);
+        // v3.6.x：iOS Safari 对不补零日期（'2026-8-16'）按 ISO 解析返回 NaN——先补零再解析，
+        // 否则 iOS 上比较器恒为 0、排序失效（超过 365 天记录时 slice(-365) 会截错）
+        const parseDay = (s) => {
+          const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(s || ''));
+          if (!m) return NaN;
+          return Date.parse(m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) + 'T00:00:00');
+        };
+        const byDate = (a, b) => (parseDay(a.date) || 0) - (parseDay(b.date) || 0);
         oldLog.slice().sort(byDate).forEach(x => {
           const m = parseInt(x.mine || '0', 10) || 0;
           const t = parseInt(x.ta || '0', 10) || 0;
@@ -948,7 +955,7 @@
           if (map[x.date]) { map[x.date].mine += x.mine; map[x.date].ta += x.ta; }
           else map[x.date] = x;
         });
-        const merged = Object.keys(map).map(k => map[k]).sort((a, b) => (Date.parse(a.date + 'T00:00:00') || 0) - (Date.parse(b.date + 'T00:00:00') || 0)).slice(-365);
+        const merged = Object.keys(map).map(k => map[k]).sort((a, b) => (parseDay(a.date) || 0) - (parseDay(b.date) || 0)).slice(-365);
         saveFishDayLog(merged);
         // 重建当天 day 键（今天的新增 = 记录里今天的新增）
         const key = fishDayKey();

@@ -18,6 +18,39 @@
   const KEYS = { ring: 'sfx-ring', in: 'sfx-in', out: 'sfx-out' };
   const NAMES = { ring: '联系人来电铃声', in: '联系人发送和回复消息', out: '我发送消息' };
 
+  // v3.6.x：iOS Safari 自动播放策略修复——HTMLMediaElement 有声播放必须由用户手势解锁，
+  // 否则定时器触发的铃声/消息音会被静默拒绝（play() 抛 NotAllowedError，被下方 catch 吞掉，
+  // 表现为「开了音效却完全没声音」）。首次真实手势时播放一段静音 WAV 完成解锁，
+  // 之后任意定时器播放都放行；Android/桌面 play() 直接成功，且文件本身静音、无副作用。
+  (function unlockIosMedia() {
+    var unlocked = false;
+    function tryUnlock() {
+      if (unlocked) return;
+      var a = null;
+      try {
+        // 生成 8-bit PCM 静音 WAV（0.1s / 8000Hz，样本值 128 = 完全静音），不依赖硬编码 base64
+        var sr = 8000, n = Math.round(sr * 0.1), buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+        var ws = function (o, s) { for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+        ws(0, 'RIFF'); v.setUint32(4, 36 + n, true); ws(8, 'WAVE');
+        ws(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+        v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+        ws(36, 'data'); v.setUint32(40, n, true);
+        var bytes = new Uint8Array(buf), bin = '', i;
+        for (i = 0; i < n; i++) v.setUint8(44 + i, 128);
+        for (i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        a = new Audio();
+        a.src = 'data:audio/wav;base64,' + btoa(bin);
+        a.volume = 0.0001;
+        var p = a.play();
+        if (p && p.catch) p.catch(function () { unlocked = false; });
+        unlocked = true;
+      } catch (e) { unlocked = false; }
+    }
+    document.addEventListener('touchstart', tryUnlock, { passive: true });
+    document.addEventListener('click', tryUnlock, { passive: true });
+    document.addEventListener('keydown', tryUnlock);
+  })();
+
   // 播放音效（每次新建 Audio，避免并发冲突；无设置不播）
   // v3.5.127：ring 用单例保存引用——来电铃声长，通话结束必须能停止
   let ringAudio = null;

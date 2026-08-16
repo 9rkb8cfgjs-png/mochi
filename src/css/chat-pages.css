@@ -53,6 +53,9 @@
 }
 .cc-tool svg { width:15px; height:15px; }
 .cc-tool:active { background:#111; color:#fff; }
+/* 危险操作按钮（清除全部字卡）：红字警示，按压缩放 */
+.cc-tool-danger { color:#d64545; border-color:rgba(214,69,69,.28); }
+.cc-tool-danger:active { background:#d64545; color:#fff; }
 
 /* 分组 */
 .cc-group-header {

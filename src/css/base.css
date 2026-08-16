@@ -93,13 +93,17 @@ html,body { overflow-x:hidden;
     linear-gradient(168deg, var(--bg-a, #ffffff) 0%, var(--bg-b, #f2f2f2) 100%);
 }
 
-/* 窄屏（真实手机 / 小窗口 / 折叠屏展开）：去掉模拟器外壳，直接全屏显示
+/* 窄屏（真实手机 / 小窗口 / 折叠屏展开 / 高 DPR 手机）：去掉模拟器外壳，直接全屏显示
    v3.5.133：上限 480→768px——折叠屏展开（约 673-717px）和平板竖屏不再显示
-   桌面模拟器外壳（390px 小框 + 两侧灰底），改为手机全屏布局 */
+   桌面模拟器外壳（390px 小框 + 两侧灰底），改为手机全屏布局
+   v3.5.137：上限 768→900px——Moto G100 等 2400px 物理屏 / DPR 2.75-3 的 CSS 视口
+   约 800-873px；同时给宽视口手机加 max-width:480px 内容限宽（防内容被拉宽，
+   图标/气泡/字卡网格稀稀拉拉） */
 @media (max-width: 900px) {
   html, body { padding:0; min-height:100vh; min-height:100svh; min-height:100dvh; }
   .phone {
     width:100vw; height:100vh; height:100svh; height:100dvh;
+    max-width:480px; margin:0 auto;
     border-radius:0; box-shadow:none;
     padding:0 18px 18px;
   }
@@ -108,6 +112,31 @@ html,body { overflow-x:hidden;
     padding-top:max(calc(14px + env(safe-area-inset-top, 0px)), 14px);
     padding-bottom:10px;
   }
+  /* v3.5.137：宽视口手机（481-900px）内容限宽 480px 居中——底部悬浮面板
+     （表情/更多/拍一拍/搜索等 left:18px right:18px 的 fixed 元素）同步限宽，
+     否则 800px 视口下面板 764px 宽，超出内容区（面板是 body 级，用类选择器；
+     msg-actions 是 JS 坐标定位、feed-comment-panel 是 absolute 相对页面，不在此列） */
+  .emoji-panel, .poke-card, .chat-more-panel,
+  .chat-search, .chat-decision-panel, .chat-divine-panel,
+  .avlib-card, .ck-panel {
+    left:50% !important; right:auto !important;
+    width:min(480px, calc(100vw - 36px));
+    transform:translateX(-50%);
+  }
+}
+
+/* v3.6.x：手机端非全屏模式直接可用——隐藏应用内模拟状态栏。
+   真实手机（浏览器标签页 / PWA standalone / 系统全屏）本就由系统提供状态栏，
+   再显示一条模拟状态栏（Mochi 品牌 + 时间 + 信号）会形成「双状态栏」：
+   底部 tab 页（主页/字卡库/设置）顶部多出一整段空隙，而聊天/日历等全屏页
+   没有——这正是各页面顶部间距不一致的来源，也让用户以为必须开「全屏模式」
+   才正常。这里手机端统一隐藏它，顶部安全区由 .phone 的 padding-top 接管，
+   数值与全屏页 chat-head 顶部间距（calc(10px + env)）对齐；
+   全屏页 .phone.no-statusbar（tabbar.css）特异性更高仍为 padding:0，
+   沿用各自页内补偿，互不影响。桌面模拟器外壳（>900px）不受影响。 */
+@media (max-width: 900px) {
+  .phone .statusbar { display: none; }
+  .phone { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
 }
 
 /* ===== v3.5.105：手机端（安卓 / iOS）适配 =====
@@ -175,6 +204,14 @@ html,body { overflow-x:hidden;
 .fs-active .phone .page.full .gs-title, .fs-active .phone .page.full .card-tabs,
 .fs-active .phone .page.full .div-h-title, .fs-active .phone .page.full .stats-top-name { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
 
+/* 真全屏 / Fullscreen API 时，底部 tab 页（主页/字卡库/设置）同样留顶部安全区：
+   安卓挖孔屏 env() 返回 0 时保留 12px 兜底（与 .page.full 顶栏一致）；
+   全屏页 .phone.no-statusbar 特异性更高覆盖为 padding:0，不受此规则影响 */
+@media (display-mode: fullscreen) {
+  .phone { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+}
+.fs-active .phone { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+
 /* v3.6.x：iOS 独立应用「全屏模式」（ios-fs-active 类，由 fullscreen.js 控制）——
    iOS 无 Fullscreen API、系统状态栏永远无法隐藏，唯一能藏的是应用内模拟状态栏
    （与系统状态栏重复的一栏，正是「有空隙/双状态栏」观感来源）。
@@ -183,6 +220,14 @@ html,body { overflow-x:hidden;
 @media (max-width: 900px) {
   .ios-fs-active .phone { padding-top: env(safe-area-inset-top, 0px); }
   .ios-fs-active .phone .statusbar { display: none; }
+}
+
+/* v3.6.x：Via 等浏览器网页全屏强制转横屏时的 CSS 兜底全屏
+   （fs-css-active 类，由 fullscreen.js 控制）——原生全屏被浏览器转成横屏时
+   自动退出并改走此模式：保持竖屏布局 + 顶部安全区，观感与原生全屏一致。
+   仅真实手机窄屏生效，桌面模拟器外壳不受影响。 */
+@media (max-width: 900px) {
+  .fs-css-active .phone { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
 }
 
 /* v3.6.x：输入法弹出适配已改为「最小干预」——mobile-adapt.js 不再锁定 .phone 高度、

@@ -296,8 +296,12 @@
           _kbActive = true;
           _phone.style.position = 'fixed';
           _phone.style.top = '0';
-          _phone.style.left = '0';
-          _phone.style.right = '0';
+          // v3.5.137：保持内容限宽（max-width:480px 居中）——left:0 right:0 会撑成
+          // 全视口宽（Moto G100 等 800px 视口下内容区被拉宽）
+          _phone.style.left = '50%';
+          _phone.style.right = 'auto';
+          _phone.style.transform = 'translateX(-50%)';
+          _phone.style.width = 'min(480px, 100vw)';
           _phone.style.margin = '0';
         }
         if (_kbActive) {
@@ -307,9 +311,10 @@
           _kbActive = false;
           _phone.style.height = '';
           _phone.style.position = '';
-          _phone.style.top = '';
           _phone.style.left = '';
           _phone.style.right = '';
+          _phone.style.transform = '';
+          _phone.style.width = '';
           _phone.style.margin = '';
         }
       }
