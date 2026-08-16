@@ -1,0 +1,816 @@
+// ===== 功能：自定义聊天字卡（分类 + 分组筛选 + 批量导入 + 图片导入） =====
+// 内置分组按 7 分类预置；可新建分组、按【分组名】批量导入文字字卡；
+// 【表情包】【图片】分类支持直接上传图片表情（存 dataURL）；
+// 分组内的字卡会作为联系人自动回复的素材池
+(function () {
+  const list = document.getElementById('cc-list');
+  const tabsWrap = document.getElementById('cc-tabs');
+  const groupsBar = document.getElementById('cc-groups-bar');
+  if (!list || !tabsWrap) return;
+
+  const uid = 'xy-home-v2';
+  const store = window.xyStore(uid);
+
+  // 内置分组数据（key: 类型 -> [分组名, 字卡数组]）
+  // v3.6.x：不再向用户提供系统内置预设字卡——这里仅作为「清理旧数据」的依据：
+  //   老版本用户已存的这些内置字卡会被剔除（loadGroups → stripBuiltins），
+  //   只保留用户自己添加的字卡；全新用户打开是空字卡库
+  const BUILTIN = {
+    text: [
+      ['日常回应', ['哈哈哈哈哈', '好的好的，收到', '嗯嗯，我在听', '笑死我了', '我支持你', '今天也要开心呀', '没事的，别担心', '想你了']],
+      ['晚安问候', ['晚安，做个好梦', '早点休息呀', '明天见啦', '睡个好觉']]
+    ],
+    kaomoji: [
+      ['开心', ['(｡♥‿♥｡)', '(◕‿◕)', '(￣▽￣)~*', 'ᕙ(⇀‸↼‶)ᕗ']],
+      ['日常', ['(¬‿¬)', '( ´･･)ﾉ(._.`)', '(ಥ_ಥ)', '(⊙_☉)', '(づ｡◕‿‿◕｡)づ']]
+    ],
+    emoji: [
+      ['常用', ['😂', '🥰', '😭', '😡', '😳', '🤔', '😴', '🤗', '😘', '🙄']]
+    ],
+    sticker: [],
+    image: [],
+    poke: [
+      ['互动', ['戳一戳', '拍了拍你', '戳了戳你的脸蛋']]
+    ],
+    voice: []
+  };
+  const MEDIA_TYPES = { sticker: '表情包', image: '图片', voice: '语音' };
+  const IMG_TYPES = MEDIA_TYPES;
+
+  // v3.6.x：剔除系统内置预设字卡（BUILTIN 同分组同内容）与空分组，只保留用户添加的字卡；
+  // 返回是否发生了删除（供调用方决定是否写回）
+  function stripBuiltins(groups) {
+    let changed = false;
+    Object.keys(BUILTIN).forEach(cat => {
+      const gs = groups[cat];
+      if (!Array.isArray(gs)) return;
+      BUILTIN[cat].forEach(([gname, arr]) => {
+        const g = gs.find(x => x[0] === gname);
+        if (!g || !Array.isArray(g[1])) return;
+        const before = g[1].length;
+        g[1] = g[1].filter(c => arr.indexOf(c) < 0);
+        if (g[1].length !== before) changed = true;
+      });
+      // 删掉因此变空的分组
+      const before = gs.length;
+      groups[cat] = gs.filter(g => Array.isArray(g[1]) && g[1].length);
+      if (groups[cat].length !== before) changed = true;
+    });
+    return changed;
+  }
+
+  // 读取全部分组：{ 类型: [ [分组名, [字卡...]], ... ] }
+  function loadGroups() {
+    try {
+      const saved = JSON.parse(store.get('cc-groups') || 'null');
+      if (saved && saved.text) {
+        // 迁移：删除旧版语音占位（语音1/语音2）
+        if (saved.voice) {
+          let changed = false;
+          saved.voice.forEach(g => {
+            if (!Array.isArray(g) || !Array.isArray(g[1])) return;
+            const before = g[1].length;
+            g[1] = g[1].filter(c => c !== '语音1' && c !== '语音2');
+            if (g[1].length !== before) changed = true;
+          });
+          saved.voice = saved.voice.filter(g => Array.isArray(g) && Array.isArray(g[1]) && g[1].length);
+          if (changed) { try { store.set('cc-groups', JSON.stringify(saved)); } catch (e) {} }
+        }
+        // v3.6.x：剔除旧版内置预设字卡（只保留用户添加的）
+        if (stripBuiltins(saved)) { try { store.set('cc-groups', JSON.stringify(saved)); } catch (e) {} }
+        return saved;
+      }
+    } catch (e) {}
+    // v3.6.x：不再自动生成系统内置预设字卡，全新用户打开是空字卡库
+    return { text: [], kaomoji: [], emoji: [], sticker: [], image: [], poke: [], voice: [] };
+  }
+  // 初始化：从 IndexedDB 恢复字卡数据（权威持久库）
+  // localStorage 可能因配额写失败而停留在旧数据；只要 IDB 数据【内容更多】就用 IDB 覆盖，
+  // 避免新增的表情包分组/内容因 localStorage 配额问题"消失"。
+  // （不采用"不一致即覆盖"：若 idbSet 偶尔失败而 localStorage 已写入最新，覆盖会反向丢数据）
+  (function () {
+    if (window.idbGet) {
+      window.idbGet(uid + ':cc-groups').then(v => {
+        if (v === undefined || v === null) return;
+        try {
+          const data = typeof v === 'string' ? JSON.parse(v) : v;
+          if (!data || !data.text) return;
+          const cardCount = (g) => {
+            let n = 0;
+            try { Object.keys(g).forEach(t => (g[t] || []).forEach(x => n += (Array.isArray(x[1]) ? x[1].length : 0))); } catch (e) {}
+            return n;
+          };
+          let localData = null;
+          try { localData = JSON.parse(store.get('cc-groups') || 'null'); } catch (e) {}
+          const localCount = localData && localData.text ? cardCount(localData) : -1;
+          if (localCount < 0 || cardCount(data) > localCount) {
+            // v3.6.x：IDB 权威数据也剔除旧版内置预设字卡后再写入
+            stripBuiltins(data);
+            store.set('cc-groups', JSON.stringify(data));
+            groups = data;
+            renderGroupsBar();
+            render();
+          }
+        } catch (e) {}
+      });
+    }
+  })();
+  function saveGroups(groups) {
+    // 统一走适配层：localStorage 快照 + IndexedDB 权威（配额满也不丢，启动自动恢复）
+    store.set('cc-groups', JSON.stringify(groups));
+  }
+
+  let groups = loadGroups();
+  let cur = 'text';
+  let q = '';
+  let curGroup = ''; // '' = 全部
+
+  // 轻提示
+  function toast(msg) {
+    let t = document.getElementById('cc-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'cc-toast';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
+  }
+
+  // 查看大图（字卡库 / 聊天消息 共用）
+  function viewImage(src) {
+    let mask = document.getElementById('img-view-mask');
+    if (!mask) {
+      mask = document.createElement('div');
+      mask.id = 'img-view-mask';
+      mask.className = 'img-view-mask';
+      mask.innerHTML = '<img class="img-view-img" alt="大图">';
+      mask.addEventListener('click', () => { mask.hidden = true; });
+      document.body.appendChild(mask);
+    }
+    mask.querySelector('.img-view-img').src = src;
+    mask.hidden = false;
+  }
+  window.viewChatImage = viewImage;
+
+  function totalCount(g) {
+    let n = 0;
+    Object.keys(g).forEach(t => g[t].forEach(grp => n += grp[1].length));
+    return n;
+  }
+
+  // 图片压缩（上传图片表情用）
+  function compressImage(dataUrl, maxSide) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL('image/png'));
+        } catch (e) { resolve(dataUrl); }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
+  // 渲染分组筛选栏
+  function renderGroupsBar() {
+    if (!groupsBar) return;
+    groupsBar.innerHTML = '';
+    const grps = groups[cur] || [];
+    const chips = [['', '全部']].concat(grps.map(g => [g[0], g[0]]));
+    chips.forEach(([val, label]) => {
+      const c = document.createElement('span');
+      c.className = 'cc-g-chip' + (curGroup === val ? ' sel' : '');
+      c.textContent = label;
+      c.addEventListener('click', () => {
+        curGroup = val;
+        renderGroupsBar();
+        render();
+      });
+      groupsBar.appendChild(c);
+    });
+  }
+
+  // 字卡项 HTML：图片 dataURL 显示缩略图，否则文字（删除统一走【管理字卡】）
+  function cardItemHtml(c) {
+    // 语音字卡：文件名|||音频数据（播放按钮：播放中显示动态波形 + 高亮）
+    // v3.6.x：显示时也去掉 mp3/mp4 后缀（旧上传的语音仍带后缀）
+    if (typeof c === 'string' && c.indexOf('|||') > 0) {
+      const parts = c.split('|||');
+      const name = (parts[0] || '音频').replace(/\.[^.]+$/, '');
+      const src = parts[1] || '';
+      return '<div class="cc-ico" style="background:rgba(0,0,0,.05)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></div>' +
+        '<div class="cc-txt"><div class="t" style="color:var(--muted)">' + name + '</div></div>' +
+        '<button class="cc-play" data-src="' + src + '" title="播放">' +
+        '<span class="cc-play-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>' +
+        '<span class="cc-play-bars"><i></i><i></i><i></i></span></button>';
+    }
+    if (typeof c === 'string' && c.indexOf('data:') === 0) {
+      // 图片字卡：缩略图 + 点击查看大图（无文字标签）
+      return '<div class="cc-ico cc-imgbox"><img class="cc-img" src="' + c + '" alt="图片"></div>';
+    }
+    return '<div class="cc-txt"><div class="t">' + c + '</div></div>';
+  }
+
+  function render() {
+    // 表情包分类：网格一行四个；图片分类：网格一行两个；emoji 分类：网格一行六个；其他分类保持行式列表
+    list.classList.toggle('cc-grid', cur === 'sticker');
+    list.classList.toggle('cc-grid2', cur === 'image');
+    list.classList.toggle('cc-grid6', cur === 'emoji');
+    const grps = groups[cur] || [];
+    let shown = grps;
+    // 分组筛选
+    if (curGroup) shown = shown.filter(g => g[0] === curGroup);
+    if (q) {
+      shown = shown
+        .map(([g, arr]) => [g, arr.filter(c => (typeof c === 'string' && c.indexOf('data:') !== 0) && c.indexOf(q) >= 0)])
+        .filter(([g, arr]) => arr.length || g.indexOf(q) >= 0);
+    }
+    const total = totalCount(groups);
+    const totalEl = document.getElementById('cc-total');
+    if (totalEl) totalEl.textContent = total + ' 张';
+    const sub = document.getElementById('cc-sub-count');
+    if (sub) sub.textContent = '共收录 ' + total + ' 张字卡';
+    const cnt = document.getElementById('cc-list-count');
+    if (cnt) cnt.textContent = total;
+    list.innerHTML = '';
+    if (!shown.length) {
+      const emptyTxt = cur === 'sticker' ? '暂无表情包 · 点击右上角批量导入上传图片'
+        : cur === 'image' ? '暂无图片 · 点击右上角批量导入上传图片'
+        : cur === 'voice' ? '暂无语音 · 点击右上角批量导入上传音频'
+        : '暂无字卡';
+      list.innerHTML = '<div class="cc-empty">' + emptyTxt + '</div>';
+      return;
+    }
+    shown.forEach(([gname, arr]) => {
+      const h = document.createElement('div');
+      h.className = 'cc-group-header';
+      h.innerHTML = '<span class="ccg-name">' + gname + '</span><span class="ccg-count">' + arr.length + '</span>';
+      // 分组删除统一在【管理分组】里操作，这里不再显示删除按钮
+      list.appendChild(h);
+      arr.forEach((c, i) => {
+        const d = document.createElement('div');
+        d.className = 'cc-item glass';
+        d.dataset.g = gname;
+        d.dataset.idx = i;
+        d.innerHTML = cardItemHtml(c);
+        // 管理模式：显示勾选状态
+        if (manageMode) {
+          if (selected.has(gname + '\u0001' + i)) d.classList.add('sel');
+        }
+        d.addEventListener('click', () => {
+          if (manageMode) { toggleSelect(d, gname, i); return; }
+          // 图片/表情字卡：点击查看大图
+          if (typeof c === 'string' && c.indexOf('data:') === 0) {
+            viewImage(c);
+            return;
+          }
+          if (window.logFish) window.logFish();
+        });
+        list.appendChild(d);
+      });
+    });
+  }
+
+  // 分类切换
+  tabsWrap.querySelectorAll('.cc-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      // v3.6.x：切换分类时退出管理模式并清空选中——旧逻辑不清，
+      // 旧分类的「分组名\1索引」选中 key 在新分类下匹配不到，删除/移动静默失败
+      if (manageMode) exitManage();
+      selected.clear();
+      tabsWrap.querySelectorAll('.cc-tab').forEach(t => t.classList.remove('sel'));
+      tab.classList.add('sel');
+      cur = tab.dataset.type;
+      q = '';
+      curGroup = '';
+      renderGroupsBar();
+      render();
+    });
+  });
+
+  // 搜索
+  const search = document.querySelector('#page-custom-cards .card-search, .card-search');
+  if (search) {
+    search.addEventListener('click', () => {
+      if (window.openModal) {
+        window.openModal('搜索字卡' + (q ? '（确定可清除搜索）' : ''), q, (v) => {
+          q = (v || '').trim();
+          render();
+        });
+      }
+    });
+  }
+
+  // 管理分组：列出当前分类的分组，可新建 / 删除（内置分组不可删除）
+  const ngBtn = document.getElementById('cc-new-group');
+  if (ngBtn) {
+    ngBtn.addEventListener('click', openManageGroups);
+  }
+  function openManageGroups() {
+    // 创建/复用管理面板
+    let mask = document.getElementById('cc-mg-mask');
+    if (!mask) {
+      mask = document.createElement('div');
+      mask.id = 'cc-mg-mask';
+      mask.className = 'mg-mask';
+      mask.innerHTML =
+        '<div class="mg-panel">' +
+          '<div class="mg-head"><span>管理分组</span><button class="mg-close">✕</button></div>' +
+          '<div class="mg-list"></div>' +
+          '<button class="mg-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M12 5v14M5 12h14"/></svg>新建分组</button>' +
+        '</div>';
+      document.body.appendChild(mask);
+      mask.querySelector('.mg-close').addEventListener('click', () => { mask.hidden = true; });
+      mask.addEventListener('click', (e) => { if (e.target === mask) mask.hidden = true; });
+      mask.querySelector('.mg-add').addEventListener('click', () => {
+        if (window.openModal) {
+          window.openModal('新建分组', '', (v) => {
+            const name = (v || '').trim();
+            if (!name) return;
+            if (!groups[cur]) groups[cur] = [];
+            if (groups[cur].some(g => g[0] === name)) { toast('分组「' + name + '」已存在'); return; }
+            groups[cur].push([name, []]);
+            saveGroups(groups);
+            renderGroupsBar();
+            render();
+            renderMgList();
+            // v3.6.x：新建成功后自动关掉【管理分组】弹窗，不再手动点 ✕
+            mask.hidden = true;
+          });
+        }
+      });
+    }
+    function renderMgList() {
+      const listEl = mask.querySelector('.mg-list');
+      const grps = groups[cur] || [];
+      if (!grps.length) { listEl.innerHTML = '<div class="mg-empty">暂无分组，点击下方新建</div>'; return; }
+      listEl.innerHTML = '';
+      grps.forEach(([gname, arr]) => {
+        const row = document.createElement('div');
+        row.className = 'mg-row';
+        const builtin = (BUILTIN[cur] || []).some(b => b[0] === gname);
+        row.innerHTML = '<span class="mg-name">' + gname + '</span><span class="mg-count">' + arr.length + ' 张</span>' +
+          (builtin ? '<span class="mg-tag">内置</span>' : '<button class="mg-del">✕</button>');
+        if (!builtin) {
+          row.querySelector('.mg-del').addEventListener('click', () => {
+            if (window.openModal) {
+              window.openModal('删除分组「' + gname + '」及其全部字卡？', '', () => {
+                groups[cur] = groups[cur].filter(([g]) => g !== gname);
+                if (curGroup === gname) curGroup = '';
+                saveGroups(groups);
+                renderGroupsBar();
+                render();
+                renderMgList();
+              }, { noInput: true });
+            }
+          });
+        }
+        listEl.appendChild(row);
+      });
+    }
+    mask.hidden = false;
+    renderMgList();
+  }
+
+  // ================= 管理字卡（批量勾选删除 / 移动分组） =================
+  let manageMode = false;
+  const selected = new Set(); // key: 分组名 + \u0001 + 数组索引
+  let manageBar = null;
+  let mgCountEl = null;
+
+  function toggleSelect(el, gname, i) {
+    const k = gname + '\u0001' + i;
+    if (selected.has(k)) { selected.delete(k); el.classList.remove('sel'); }
+    else { selected.add(k); el.classList.add('sel'); }
+    updateCount();
+  }
+  function updateCount() {
+    if (mgCountEl) mgCountEl.textContent = '已选 ' + selected.size + ' 张';
+  }
+  function selectedKeys() {
+    const keys = [];
+    (groups[cur] || []).forEach(([gname, arr]) => arr.forEach((c, i) => keys.push(gname + '\u0001' + i)));
+    return keys;
+  }
+  function delSelected() {
+    let removed = 0;
+    (groups[cur] || []).forEach(([gname, arr]) => {
+      for (let i = arr.length - 1; i >= 0; i--) {
+        if (selected.has(gname + '\u0001' + i)) { arr.splice(i, 1); removed++; }
+      }
+    });
+    if (!removed) return;
+    selected.clear();
+    saveGroups(groups);
+    renderGroupsBar();
+    render();
+    updateCount();
+    toast('已删除 ' + removed + ' 张字卡');
+  }
+  function moveSelected(target) {
+    const mvGroups = [];
+    (groups[cur] || []).forEach(([gname, arr]) => {
+      const mv = [];
+      for (let i = arr.length - 1; i >= 0; i--) {
+        if (selected.has(gname + '\u0001' + i)) { mv.push(arr[i]); arr.splice(i, 1); }
+      }
+      if (mv.length) mvGroups.push(mv);
+    });
+    const total = mvGroups.reduce((s, a) => s + a.length, 0);
+    if (!total) return;
+    const tg = (groups[cur] || []).find(g => g[0] === target);
+    if (tg) mvGroups.forEach(a => { tg[1] = tg[1].concat(a); });
+    selected.clear();
+    saveGroups(groups);
+    renderGroupsBar();
+    render();
+    updateCount();
+    toast('已移动 ' + total + ' 张字卡到「' + target + '」');
+  }
+  function enterManage() {
+    manageMode = true;
+    selected.clear();
+    // v3.5.130：管理模式禁用搜索——搜索过滤会让勾选下标与原始数组错位，
+    // 删除/移动会误删别的卡片（数据丢失）
+    q = '';
+    const qEl = document.getElementById('cc-search-input');
+    if (qEl) qEl.value = '';
+    list.classList.add('cc-managing');
+    document.querySelectorAll('.cc-toolbar').forEach(t => { t.style.display = 'none'; });
+    if (!manageBar) {
+      manageBar = document.createElement('div');
+      manageBar.id = 'cc-manage-bar';
+      manageBar.className = 'cc-manage-bar';
+      manageBar.innerHTML =
+        '<span class="cc-m-count">已选 0 张</span>' +
+        '<button class="cc-m-btn" id="cc-m-all">全选</button>' +
+        '<button class="cc-m-btn cc-m-del" id="cc-m-del">删除</button>' +
+        '<button class="cc-m-btn" id="cc-m-move">移动</button>' +
+        '<button class="cc-m-btn" id="cc-m-exit">退出</button>';
+      document.body.appendChild(manageBar);
+      mgCountEl = manageBar.querySelector('.cc-m-count');
+      manageBar.querySelector('#cc-m-all').addEventListener('click', () => {
+        const all = selectedKeys();
+        if (selected.size === all.length && all.length) selected.clear();
+        else all.forEach(k => selected.add(k));
+        render();
+        updateCount();
+      });
+      manageBar.querySelector('#cc-m-del').addEventListener('click', () => {
+        if (!selected.size) { toast('请先勾选字卡'); return; }
+        if (window.openModal) {
+          // 弹窗里明确列出勾选删除的字卡（只含勾选的），未勾选的字卡不出现在确认弹窗里；
+          // 文字字卡显示内容，语音显示文件名，图片/表情包显示占位
+          const list = [];
+          (groups[cur] || []).forEach(([gname, arr]) => {
+            arr.forEach((c, i) => {
+              if (!selected.has(gname + '\u0001' + i)) return;
+              let t = c;
+              if (typeof t === 'string' && t.indexOf('|||') > 0) t = '🎵 ' + t.split('|||')[0];
+              else if (typeof t === 'string' && t.indexOf('data:') === 0) t = '🖼 图片';
+              list.push(t);
+            });
+          });
+          const MAX_SHOW = 30;
+          const shown = list.slice(0, MAX_SHOW).join('\n');
+          const more = list.length > MAX_SHOW ? '\n…等 ' + list.length + ' 张' : '';
+          window.openModal('删除选中的 ' + selected.size + ' 张字卡？', '', () => delSelected(), { noInput: true, staticText: shown + more });
+        }
+      });
+      manageBar.querySelector('#cc-m-move').addEventListener('click', () => {
+        if (!selected.size) { toast('请先勾选字卡'); return; }
+        const mList = (groups[cur] || []).map(g => g[0]);
+        if (!mList.length) { toast('当前没有分组'); return; }
+        if (window.openModal) {
+          window.openModal('移动到分组', '', (v) => moveSelected(v), {
+            pills: mList.map(n => ({ label: n, value: n })),
+            pill: mList[0]
+          });
+        }
+      });
+      manageBar.querySelector('#cc-m-exit').addEventListener('click', exitManage);
+    }
+    manageBar.hidden = false;
+    updateCount();
+  }
+  function exitManage() {
+    manageMode = false;
+    selected.clear();
+    list.classList.remove('cc-managing');
+    document.querySelectorAll('.cc-toolbar').forEach(t => { t.style.display = ''; });
+    if (manageBar) manageBar.hidden = true;
+  }
+  const mcBtn = document.getElementById('cc-manage-cards');
+  if (mcBtn) mcBtn.addEventListener('click', () => { if (manageMode) exitManage(); else enterManage(); });
+
+  // ================= 导出数据（字卡库 json，文件名：mochi字卡库数据） =================
+  const ccExport = document.getElementById('cc-export');
+  if (ccExport) {
+    ccExport.addEventListener('click', () => {
+      try {
+        const data = JSON.stringify(groups, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'mochi字卡库数据.json';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 300);
+        toast('已导出字卡库数据');
+      } catch (e) { toast('导出失败'); }
+    });
+  }
+
+  // ================= 导入数据（字卡库 json） =================
+  const ccImportData = document.getElementById('cc-import-data');
+  if (ccImportData) {
+    ccImportData.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = '.json,application/json';
+      input.onchange = () => {
+        const f = input.files && input.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(String(reader.result || ''));
+            if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('格式错误');
+            // v3.5.72：识别星言简约版聊天字卡库导出 json（globalCards + cardGroups 结构）
+            //   v3.5.73 修正：专享字卡的字卡内容+分组也正常导入，仅不导入其绑定的联系人
+            //   （Mochi 无专享联系人概念，天然忽略联系人；不跳过任何字卡）
+            if (Array.isArray(data.globalCards)) {
+              const starToMochiCat = { custom: 'text', kaomoji: 'kaomoji', emojis: 'emoji', stickers: 'sticker', image: 'image', touch: 'poke', voices: 'voice' };
+              const groupById = {};
+              (Array.isArray(data.cardGroups) ? data.cardGroups : []).forEach(g => { if (g && g.id) groupById[g.id] = g; });
+              const imgs = (data.images && typeof data.images === 'object') ? data.images : {};
+              const voices = (data.voices && typeof data.voices === 'object') ? data.voices : {};
+              let imported = 0;
+              const pending = []; // {cat, groupName, cardText}
+              data.globalCards.forEach(c => {
+                if (!c || typeof c !== 'object') return;
+                let content = c.content;
+                if (typeof content === 'string' && content.indexOf('__img__') === 0) {
+                  content = imgs[c.id] || '';
+                } else if (typeof content === 'string' && content.indexOf('__voice__') === 0) {
+                  content = voices[c.id] || '';
+                }
+                if (typeof content !== 'string' || !content) return;
+                // 分类映射（未知分类归入主字卡）
+                const cat = starToMochiCat[c.category] || 'text';
+                // 分组名：cardGroups 匹配 groupId；无则用「默认」
+                let gname = '默认';
+                if (c.groupId && groupById[c.groupId]) gname = groupById[c.groupId].name || '默认';
+                else if (c.groupName) gname = c.groupName;
+                pending.push({ cat: cat, groupName: gname, card: content });
+                imported++;
+              });
+              if (!imported) { toast('星言文件里没有可导入的字卡'); return; }
+              // 按分类+分组合并
+              pending.forEach(p => {
+                if (!groups[p.cat]) groups[p.cat] = [];
+                let g = groups[p.cat].find(x => x[0] === p.groupName);
+                if (!g) { g = [p.groupName, []]; groups[p.cat].push(g); }
+                g[1].push(p.card);
+              });
+              saveGroups(groups);
+              renderGroupsBar();
+              render();
+              toast('导入成功 · ' + imported + ' 张字卡（星言格式，字卡内容与分组完整导入）');
+              return;
+            }
+            let imported = 0;
+            ['text', 'kaomoji', 'emoji', 'sticker', 'image', 'poke', 'voice'].forEach(k => {
+              const arr = data[k];
+              if (!Array.isArray(arr)) return;
+              arr.forEach(g => {
+                if (!Array.isArray(g) || g.length < 2) return;
+                const name = String(g[0]);
+                const cards = Array.isArray(g[1]) ? g[1].filter(c => typeof c === 'string' && c) : [];
+                if (!cards.length) return;
+                if (!groups[k]) groups[k] = [];
+                const exist = groups[k].find(x => x[0] === name);
+                if (exist) exist[1] = exist[1].concat(cards);
+                else groups[k].push([name, cards.slice()]);
+                imported += cards.length;
+              });
+            });
+            if (!imported) { toast('未导入到有效字卡'); return; }
+            saveGroups(groups);
+            renderGroupsBar();
+            render();
+            toast('导入成功 · ' + imported + ' 张字卡');
+          } catch (e) {
+            toast('导入失败：文件格式不正确');
+          }
+        };
+        reader.readAsText(f);
+      };
+      input.click();
+    });
+  }
+
+  // 批量导入：文字分类按【分组名】导入；【表情包】【图片】分类直接上传图片
+  const impBtn = document.getElementById('cc-import');
+  if (impBtn) {
+    impBtn.addEventListener('click', () => {
+      // 媒体分类：表情包/图片上传图片，语音上传音频
+      if (IMG_TYPES[cur]) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = cur === 'voice' ? 'audio/*' : 'image/*';
+        input.multiple = true;
+        input.onchange = () => {
+          const files = Array.prototype.slice.call(input.files || []);
+          if (!files.length) return;
+          if (!groups[cur]) groups[cur] = [];
+          // 目标分组：当前选中分组，否则默认分组（表情包/图片），再否则新建
+          let g = null;
+          if (curGroup) {
+            g = groups[cur].find(g => g[0] === curGroup);
+            if (!g) { g = [curGroup, []]; groups[cur].push(g); }
+          } else {
+            const defName = IMG_TYPES[cur];
+            g = groups[cur].find(g => g[0] === defName);
+            if (!g) { g = [defName, []]; groups[cur].push(g); }
+          }
+          let done = 0;
+          let skipped = 0;
+          // v3.6.x：上传大小限制——语音不压缩直接存 dataURL（字符串膨胀约 33%），
+          // 超大音频会撑爆手机内存/IDB；图片虽有 260px 压缩兜底，原图读取也占峰值内存。
+          // 语音限 10MB、图片限 20MB，超出跳过并提示
+          const sizeLimit = cur === 'voice' ? 10 * 1024 * 1024 : 20 * 1024 * 1024;
+          files.forEach((f) => {
+            if (f.size > sizeLimit) {
+              skipped++;
+              done++;
+              if (done === files.length) finishUpload(done - skipped, skipped);
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+              const process = (data) => {
+                // 语音：存 "文件名|||音频数据"，图片/表情：存图片 dataURL
+                // v3.6.x：文件名去掉 mp3/mp4 等后缀（聊天里语音名称不显示 .mp3/.mp4）
+                const val = cur === 'voice' ? ((f.name || '音频').replace(/\.[^.]+$/, '') + '|||' + data) : data;
+                g[1].push(val);
+                done++;
+                if (done === files.length) finishUpload(done - skipped, skipped);
+              };
+              if (cur === 'voice') process(reader.result);
+              else compressImage(reader.result, 260).then(process);
+            };
+            reader.readAsDataURL(f);
+          });
+          function finishUpload(ok, skip) {
+            saveGroups(groups);
+            renderGroupsBar();
+            render();
+            if (skip > 0) toast('已上传 ' + ok + ' 个，跳过 ' + skip + ' 个超大文件（' + (cur === 'voice' ? '音频>10MB' : '图片>20MB') + '）');
+            else toast('已上传 ' + ok + ' 个' + (cur === 'voice' ? '音频' : '图片'));
+          }
+        };
+        input.click();
+        return;
+      }
+      // 文字分类：批量导入（一行一个；按【组名】识别分组 / txt 文件）
+      if (window.openModal) {
+        window.openModal('批量导入字卡（一行一个）', '', (raw, targetGroup) => {
+          // 一行一个字卡：统一按 \r\n / \r / \n 拆分——部分手机浏览器/剪贴板来源的换行是 \r，
+          // 只按 \n 拆会把多行并成一行，全部混进同一个字卡
+          const lines = String(raw || '').split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean);
+          if (!lines.length) { toast('没有可导入的内容'); return; }
+          if (!groups[cur]) groups[cur] = [];
+          let curGrp = null;
+          let imported = 0;
+          let newGroups = 0;
+          if (targetGroup) {
+            let g = groups[cur].find(g => g[0] === targetGroup);
+            if (!g) { g = [targetGroup, []]; groups[cur].push(g); }
+            curGrp = g;
+          }
+          lines.forEach(line => {
+            const m = line.match(/^[【\[](.*?)[】\]](.*)$/);
+            if (m && m[1].trim()) {
+              const gname = m[1].trim();
+              let g = groups[cur].find(g => g[0] === gname);
+              if (!g) { g = [gname, []]; groups[cur].push(g); newGroups++; }
+              curGrp = g;
+              const rest = (m[2] || '').trim();
+              if (rest) { g[1].push(rest); imported++; }
+              return;
+            }
+            if (curGrp) {
+              curGrp[1].push(line);
+              imported++;
+            } else {
+              let g = groups[cur].find(g => g[0] === '未分组');
+              if (!g) { g = ['未分组', []]; groups[cur].push(g); newGroups++; }
+              g[1].push(line);
+              imported++;
+            }
+          });
+          saveGroups(groups);
+          renderGroupsBar();
+          render();
+          toast('已导入 ' + imported + ' 条字卡' + (newGroups ? '，新建 ' + newGroups + ' 个分组' : ''));
+        }, {
+          textarea: true,
+          textareaPlaceholder: '【日常】\n你今天真好看\n我想你了',
+          txtImport: true
+        });
+      }
+    });
+  }
+
+  // 音频播放（事件委托；字卡删除统一走【管理字卡】）
+  // 播放中：按钮高亮 + 图标变波形动画；再次点击暂停；同一时间只播放一条
+  let playingAudio = null;
+  let playingBtn = null;
+  function stopPlay() {
+    if (playingAudio) { try { playingAudio.pause(); } catch (e) {} playingAudio = null; }
+    if (playingBtn) { playingBtn.classList.remove('playing'); playingBtn = null; }
+  }
+  list.addEventListener('click', (e) => {
+    const btn = e.target.closest('.cc-play');
+    if (!btn) return;
+    if (playingBtn === btn) { stopPlay(); return; }
+    const src = btn.dataset.src;
+    if (!src) return;
+    stopPlay();
+    playingAudio = new Audio(src);
+    playingBtn = btn;
+    btn.classList.add('playing');
+    playingAudio.addEventListener('ended', stopPlay);
+    playingAudio.addEventListener('error', stopPlay);
+    playingAudio.play().catch(() => { stopPlay(); toast('播放失败'); });
+  });
+
+  renderGroupsBar();
+  render();
+
+  // ---- 回复池：给聊天页提供「自定义聊天字卡」里所有字卡 ----
+  window.getCustomCards = function () {
+    const g = groups;
+    const out = [];
+    Object.keys(g).forEach(t => g[t].forEach(([name, arr]) => arr.forEach(c => out.push(c))));
+    return out;
+  };
+  // 拍一拍字卡（自定义字卡里【拍一拍】分类）
+  window.getPokeCards = function () {
+    const g = groups;
+    const out = [];
+    (g['poke'] || []).forEach(([name, arr]) => arr.forEach(c => out.push(c)));
+    return out;
+  };
+  // 拍一拍分组（分组名 + 字卡数组），供拍一拍页面展示
+  window.getPokeGroups = function () {
+    return (groups['poke'] || []).slice();
+  };
+  // 媒体字卡：表情包/图片 的图片 dataURL 列表、语音（文件名|||音频）列表（供回复/表情面板）
+  window.getMediaCards = function (type) {
+    const g = groups;
+    const out = [];
+    (g[type] || []).forEach(([name, arr]) => arr.forEach(c => {
+      if (type === 'voice') {
+        // 语音字卡：文件名|||音频数据
+        if (typeof c === 'string' && c.indexOf('|||') > 0) out.push(c);
+      } else if (typeof c === 'string' && c.indexOf('data:image') === 0) {
+        out.push(c);
+      }
+    }));
+    return out;
+  };
+  // 媒体分组：表情包/图片 的分组结构（供表情面板展示）
+  window.getMediaGroups = function (type) {
+    const g = groups;
+    return (g[type] || []).map(([name, arr]) => [name, arr.filter(c => typeof c === 'string' && c.indexOf('data:image') === 0)]);
+  };
+
+  // 入口：字卡库列表页点「自定义聊天字卡」进入本页
+  const li = document.getElementById('li-custom-cards');
+  if (li) {
+    li.addEventListener('click', () => {
+      document.querySelectorAll('.page').forEach(p => p.hidden = true);
+      const ccPage = document.getElementById('page-custom-cards');
+      if (ccPage) ccPage.hidden = false;
+    });
+  }
+  const ccBack = document.getElementById('cc-back');
+  if (ccBack) {
+    ccBack.addEventListener('click', () => {
+      document.querySelectorAll('.page').forEach(p => p.hidden = true);
+      const home = document.getElementById('page-chatcard');
+      if (home) home.hidden = false;
+    });
+  }
+})();

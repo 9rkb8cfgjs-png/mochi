@@ -1,0 +1,34 @@
+/* ===== 底部 tab（白色纸张风格，与全局统一） ===== */
+.tabbar {
+  margin-top:10px; display:flex; justify-content:space-around;
+  flex-shrink:0; /* 视口/高度变化时不被 flex 压缩，防止底部栏被挤没 */
+  background:#ffffff;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:22px; padding:8px 6px; z-index:2;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+}
+.tabbar .tab {
+  display:flex; align-items:center; justify-content:center; flex:1;
+  color:var(--muted); cursor:pointer; padding:12px 6px; border-radius:14px;
+  transition:color .18s ease, background .18s ease;
+}
+.tabbar .tab.active { color:var(--ink); background:rgba(0,0,0,.05); }
+.tabbar .tab svg { width:23px; height:23px; }
+/* 独立全屏页（聊天等）隐藏底部导航 */
+.tabbar[hidden] { display:none; }
+
+/* 全屏页：隐藏状态栏、去手机内边距；各区块自行对齐 */
+.phone.no-statusbar { padding:0; }
+.phone.no-statusbar .statusbar { display:none; }
+.page.full { padding: 0; }
+
+/* 全屏页内容统一左右 18px 边距（避免内容贴边/飞出屏幕） */
+.page.full .gs-title { padding-left:18px; padding-right:18px; }
+.page.full .set-group { margin-left:18px; margin-right:18px; }
+.page.full .set-title { padding-left:18px; padding-right:18px; }
+.page.full .dc-toggle { margin-left:18px; margin-right:18px; }
+.page.full .card-tabs { padding-left:18px; padding-right:18px; }
+.page.full .card-search { margin-left:18px; margin-right:18px; }
+.page.full .card-list { padding-left:18px; padding-right:18px; }
+.page.full .gs-scroll { padding-left:18px; padding-right:18px; }
+.page.full .chat-item, .page.full .chat-search { margin-left:18px; margin-right:18px; }

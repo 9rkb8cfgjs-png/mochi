@@ -1,0 +1,323 @@
+/* ===== 手机桌面（情侣空间） ===== */
+/* 纪念日卡片（纯装饰：头像 + 爱心 + 纪念日；已禁止上传背景图）
+   纯白纸底 + 虚线描边 + 上下装饰点，细节更精致 */
+.deco-widget {
+  position:relative; height:190px; border-radius:26px;
+  margin-top:14px; margin-bottom:14px; flex-shrink:0;
+  background:#ffffff;
+  border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 4px 14px rgba(0,0,0,.05);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:14px 16px 12px;
+}
+.deco-avatars {
+  display:flex; align-items:center; justify-content:center; gap:22px;
+}
+.deco-avatar { display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; }
+/* 头像：无外框，头像直接显示，仅按压微缩放（形状跟随聊天设置的圆形/方形） */
+.deco-avatar .ring {
+  width:80px; height:80px; border-radius:var(--msg-av-radius, 50%);
+  background:transparent;
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+  transition:transform .18s ease;
+}
+.deco-avatar:active .ring { transform:scale(.95); }
+.deco-avatar .ring svg { width:34px; height:34px; }
+.deco-avatar .ring img { width:100%; height:100%; object-fit:cover; display:block; border-radius:var(--msg-av-radius, 50%); }
+/* 昵称：白底虚线描边胶囊，印章标签感 */
+.deco-avatar .lbl {
+  font-size:11px; color:#666; font-weight:600; letter-spacing:.5px;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  padding:3px 13px; border-radius:99px; cursor:pointer;
+}
+.deco-avatar .lbl:hover { background:rgba(0,0,0,.04); }
+/* 中间爱心：直接显示爱心图标，无圆框 */
+.deco-heart {
+  flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  color:#111;
+}
+.deco-heart svg { width:20px; height:20px; }
+/* 底部纪念日：虚线与头像区隔，天数大字加粗、日期小字灰，单行不换行 */
+.deco-love {
+  margin-top:12px; text-align:center; color:var(--ink);
+  width:84%;
+  border-top:1px solid rgba(0,0,0,.1);
+  padding-top:10px;
+  line-height:1.6;
+  display:flex; align-items:baseline; justify-content:center; gap:10px;
+}
+.deco-love #love-days { font-size:20px; font-weight:800; letter-spacing:1px; white-space:nowrap; }
+.deco-love #love-date {
+  font-size:11px; color:var(--muted); letter-spacing:.5px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+}
+
+/* 小卡片行：今日情话 / 纪念日倒计时 */
+.mini-row { display:flex; gap:12px; margin-bottom:14px; flex-shrink:0; }
+.mini-card { flex:1; border-radius:20px; padding:14px; box-shadow:0 6px 16px rgba(0,0,0,.06); }
+.mc-top { font-size:11px; color:var(--muted); letter-spacing:1px; }
+.mc-b { font-size:13px; font-weight:600; color:var(--ink); margin-top:6px; line-height:1.45; }
+.mc-b b { font-size:16px; }
+
+/* 打卡横幅 */
+.checkin {
+  display:flex; align-items:center; gap:10px;
+  border-radius:18px; padding:12px 14px; margin:0 2px 16px; flex-shrink:0;
+}
+.ck-heart {
+  width:30px; height:30px; border-radius:50%; flex-shrink:0;
+  background:var(--ink); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:13px;
+}
+.ck-txt {
+  flex:1; font-size:11px; color:#555; font-weight:500; letter-spacing:.5px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.ck-btn {
+  font-size:12px; font-weight:700; color:#fff; cursor:pointer;
+  background:var(--ink); padding:9px 16px; border-radius:99px;
+  box-shadow:0 3px 8px rgba(0,0,0,.12);
+  display:inline-flex; align-items:center; min-height:38px; border:none;
+  font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.ck-btn.done { background:#e2e2e2; color:#777; box-shadow:none; }
+
+/* 离周末还有几天（摸鱼小组件，v3.5.35 整体压缩：更矮更紧凑） */
+.weekend-box {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  border-radius:16px; padding:6px 12px; margin:0 2px 10px; flex-shrink:0;
+}
+.we-left { display:flex; flex-direction:column; gap:1px; }
+.we-days { font-size:13px; font-weight:700; color:var(--ink); letter-spacing:.5px; }
+.we-sub { font-size:9px; color:var(--muted); letter-spacing:1px; }
+/* v3.5.75 两行 grid 两列：摸鱼值列/工作值列 列宽一致完美对齐，间距清晰 */
+.we-ta {
+  display:grid; grid-template-columns:1fr 1fr; gap:16px;
+  margin-top:4px; font-size:10px; color:#555; font-weight:600;
+}
+.we-ta .pair { display:flex; align-items:baseline; gap:5px; white-space:nowrap; }
+.we-ta .pair i { font-style:normal; }
+.we-ta .pair b { color:var(--ink); font-size:12px; font-weight:700; }
+/* v3.5.71 摸鱼值/工作值 间隔：清晰分隔、不再拤在一起 */
+.we-ta i { font-style:normal; }
+.we-sep {
+  font-style:normal; color:#c9c9c9; font-weight:400;
+  margin:0 10px; font-size:10px;
+}
+.we-btn {
+  flex-shrink:0; align-self:flex-start; margin-top:2px;
+  border:none; cursor:pointer; font-family:inherit;
+  background:var(--ink); color:#fff; font-size:12px; font-weight:700;
+  padding:6px 11px; border-radius:99px; box-shadow:0 3px 8px rgba(0,0,0,.25);
+  display:flex; align-items:center; gap:3px;
+}
+.we-btn:active { transform:scale(.95); }
+.we-btn b { font-size:13px; }
+
+/* 应用图标 */
+.app-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:22px 10px; padding:2px 8px 6px; }
+.app { display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; }
+.app .app-ico {
+  /* v3.5.133：min(58px, 21vw)——极窄屏（<305px）固定 58px 会撑爆 4 列网格被裁 */
+  width:min(58px, 21vw); height:min(58px, 21vw); border-radius:18px;
+  background: rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.app:hover .app-ico {
+  transform:translateY(-2px) scale(1.05);
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+}
+.app .app-ico svg { width:28px; height:28px; stroke:var(--ink); }
+.app .app-ico img { width:100%; height:100%; object-fit:cover; border-radius:18px; display:block; }
+/* v3.5.99：桌面图标未读角标（信箱新来信）。
+   角标放在 app-ico 外层的 .app-badge-box 里，自定义图标替换 app-ico 内容时不会被冲掉 */
+.app-badge-box { position:relative; }
+/* v3.5.100：灰白简约——白底深灰字、细边框、轻阴影，去掉红底 */
+.app-badge {
+  position:absolute; top:-5px; right:-6px; min-width:18px; height:18px; padding:0 5px;
+  background:#fff; color:#333; font-size:10px; font-weight:700; line-height:16px;
+  text-align:center; border-radius:10px; border:1px solid rgba(0,0,0,.15);
+  box-shadow:0 1px 4px rgba(0,0,0,.08); box-sizing:border-box;
+}
+.app-badge[hidden] { display:none; }
+.app-grid.editing .app-ico { outline:2px solid var(--ink); outline-offset:3px; }
+.app .app-name { font-size:11px; color:var(--ink); letter-spacing:.5px; }
+
+/* 桌面功能区（直接显示） */
+.app-grid { margin-top:8px; }
+
+/* 桌面分页（横向滚动翻页，scroll-snap 原生吸附，不用 transform 避免毛玻璃渲染 bug） */
+.desktop-pages {
+  flex:1; min-height:0; display:flex;
+  overflow-x:auto; overflow-y:hidden;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none; -ms-overflow-style:none;
+  /* v3.5.129：明确手势归属——外层横滑翻页、内层纵滑列表，
+     避免安卓轴锁定下斜滑"滑不动" */
+  touch-action:pan-x pan-y;
+}
+.desktop-pages::-webkit-scrollbar { display:none; }
+.page-slide {
+  width:100%; flex-shrink:0; height:100%;
+  scroll-snap-align:start;
+  overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none;
+  touch-action:pan-x pan-y;
+}
+.page-slide::-webkit-scrollbar { display:none; }
+
+/* 分页指示器 */
+.dots { display:flex; justify-content:center; gap:8px; padding:12px 0 0; flex-shrink:0; }
+.dot {
+  width:7px; height:7px; border-radius:99px; background:#c9c9c9; cursor:pointer;
+  transition:width .25s ease, background .25s ease;
+}
+.dot.active { width:20px; background:var(--ink); }
+
+/* ---- 音乐播放器小组件（第二页） ---- */
+.music-widget {
+  border-radius:22px; padding:13px; margin-top:14px; margin-bottom:14px;
+  box-shadow:0 8px 20px rgba(0,0,0,.07);
+}
+.mw-head {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:9px;
+}
+.mw-tag { font-size:10px; color:var(--muted); letter-spacing:2px; font-weight:600; }
+.mw-bars { width:15px; height:15px; opacity:.35; transition:opacity .2s ease; }
+/* 播放时：波形条跳动动画 */
+.mw-bars.playing { opacity:1; }
+.mw-bars.playing rect { animation:bar-bounce 1s infinite ease-in-out; transform-origin:center; }
+.mw-bars.playing .b1 { animation-duration:1s; }
+.mw-bars.playing .b2 { animation-duration:1.1s; }
+.mw-bars.playing .b3 { animation-duration:.9s; }
+.mw-bars.playing .b4 { animation-duration:1.3s; }
+@keyframes bar-bounce {
+  0%, 100% { transform:scaleY(.5); }
+  50% { transform:scaleY(1); }
+}
+
+.mw-main { display:flex; align-items:center; gap:12px; }
+.mw-cover { flex-shrink:0; }
+.mw-vinyl {
+  width:70px; height:70px; border-radius:50%;
+  background:radial-gradient(circle at 50% 50%, #2a2a2a 0%, #1a1a1a 55%, #3a3a3a 56%, #2e2e2e 100%);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 6px 14px rgba(0,0,0,.30), inset 0 0 0 1px rgba(255,255,255,.08);
+  animation:spin 14s linear infinite;
+}
+.mw-vinyl svg { width:26px; height:26px; stroke:#fff; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.mw-info { flex:1; min-width:0; }
+.mw-song { font-size:16px; font-weight:700; letter-spacing:.5px; }
+.mw-artist { font-size:11px; color:var(--muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mw-progress { margin-top:10px; }
+.mw-bar {
+  position:relative; height:4px; border-radius:99px; background:#e3e3e3;
+}
+.mw-fill {
+  position:absolute; left:0; top:0; bottom:0; width:38%; border-radius:99px;
+  background:linear-gradient(90deg,#555,#111);
+}
+.mw-knob {
+  position:absolute; left:38%; top:50%; transform:translate(-50%,-50%);
+  width:11px; height:11px; border-radius:50%; background:#111;
+  box-shadow:0 1px 4px rgba(0,0,0,.35);
+}
+.mw-times {
+  display:flex; justify-content:space-between; margin-top:5px;
+  font-size:10px; color:var(--muted);
+}
+
+.mw-controls {
+  display:flex; align-items:center; justify-content:space-between; margin-top:9px;
+  padding:0 4px;
+}
+.mw-btn { width:26px; height:26px; color:var(--ink); cursor:pointer; transition:transform .15s ease; }
+.mw-btn:hover { transform:scale(1.15); }
+.mw-play {
+  width:46px; height:46px; border-radius:50%;
+  background:#ffffff; color:#111111;
+  display:flex; align-items:center; justify-content:center;
+  border:1px solid rgba(0,0,0,.08);
+  box-shadow:0 6px 14px rgba(0,0,0,.14); cursor:pointer;
+  transition:transform .15s ease;
+}
+.mw-play:hover { transform:scale(1.08); }
+.mw-play svg { width:24px; height:24px; fill:#111111; }
+.mw-heart { width:24px; height:24px; cursor:pointer; transition:transform .15s ease; }
+.mw-heart:hover { transform:scale(1.15); }
+/* 收藏的歌曲：桌面部件爱心点亮（红心，无黑描边——描边跟随 currentColor 自动变红） */
+
+/* 手机端：音乐控制按钮扩大点击热区（图标保持原大小） */
+.mw-controls .mw-btn, .mw-controls .mw-heart {
+  width:38px; height:38px; min-width:38px; min-height:38px;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* 音乐播放器封面（圆形：有封面显示专辑图，无封面显示音符占位） */
+#mw-cover {
+  position:relative;
+  width:70px; height:70px; border-radius:50%;
+  background:#f1f1f1; overflow:hidden;
+  box-shadow:0 4px 12px rgba(0,0,0,.1);
+  border:1px solid rgba(0,0,0,.06);
+  display:flex; align-items:center; justify-content:center;
+}
+#mw-cover .mw-cover-ico {
+  width:24px; height:24px; color:#b9b9b9;
+  transition:opacity .2s ease;
+}
+#mw-cover .mw-vinyl {
+  position:absolute; inset:0; border-radius:50%;
+  background:transparent; animation:none; box-shadow:none; display:block;
+}
+#mw-cover.has-cover .mw-cover-ico { opacity:0; }
+.mw-play { cursor:pointer; }
+.mw-btn {
+  background:transparent; border:none; padding:0; cursor:pointer;
+  color:var(--ink); display:flex; align-items:center; justify-content:center;
+}
+.mw-btn svg { width:26px; height:26px; }
+.mw-heart { background:transparent; border:none; padding:0; cursor:pointer; color:var(--ink); }
+.mw-heart svg { width:26px; height:26px; }
+.mw-heart.liked { color:#e05555; }
+.mw-heart.liked svg { fill:#e05555; }
+#mw-bar { cursor:pointer; }
+
+/* ===== 第二页补充：今日备忘 / 今天的心情 / 本周日常 ===== */
+.memo-card, .mood-card { cursor:pointer; }
+.memo-card .mc-b, .mood-card .mc-b { font-size:12px; }
+.week-card { border-radius:20px; padding:14px; margin-bottom:14px; }
+.week-days { display:flex; gap:6px; margin-top:10px; }
+.week-day {
+  flex:1; text-align:center; padding:7px 0; border-radius:10px;
+  background:rgba(0,0,0,.04); color:var(--muted); font-size:11px;
+}
+.week-day b { display:block; font-size:14px; color:var(--ink); margin-bottom:2px; }
+.week-day.today { background:var(--ink); color:#fff; }
+.week-day.today b { color:#fff; }
+
+/* v3.5.102：桌面新消息横幅（TA 主动发消息时顶部弹出，点击进聊天） */
+.desk-msg {
+  position:fixed; top:12px; left:50%; transform:translateX(-50%);
+  /* v3.5.127：z 从 300 降到 89——不再盖过弹层（modal 90/tc 85/qa 88/call 95），
+     否则 TA 来消息时横幅压在弹窗/来电面板上面 */
+  z-index:89; width:min(320px, calc(100% - 24px));
+  display:flex; align-items:center; gap:10px; padding:10px 12px;
+  background:rgba(255,255,255,.96); border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.12);
+  cursor:pointer; animation:deskMsgIn .25s ease;
+  box-sizing:border-box;
+}
+@keyframes deskMsgIn { from{opacity:0; transform:translateX(-50%) translateY(-8px);} to{opacity:1; transform:translateX(-50%) translateY(0);} }
+.desk-msg-av { width:38px; height:38px; border-radius:50%; overflow:hidden; flex-shrink:0; background:#f1f1f1; display:flex; align-items:center; justify-content:center; }
+.desk-msg-av img { width:100%; height:100%; object-fit:cover; display:block; }
+.desk-msg-av svg { width:22px; height:22px; stroke:#999; }
+.desk-msg-body { flex:1; min-width:0; }
+.desk-msg-name { font-size:12px; font-weight:700; color:var(--ink); }
+.desk-msg-text { font-size:12px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.desk-msg[hidden] { display:none; }

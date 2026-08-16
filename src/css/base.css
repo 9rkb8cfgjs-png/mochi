@@ -1,0 +1,422 @@
+/* ===== 基础：重置 / 变量 / 手机外框 / 通用 ===== */
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --ink:#111111; --muted:#8a8a8a; --line:#e6e6e6;
+}
+html,body { overflow-x:hidden;
+  min-height:100vh;
+  font-family:'PingFang SC','Microsoft YaHei',-apple-system,sans-serif;
+  background:radial-gradient(80% 60% at 50% 0%, #f6f6f6 0%, transparent 60%), #e9e9e9;
+  display:flex; align-items:center; justify-content:center;
+  padding:24px; color:var(--ink);
+  /* v3.5.105：iOS 横竖屏切换不放大字号；安卓下拉不整页回弹 */
+  -webkit-text-size-adjust:100%; text-size-adjust:100%;
+  overscroll-behavior:none;
+}
+
+/* ===== 开屏加载动画 ===== */
+.splash {
+  position:fixed; inset:0; z-index:999;
+  background:#fff;
+  display:flex; align-items:center; justify-content:center;
+  transition:opacity .4s ease;
+  cursor:pointer;
+}
+.splash.hide { opacity:0; pointer-events:none; display:none; }
+.splash-box { text-align:center; max-height:100%; overflow-y:auto; padding:24px 20px; scrollbar-width:none; -ms-overflow-style:none; }
+.splash-box::-webkit-scrollbar { display:none; }
+.splash-logo {
+  width:74px; height:74px; margin:0 auto 16px;
+  border-radius:24px;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 8px 24px rgba(0,0,0,.08);
+  display:flex; align-items:center; justify-content:center;
+  animation:splash-pop .7s ease;
+}
+.splash-logo svg { width:34px; height:34px; }
+.splash-title { font-size:17px; font-weight:800; letter-spacing:1px; color:var(--ink); }
+.splash-dots { display:flex; gap:6px; justify-content:center; margin-top:14px; }
+.splash-dots i {
+  width:7px; height:7px; border-radius:50%; background:#111;
+  animation:splash-bounce 1.2s infinite ease-in-out;
+}
+.splash-dots i:nth-child(2) { animation-delay:.15s; }
+.splash-dots i:nth-child(3) { animation-delay:.3s; }
+.splash-brand { margin-top:18px; font-size:11px; color:#b5b5b5; letter-spacing:.5px; }
+.splash-ver { margin-top:6px; font-size:10px; color:#c9c9c9; letter-spacing:.5px; font-family:monospace; }
+/* v3.5.111：开屏公告卡片（白纸卡片，与全局简约风格一致） */
+.splash-notice {
+  margin:16px auto 4px; max-width:320px; text-align:left;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; padding:14px 16px;
+  box-shadow:0 6px 20px rgba(0,0,0,.05);
+}
+.splash-notice-title { font-size:13px; font-weight:800; color:var(--ink); text-align:center; margin-bottom:8px; }
+.splash-notice-sub { font-size:11px; font-weight:700; color:#c0392b; text-align:center; margin-bottom:10px; }
+.splash-notice-list p { font-size:11px; line-height:1.7; color:#555; margin:0 0 6px; }
+.splash-notice-list p:last-child { margin-bottom:0; }
+/* 点击进入按钮
+   v3.5.120：数据加载完成前按钮 hidden 不显示（clock.js 控制），
+   加载期间显示 .splash-loading 提示，就绪后按钮才出现 */
+.splash-enter {
+  display:inline-block; margin-top:16px; padding:10px 36px;
+  background:#111; color:#fff; font-size:13px; font-weight:700;
+  border-radius:99px; letter-spacing:1px; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; user-select:none;
+}
+.splash-enter:active { opacity:.75; }
+.splash-enter[hidden] { display:none; }
+/* 加载提示（非按钮，不可点） */
+.splash-loading {
+  margin-top:18px; font-size:12px; color:#b5b5b5; letter-spacing:1px;
+}
+.splash-loading[hidden] { display:none; }
+@keyframes splash-pop {
+  0% { transform:scale(.8); opacity:0; }
+  100% { transform:scale(1); opacity:1; }
+}
+@keyframes splash-bounce {
+  0%, 60%, 100% { transform:translateY(0); opacity:.35; }
+  30% { transform:translateY(-6px); opacity:1; }
+}
+
+/* 手机屏幕 */
+.phone {
+  width:390px; height:844px; max-width:100vw; flex-shrink:0; position:relative;
+  border-radius:44px; padding:16px 18px 18px;
+  display:flex; flex-direction:column; overflow:hidden;
+  box-shadow:0 30px 70px rgba(0,0,0,.1), inset 0 0 0 1px #e8e8e8;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(0,0,0,.04), transparent 45%),
+    radial-gradient(circle at 85% 30%, rgba(0,0,0,.03), transparent 50%),
+    radial-gradient(circle at 30% 90%, rgba(0,0,0,.05), transparent 50%),
+    linear-gradient(168deg, var(--bg-a, #ffffff) 0%, var(--bg-b, #f2f2f2) 100%);
+}
+
+/* 窄屏（真实手机 / 小窗口 / 折叠屏展开）：去掉模拟器外壳，直接全屏显示
+   v3.5.133：上限 480→768px——折叠屏展开（约 673-717px）和平板竖屏不再显示
+   桌面模拟器外壳（390px 小框 + 两侧灰底），改为手机全屏布局 */
+@media (max-width: 768px) {
+  html, body { padding:0; min-height:100vh; min-height:100svh; min-height:100dvh; }
+  .phone {
+    width:100vw; height:100vh; height:100svh; height:100dvh;
+    border-radius:0; box-shadow:none;
+    padding:0 18px 18px;
+  }
+  .statusbar {
+    /* v3.5.127：max 兜底——真全屏挖孔屏 env() 返回 0 时保留 14px 最小留白 */
+    padding-top:max(calc(14px + env(safe-area-inset-top, 0px)), 14px);
+    padding-bottom:10px;
+  }
+}
+
+/* ===== v3.5.105：手机端（安卓 / iOS）适配 =====
+   只影响真实手机窄屏，桌面模拟器外壳不受影响 */
+
+/* iOS Safari：输入框聚焦时不自动放大页面（字号 <16px 会触发自动缩放；
+   这里统一提到 16px，页面本身不放大，输入体验不跳） */
+@media (max-width: 480px) {
+  .chat-input, .chat-search-input, .chat-ask-input,
+  .modal-input, .modal-textarea,
+  .mem-add-input, .div-input, .ta-add input, .tc-input, .qa-input,
+  .mail-compose-input, .feed-comment-input,
+  input[type="text"], input[type="search"], input[type="number"], textarea {
+    font-size:16px;
+  }
+  /* 双击/双指不再触发页面缩放（viewport 已锁，这里再兜一层） */
+  html, body { touch-action:manipulation; }
+  .phone { touch-action:manipulation; }
+  /* v3.6.x：iOS 长按图片/文字不再弹出系统「存储图像/拷贝」菜单——
+     朋友圈九宫格图、聊天表情包等点击都是自定义放大/操作，长按菜单只会误触 */
+  html, body, .phone, img { -webkit-touch-callout:none; }
+}
+
+/* iOS 全面屏底部安全区：底部 tabbar（桌面页）+ 聊天输入栏不被 Home 指示条遮挡 */
+@media (max-width: 480px) {
+  .tabbar {
+    margin-bottom:env(safe-area-inset-bottom, 0px);
+  }
+  /* v3.5.119：聊天页底部输入栏改通栏贴底（微信式）——不再悬浮留白：
+     去 margin/圆角/侧底边框，底部只留系统安全区；顶部栏同步收紧。
+     选择器加 .phone 前缀提高特异性，压过后加载的 chat-main.css 悬浮样式 */
+  .phone .page.full .chat-input-row {
+    margin: 0;
+    border-radius: 0;
+    border-left: none; border-right: none; border-bottom: none;
+    padding-left: 12px; padding-right: 12px;
+    padding-top: 10px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .phone .page.full .chat-head { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+  .phone .page.full { padding-bottom: 0; }
+  /* v3.5.116：键盘弹起适配改由 mobile-adapt.js 统一处理——
+     interactive-widget 只在根元素生效，写在 .phone 上无效（死代码）；
+     JS 用 visualViewport 锁定 .phone 到可视高度并 fixed 顶对齐，跨设备统一。 */
+}
+
+/* v3.5.11x：display_override fullscreen 真全屏时，安卓挖孔屏顶部没有安全区
+   （env(safe-area-inset-top) 在安卓返回 0）——顶部固定留出挖孔安全区，
+   防止顶部栏/返回按钮被摄像头挖孔遮挡。
+   v3.5.122：选择器提权 .phone 前缀——否则被上面 max-width:480px 的
+   .phone .page.full .chat-head（10px）按特异性压过，20px 挖孔区变死代码
+   v3.5.126：去掉 20px 硬编码——非挖孔屏/全屏隐藏状态栏的设备上它变成
+   顶部栏上方的大片空白（用户实测）。改用 env(safe-area-inset-top) 真实值：
+   有挖孔 → 自动避让；无挖孔 → 返回 0，顶部栏贴顶零空白
+   v3.5.127：max(env, 12px) 兜底——安卓挖孔屏 env() 返回 0 会贴顶进挖孔，
+   保留 12px 最小留白（避开挖孔且不产生大空白） */
+@media (display-mode: fullscreen) {
+  .phone .page.full .chat-head { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+  .phone .page.full .gs-title, .phone .page.full .card-tabs,
+  .phone .page.full .div-h-title, .phone .page.full .stats-top-name { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+}
+
+/* Fullscreen API 激活（fs-active 类，由 fullscreen.js 控制）时同样挖孔安全区 */
+.fs-active .phone .page.full .chat-head { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+.fs-active .phone .page.full .gs-title, .fs-active .phone .page.full .card-tabs,
+.fs-active .phone .page.full .div-h-title, .fs-active .phone .page.full .stats-top-name { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+
+/* v3.6.x：iOS 独立应用「全屏模式」（ios-fs-active 类，由 fullscreen.js 控制）——
+   iOS 无 Fullscreen API、系统状态栏永远无法隐藏，唯一能藏的是应用内模拟状态栏
+   （与系统状态栏重复的一栏，正是「有空隙/双状态栏」观感来源）。
+   开启后隐藏它，内容顶到系统状态栏下方；系统状态栏由 iOS 接管安全区。
+   只影响真实手机窄屏，桌面模拟器外壳不受影响 */
+@media (max-width: 480px) {
+  .ios-fs-active .phone { padding-top: env(safe-area-inset-top, 0px); }
+  .ios-fs-active .phone .statusbar { display: none; }
+}
+
+/* v3.6.x：输入法弹出适配已改为「最小干预」——mobile-adapt.js 不再锁定 .phone 高度、
+   不再写 --ime-h、不再加 ime-open（此前这套机制在部分安卓机引发输入法截断/闪屏）。
+   viewport meta 的 interactive-widget=resizes-content 会让布局视口随键盘收缩，
+   .phone 的 100dvh 随之重算，输入栏天然停靠键盘上方；以下规则已删除。 */
+
+/* v3.5.113：导入数据进度缓冲——读取/解析大备份与逐条写入需要时间，
+   用全屏遮罩 + 进度条明确显示进度，避免误以为卡死/没反应 */
+.cc-import-progress {
+  position:fixed; inset:0; z-index:99999;
+  background:rgba(0,0,0,.45);
+  display:flex; align-items:center; justify-content:center;
+  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+}
+.cc-import-progress[hidden] { display:none; }
+.cc-ip-box {
+  width:min(280px, 84vw); background:#fff; border-radius:18px;
+  padding:22px 20px 18px; text-align:center;
+  box-shadow:0 20px 50px rgba(0,0,0,.18);
+}
+.cc-ip-title { font-size:15px; font-weight:700; margin-bottom:12px; }
+.cc-ip-bar {
+  height:8px; border-radius:99px; background:#eee; overflow:hidden; margin:14px 0 10px;
+}
+.cc-ip-fill {
+  height:100%; width:0%; border-radius:99px; background:#111;
+  transition:width .25s ease;
+}
+.cc-ip-sub { font-size:12px; color:#888; min-height:16px; }
+
+/* 安卓：轻点涟漪/选择高亮统一为无，避免闪烁 */
+@media (max-width: 480px) {
+  button, .app, .set-row, .tab, .msg, .feed-post, .mail-item {
+    -webkit-tap-highlight-color:transparent;
+  }
+}
+
+/* v3.5.107：弹层打开时锁背景滚动（body.scroll-lock 由 mobile-adapt.js 控制） */
+body.scroll-lock { overflow:hidden; }
+/* v3.5.127：手机端实际滚动发生在 .phone 内的 .page——body 锁不住它，
+   弹层打开时把 .page 一起锁（滚动穿透锁的完整实现） */
+body.scroll-lock .page { overflow:hidden; }
+
+/* v3.5.128：contenteditable 输入框转换器（mobile-adapt.js 手机端启用）——
+   Chrome 移动端对 <input>/<textarea> 聚焦会弹「自动填充」条（autocomplete=off、
+   readonly 均被该版本无视）。原 input 保留作数据锚点（.ce-ghost 退场不可交互），
+   显示与输入由 .ce-box div 接管；placeholder 用 :empty::before 显示 */
+.ce-box {
+  white-space:pre-wrap; word-break:break-word; outline:none;
+  caret-color:var(--ink); line-height:1.5;
+}
+.ce-box:empty::before {
+  content:attr(data-ph); color:#b5b5b5; pointer-events:none;
+}
+input.ce-ghost, textarea.ce-ghost {
+  position:absolute; width:1px; height:1px; opacity:0;
+  pointer-events:none; padding:0; border:0;
+}
+/* 浮层内部滚动不穿透到背景（滚到底/到顶不再带动底层页面） */
+#tc-mask, #call-mask, #feed-notice-panel, #poke-card, #emoji-panel, #chat-ask-panel, #qa-mask {
+  overscroll-behavior:contain;
+}
+
+/* 白色纸张卡片（替代原毛玻璃）：白纸质感 + 虚线边框，与情绪字卡的虚线风格统一 */
+.glass {
+  background: var(--glass-bg, rgba(255,255,255,.92));
+  border: 1px solid rgba(0,0,0,.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+
+/* 全局线条图标跟随字体颜色（覆盖 svg 上的 stroke 属性） */
+.app-ico svg, .deco-avatar .ring svg, .chat-item .av svg, .chat-search svg,
+.ch-back svg, .set-row .ico svg, .set-row .arrow svg, .msg-av svg,
+.mw-btn, .mw-heart {
+  stroke: var(--ink);
+}
+.mw-bars { fill: var(--ink); }
+
+.statusbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:4px 4px 12px; font-size:13px; font-weight:600; z-index:2;
+}
+.statusbar .brand { font-weight:800; letter-spacing:.5px; }
+.statusbar .sb-right { display:flex; align-items:center; gap:8px; }
+.statusbar .icons { display:flex; gap:6px; align-items:center; }
+
+/* 页面容器 */
+.page { flex:1; display:flex; flex-direction:column; overflow-y:auto; z-index:2; padding-bottom:4px; }
+.page[hidden] { display:none; }
+
+/* 通用弹层（替代 prompt/confirm，IAB 不支持原生弹窗）
+   层级最高，确保任何面板/浮层之上都能弹出 */
+.modal-mask {
+  position:fixed; inset:0; z-index:90;
+  background:rgba(0,0,0,.35);
+  display:flex; align-items:center; justify-content:center;
+  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+}
+.modal-mask[hidden] { display:none; }
+.modal {
+  width:min(272px, 82vw);
+  max-height: min(78vh, calc(100% - 24px));
+  overflow-y:auto;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(0,0,0,.1);
+  border-radius:22px; padding:18px 18px 16px;
+  box-shadow:0 20px 50px rgba(0,0,0,.12);
+}
+.modal-title { font-size:15px; font-weight:700; margin-bottom:12px; }
+.modal-input {
+  width:100%; border:1px solid #e0e0e0; border-radius:12px;
+  padding:10px 12px; font-size:14px; font-family:inherit;
+  outline:none; background:#fff; color:var(--ink);
+}
+.modal-input:focus { border-color:#999; }
+.modal-input[hidden] { display:none; }
+.modal-textarea {
+  width:100%; border:1px solid #e0e0e0; border-radius:12px;
+  padding:10px 12px; font-size:13px; font-family:inherit;
+  outline:none; background:#fff; color:var(--ink);
+  resize:vertical; min-height:64px; line-height:1.6;
+}
+.modal-textarea[hidden] { display:none; }
+.modal-textarea:focus { border-color:#999; }
+.modal-swatches { display:flex; flex-wrap:wrap; gap:12px; margin-top:4px; }
+.modal-swatches[hidden] { display:none; }
+.modal-pills { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+.modal-pills[hidden] { display:none; }
+.pill {
+  padding:8px 16px; font-size:13px; border-radius:99px;
+  border:1px solid #ddd; background:#fff; color:#555;
+  cursor:pointer; font-family:inherit; font-weight:600;
+}
+.pill.on { background:#111; color:#fff; border-color:#111; }
+.sw {
+  width:42px; height:42px; border-radius:50%; cursor:pointer;
+  border:2px solid transparent; box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+.sw:hover { transform:scale(1.1); }
+.sw.on { border-color:var(--ink); }
+.modal-custom {
+  display:block; margin:12px auto 0; padding:6px 18px;
+  font-size:12px; color:var(--muted); background:transparent;
+  border:1px solid #ddd; border-radius:99px; cursor:pointer; font-family:inherit;
+}
+.modal-custom:hover { color:var(--ink); border-color:#bbb; }
+.modal-custom.on { color:var(--ink); border-color:var(--ink); }
+.modal-custom[hidden] { display:none; }
+.modal-btns { display:flex; gap:10px; margin-top:16px; }
+.modal-btn {
+  flex:1; border:none; border-radius:12px; padding:11px;
+  font-size:14px; font-family:inherit; cursor:pointer;
+}
+.modal-btn.cancel { background:#eeeeee; color:#555; }
+.modal-btn.ok { background:#111; color:#fff; font-weight:600; }
+
+/* 隐藏页面滚动条（保留滚动功能） */
+.page { scrollbar-width:none; -ms-overflow-style:none; }
+.page::-webkit-scrollbar { display:none; }
+
+.modal-select {
+  width:100%; border:1px solid #e0e0e0; border-radius:12px;
+  padding:11px 13px; font-size:13px; font-family:inherit; background:#fff; color:var(--ink);
+  outline:none; margin-top:4px;
+}
+.modal-select[hidden] { display:none; }
+.modal-select:focus { border-color:#999; }
+.modal-file {
+  display:block; margin:10px auto 0; padding:6px 16px;
+  font-size:12px; color:#555; background:transparent;
+  border:1px solid #ccc; border-radius:10px; cursor:pointer; font-family:inherit;
+}
+.modal-file:hover { border-color:#999; color:var(--ink); }
+.modal-file[hidden] { display:none; }
+
+.modal-static {
+  font-size:14px; line-height:1.7; color:var(--ink);
+  background:rgba(0,0,0,.04); border-radius:12px; padding:12px 14px;
+  margin-bottom:14px; white-space:pre-wrap; word-break:break-word;
+}
+.modal-static[hidden] { display:none; }
+
+/* ===== PWA 安装按钮 / iOS 提示 ===== */
+.pwa-install {
+  position:fixed; right:16px; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); z-index:900;
+  display:flex; align-items:center; gap:6px;
+  background:#111; color:#fff; border:none; border-radius:99px;
+  padding:11px 18px; font-size:13px; font-family:inherit; font-weight:600;
+  cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,.25);
+}
+.pwa-install svg { width:16px; height:16px; }
+.pwa-install[hidden] { display:none; }
+.pwa-ios-hint {
+  position:fixed; right:16px; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); z-index:900;
+  background:rgba(17,17,17,.92); color:#fff; border-radius:14px;
+  padding:12px 16px; font-size:12px; line-height:1.5; max-width:240px;
+  box-shadow:0 6px 20px rgba(0,0,0,.25); cursor:pointer;
+}
+.pwa-ios-hint[hidden] { display:none; }
+
+/* v3.6.x：检测到新版本提示条——固定在顶部醒目显示，点击「刷新使用新版」立即刷新。
+   长期驻留直到刷新或手动关闭，避免 toast 一闪而过看不到 */
+.ver-update-bar {
+  position:fixed; top:0; left:0; right:0; z-index:998;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  padding:10px 14px;
+  padding-top:calc(10px + env(safe-area-inset-top, 0px));
+  background:rgba(17,17,17,.94); color:#fff; font-size:13px;
+  box-shadow:0 4px 16px rgba(0,0,0,.25);
+}
+.ver-update-bar[hidden] { display:none; }
+.ver-update-bar .vub-txt { font-weight:600; }
+.ver-update-bar .vub-act {
+  flex-shrink:0; padding:5px 14px; border-radius:99px;
+  background:#fff; color:#111; font-weight:700; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.ver-update-bar .vub-act:active { opacity:.8; }
+
+/* ===== 手机端：弹层/半框内部滚动到边界不再穿透滚动下层页面（安卓/iOS 常见问题） ===== */
+.poke-card-scroll, .tc-body, .mg-list, .emoji-groups,
+.card-list, .mem-scroll, .cal-scroll, .div-scroll, .gs-scroll,
+.chat-search, .fav-list, .feed-list, .mail-list, .qa-body,
+.sm-list, .music-list, .feed-notice-panel, .feed-comment-panel,
+.emoji-panel, #com-sticker-list, .chat-draft-items {
+  overscroll-behavior: contain;
+}
+
+/* v3.5.127：用户输入的长串（英文/数字/URL）不换行会横向溢出卡片/面板——
+   聊天卡片/问答/日历/备忘等文字容器统一允许任意位置断行 */
+.tc-hint, .tc-q, .tc-opt, .qa-q, .cal-message, .mem-next,
+.div-card-meaning, .msg-bubble, .feed-content, .feed-comment,
+.mail-body, .tc-li-q, .modal-static {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,813 @@
+/* ===== 聊天核心样式（消息 / 输入栏 / 半框 / 聊天卡片） ===== */
+/* ===== 聊天页 ===== */
+.chat-head {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 2px 12px; flex-shrink:0;
+  /* v3.5.124：sticky 固定顶部——手机端全屏下消息区滚动穿透/视觉视口
+     瞬态变化时，顶部栏（返回/头像/昵称/设置）不再被带出屏幕 */
+  position:sticky; top:0; z-index:5;
+  /* v3.5.89 统一桌面白色简约风格（同 .glass）：白底 + 淡边 + 轻阴影 */
+  background:rgba(255,255,255,.92);
+  border-bottom:1px solid rgba(0,0,0,.1);
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+}
+.ch-back {
+  width:40px; height:40px; border-radius:50%;
+  background: rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  flex-shrink:0;
+}
+.ch-back svg { width:18px; height:18px; }
+.ch-name {
+  flex:1; min-width:0;
+  font-size:17px; font-weight:700; letter-spacing:.5px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.ch-settings {
+  width:34px; height:34px; border-radius:50%;
+  background: rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+}
+.ch-settings svg { width:18px; height:18px; }
+/* 顶部栏联系人头像（点击打开查岗半框） */
+.ch-av {
+  width:34px; height:34px; border-radius:var(--msg-av-radius, 50%); flex-shrink:0;
+  background:#e9e9e9; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+}
+.ch-av svg { width:16px; height:16px; }
+.ch-av img { width:100%; height:100%; object-fit:cover; display:block; border-radius:var(--msg-av-radius, 50%); }
+/* 顶部昵称：点击「让对方继续说」 */
+#chat-partner-name { cursor:pointer; }
+#chat-partner-name:active { opacity:.6; }
+
+.chat-body {
+  flex:1; min-height:0; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none;
+  padding:6px 18px; display:flex; flex-direction:column; gap:14px;
+  background:transparent; position:relative;
+  -webkit-overflow-scrolling:touch;
+  /* v3.5.124：滚动边界不穿透——消息区滚到顶/底不再带动页面（含顶部栏）滚动 */
+  overscroll-behavior:contain;
+  /* v3.6.x：强制独立合成层——部分手机浏览器（老 WebKit/国产内核）在点击输入栏、
+     键盘弹出、.phone 被锁定为 fixed 且高度骤变的瞬间，滚动容器绘制层失效，
+     消息区内容仍在 DOM 里却不绘制 → 聊天页白屏（发送消息触发重排后才恢复）。
+     translateZ(0) 让消息区始终有独立绘制层；现代浏览器对滚动容器自动建层，
+     此声明无副作用（.chat-body 内无 fixed/随视口定位的后代，#msg-actions 不在此容器内）。
+     iOS Safari 豁免由 mobile-adapt.js 运行时设置内联 transform:none（用 JS 判断更准确，
+     不能用 @supports 判断 webkit 属性——安卓 Chrome 也识别 -webkit-touch-callout） */
+  transform:translateZ(0);
+}
+.chat-body::-webkit-scrollbar { display:none; }
+.msg { display:flex; align-items:flex-end; gap:8px; max-width:85%; }
+.msg-in { align-self:flex-start; }
+.msg-out { align-self:flex-end; flex-direction:row; }
+.msg-av {
+  width:40px; height:40px; border-radius:var(--msg-av-radius, 50%); flex-shrink:0;
+  background:#e9e9e9; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+.msg-av svg { width:19px; height:19px; }
+.msg-av img { width:100%; height:100%; object-fit:cover; border-radius:var(--msg-av-radius, 50%); display:block; }
+.msg-bubble {
+  padding: var(--chat-bubble-pad, 11px 14px);
+  font-size: var(--chat-font-size, 14px);
+  border-radius:18px; line-height:1.5; word-break:break-word;
+  background:#fff; border:1px solid rgba(255,255,255,.9); box-shadow:0 2px 8px rgba(0,0,0,.05);
+  /* v3.5.107：允许气泡收缩，防止图片/长内容把右侧头像列挤出屏外（flex 默认 min-width:auto） */
+  min-width:0;
+  /* v3.6.x：禁用文本选择——气泡点击/长按是弹操作菜单，Android 长按不再叠加系统文本选择/复制工具栏 */
+  user-select:none; -webkit-user-select:none;
+}
+.msg-in .msg-bubble { background: var(--msg-in-bg, #ffffff); color: var(--msg-in-ink, #111111); }
+.msg-out .msg-bubble { background: var(--msg-out-bg, #111111); color: var(--msg-out-ink, #ffffff); }
+
+/* 头像列：头像 + 时间轴（时间在头像底下） */
+.msg-side {
+  display:flex; flex-direction:column; align-items:center; gap:3px; flex-shrink:0;
+}
+.msg-time {
+  /* v3.5.133：9px→10px（手机端可读性，时间戳每气泡都出现） */
+  font-size:10px; line-height:1; color:var(--msg-time-ink, #111111); letter-spacing:.5px;
+  font-weight:400; white-space:nowrap;
+  opacity:.5;
+}
+/* 联系人正在输入：正常流占位，无需额外留白补偿（此前浮层方案已移除） */
+
+/* 联系人「正在输入」状态：消息区与输入栏之间的内嵌条（正常流，不遮挡任何消息）
+   v3.5.27 从"悬浮在输入栏上方"改为星言式内嵌条：出现时占一小行，消息区自动缩小，不压气泡 */
+/* 联系人「正在输入」：纯文字一行（v3.5.47）
+   width:fit-content → 只占文字宽度，不透出整行壁纸、不形成色块/矩形；
+   透明背景，就是一行干净的文字提示，不遮挡消息 */
+/* 联系人「正在输入」：悬浮在输入栏正上方的小字（v3.5.49 彻底改为悬浮式）
+   不占布局高度 → 不挤动消息区、不遮挡任何消息、不影响底部间距；
+   未触发时 display:none 完全不存在（无任何占位/遮挡）；
+   v3.5.50 修正：元素必须位于 .chat-input-row 内部（其 position:relative 为包含块），
+   bottom:calc(100% + 4px) 才能正确悬浮在输入栏正上方（此前误放在 page-chat 下，
+   absolute 相对整页定位，位置错乱） */
+.chat-typing {
+  position:absolute;
+  bottom:calc(100% + 4px);
+  left:14px;
+  font-size:12px;
+  color:var(--typing-ink, #8a8a8a);
+  letter-spacing:.5px;
+  background:transparent;
+  white-space:nowrap;
+  pointer-events:none;
+  z-index:5;
+}
+.chat-typing[hidden] { display:none; }
+/* 消息区底部留白，最后一条消息不贴输入栏 */
+.chat-body { padding-bottom:24px; }
+
+/* 待发送草稿条（图片/表情组合）——无边框，不显示白色长方形框 */
+.chat-draft {
+  display:flex; align-items:center; gap:8px;
+  margin:6px 4px 0; padding:8px 10px;
+  background:transparent; border:none;
+  border-radius:12px;
+}
+.chat-draft[hidden] { display:none; }
+.chat-draft-items { display:flex; gap:8px; overflow-x:auto; flex:1; scrollbar-width:none; }
+.chat-draft-items::-webkit-scrollbar { display:none; }
+.chat-draft-item {
+  position:relative; width:44px; height:44px; border-radius:8px; overflow:hidden; flex-shrink:0;
+  border:1px solid rgba(0,0,0,.08);
+}
+.chat-draft-item img { width:100%; height:100%; object-fit:cover; display:block; }
+.chat-draft-x {
+  position:absolute; top:0; right:0; width:16px; height:16px;
+  background:rgba(0,0,0,.55); color:#fff; border:none; font-size:10px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+
+/* 组合消息：同一条气泡内 图片网格 + 文字 */
+.msg-parts-imgs { display:flex; gap:4px; margin-bottom:6px; }
+.msg-img { max-width:90px; max-height:90px; border-radius:8px; display:block; }
+/* 图片消息：大图（v3.5.43 放大到 260px，可点击查看）；表情包保持小图 90px
+   双类 .msg-img.msg-img-big：与下方 .msg-img（96px 上限）同优先级时后写者会盖掉大图
+   → 用更高优先级保证【图片】恒为大图，不被压成表情包大小 */
+.msg-img.msg-img-big { max-width:min(260px, 100%); max-height:260px; border-radius:10px; cursor:zoom-in; }
+/* 组合消息（文字+图片）里的【图片】与纯图片消息同尺寸（260px）；【表情包】保持 90px 小图 */
+.msg-parts-imgs .msg-img-big { max-width:min(260px, 100%); max-height:260px; }
+.msg-parts-imgs.multi { flex-wrap:wrap; }
+.msg-parts-imgs.multi .msg-img { width:70px; height:70px; object-fit:cover; }
+.msg-parts-imgs.multi .msg-img-big { width:110px; height:110px; object-fit:cover; }
+
+/* 搜索聊天记录：聊天页内嵌覆盖层（v3.5.52，星言式——不离开聊天页） */
+/* 搜索聊天记录：聊天页底部半框（v3.5.53 露出聊天消息）——复用 .poke-card 布局 */
+.chat-search { height:auto; max-height:60%; }
+.chat-search[hidden] { display:none; }
+.chat-search-new {
+  flex-shrink:0; display:flex; align-items:center; gap:3px;
+  border:1px solid rgba(0,0,0,.12); background:#fff; color:var(--ink);
+  font-size:12px; font-weight:600; padding:6px 12px; border-radius:99px;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.chat-search-new:active { background:rgba(0,0,0,.05); }
+.chat-search-bar {
+  display:flex; gap:8px; padding:2px 2px 10px; flex-shrink:0;
+}
+.chat-search-input {
+  flex:1; min-width:0; border:1px solid rgba(0,0,0,.1); border-radius:99px;
+  padding:9px 14px; font-size:14px; font-family:inherit; outline:none; background:#f6f6f6;
+}
+.chat-search-input:focus { border-color:var(--ink); background:#fff; }
+.chat-search-go {
+  flex-shrink:0; border:none; border-radius:99px; padding:0 18px;
+  background:var(--ink); color:#fff; font-size:13px; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.chat-search-results {
+  flex:1; overflow-y:auto; padding:2px 2px 4px;
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.chat-search-results::-webkit-scrollbar { display:none; }
+.chat-search-results .tc-listitem { cursor:pointer; border-radius:12px; padding:9px 12px; }
+.chat-search-results .tc-listitem:active { background:rgba(0,0,0,.05); }
+.chat-search-hl { background:#ffe58f; border-radius:2px; padding:0 1px; }
+.chat-search-empty { text-align:center; color:#c0c0c0; font-size:12px; padding:24px 0; }
+
+/* 聊天页输入半框（邀请TA / 问问TA，v3.5.52 露出聊天消息） */
+.chat-ask-body { display:flex; flex-direction:column; gap:10px; }
+.chat-ask-input {
+  border:1px solid rgba(0,0,0,.12); border-radius:12px; padding:11px 14px;
+  font-size:14px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
+  width:100%; box-sizing:border-box;
+}
+.chat-ask-input:focus { border-color:var(--ink); }
+.chat-ask-actions { display:flex; gap:8px; }
+.chat-ask-actions .cc-tool { flex:1; }
+
+/* 聊天页占卜半框（v3.5.53）：模式/张数切换 + 抽牌结果，复用 .div-* 卡片样式 */
+#chat-divine-body .div-modes-wrap,
+#chat-divine-body .div-counts-wrap {
+  display:flex; gap:8px; margin-bottom:10px;
+}
+#chat-divine-body .div-mode {
+  flex:1; padding:9px 0; border-radius:11px; text-align:center;
+  border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.92);
+  color:#666; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+#chat-divine-body .div-mode.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+#chat-divine-body .div-draw {
+  width:100%; margin-top:4px;
+}
+#chat-divine-body .div-spread { display:flex; gap:10px; overflow-x:auto; padding:10px 0 4px; }
+#chat-divine-body .div-mini { flex:0 0 92px; display:flex; flex-direction:column; align-items:center; gap:5px; }
+#chat-divine-body .div-card-face {
+  width:100%; aspect-ratio:1; background:#eceff3; border:1px solid rgba(0,0,0,.05);
+  border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+}
+#chat-divine-body .div-card-ico svg { width:24px; height:24px; }
+#chat-divine-body .div-card-name { font-size:11px; font-weight:700; color:var(--ink); }
+#chat-divine-body .div-card-meaning { font-size:10px; color:var(--muted); line-height:1.5; text-align:center; }
+#chat-divine-body .div-mini-tag { font-size:9px; color:var(--muted); }
+#chat-divine-body .div-summary { text-align:center; font-size:12px; color:var(--ink); font-weight:600; margin-top:6px; }
+#chat-divine-body .div-result-empty { text-align:center; color:#c0c0c0; font-size:12px; padding:14px 0; }
+
+.chat-input-row {
+  display:flex; align-items:center; gap:8px;
+  border-radius:99px; padding:14px 12px 14px 16px; flex-shrink:0; margin-top:8px;
+  /* v3.5.89 统一桌面白色简约风格（同 .glass）：白底 + 淡边 + 轻阴影 */
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+  /* 供「对方正在输入」提示绝对定位（悬浮在栏上方，不占布局高度） */
+  position:relative;
+}
+.chat-input {
+  flex:1; min-width:0; border:none; outline:none; background:transparent;
+  font-size:15px; font-family:inherit; color:var(--ink);
+  /* v3.5.127：contenteditable div 版输入框——Chrome 不对 contenteditable
+     弹「自动填充」条（input 无论如何都会被识别成表单字段）。补齐 div 版
+     需要的排版：行高对齐、长文本换行、超高滚动。
+     v3.6.x：不再加 -webkit-user-modify:read-write-plaintext-only——
+     iOS Safari 对它支持有 bug（部分版本会阻止 contenteditable 输入/键盘），
+     去掉后 contenteditable 在 iOS/安卓均正常输入 */
+  line-height:1.45; min-height:21px; max-height:96px; overflow-y:auto;
+  white-space:pre-wrap; word-break:break-word; caret-color:var(--ink);
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.chat-input::-webkit-scrollbar { display:none; }
+/* 空内容时显示 placeholder（contenteditable 无 placeholder 属性，用 :empty 伪元素） */
+.chat-input:empty::before {
+  content:attr(data-ph); color:#b5b5b5; pointer-events:none;
+}
+.chat-send {
+  outline:none; cursor:pointer; flex-shrink:0;
+  background:var(--send-bg, #111111); color:var(--send-ink, #ffffff); font-size:14px; font-weight:600;
+  padding:12px 24px; border-radius:99px; font-family:inherit;
+  /* 与其他输入栏功能按钮一致的灰色描边 */
+  border:1px solid rgba(0,0,0,.1);
+}
+
+/* 全屏聊天：头部/消息/输入栏左右 18px 对齐，背景铺满 */
+#page-chat {
+  position:relative;
+  /* v3.5.125：聊天页整体永不滚动——只有消息区（.chat-body）内部滚动。
+     从结构上消灭「页面整体被滚动/回弹带走顶部栏」：.page 通用样式是
+     overflow-y:auto（内容超高时页面可滚，顶部联系人栏会被推出屏幕），
+     这里覆盖为 hidden——顶部栏与输入栏物理固定，任何情况（消息超高、
+     全屏、输入法弹出、滚动到边界回弹）都不会再移动 */
+  overflow:hidden;
+  overscroll-behavior:none;
+}
+.page.full .chat-head {
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 18px 12px;
+  margin: 0;
+  background:rgba(255,255,255,.92); /* v3.5.89 统一桌面白色简约风格 */
+  border-bottom:1px solid rgba(0,0,0,.1);
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+}
+.page.full .chat-body { padding: 14px 18px 28px; } /* v3.5.48 底部留白加大：最后一条消息不贴输入栏 */
+.page.full .chat-input-row { margin: 8px 18px 16px; }
+
+/* 输入栏图标按钮（更多功能 / 表情包） */
+.ch-input-btn {
+  width:38px; height:38px; border-radius:50%; cursor:pointer; flex-shrink:0;
+  background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+  color:#555; box-shadow:0 1px 4px rgba(0,0,0,.04);
+  display:flex; align-items:center; justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+}
+.ch-input-btn:active { background:rgba(0,0,0,.08); }
+.ch-input-btn svg { width:20px; height:20px; }
+
+/* 拍一拍 / 换头像：居中灰字小卡片（可选附带一张头像图） */
+.msg-poke {
+  align-self:center; text-align:center;
+  font-size:12px; color:var(--msg-time-ink, #8a8a8a);
+  padding:6px 16px; max-width:80%;
+  background:rgba(0,0,0,.03);
+  border:1px solid rgba(0,0,0,.045);
+  border-radius:16px;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+}
+.msg-poke-img {
+  width:42px; height:42px; border-radius:50%; object-fit:cover;
+  border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 1px 4px rgba(0,0,0,.1);
+}
+
+/* 更多功能面板（悬浮在输入栏上方）
+   v3.5.110：bottom 加 safe-area，全面屏全屏模式下与输入栏同步上移，不错位 */
+.more-panel {
+  position:fixed; left:18px; right:18px; bottom:calc(96px + env(safe-area-inset-bottom, 0px)); z-index:60;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(0,0,0,.1);
+  border-radius:20px; box-shadow:0 12px 32px rgba(0,0,0,.1);
+  padding:16px;
+}
+.more-panel[hidden] { display:none; }
+/* 更多功能面板：顶部分类切换（更多功能 / TA的提问） */
+.more-tabs { display:flex; gap:6px; margin-bottom:14px; }
+.more-tab {
+  flex:1; padding:8px 0; font-size:13px; font-weight:700;
+  border:1px solid rgba(0,0,0,.1); border-radius:99px;
+  background:rgba(255,255,255,.92); color:#666; cursor:pointer;
+  font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.more-tab.sel { background:#111; color:#fff; border-color:#111; }
+.more-grid { display:flex; flex-wrap:wrap; gap:14px; }
+.more-grid[hidden] { display:none; }
+.more-item {
+  width:64px; display:flex; flex-direction:column; align-items:center; gap:7px;
+  background:transparent; border:none; cursor:pointer; font-family:inherit;
+  color:var(--ink); -webkit-tap-highlight-color:transparent;
+}
+.more-item .mi-ico {
+  width:50px; height:50px; border-radius:16px;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.more-item .mi-ico svg { width:23px; height:23px; color:#444; }
+.more-item:active .mi-ico {
+  transform:translateY(1px) scale(.97);
+  box-shadow:0 1px 3px rgba(0,0,0,.06);
+}
+.more-item svg { width:22px; height:22px; }
+.more-item span { font-size:11px; }
+
+/* 拍一拍浮层卡片（底部半框，露出顶部聊天消息，方便边看边玩）
+   底部 96px：悬停在输入栏上方，不压住/不覆盖输入栏（输入栏顶部约 82px）
+   v3.5.110：bottom 加 safe-area，全面屏全屏模式下与输入栏同步上移，不错位 */
+.poke-card {
+  position:fixed; top:auto; bottom:calc(96px + env(safe-area-inset-bottom, 0px)); left:18px; right:18px;
+  height:auto; max-height:48%;
+  display:flex; flex-direction:column;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(0,0,0,.1);
+  border-top-left-radius:22px; border-top-right-radius:22px;
+  border-bottom-left-radius:14px; border-bottom-right-radius:14px;
+  box-shadow:0 12px 32px rgba(0,0,0,.14);
+  z-index:70; padding:14px 16px 14px;
+}
+.poke-card[hidden] { display:none; }
+.poke-card-head {
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:15px; font-weight:700; margin-bottom:10px;
+}
+.poke-card-head-actions {
+  display:flex; align-items:center; gap:8px; margin-left:auto;
+}
+.poke-card-head-actions .chat-search-new { padding:5px 12px; }
+.poke-card-close {
+  width:28px; height:28px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(0,0,0,.06); color:#666; font-size:14px;
+  display:flex; align-items:center; justify-content:center;
+}
+.poke-card-scroll { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; min-height:60px; max-height:40vh; padding:2px; }
+.poke-card-scroll::-webkit-scrollbar { display:none; }
+/* 查岗半框：内容少，缩小高度（只容纳三行日常 + 更新时间） */
+#ck-panel { height:auto; max-height:56%; }
+#ck-panel .poke-card-scroll { min-height:0; max-height:none; }
+/* 帮我决定半框：内容多，调大高度（未输入时表单也完整显示，不用滑动） */
+#chat-decision-panel { height:auto; max-height:68%; }
+#chat-decision-panel .poke-card-scroll { min-height:0; max-height:none; }
+.poke-big {
+  flex-shrink:0; display:flex; align-items:center; justify-content:center; gap:6px;
+  margin-top:12px; padding:12px; border:none; border-radius:14px;
+  background:var(--ink); color:#fff; font-size:14px; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.poke-big:active { opacity:.85; }
+.poke-big svg { width:18px; height:18px; }
+/* 表情包面板：底部半框，露出顶部聊天消息，高度随内容自适应（最多半屏，空态紧凑）
+   v3.5.110：bottom 加 safe-area，全面屏全屏模式下与输入栏同步上移，不错位 */
+.emoji-card {
+  position:fixed; top:auto; bottom:calc(96px + env(safe-area-inset-bottom, 0px)); left:18px; right:18px;
+  height:auto; max-height:55%;
+  display:flex; flex-direction:column;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(0,0,0,.1);
+  border-top-left-radius:22px; border-top-right-radius:22px;
+  border-bottom-left-radius:14px; border-bottom-right-radius:14px;
+  box-shadow:0 12px 32px rgba(0,0,0,.14);
+  z-index:70; padding:14px 16px 14px;
+}
+/* 表情包面板：顶部分组切换栏（横向滚动 chips） */
+.emoji-groups {
+  display:flex; gap:6px; overflow-x:auto; padding:0 2px 8px;
+  flex-shrink:0; scrollbar-width:none; -ms-overflow-style:none;
+}
+.emoji-groups::-webkit-scrollbar { display:none; }
+.emoji-g-chip {
+  flex:0 0 auto; padding:7px 14px; font-size:12px; border-radius:99px;
+  border:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.92);
+  color:#666; cursor:pointer; font-family:inherit; font-weight:600;
+  -webkit-tap-highlight-color:transparent;
+}
+.emoji-g-chip.sel { background:#111; color:#fff; border-color:#111; }
+/* 表情包面板：TA / 我的 双 tab（v3.5.31） */
+.emoji-head {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;
+}
+.emoji-tabs {
+  display:flex; gap:6px; flex:1; min-width:0;
+}
+.emoji-tab {
+  flex:1; padding:9px 6px; border-radius:11px; border:1px solid rgba(0,0,0,.1);
+  background:rgba(255,255,255,.92); color:#666; font-size:13px; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+  white-space:nowrap;
+}
+.emoji-tab.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+.emoji-head .poke-card-close { margin-left:10px; }
+/* 我的表情包工具行 */
+.emoji-tools {
+  display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; flex-shrink:0;
+}
+.emoji-tools[hidden] { display:none; }
+.emoji-tool {
+  flex:1; min-width:64px; padding:8px 6px; border-radius:10px;
+  border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.92);
+  color:var(--ink); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.emoji-tool:active { background:rgba(0,0,0,.05); }
+/* 批量管理工具条 */
+.emoji-batch {
+  display:flex; align-items:center; gap:8px; flex-shrink:0;
+  background:#fff; border:1px solid rgba(0,0,0,.12);
+  border-radius:14px; padding:9px 12px; margin-top:10px;
+  box-shadow:0 6px 18px rgba(0,0,0,.08);
+}
+.emoji-batch[hidden] { display:none; }
+.emoji-batch-count { flex:1; font-size:12px; color:var(--muted); font-weight:600; }
+.emoji-batch-btn {
+  border:1px solid rgba(0,0,0,.2); background:#fff; color:var(--ink);
+  font-size:12px; font-weight:600; padding:7px 12px; border-radius:10px;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.emoji-batch-btn.del { border-color:#e05555; color:#e05555; }
+.emoji-batch-btn:active { background:rgba(0,0,0,.05); }
+/* 批量模式勾选角标 */
+.emoji-item.sel { position:relative; background:rgba(0,0,0,.05); }
+.emoji-item.sel::after {
+  content:''; position:absolute; inset:0; border:2px solid var(--ink); border-radius:0;
+  pointer-events:none;
+}
+.emoji-check {
+  position:absolute; top:3px; right:3px; width:16px; height:16px; border-radius:50%;
+  background:var(--ink); color:#fff; font-size:10px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; pointer-events:none;
+}
+/* 管理分组弹层：改名按钮 */
+.my-mg-panel .mg-row .mg-rn {
+  border:1px solid rgba(0,0,0,.15); background:#fff; color:#555;
+  font-size:11px; padding:4px 10px; border-radius:8px; cursor:pointer;
+  font-family:inherit;
+}
+/* v3.5.76 基础 .emoji-grid：朋友圈评论面板等动态网格也按 4 列渲染
+   （此前只有 #emoji-list 作用域版有 4 列，动态面板无父级 id → 每行只有 1 个表情） */
+.emoji-grid {
+  display:grid; grid-template-columns:repeat(4, 1fr); gap:0;
+  background:rgba(255,255,255,.92); border-radius:12px;
+  border:1px solid rgba(0,0,0,.08);
+  overflow:hidden;
+}
+#emoji-list .emoji-grid {
+  display:grid; grid-template-columns:repeat(4, 1fr); gap:0;
+  background:rgba(255,255,255,.92); border-radius:12px;
+  border:1px solid rgba(0,0,0,.08);
+  overflow:hidden;
+}
+#emoji-list .cc-group-header {
+  display:inline-flex;           /* 宽度按内容，不占满整行 */
+  width:fit-content;
+  background:rgba(0,0,0,.05);
+  border-radius:8px;
+  padding:5px 12px; margin:10px 0 6px;
+}
+#emoji-list .cc-group-header:first-child { margin-top:2px; }
+.emoji-item {
+  aspect-ratio:1; overflow:hidden; cursor:pointer;
+  background:transparent;
+  border-right:1px solid rgba(0,0,0,.06);
+  border-bottom:1px solid rgba(0,0,0,.06);
+  display:flex; align-items:center; justify-content:center;
+  padding:0; -webkit-tap-highlight-color:transparent;
+}
+/* 每行最后一个去掉右边线，最后一列底部去掉下边线 */
+.emoji-item:nth-child(4n) { border-right:none; }
+.emoji-item:last-child { border-bottom:none; }
+.emoji-item:active { background:rgba(0,0,0,.05); }
+.emoji-item img { width:82%; height:82%; object-fit:contain; border-radius:0; display:block; }
+.emoji-empty { text-align:center; color:#c0c0c0; font-size:12px; padding:30px 0; }
+
+/* 聊天图片消息 */
+.msg-img {
+  max-width:96px; max-height:96px; border-radius:10px; display:block;
+}
+
+/* 引用图片缩略图 */
+.msg-quote-img {
+  display:inline-block; width:34px; height:34px; border-radius:6px;
+  object-fit:cover; vertical-align:middle; margin-top:4px;
+}
+.msg-quote-imgs {
+  display:inline-flex; gap:4px; margin-right:6px; vertical-align:middle;
+}
+.msg-quote-imgs .msg-quote-img { margin-top:0; }
+
+/* 引用块（带「引用 XX」标签，清晰可读） */
+.msg-quote {
+  font-size:12px; border-left:3px solid currentColor;
+  padding:4px 8px; margin-bottom:5px; border-radius:0 6px 6px 0;
+  background:rgba(0,0,0,.05);
+}
+.msg-quote-label {
+  display:block; font-size:10px; font-weight:700;
+  color:inherit; opacity:.6; margin-bottom:2px;
+}
+.msg-quote-text {
+  color:inherit; opacity:.8; word-break:break-word;
+}
+
+/* 情绪/心意/意图字卡：所有字卡包在 .msg-moods 容器内，
+   容器顶部一条虚线与正文隔离；字卡在容器内 flex 紧凑同行，放不下才自动换行 */
+.msg-moods {
+  display:flex; flex-wrap:wrap; align-items:center;
+  gap:4px 10px; margin-top:5px; padding-top:5px;
+  border-top:1px dashed rgba(0,0,0,.12);
+}
+.msg-mood {
+  display:inline-flex; align-items:center;
+  font-size:11px; color:inherit; opacity:.75;
+  white-space:nowrap;
+}
+.msg-mood span { font-weight:600; }
+.msg-intent { opacity:.6; }
+
+/* 情绪/心意/意图字卡标签 */
+.msg-mood .msg-mood-tag {
+  display:inline-block; font-size:10px; font-weight:600;
+  padding:1px 6px; border-radius:99px; margin-right:5px;
+  background:rgba(0,0,0,.08); opacity:.8; vertical-align:1px;
+}
+
+/* 消息气泡操作菜单 */
+.msg-actions {
+  position:fixed; display:flex; gap:6px; z-index:80;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(0,0,0,.1);
+  border-radius:18px; box-shadow:0 10px 28px rgba(0,0,0,.1);
+  padding:8px;
+}
+.msg-actions[hidden] { display:none; }
+/* 搜索结果跳转定位高亮 */
+.msg.highlight { animation:msg-flash 1.2s ease 2; }
+@keyframes msg-flash {
+  0%, 100% { background:transparent; }
+  50% { background:rgba(255,220,120,.35); border-radius:12px; }
+}
+.ma-btn {
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  background:transparent; border:none; cursor:pointer;
+  font-size:10px; color:#444; font-family:inherit; padding:6px 10px;
+  border-radius:12px; -webkit-tap-highlight-color:transparent;
+}
+.ma-btn svg { width:20px; height:20px; }
+.ma-btn[hidden] { display:none; }
+.ma-btn:active { background:rgba(0,0,0,.07); }
+
+/* 居中卡片消息（邀请/提问） */
+.msg-center { align-self:center; width:100%; display:flex; justify-content:center; padding:4px 0; }
+.msg-center-card {
+  max-width:80%; text-align:center;
+  font-size:12px; color:var(--ink);
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(0,0,0,.1);
+  border-radius:14px; padding:9px 18px;
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+}
+
+/* v3.6.x：互动卡片就地作答区——点击卡片直接在聊天页展开，不弹窗 */
+.msg-inplace {
+  margin-top:12px; padding-top:10px; border-top:1px dashed rgba(0,0,0,.12);
+  display:flex; flex-direction:column; gap:8px;
+}
+.msg-inplace .ip-opt {
+  display:block; width:100%; padding:10px 12px; border:1px solid rgba(0,0,0,.1);
+  border-radius:10px; background:#fff; color:var(--ink); font-size:13px;
+  cursor:pointer; font-family:inherit; text-align:center;
+  -webkit-tap-highlight-color:transparent;
+}
+.msg-inplace .ip-opt:active { background:rgba(0,0,0,.05); }
+.msg-inplace .ip-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.msg-inplace .ip-chip {
+  padding:6px 12px; border:1px solid rgba(0,0,0,.12); border-radius:16px;
+  background:#fff; color:var(--ink); font-size:12px; cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.msg-inplace .ip-chip:active { background:rgba(0,0,0,.05); }
+.msg-inplace .ip-row { display:flex; gap:8px; }
+.msg-inplace .ip-input {
+  flex:1; min-width:0; border:1px solid rgba(0,0,0,.12); border-radius:10px;
+  padding:9px 12px; font-size:14px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
+}
+.msg-inplace .ip-input:focus { border-color:var(--ink); }
+.msg-inplace .ip-send {
+  flex-shrink:0; border:none; border-radius:10px; padding:0 18px;
+  background:var(--ink); color:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+}
+.msg-inplace .ip-send:active { opacity:.85; }
+
+/* ===== TA的询问 ===== */
+/* 聊天里的询问卡片 */
+.msg-ask { align-self:center; width:100%; display:flex; justify-content:center; padding:2px 0; }
+.msg-ask-card {
+  max-width:78%; min-width:220px; text-align:center;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; padding:14px 16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+  cursor:pointer;
+}
+.msg-ask-card.answered { cursor:default; }
+.msg-ask-q { font-size:14px; font-weight:700; color:var(--ink); line-height:1.5; }
+.msg-ask-tip { font-size:11px; color:var(--muted); margin-top:8px; }
+.msg-ask-a { font-size:12px; color:#3b7a4e; font-weight:600; margin-top:8px; }
+
+/* ===== TA的小问题 ===== */
+/* 聊天里的选择题卡片 */
+.msg-choose-card {
+  max-width:78%; min-width:220px; text-align:center;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; padding:14px 16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+  cursor:pointer;
+}
+.msg-choose-card.answered { cursor:default; }
+.msg-choose-r { font-size:12px; color:var(--ink); opacity:.75; margin-top:6px; line-height:1.5; }
+
+/* ===== 语音消息 ===== */
+/* 播放按钮 + 波形 + 文件名 */
+.msg-voice {
+  display:flex; align-items:center; gap:8px; min-width:150px; max-width:220px;
+}
+.msg-voice-play {
+  flex-shrink:0; width:30px; height:30px; border-radius:50%;
+  border:1px solid rgba(0,0,0,.15); background:rgba(0,0,0,.05);
+  color:var(--ink); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.msg-voice-play svg { width:13px; height:13px; }
+.msg-voice-play.playing { background:var(--ink); color:#fff; border-color:var(--ink); }
+.msg-voice-wave {
+  display:flex; align-items:flex-end; gap:2px; height:18px; flex:1;
+}
+.msg-voice-wave i {
+  width:3px; border-radius:2px; background:var(--ink); opacity:.4;
+  height:40%; animation:voiceWave .9s ease-in-out infinite alternate;
+  animation-play-state:paused;
+}
+.msg-voice-wave i:nth-child(1) { height:40%; animation-delay:0s; }
+.msg-voice-wave i:nth-child(2) { height:65%; animation-delay:.12s; }
+.msg-voice-wave i:nth-child(3) { height:85%; animation-delay:.24s; }
+.msg-voice-wave i:nth-child(4) { height:55%; animation-delay:.36s; }
+.msg-voice-wave i:nth-child(5) { height:35%; animation-delay:.48s; }
+.msg-voice-play.playing + .msg-voice-wave i { animation-play-state:running; }
+@keyframes voiceWave { from { transform:scaleY(.55); } to { transform:scaleY(1.15); } }
+.msg-voice-name {
+  flex-shrink:0; font-size:11px; color:var(--muted);
+  max-width:70px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* ===== 通话系统 ===== */
+.call-mask {
+  position:fixed; inset:0; z-index:95;
+  background:rgba(0,0,0,.5);
+  display:flex; align-items:center; justify-content:center;
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+}
+.call-mask[hidden] { display:none; }
+.call-panel {
+  width:min(320px, 86vw); text-align:center;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(0,0,0,.1); border-radius:26px;
+  box-shadow:0 20px 50px rgba(0,0,0,.25);
+  padding:16px 20px 22px;
+}
+/* v3.5.50 通话背景：有背景图时文字加白投影提高可读性 */
+.call-panel.has-bg .call-title,
+.call-panel.has-bg .call-name,
+.call-panel.has-bg .call-status,
+.call-panel.has-bg .call-duration,
+.call-panel.has-bg .call-countdown {
+  text-shadow:0 1px 3px rgba(255,255,255,.85), 0 0 8px rgba(255,255,255,.6);
+}
+.call-mini.has-bg .call-mini-name,
+.call-mini.has-bg .call-mini-time {
+  text-shadow:0 1px 3px rgba(255,255,255,.85), 0 0 8px rgba(255,255,255,.6);
+}
+.call-head {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:4px;
+}
+.call-title { font-size:14px; font-weight:700; color:var(--ink); letter-spacing:1px; }
+.call-minimize {
+  width:30px; height:30px; border-radius:50%; border:1px solid rgba(0,0,0,.1);
+  background:#fff; color:#666; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.call-minimize svg { width:15px; height:15px; }
+.call-minimize[hidden] { display:none; }
+.call-minimize:active { background:rgba(0,0,0,.06); }
+.call-av {
+  width:84px; height:84px; margin:0 auto 14px; border-radius:50%;
+  background:#e9e9e9; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+.call-av img { width:100%; height:100%; object-fit:cover; display:block; }
+.call-av svg { width:34px; height:34px; }
+.call-name { font-size:18px; font-weight:800; color:var(--ink); }
+.call-status { font-size:13px; color:var(--muted); margin-top:6px; }
+.call-duration { font-size:26px; font-weight:300; color:var(--ink); margin-top:8px; font-variant-numeric:tabular-nums; }
+.call-countdown { font-size:12px; color:#e05555; margin-top:6px; }
+.call-btns { display:flex; justify-content:center; gap:26px; margin-top:24px; }
+.call-btn {
+  width:62px; height:62px; border-radius:50%; border:none; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  color:#fff; font-size:10px; font-weight:600;
+}
+.call-btn svg { width:24px; height:24px; }
+.call-btn[hidden] { display:none; }
+.call-hang { background:#ff4d4f; }
+.call-reject { background:#ff4d4f; }
+.call-answer { background:#52c41a; }
+.call-btn:active { transform:scale(.94); }
+
+/* 通话小框（接通后最小化；白色、可拖动；位于输入栏上方）
+   v3.5.110：bottom 加 safe-area，全面屏全屏模式下与输入栏同步上移，不错位 */
+.call-mini {
+  position:fixed; left:50%; bottom:calc(96px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%);
+  /* v3.5.127：z 90 → 95——与 modal-mask 同层时会被弹窗盖住（通话中打开弹窗，
+     通话小框/挂断入口不可见） */
+  z-index:95;
+  display:flex; align-items:center; gap:10px;
+  background:#fff; color:var(--ink);
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:99px; padding:8px 8px 8px 10px;
+  box-shadow:0 6px 20px rgba(0,0,0,.18);
+  cursor:grab; user-select:none; touch-action:none;
+}
+.call-mini:active { cursor:grabbing; }
+.call-mini[hidden] { display:none; }
+.call-mini-av {
+  width:38px; height:38px; border-radius:50%; overflow:hidden; flex-shrink:0;
+  background:#e9e9e9; display:flex; align-items:center; justify-content:center;
+}
+.call-mini-av img { width:100%; height:100%; object-fit:cover; display:block; }
+.call-mini-av svg { width:16px; height:16px; }
+.call-mini-info { display:flex; flex-direction:column; }
+.call-mini-name { font-size:12px; font-weight:700; }
+.call-mini-time { font-size:10px; opacity:.75; font-variant-numeric:tabular-nums; }
+.call-mini-hang {
+  width:34px; height:34px; border-radius:50%; border:none; cursor:pointer; flex-shrink:0;
+  background:#ff4d4f; color:#fff;
+  display:flex; align-items:center; justify-content:center;
+}
+.call-mini-hang svg { width:16px; height:16px; }
+.call-mini-hang:active { transform:scale(.92); }
+
+/* 字卡级局部撤回：胶囊提示 + 展开内容 */
+.msg-poke-seg {
+  display:inline-flex; align-items:center; gap:3px;
+  font-size:11px; color:var(--muted); cursor:pointer; user-select:none;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+  padding:3px 12px; border-radius:14px;
+}
+.msg-poke-seg-detail {
+  margin-top:6px; padding:8px 12px; border-radius:10px;
+  background:rgba(0,0,0,.04); font-size:12px; color:var(--ink); line-height:1.8;
+}
+
+/* 系统消息（来电/通话）内联矢量图标 */
+.msg-poke svg, .msg-center-card svg { width:15px; height:15px; vertical-align:-2px; margin-right:3px; color:inherit; }
