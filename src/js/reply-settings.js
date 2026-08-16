@@ -76,7 +76,11 @@
     // stepper 数值
     document.querySelectorAll('.stepper').forEach(st => {
       const k = st.dataset.k;
-      const val = st.querySelector('.stp-val');
+      // v3.6.x：固定选 input——转换后页面里 .stp-val 会先匹配到 ce-box(DIV，继承了
+      // stp-val 类)，给 DIV 写 value 只产生 expando/attribute 不影响显示，还会污染
+      // 后续运行时查询（保存按钮读到过期值）。input.stp-val 走 value 代理始终读写
+      // ce-box 的当前文本。
+      const val = st.querySelector('input.stp-val');
       if (val) {
         const step = parseFloat(st.dataset.step) || 1;
         const v = cfg[k] !== undefined ? cfg[k] : DEFAULTS[k];
@@ -102,7 +106,8 @@
     // v3.6.x：data-min/max 缺失时兜底默认值，避免 NaN 写进存储（± 按钮失效、显示 NaN）
     const intAttr = (name, def) => { const v = parseInt(st.getAttribute(name), 10); return Number.isNaN(v) ? def : v; };
     const min = intAttr('data-min', 0);
-    const max = intAttr('data-max', 100);
+    // v3.6.x：data-max 缺失 = 不设上限（回复速度最长可任意调大；其余 stepper 均显式写 data-max）
+    const max = intAttr('data-max', Infinity);
     const step = parseFloat(st.dataset.step) || 1;
     const val = st.querySelector('.stp-val');
     const fmt = (v) => step < 1 ? v.toFixed(2) : v;
@@ -132,7 +137,8 @@
     val.setAttribute('inputmode', 'decimal'); // 手机上弹数字键盘（转换器复制到 ce-box）
     const intAttr = (name, def) => { const v = parseInt(st.getAttribute(name), 10); return Number.isNaN(v) ? def : v; };
     const min = intAttr('data-min', 0);
-    const max = intAttr('data-max', 100);
+    // v3.6.x：data-max 缺失 = 不设上限（回复速度最长可任意调大；其余 stepper 均显式写 data-max）
+    const max = intAttr('data-max', Infinity);
     const step = parseFloat(st.dataset.step) || 1;
     const fmt = (v) => step < 1 ? Number(v).toFixed(2) : String(Math.round(Number(v)));
     const selectAll = () => {
@@ -156,7 +162,8 @@
     });
     const commit = () => {
       let v = parseFloat(val.value);
-      if (isNaN(v)) v = min;
+      // v3.6.x：NaN/Infinity（防输入非数字或 Infinity 字符串污染存储）一律回退下限
+      if (!isFinite(v)) v = min;
       v = Math.min(max, Math.max(min, v));
       if (step < 1) v = Math.round(v / step) * step;
       else v = Math.round(v);
@@ -208,8 +215,18 @@
       try {
         document.querySelectorAll('.stepper').forEach(st => {
           const k = st.dataset.k;
-          const val = st.querySelector('.stp-val');
-          if (k && val) window.saveReplyCfg(k, parseFloat(val.value) || 0);
+          // 同 syncUI：固定选 input.stp-val，避免转换后误读到 ce-box DIV 的过期 expando
+          const val = st.querySelector('input.stp-val');
+          if (k && val) {
+            // 与直接输入同一套范围校验（data-max 缺失 = 不设上限，防 NaN/Infinity 入库）
+            const intAttr = (name, def) => { const v = parseInt(st.getAttribute(name), 10); return Number.isNaN(v) ? def : v; };
+            const min = intAttr('data-min', 0);
+            const max = intAttr('data-max', Infinity);
+            let v = parseFloat(val.value);
+            if (!isFinite(v)) v = min;
+            v = Math.min(max, Math.max(min, v));
+            window.saveReplyCfg(k, v);
+          }
         });
         ['py-en', 'as-en', 'dnd-en', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
           const el = document.getElementById(k);
