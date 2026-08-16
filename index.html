@@ -3241,7 +3241,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 14:27</div>
+      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 14:30</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -16443,11 +16443,20 @@ window.openTCPanel = openTCPanel;
           store.set('bg-notify', '1');
           syncNotifyUI();
           try { new Notification('通知已开启', { body: '后台消息提醒将正常弹窗' }); } catch (e) {}
-          // v3.5.114：提醒生效前提——需开启后台保活 + HTTPS 访问（Android http 不弹通知）
+          // v3.5.132：开启通知时自动联动开启后台保活——后台消息要"到达"必须
+          //   页面定时器在后台仍运行（静音音频保活）；否则开关开了但页面休眠，
+          //   消息根本不产生，通知永远不会弹（旧版只 toast 提醒，用户容易漏开）
           setTimeout(function () {
             const keep = document.getElementById('bg-keepalive');
             const keepOn = keep ? keep.checked : store.get('bg-keepalive') === '1';
-            if (!keepOn) toast('提醒：开启「后台保活」才能让 TA 消息在后台到达');
+            if (!keepOn) {
+              if (keep) keep.checked = true;
+              keepEnabled = true;
+              store.set('bg-keepalive', '1');
+              startKeepAlive(false);
+              syncKeepUI();
+              toast('已自动开启后台保活（后台消息必需）');
+            }
             if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
               toast('提醒：需 HTTPS 访问，浏览器才允许通知');
             }
@@ -16542,6 +16551,19 @@ window.openTCPanel = openTCPanel;
       }
     }
   }
+
+  // v3.5.132：从后台回到前台时做一次状态检查——通知开但保活被关 / 权限被回收
+  //   都是静默失效（页面照常运行、通知就是不弹），回到前台时主动提示一次
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible') return;
+    const saved = store.get('bg-notify');
+    if (saved !== '1') return;
+    const keep = document.getElementById('bg-keepalive');
+    const keepOn = keep ? keep.checked : store.get('bg-keepalive') === '1';
+    if (!keepOn) {
+      toast('提醒：后台保活已关闭，后台消息到不了，通知不会弹（设置里开启）');
+    }
+  });
 
   // 供 chat.js 调用：收到 TA 新消息且页面不在前台时弹浏览器通知
   // 通知显示：联系人头像 + 昵称 + 消息发送时间 + 内容
