@@ -139,23 +139,39 @@
   }
 
   // 随机取一道已启用的题（优先用户自定义/启用的）
-  // v3.6.x：settings.useDefault=false 时不抽取系统预设（isPreset）题——但题库里保留，重新开启即可恢复
+  // v3.6.x：settings.useDefault=false 时不抽取系统预设（isPreset）题——但题库里保留，重新开启即可恢复；
+  // 返回完整问题对象（含 type/options，供 pushAsk 判断单选题）
   function taAskPick(d) {
     const s = d.settings || {};
     const useDefault = s.useDefault !== false;
     const qs = d.questions.filter(q => q.enabled !== false && q.text && (useDefault || !q.isPreset));
     if (!qs.length) return null;
-    return qs[Math.floor(Math.random() * qs.length)].text;
+    return qs[Math.floor(Math.random() * qs.length)];
   }
+
+  // v3.6.x：问问TA 文字题回复——优先从自定义聊天字卡挑一条文字字卡，无则默认甜话
+  window.pickAskCardReply = function () {
+    try {
+      const cards = (window.getCustomCards && window.getCustomCards()) || [];
+      const words = cards.filter(s => typeof s === 'string' && s.indexOf('data:') !== 0 && s.indexOf('|||') < 0 && s.trim());
+      if (words.length) return words[Math.floor(Math.random() * words.length)];
+    } catch (e) {}
+    const defs = ['收到你的回答。', '好呀，我知道了。', '嗯嗯，我也是这么想的。', '你这么说，我记住了。', '好的，我记在心里了。'];
+    return defs[Math.floor(Math.random() * defs.length)];
+  };
 
   // 发出一条询问（系统提示 + 询问卡片；弹窗按 popupProb 概率触发）
   function pushAsk(q, opts) {
     if (!window.chatAddSystem) return;
-    let popup = true;
-    if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
-    else if (opts && opts.popup === false) popup = false;
+    // v3.6.x：单选题不弹窗（弹窗是纯文字输入界面）——只进聊天卡片，点卡片就地点选
+    const isSingle = q && q.type === 'single' && Array.isArray(q.options) && q.options.length;
+    let popup = false;
+    if (!isSingle) {
+      if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
+      else if (opts && opts.popup === false) popup = false;
+    }
     window.chatAddSystem('TA想问你一个问题。');
-    const el = window.chatAddSystem(q, { special: 'ask-card', askQuestion: q });
+    const el = window.chatAddSystem(q.text, { special: 'ask-card', askQuestion: q.text, askOptions: isSingle ? q.options : null, askType: isSingle ? 'single' : 'text' });
     const idx = el ? Number(el.dataset.idx) : -1;
     if (popup) setTimeout(() => { if (idx >= 0 && window.openAskReply && !cardPopupBusy()) window.openAskReply(idx); }, 400);
   }
@@ -225,10 +241,10 @@
         msgIdx = fixedIdx;
       }
       if (window.chatAskReply) {
-        window.chatAskReply(msgIdx, answer);
+        const askReply = window.chatAskReply(msgIdx, answer);
         // 记入历史（保存全部，不截断），含 TA 的回复
         const d = taAskLoad();
-        d.history.push({ q: question, a: answer, reply: '收到你的回答。', ts: Date.now() });
+        d.history.push({ q: question, a: answer, reply: askReply || '收到你的回答。', ts: Date.now() });
         taAskSave(d);
         toast('已回复TA的提问');
       }
@@ -303,6 +319,28 @@
     toast('弹窗概率已设为 ' + askPopup.value + '%');
   });
   renderAskSettings();
+
+  // ================= 批量导入问题（v3.6.x：一行一个问题，导入到所选分类） =================
+  const batchCatEl = document.getElementById('ta-ask-batch-cat');
+  const batchTextEl = document.getElementById('ta-ask-batch');
+  const batchAddBtn = document.getElementById('ta-ask-batch-add');
+  if (batchCatEl && batchTextEl && batchAddBtn) {
+    batchAddBtn.addEventListener('click', () => {
+      const cat = batchCatEl.value;
+      const lines = (batchTextEl.value || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      if (!lines.length) { toast('请先输入问题，每行一个'); return; }
+      const d2 = taAskLoad();
+      lines.forEach(t => {
+        d2.questions.push({ id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), text: t, cat: cat, enabled: true, isPreset: false });
+      });
+      taAskSave(d2);
+      const label = (CATS.find(c => c[0] === cat) || [cat])[1] || cat;
+      batchTextEl.value = '';
+      renderManage();
+      toast('已导入 ' + lines.length + ' 个问题到「' + label + '」');
+    });
+  }
+
   const backBtn = document.getElementById('ta-ask-back');
   if (backBtn) {
     backBtn.addEventListener('click', () => {
@@ -329,11 +367,19 @@
         const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
         html += '<div class="ta-row' + (preset && !useDefault ? ' off' : '') + '">' +
           '<label class="toggle"><input type="checkbox"' + (q.enabled !== false ? ' checked' : '') + ' data-idx="' + idx + '"><span class="tk"></span></label>' +
-          '<span class="ta-txt">' + q.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</span>' +
+          '<span class="ta-txt">' + q.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (q.type === 'single' ? ' <span class="tc-known">单选·' + (q.options ? q.options.length : 0) + '选项</span>' : '') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</span>' +
           delBtn +
           '</div>';
       });
-      html += '<div class="ta-add"><input id="ta-new-' + k + '" type="text" placeholder="添加问题…"><button class="ta-add-btn" data-cat="' + k + '">添加</button></div>';
+      html += '<div class="ta-add">' +
+        '<select class="ta-type tc-input" data-cat="' + k + '">' +
+        '<option value="text">文字回复</option>' +
+        '<option value="single">单选题</option>' +
+        '</select>' +
+        '<input id="ta-new-' + k + '" type="text" placeholder="添加问题…">' +
+        '<button class="ta-add-btn" data-cat="' + k + '">添加</button>' +
+        '<textarea id="ta-opts-' + k + '" class="ta-opts tc-input" rows="3" placeholder="单选题选项：每行一个；可写 选项~TA回应，TA会用该回应回复" hidden></textarea>' +
+        '</div>';
       html += '</div>';
     });
     catsEl.innerHTML = html;
@@ -357,13 +403,38 @@
         renderManage();
       });
     });
+    // v3.6.x：类型切换——单选题显示选项输入框（安卓 contenteditable 转换的 box 同步显隐）
+    catsEl.querySelectorAll('.ta-type').forEach(sel => {
+      const toggleOpts = () => {
+        const o = document.getElementById('ta-opts-' + sel.dataset.cat);
+        if (!o) return;
+        o.hidden = sel.value !== 'single';
+        if (o.__ceBox) o.__ceBox.hidden = o.hidden;
+        else if (o.nextElementSibling && o.nextElementSibling.classList && o.nextElementSibling.classList.contains('ce-box')) o.nextElementSibling.hidden = o.hidden;
+      };
+      sel.addEventListener('change', toggleOpts);
+      toggleOpts();
+    });
     catsEl.querySelectorAll('.ta-add-btn').forEach(b => {
       b.addEventListener('click', () => {
         const inp = document.getElementById('ta-new-' + b.dataset.cat);
         const v = inp ? inp.value.trim() : '';
         if (!v) { toast('请输入问题'); return; }
+        const typeSel = b.parentElement.querySelector('.ta-type');
+        const type = typeSel ? typeSel.value : 'text';
         const d2 = taAskLoad();
-        d2.questions.push({ id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 999), text: v, cat: b.dataset.cat, enabled: true, isPreset: false });
+        const q = { id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 999), text: v, cat: b.dataset.cat, enabled: true, isPreset: false };
+        if (type === 'single') {
+          const optsEl = document.getElementById('ta-opts-' + b.dataset.cat);
+          const opts = (optsEl ? optsEl.value : '').split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(line => {
+            const i = line.indexOf('~');
+            return i >= 0 ? { t: line.slice(0, i).trim(), reply: line.slice(i + 1).trim() } : { t: line, reply: '' };
+          });
+          if (!opts.length) { toast('单选题请填写选项，每行一个'); return; }
+          q.type = 'single';
+          q.options = opts;
+        }
+        d2.questions.push(q);
         taAskSave(d2);
         renderManage();
       });

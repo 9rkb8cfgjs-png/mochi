@@ -164,11 +164,15 @@
               if (!answeredRec(m) || answeredRec(merged[i])) return;
               merged[i] = m;
             });
-            const changed = localNew.length > 0 || merged.length !== msgs.length;
+            let changed = localNew.length > 0 || merged.length !== msgs.length;
             msgs = merged;
             // 条数不一致（IDB 快照与内存不是同一批消息）→ 索引已失效，清空会话改动标记
             if (merged.length !== curArr.length) sessionChangedIdx.clear();
             migrateLegacyMediaMsgs();
+            // v3.6.x：IDB 权威合并后再次还原乱码图标——同步部分的还原会被这里的
+            // IDB 快照合并覆盖，必须对合并结果再还原一次并计入 changed，才会
+            // 写回 IDB 并重渲染，历史乱码消息才能彻底修复
+            if (restoreEscapedPokeIcons()) changed = true;
             pendingLocal = null;
             chatDbReady = true;
             // v3.6.x：IDB 权威已读到，清理老版本 localStorage 残留（老用户升级后
@@ -217,6 +221,9 @@
     });
     if (envMigrated) saveMsgs();
   }
+  // v3.6.x：还原被 XSS 转义损坏的系统提示图标（历史乱码消息，函数定义见 escTxt 下方；
+  // IDB 合并回调里还会再跑一次，防止同步还原被 IDB 权威快照覆盖）
+  if (restoreEscapedPokeIcons()) saveMsgs();
     // 旧消息补时间戳（仅一次，保证每条都有精确到秒的时间）
     let changed = false;
     msgs.forEach(r => { if (r && !r.ts) { r.ts = Date.now(); changed = true; } });
@@ -231,9 +238,37 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+  // v3.6.x：系统提示图标白名单——call.js 等以固定 <svg class="st-ico"> 前缀拼接
+  // 系统图标（非用户内容），渲染时原样保留；其余文本仍走 escTxt 全量转义
+  function pokeIconHtml(text) {
+    const s = String(text == null ? '' : text);
+    const prefix = '<svg class="st-ico"';
+    if (s.indexOf(prefix) === 0) {
+      const end = s.indexOf('</svg>');
+      if (end >= 0) return s.slice(0, end + 6) + escTxt(s.slice(end + 6));
+    }
+    return escTxt(s);
+  }
   function attrEsc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  // v3.6.x：还原被 XSS 转义损坏的系统提示图标——XSS 转义升级曾把 call.js 等
+  // 拼接的内联图标（<svg class="st-ico">…</svg>）整段转义成 &lt;svg…&gt; 纯文本，
+  // 历史来电/通话记录显示成一长串乱码。此处仅对系统白名单前缀（非用户内容）
+  // 还原为真 SVG，其余文本一律不碰；返回是否发生还原（调用方决定是否落盘/重渲染）
+  function restoreEscapedPokeIcons() {
+    let escMigrated = false;
+    msgs.forEach(r => {
+      if (r && r.special === 'poke' && typeof r.text === 'string' && r.text.indexOf('&lt;svg class=&quot;st-ico&quot;') === 0) {
+        const mm = r.text.match(/^(&lt;svg class=&quot;st-ico&quot;[\s\S]*?&lt;\/svg&gt;)([\s\S]*)$/);
+        if (mm) {
+          r.text = mm[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&') + mm[2];
+          escMigrated = true;
+        }
+      }
+    });
+    return escMigrated;
   }
   // 头像回填（接受元素或 id）
   function fillAvatar(el, key) {
@@ -362,6 +397,31 @@
       else if (/[\(（｡◕(◕)(づ｡(¬)]/.test(c) && /[\)）】)]/.test(c)) kaomoji.push(c);
       else text.push(c);
     });
+    // v3.6.x：字卡池空兜底——用户没在「自定义聊天字卡」里添加文字/颜文字/emoji 字卡时
+    // （内置预设已移除），用系统默认字卡（3260 张）补池，否则联系人回复永远只能
+    // 回兜底文案「收到～」，体验像"不管发什么都只回收到"
+    try {
+      if (!text.length || !kaomoji.length || !emoji.length) {
+        const defGrps = (window.getDefaultCardGroups && window.getDefaultCardGroups('main')) || [];
+        defGrps.forEach(g => {
+          const arr = g[1] || [];
+          arr.forEach(c => {
+            if (typeof c !== 'string' || !c) return;
+            if (/[\uD800-\uDBFF]/.test(c)) emoji.push(c);
+            else if (/[\(（｡◕(◕)(づ｡(¬)]/.test(c) && /[\)）】)]/.test(c)) kaomoji.push(c);
+            else text.push(c);
+          });
+        });
+        if (!kaomoji.length) {
+          const kg = (window.getDefaultCardGroups && window.getDefaultCardGroups('kaomoji')) || [];
+          kg.forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) kaomoji.push(c); }));
+        }
+        if (!emoji.length) {
+          const eg = (window.getDefaultCardGroups && window.getDefaultCardGroups('emoji')) || [];
+          eg.forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) emoji.push(c); }));
+        }
+      }
+    } catch (e) {}
     return { text, kaomoji, emoji, sticker, image, voice, poke };
   }
 
@@ -451,7 +511,22 @@
           const matchTxt = isPref ? '✦ 刚好想到了一起'
             : isLiked ? '你们想得不一样，不过TA似乎很喜欢你的答案'
             : '这次没有选到一起。TA心里想的是：「' + prefTxt + '」';
-          if (window.chatChooseReply) window.chatChooseReply(idx, String(o.t || ''), String(o.reply || '…'), matchTxt);
+      if (window.chatChooseReply) window.chatChooseReply(idx, String(o.t || ''), String(o.reply || '…'), matchTxt);
+          if (window.logFish) window.logFish();
+        });
+        wrap.appendChild(b);
+      });
+    } else if (type === 'ask' && (rec.askType === 'single' || (rec.type === 'single' && Array.isArray(rec.options) && rec.options.length))) {
+      // 问问TA 单选题：选项按钮直接点选（与 TA的小问题 同款交互）；
+      // 选项预设了 TA 回应则按回应回复，否则 TA 从字卡文字池挑一条
+      const opts = Array.isArray(rec.askOptions) ? rec.askOptions : (Array.isArray(rec.options) ? rec.options : []);
+      if (!opts.length) return false;
+      opts.forEach((o, i) => {
+        const b = document.createElement('button');
+        b.className = 'ip-opt';
+        b.textContent = String(o.t || '');
+        b.addEventListener('click', () => {
+          if (window.chatAskReply) window.chatAskReply(idx, String(o.t || ''), String(o.reply || ''));
           if (window.logFish) window.logFish();
         });
         wrap.appendChild(b);
@@ -649,7 +724,7 @@
     // 拍一拍 / 换头像系统提示：居中灰字小卡片，可选附带一张头像图
     if (rec.special === 'poke') {
       m.className = 'msg-poke';
-      m.innerHTML = '<span>' + escTxt(rec.text) + '</span>' +
+      m.innerHTML = '<span>' + pokeIconHtml(rec.text) + '</span>' +
         (rec.img ? '<img class="msg-poke-img" src="' + attrEsc(rec.img) + '" alt="新头像">' : '');
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -701,15 +776,17 @@
       return m;
     }
     // TA 的询问卡片：居中白卡显示问题，未回答可点击回答（星言 ta 的询问）
+    // v3.6.x：支持单选题（askType/askOptions 由 ta-ask.js pushAsk 写入聊天记录）
     if (rec.special === 'ask-card') {
       m.className = 'msg-ask';
       m.dataset.idx = msgs.length - 1;
       const answered = rec.askStatus === 'answered';
+      const isSingle = rec.askType === 'single' || (rec.type === 'single' && Array.isArray(rec.options) && rec.options.length);
       m.innerHTML = '<div class="msg-ask-card' + (answered ? ' answered' : '') + '">' +
         '<div class="msg-ask-q">' + escTxt(rec.askQuestion || rec.text) + '</div>' +
         (answered
-          ? '<div class="msg-ask-a">✓ 已回答：' + escTxt(rec.askAnswer) + '</div>'
-          : '<div class="msg-ask-tip">点击回答 TA 的提问</div>') +
+          ? '<div class="msg-ask-a">✓ 已回答：' + escTxt(rec.askAnswer) + '</div>' + (rec.askReply ? '<div class="msg-choose-r">TA：' + escTxt(rec.askReply) + '</div>' : '')
+          : '<div class="msg-ask-tip">' + (isSingle ? '点击选择你的答案' : '点击回答 TA 的提问') + '</div>') +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -1221,21 +1298,26 @@
       el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + escTxt(rec.roastText || '') + '</div><div class="msg-ask-a">✓ 你：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(reply || '…') + '</div></div>';
     }
   };
-  // 回答 TA 的询问：更新记录 + 插入"我的回答"和 TA 确认消息
-  window.chatAskReply = function (msgIdx, answer) {
+  // 回答 TA 的询问：更新记录 + 插入"我的回答"和 TA 回复消息
+  // v3.6.x：reply 为单选题选项预设的 TA 回应；未预设或文字题时从字卡文字池挑一条
+  window.chatAskReply = function (msgIdx, answer, reply) {
     const rec = msgs[msgIdx];
     if (!rec || rec.special !== 'ask-card' || rec.askStatus === 'answered') return;
     rec.askStatus = 'answered';
     rec.askAnswer = answer;
+    const taReply = (reply && String(reply).trim()) ? String(reply).trim()
+      : (window.pickAskCardReply ? window.pickAskCardReply() : '收到你的回答。');
+    rec.askReply = taReply;
     saveMsgs();
     saveMsgsNow();
     addOut(answer);
-    addIn('收到你的回答。');
+    addIn(taReply);
     // 就地更新已渲染的询问卡片
     const el = body.querySelector('.msg-ask[data-idx="' + msgIdx + '"]');
     if (el) {
-      el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">' + escTxt(rec.askQuestion || '') + '</div><div class="msg-ask-a">✓ 已回答：' + escTxt(answer) + '</div></div>';
+      el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">' + escTxt(rec.askQuestion || '') + '</div><div class="msg-ask-a">✓ 已回答：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(taReply) + '</div></div>';
     }
+    return taReply;
   };
   // 撤回：更新记录 + DOM（点击可查看原文）
   // v3.6.x：节点可能已被聊天页重渲染替换（撤回定时器持旧节点）——
@@ -2188,6 +2270,99 @@ function partialRetractMsg(msgEl, side) {
       if (askP) askP.hidden = true;
       if (window.closeAvlib) window.closeAvlib();
       openChatSearch();
+    });
+  }
+
+  // ---- 聊天记录 导出 / 导入（v3.6.x） ----
+  const moreExportChat = document.getElementById('more-export-chat');
+  if (moreExportChat) {
+    moreExportChat.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (morePanel) morePanel.hidden = true;
+      // 强制落盘防抖窗口内的最后几条消息，再导出
+      if (window.chatFlushSave) window.chatFlushSave();
+      const out = { version: '1.0', app: 'mochi-chat', exportTime: new Date().toISOString(), msgs: msgs };
+      try {
+        const blob = new Blob([JSON.stringify(out)], { type: 'application/json;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = '聊天记录_' + new Date().toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        toast('已导出聊天记录（' + msgs.length + ' 条）');
+      } catch (err) { toast('导出失败'); }
+    });
+  }
+  const moreImportChat = document.getElementById('more-import-chat');
+  if (moreImportChat) {
+    moreImportChat.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (morePanel) morePanel.hidden = true;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json,application/json';
+      input.onchange = () => {
+        const f = input.files && input.files[0];
+        if (f) importChatFile(f);
+      };
+      input.click();
+    });
+  }
+  // 兼容旧 iOS：读取文件文本（File.text() 不支持时退回 FileReader）
+  function chatReadFileText(file) {
+    return new Promise((resolve) => {
+      if (typeof file.text === 'function') {
+        file.text().then(resolve).catch(() => readViaReader());
+      } else readViaReader();
+      function readViaReader() {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result || ''));
+        r.onerror = () => resolve('');
+        r.readAsText(file, 'utf-8');
+      }
+    });
+  }
+  // 导入聊天记录：按 内容+时间 去重合并，导入的消息按 ts 插入正确位置
+  function importChatFile(file) {
+    chatReadFileText(file).then((text) => {
+      let arr = null;
+      try {
+        const data = JSON.parse(text || 'null');
+        if (Array.isArray(data)) arr = data;
+        else if (data && Array.isArray(data.msgs)) arr = data.msgs;
+      } catch (err) {}
+      if (!arr || !arr.length) { toast('无效的聊天记录文件'); return; }
+      const valid = arr.filter(x => x && typeof x === 'object' && x.side && x.text !== undefined);
+      if (!valid.length) { toast('文件中没有有效的聊天消息'); return; }
+      // 去重 key：side + 内容 + 时间 + 类型（消息无稳定 id）
+      const keyOf = (r) => JSON.stringify({ side: r.side, text: r.text, ts: r.ts, type: r.type || '' });
+      const map = new Map();
+      msgs.forEach(r => { if (r) map.set(keyOf(r), r); });
+      const before = map.size;
+      valid.forEach(r => map.set(keyOf(r), r));
+      const merged = Array.from(map.values());
+      merged.sort((a, b) => ((a.ts || 0) - (b.ts || 0)) || 0);
+      const added = merged.length - before;
+      if (window.openModal) {
+        window.openModal('导入 ' + valid.length + ' 条聊天记录？', '', () => {
+          msgs = merged;
+          saveMsgs();
+          saveMsgsNow();
+          renderStart = Math.max(0, merged.length - RENDER_MAX);
+          renderWindow(false, false);
+          scrollToBottom();
+          toast('已导入 ' + valid.length + ' 条（新增 ' + added + ' 条，共 ' + merged.length + ' 条）');
+        }, { noInput: true, staticText: '将合并进当前聊天记录（现有 ' + before + ' 条）：\n· 导入 ' + valid.length + ' 条，按 内容+时间 自动去重\n· 重复消息以导入内容为准，新增的按时间插入\n导入后共 ' + merged.length + ' 条。' });
+      } else {
+        msgs = merged;
+        saveMsgs();
+        saveMsgsNow();
+        renderStart = Math.max(0, merged.length - RENDER_MAX);
+        renderWindow(false, false);
+        scrollToBottom();
+        toast('已导入 ' + valid.length + ' 条聊天记录');
+      }
     });
   }
   if (chatSearchGo) chatSearchGo.addEventListener('click', (e) => { e.stopPropagation(); runChatSearch(); });

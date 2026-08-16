@@ -46,7 +46,8 @@
     let shown = grps;
     if (curGroup) shown = shown.filter(g => g[0] === curGroup);
     if (q) {
-      shown = grps.map(([g, arr]) => [g, arr.filter(c => c.indexOf(q) >= 0)]).filter(([g, arr]) => arr.length || g.indexOf(q) >= 0);
+      // 基于已选分组过滤后的 shown 再筛内容（v3.6.x：修复搜索覆盖分组筛选的 bug）
+      shown = shown.map(([g, arr]) => [g, arr.filter(c => c.indexOf(q) >= 0)]).filter(([g, arr]) => arr.length || g.indexOf(q) >= 0);
     }
     list.innerHTML = '';
     if (!shown.length) {
@@ -80,15 +81,18 @@
     });
   });
 
-  const search = document.querySelector('#page-default-cards .card-search');
-  if (search) {
-    search.addEventListener('click', () => {
-      if (window.openModal) {
-        window.openModal('搜索默认字卡', q, (v) => {
-          q = (v || '').trim();
-          render();
-        });
-      }
+  // 搜索：页内输入框直接过滤（v3.6.x：与自定义聊天字卡一致，不再弹窗，输入即筛，清空即恢复）
+  const searchInput = document.getElementById('dc-search-input');
+  if (searchInput) {
+    // v3.6.x：预标记 ceDone 让 mobile-adapt.js 跳过 contenteditable 转换——
+    // 雨见浏览器等部分安卓浏览器对 ce-box 聚焦/输入失效（敲字不显示），搜索框保持原生 input
+    searchInput.dataset.ceDone = '1';
+    searchInput.addEventListener('input', () => {
+      q = searchInput.value.trim();
+      render();
+    });
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { searchInput.value = ''; q = ''; render(); searchInput.blur(); }
     });
   }
 

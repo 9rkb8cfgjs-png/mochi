@@ -285,7 +285,9 @@
       return v !== undefined && v !== '' && Number(v) > 0 ? Number(v) : def;
     };
     return {
-      maxCards: c['ml-max-cards'] !== undefined ? c['ml-max-cards'] : 100,
+      // v3.6.x：最少/最多字卡条数（回复设置-信箱可调；默认 20~50）
+      minCards: c['ml-min-cards'] !== undefined ? Number(c['ml-min-cards']) : 20,
+      maxCards: c['ml-max-cards'] !== undefined ? c['ml-max-cards'] : 50,
       writeProb: prob('ml-write-prob', 30),
       writeMin: c['ml-write-min'] !== undefined ? c['ml-write-min'] : 1,
       writeMax: c['ml-write-max'] !== undefined ? c['ml-write-max'] : 120,
@@ -300,9 +302,27 @@
     };
   }
   // 字卡库分类（与聊天/朋友圈同一套规则）：文字 / 颜文字 / emoji / 表情包(图片)
+  // v3.6.x：用户未添加自定义字卡时（内置预设已移除）用系统默认字卡补池——
+  //   否则信件只能从 5 条固定文案里抽，内容单一且条数上限超过池子时爆重复
   function mailCardPool() {
     const custom = (window.getCustomCards && window.getCustomCards()) || [];
     const text = [], kaomoji = [], emoji = [];
+    const pushDefault = () => {
+      try {
+        if (!text.length) {
+          const dg = (window.getDefaultCardGroups && window.getDefaultCardGroups('main')) || [];
+          dg.forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) text.push(c); }));
+        }
+        if (!kaomoji.length) {
+          const kg = (window.getDefaultCardGroups && window.getDefaultCardGroups('kaomoji')) || [];
+          kg.forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) kaomoji.push(c); }));
+        }
+        if (!emoji.length) {
+          const eg = (window.getDefaultCardGroups && window.getDefaultCardGroups('emoji')) || [];
+          eg.forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) emoji.push(c); }));
+        }
+      } catch (e) {}
+    };
     custom.forEach(s => {
       if (!s || typeof s !== 'string') return;
       if (/^data:/.test(s)) return;
@@ -318,6 +338,7 @@
       if (/[\(（｡◕(◕)(づ｡(¬)]/.test(s) && /[\)）】)]/.test(s)) { kaomoji.push(s); return; }
       text.push(s);
     });
+    pushDefault();
     return {
       text: text,
       kaomoji: kaomoji,
@@ -330,8 +351,13 @@
   function taLetterContent(cfg) {
     const pool = mailCardPool();
     const words = pool.text.length ? pool.text : TA_LETTERS;
-    // v3.6.x：字卡数量上限按设置「最多字卡条数」生效（去掉旧的硬编码 8 上限）
-    const n = 1 + Math.floor(Math.random() * Math.max(1, cfg.maxCards || 1));
+    // v3.6.x：条数在「最少/最多字卡条数」之间随机；上限不超过池子大小——
+    // 移除自定义字卡内置预设后用户没添加字卡时 words 回退为固定文案，
+    // 条数超过池子会从同几段里反复抽 → 内容复制粘贴很多次（已修）。
+    const maxN = Math.max(1, words.length);
+    const wantMin = Math.min(Math.max(1, cfg.minCards || 1), maxN);
+    const wantMax = Math.min(Math.max(wantMin, cfg.maxCards || wantMin), maxN);
+    const n = wantMin + Math.floor(Math.random() * (wantMax - wantMin + 1));
     const parts = [];
     for (let i = 0; i < n; i++) parts.push(words[Math.floor(Math.random() * words.length)]);
     let t = parts.join(' ');
@@ -560,6 +586,96 @@
   }
   bindMailToolbar('#page-mail-write', 'mail-input');
   bindMailToolbar('#page-mail-reply', 'mail-reply-input');
+
+  // ================= 信箱数据：导出 / 导入 / 清空（v3.6.x） =================
+  // 数据就是 mail-letters 数组（含收信/寄信/回信/对方回信），导出为 JSON 下载；
+  // 导入按信件 id 去重合并；清空需确认，同时清掉待回信计划。
+  function mailExportData() {
+    const list = load();
+    const json = JSON.stringify({ version: '1.0', app: 'mochi-mail', exportTime: new Date().toISOString(), letters: list }, null, 2);
+    try {
+      const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '信箱数据_' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      toast('已导出 ' + list.length + ' 封信');
+    } catch (e) { toast('导出失败'); }
+  }
+  // 兼容旧 iOS：读取文件文本（File.text() 不支持时退回 FileReader）
+  function mailReadFileText(file) {
+    return new Promise((resolve) => {
+      if (typeof file.text === 'function') {
+        file.text().then(resolve).catch(() => readViaReader());
+      } else readViaReader();
+      function readViaReader() {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result || ''));
+        r.onerror = () => resolve('');
+        r.readAsText(file, 'utf-8');
+      }
+    });
+  }
+  function mailImportFile(file) {
+    mailReadFileText(file).then((text) => {
+      let arr = null;
+      try {
+        const data = JSON.parse(text || 'null');
+        if (Array.isArray(data)) arr = data;
+        else if (data && Array.isArray(data.letters)) arr = data.letters;
+      } catch (e) {}
+      if (!arr || !arr.length) { toast('无效的信箱数据文件'); return; }
+      const valid = arr.filter(x => x && typeof x === 'object' && x.id);
+      if (!valid.length) { toast('文件中没有有效的信件数据'); return; }
+      const cur = load();
+      // 按 id 去重合并：导入的信件覆盖同 id，新增的追加
+      const map = {};
+      cur.forEach(l => { if (l && l.id) map[l.id] = l; });
+      valid.forEach(l => { map[l.id] = l; });
+      const merged = Object.keys(map).map(k => map[k]);
+      if (window.openModal) {
+        window.openModal('导入 ' + valid.length + ' 封信？', '', () => {
+          save(merged);
+          viewLetter = null;
+          render();
+          updateBadge();
+          toast('已导入 ' + valid.length + ' 封信（共 ' + merged.length + ' 封）');
+        }, { noInput: true, staticText: '将合并进现有信箱（当前 ' + cur.length + ' 封）：\n· 导入 ' + valid.length + ' 封，其中 ' + (valid.length - (merged.length - cur.length)) + ' 封覆盖同 id 旧信\n· 同 id 以导入内容为准，其余保留\n导入后共 ' + merged.length + ' 封。' });
+      }
+    });
+  }
+  function mailClearAll() {
+    const n = load().length;
+    if (window.openModal) {
+      window.openModal('清空所有信件？', '', () => {
+        save([]);
+        replyPendingSave([]); // 同时清掉未到期的 TA 回信计划
+        viewLetter = null;
+        render();
+        updateBadge();
+        toast('信箱已清空');
+      }, { noInput: true, staticText: '将删除全部 ' + n + ' 封信（收信/寄信/回信），且无法恢复。' });
+    }
+  }
+  const mailExportBtn = document.getElementById('mail-export');
+  if (mailExportBtn) mailExportBtn.addEventListener('click', mailExportData);
+  const mailImportBtn = document.getElementById('mail-import');
+  if (mailImportBtn) {
+    mailImportBtn.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json,application/json';
+      input.onchange = () => {
+        const f = input.files && input.files[0];
+        if (f) mailImportFile(f);
+      };
+      input.click();
+    });
+  }
+  const mailClearBtn = document.getElementById('mail-clear');
+  if (mailClearBtn) mailClearBtn.addEventListener('click', mailClearAll);
 
   render();
   updateBadge();

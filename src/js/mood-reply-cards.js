@@ -195,6 +195,8 @@
       cats.forEach(([key, name]) => {
         let arr = followup[key] || [];
         if (rcQ) arr = arr.filter(t => t.indexOf(rcQ) >= 0);
+        // v3.6.x：搜索时只显示命中的分类，空分类不渲染分组头（与自定义聊天字卡一致）
+        if (rcQ && !arr.length) return;
         const h = document.createElement('div');
         h.className = 'cc-group-header';
         h.innerHTML = '<span class="ccg-name">' + name + '</span><span class="ccg-count">' + arr.length + '</span>';
@@ -210,12 +212,17 @@
     }
     renderRCBar();
     renderReply();
-    const rcSearch = document.getElementById('rc-search');
-    if (rcSearch) {
-      rcSearch.addEventListener('click', () => {
-        if (window.openModal) {
-          window.openModal('搜索回应字卡', rcQ, (v) => { rcQ = (v || '').trim(); renderReply(); });
-        }
+    // 搜索：页内输入框直接过滤（v3.6.x：与自定义聊天字卡一致，不再弹窗，输入即筛，清空即恢复）
+    const rcSearchInput = document.getElementById('rc-search-input');
+    if (rcSearchInput) {
+      // v3.6.x：预标记 ceDone 让 mobile-adapt.js 跳过 contenteditable 转换（雨见浏览器等敲字不显示）
+      rcSearchInput.dataset.ceDone = '1';
+      rcSearchInput.addEventListener('input', () => {
+        rcQ = rcSearchInput.value.trim();
+        renderReply();
+      });
+      rcSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { rcSearchInput.value = ''; rcQ = ''; renderReply(); rcSearchInput.blur(); }
       });
     }
     const li = document.getElementById('li-reply-cards');
@@ -287,12 +294,17 @@
     }
     renderMCBar();
     renderMood();
-    const mcSearch = document.getElementById('mc-search');
-    if (mcSearch) {
-      mcSearch.addEventListener('click', () => {
-        if (window.openModal) {
-          window.openModal('搜索情绪字卡', mcQ, (v) => { mcQ = (v || '').trim(); renderMood(); });
-        }
+    // 搜索：页内输入框直接过滤（v3.6.x：与自定义聊天字卡一致，不再弹窗，输入即筛，清空即恢复）
+    const mcSearchInput = document.getElementById('mc-search-input');
+    if (mcSearchInput) {
+      // v3.6.x：预标记 ceDone 让 mobile-adapt.js 跳过 contenteditable 转换（雨见浏览器等敲字不显示）
+      mcSearchInput.dataset.ceDone = '1';
+      mcSearchInput.addEventListener('input', () => {
+        mcQ = mcSearchInput.value.trim();
+        renderMood();
+      });
+      mcSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { mcSearchInput.value = ''; mcQ = ''; renderMood(); mcSearchInput.blur(); }
       });
     }
     const li = document.getElementById('li-mood-cards');

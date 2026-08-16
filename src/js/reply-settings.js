@@ -20,7 +20,8 @@
     'as-count-min': 1, 'as-count-max': 2, 'dnd-en': 0,
     // 信箱（星言信箱设置）
     // v3.5.99：最长写信/回信时间默认 480 分钟（8 小时）太久，容易让用户误以为 TA 不写信，改为 120 分钟
-    'ml-max-cards': 100,
+    // v3.6.x：默认最多字卡条数 100 → 50（信太长反而像刷屏）；新增最少字卡条数默认 20
+    'ml-min-cards': 20, 'ml-max-cards': 50,
     'ml-write-prob': 30, 'ml-write-min': 1, 'ml-write-max': 120,
     // v3.6.x：每天最多来信（封）——限制联系人主动写信频率，默认 3 封/天
     'ml-write-daily-max': 3,

@@ -318,6 +318,19 @@
       <div class="gs-row"><span>触发概率</span><input type="range" id="ta-ask-prob" min="1" max="100" step="1" class="tc-range"><span class="tc-prob-val" id="ta-ask-prob-val">20%</span></div>
       <div class="gs-row"><span>自动弹窗概率</span><input type="range" id="ta-ask-popup" min="0" max="100" step="1" class="tc-range"><span class="tc-prob-val" id="ta-ask-popup-val">70%</span></div>
     </div>
+    <div class="set-group glass">
+      <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>批量导入问题</div>
+      <div class="tc-addform">
+        <select id="ta-ask-batch-cat" class="tc-input">
+          <option value="daily">日常询问</option>
+          <option value="care">关心询问</option>
+          <option value="interact">互动询问</option>
+          <option value="world">两个世界</option>
+        </select>
+        <textarea id="ta-ask-batch" class="tc-input" rows="6" placeholder="每行一个问题，如：&#10;你吃饭了吗？&#10;现在在做什么？&#10;今天过得怎么样？"></textarea>
+        <button class="ta-add-btn" style="width:100%" id="ta-ask-batch-add">批量导入到所选分类</button>
+      </div>
+    </div>
     <div id="ta-ask-cats"></div>
   </div>
 </div>
@@ -918,6 +931,7 @@
         <div class="gs-panel" data-rpanel="mail" hidden>
           <div class="gs-title">信件内容</div>
           <div class="set-group glass">
+            <div class="gs-row"><span>最少字卡条数</span><div class="stepper" data-k="ml-min-cards" data-min="1" data-max="500" data-step="10"><button class="stp-min">−</button><input class="stp-val" id="ml-min-cards-val" readonly><button class="stp-max">+</button></div></div>
             <div class="gs-row"><span>最多字卡条数</span><div class="stepper" data-k="ml-max-cards" data-min="1" data-max="500" data-step="10"><button class="stp-min">−</button><input class="stp-val" id="ml-max-cards-val" readonly><button class="stp-max">+</button></div></div>
           </div>
           <div class="gs-title">联系人主动写信</div>
@@ -1091,7 +1105,7 @@
       <div class="cc-groups-bar" id="dc-groups-bar"></div>
       <div class="card-search glass">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <span class="ph">搜索默认字卡</span>
+        <input class="card-search-input" id="dc-search-input" placeholder="搜索默认字卡" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
       </div>
       <div class="card-list" id="dc-list">
         <!-- 默认字卡由 JS 按分类/分组渲染 -->
@@ -1117,7 +1131,7 @@
       <div class="cc-groups-bar" id="mc-groups-bar"></div>
       <div class="card-search glass" id="mc-search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <span class="ph">搜索情绪字卡</span>
+        <input class="card-search-input" id="mc-search-input" placeholder="搜索情绪字卡" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
       </div>
       <div class="card-list" id="mc-list">
         <!-- 情绪字卡按分组渲染 -->
@@ -1143,7 +1157,7 @@
       <div class="cc-groups-bar" id="rc-groups-bar"></div>
       <div class="card-search glass" id="rc-search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <span class="ph">搜索回应字卡</span>
+        <input class="card-search-input" id="rc-search-input" placeholder="搜索回应字卡" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
       </div>
       <div class="card-list" id="rc-list">
         <!-- 回应字卡按分类渲染 -->
@@ -1514,6 +1528,15 @@
           <button class="ta-add-btn" style="width:100%;margin-top:10px" id="mail-open-write">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-2px;margin-right:4px"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>提笔写信
           </button>
+        </div>
+        <!-- 信箱数据（所有 tab 下都显示，置于列表底部） -->
+        <div class="mail-data-section">
+          <div class="cal-card-title">信件数据</div>
+          <div class="mail-data-actions">
+            <button class="cc-tool" id="mail-export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>导出信件数据</button>
+            <button class="cc-tool" id="mail-import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>导入信件数据</button>
+            <button class="cc-tool cc-tool-danger" id="mail-clear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>清空所有信件</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1942,6 +1965,14 @@
           <button class="more-item" id="more-divine" title="占卜">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg></span>
             <span>占卜</span>
+          </button>
+          <button class="more-item" id="more-export-chat" title="导出聊天记录">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></span>
+            <span>导出聊天</span>
+          </button>
+          <button class="more-item" id="more-import-chat" title="导入聊天记录">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg></span>
+            <span>导入聊天</span>
           </button>
         </div>
         <div class="more-grid" id="more-grid-ask" hidden>

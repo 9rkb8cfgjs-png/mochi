@@ -773,6 +773,15 @@
   background:var(--ink); color:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
 }
 .ta-add-btn:active { opacity:.85; }
+/* v3.6.x：问问TA 添加区类型切换——单选下拉 + 选项输入框 */
+.ta-type { flex:0 0 auto; width:92px; font-size:12px; padding:0 6px; }
+.ta-add .ta-opts {
+  flex:1 0 100%; box-sizing:border-box; margin-top:8px;
+  border:1px solid rgba(0,0,0,.1); border-radius:10px;
+  padding:9px 12px; font-size:13px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
+  resize:vertical; line-height:1.5;
+}
+.ta-add .ta-opts[hidden] { display:none; }
 /* 问答历史 */
 .ta-h {
   border-bottom:1px solid rgba(0,0,0,.08); padding:10px 2px;
@@ -994,6 +1003,12 @@
 .mail-toolbar {
   display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;
 }
+/* 信箱数据：导出/导入/清空（v3.6.x）——竖排三个按钮占满整行，置于信箱列表底部 */
+.mail-data-section { margin-top:14px; padding:0 2px; }
+.mail-data-actions {
+  display:flex; flex-direction:column; gap:8px;
+}
+.mail-data-actions .cc-tool { width:100%; padding:11px 10px; }
 .mail-tb {
   flex:0 0 auto; width:38px; height:38px; border-radius:50%;
   background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
