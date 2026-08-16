@@ -593,6 +593,7 @@
             //   分组 items 完整导入（分组名同名合并），未进分组的散字卡归入「未分组」，json 里没有的字段自动跳过
             const milkCards = [
               { cat: 'text',    field: 'customReplies', groups: ['customReplyGroups'] },
+              { cat: 'poke',    field: 'customPokes',   groups: ['customPokeGroups'] },
               { cat: 'kaomoji', field: ['customKaomojis', 'customKaomoji', 'kaomojiLibrary'], groups: ['customKaomojiGroups', 'kaomojiGroups'] },
               { cat: 'sticker', field: ['stickerLibrary', 'customStickers'], groups: ['customStickerGroups', 'stickerGroups'] },
               { cat: 'emoji',   field: 'customEmojis', groups: [] }

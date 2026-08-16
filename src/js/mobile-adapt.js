@@ -155,6 +155,11 @@
               if (n.nodeType === 3) { out += n.textContent; return; }
               if (n.nodeType === 1) {
                 if (n.classList && n.classList.contains('mail-media-mark')) out += (out ? ' ' : '') + n.textContent;
+                else if (n.tagName === 'IMG' && n.src && n.src.indexOf('data:image') === 0) {
+                  // v3.5.136：img 的标记 span 被用户退格删掉时，从 src 重建标记——
+                  // 否则该图片在保存时丢失（数据丢失风险）
+                  out += (out ? ' ' : '') + 'image:' + n.src;
+                }
                 else if (n.tagName === 'DIV' || n.tagName === 'BR') out += '\n';
               }
             });

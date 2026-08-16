@@ -3175,7 +3175,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 13:27</div>
+      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 13:41</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -10563,6 +10563,7 @@ function partialRetractMsg(msgEl, side) {
             //   分组 items 完整导入（分组名同名合并），未进分组的散字卡归入「未分组」，json 里没有的字段自动跳过
             const milkCards = [
               { cat: 'text',    field: 'customReplies', groups: ['customReplyGroups'] },
+              { cat: 'poke',    field: 'customPokes',   groups: ['customPokeGroups'] },
               { cat: 'kaomoji', field: ['customKaomojis', 'customKaomoji', 'kaomojiLibrary'], groups: ['customKaomojiGroups', 'kaomojiGroups'] },
               { cat: 'sticker', field: ['stickerLibrary', 'customStickers'], groups: ['customStickerGroups', 'stickerGroups'] },
               { cat: 'emoji',   field: 'customEmojis', groups: [] }
@@ -20535,6 +20536,11 @@ if (ckRefresh) {
               if (n.nodeType === 3) { out += n.textContent; return; }
               if (n.nodeType === 1) {
                 if (n.classList && n.classList.contains('mail-media-mark')) out += (out ? ' ' : '') + n.textContent;
+                else if (n.tagName === 'IMG' && n.src && n.src.indexOf('data:image') === 0) {
+                  // v3.5.136：img 的标记 span 被用户退格删掉时，从 src 重建标记——
+                  // 否则该图片在保存时丢失（数据丢失风险）
+                  out += (out ? ' ' : '') + 'image:' + n.src;
+                }
                 else if (n.tagName === 'DIV' || n.tagName === 'BR') out += '\n';
               }
             });
