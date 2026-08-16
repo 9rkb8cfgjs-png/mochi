@@ -16,7 +16,7 @@ const buildInfo = '部署于 ' + buildTime.getFullYear() + '-' + pad(buildTime.g
   ' ' + pad(buildTime.getHours()) + ':' + pad(buildTime.getMinutes());
 const buildStamp = buildTime.getTime().toString(36); // sw 缓存名版本号（每次构建必变）
 // 应用版本号（设置页底部与开屏共用，升级版本时只改这一处）
-const APP_VERSION = 'v3.5.119';
+const APP_VERSION = 'v3.5.139';
 
 // 按顺序拼接样式 / 脚本（顺序即生效顺序）
 const cssFiles = ['base.css', 'home.css', 'chat-main.css', 'chat-pages.css', 'setting.css', 'tabbar.css'];
