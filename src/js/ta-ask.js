@@ -173,12 +173,17 @@
     window.chatAddSystem('TA想问你一个问题。');
     const el = window.chatAddSystem(q.text, { special: 'ask-card', askQuestion: q.text, askOptions: isSingle ? q.options : null, askType: isSingle ? 'single' : 'text' });
     const idx = el ? Number(el.dataset.idx) : -1;
-    if (popup) setTimeout(() => { if (idx >= 0 && window.openAskReply && !cardPopupBusy()) window.openAskReply(idx); }, 400);
+    // v3.5.141：后台收到互动卡片 → 系统通知提示（bgNotifyCheck 内部按后台通知开关/
+    // 权限/可见性判断，前台调用无副作用）
+    if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'TA的询问' });
+    // v3.5.141：页面弹窗在后台不弹（不可见弹了也没用），只发系统通知
+    if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openAskReply && !cardPopupBusy()) window.openAskReply(idx); }, 400);
   }
   // ---- 触发调度（v3.5.34：启用开关 + 触发概率滑块 + 自动弹窗概率滑块） ----
   function maybeTriggerTAAsk() {
     try {
-      if (document.hidden) return; // v3.5.127：后台不触发
+      // v3.5.141：后台也触发（卡片进聊天记录 + 系统通知提示）；页面弹窗由
+      // push 内 document.hidden 守卫控制，后台不会弹页面弹窗
       const d = taAskLoad();
       const s = d.settings || { enabled: true, prob: 20, popupProb: 70 };
       if (s.enabled === false) return;
@@ -635,12 +640,14 @@
       special: 'ask-choose', choiceQuestion: q.text, choiceOptions: q.options, choicePref: q.pref, choiceCat: q.cat || ''
     });
     const idx = el ? Number(el.dataset.idx) : -1;
-    if (popup) setTimeout(() => { if (idx >= 0 && window.openTC && !cardPopupBusy()) window.openTC(idx); }, 400);
+    // v3.5.141：后台收到互动卡片 → 系统通知提示
+    if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'TA的小问题' });
+    if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openTC && !cardPopupBusy()) window.openTC(idx); }, 400);
   }
   // 自动触发：一次会话最多 1 个；冷却 30 分钟；概率可调（默认 15%）；启动 90 秒后、每 4 分钟轮询
   function maybeTriggerTC() {
     try {
-      if (document.hidden) return; // v3.5.127：后台不触发
+      // v3.5.141：后台也触发（卡片进聊天记录 + 系统通知提示）
       const d = tcLoad();
       const s = d.settings || { enabled: true, prob: 15, popupProb: 70 };
       if (s.enabled === false) return;
@@ -1094,11 +1101,13 @@ window.openTCPanel = openTCPanel;
       curiousFollowup: q.followup || '', curiousQid: q.id || '', curiousCat: q.cat || ''
     });
     const idx = el ? Number(el.dataset.idx) : -1;
-    if (popup) setTimeout(() => { if (idx >= 0 && window.openCurious && !cardPopupBusy()) window.openCurious(idx); }, 400);
+    // v3.5.141：后台收到互动卡片 → 系统通知提示
+    if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'Ta的好奇' });
+    if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openCurious && !cardPopupBusy()) window.openCurious(idx); }, 400);
   }
   function maybeTriggerTCU() {
     try {
-      if (document.hidden) return; // v3.5.127：后台不触发
+      // v3.5.141：后台也触发（卡片进聊天记录 + 系统通知提示）
       const d = tcuLoad();
       const s = d.settings || { enabled: true, prob: 15, popupProb: 70 };
       if (s.enabled === false) return;
@@ -1476,7 +1485,9 @@ window.openTCPanel = openTCPanel;
     window.chatAddSystem('TA吐槽了你一句。');
     const el = window.chatAddSystem(q.text, { special: 'ask-roast', roastText: q.text, roastCat: q.cat || 'light' });
     const idx = el ? Number(el.dataset.idx) : -1;
-    if (popup) setTimeout(() => { if (idx >= 0 && window.openRoast && !cardPopupBusy()) window.openRoast(idx); }, 400);
+    // v3.5.141：后台收到互动卡片 → 系统通知提示
+    if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'Ta的吐槽' });
+    if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openRoast && !cardPopupBusy()) window.openRoast(idx); }, 400);
   }
   function lastUserMsg() {
     try {
@@ -1489,7 +1500,7 @@ window.openTCPanel = openTCPanel;
   }
   function maybeTriggerTR() {
     try {
-      if (document.hidden) return; // v3.5.127：后台不触发
+      // v3.5.141：后台也触发（卡片进聊天记录 + 系统通知提示）
       const d = trLoad();
       const s = d.settings || { enabled: true, prob: 30, popupProb: 70 };
       if (s.enabled === false) return;

@@ -162,11 +162,20 @@
   }
 
   // 图片压缩（上传图片表情用）
+  // v3.6.x：失败/超大图不再回退存原图——iOS Safari 解码超大 dataURL 会拖崩渲染进程
+  //（画面正常但点击无响应），失败返回 null 由调用方提示换图
   function compressImage(dataUrl, maxSide) {
     return new Promise((resolve) => {
+      // 解码前拦截：>8MB base64 不解码不存储（48MP/ProRAW 级别）
+      if (typeof dataUrl === 'string' && dataUrl.length > 8 * 1024 * 1024) {
+        resolve(null);
+        return;
+      }
       const img = new Image();
       img.onload = () => {
         try {
+          // 解码后像素拦截：高压缩格式小文件也可能是超大图（48MP HEIC）
+          if (img.width * img.height > 26000000) { resolve(null); return; }
           const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
           const w = Math.max(1, Math.round(img.width * scale));
           const h = Math.max(1, Math.round(img.height * scale));
@@ -174,9 +183,9 @@
           c.width = w; c.height = h;
           c.getContext('2d').drawImage(img, 0, 0, w, h);
           resolve(c.toDataURL('image/png'));
-        } catch (e) { resolve(dataUrl); }
+        } catch (e) { resolve(null); }
       };
-      img.onerror = () => resolve(dataUrl);
+      img.onerror = () => resolve(null);
       img.src = dataUrl;
     });
   }
@@ -830,7 +839,11 @@
                 if (done === files.length) finishUpload(done - skipped, skipped);
               };
               if (cur === 'voice') process(reader.result);
-              else compressImage(reader.result, 260).then(process);
+              else compressImage(reader.result, 260).then((data) => {
+                // v3.6.x：压缩失败/图片过大返回 null——不存原图（防 iOS 解码崩溃），跳过并提示
+                if (!data) { skipped++; done++; if (done === files.length) finishUpload(done - skipped, skipped); return; }
+                process(data);
+              });
             };
             reader.readAsDataURL(f);
           });

@@ -5,11 +5,23 @@
   const store = window.xyStore(uid);
 
   // 图片压缩后再存储：大幅缩小体积，本地存储容量更宽松（头像/图标 256px，背景/照片 1000px）
+  // v3.6.x：失败/超大图不再回退存原图——iOS Safari 对超大 dataURL（48MP/ProRAW 级别）
+  // 的 img 解码会占数百 MB 位图内存，直接把渲染进程拖崩（表现：画面正常但所有按钮
+  // 点击无响应，且刷新后 idbRestore 恢复该 dataURL 再次渲染又崩，「刷新后依然失效」）。
+  // 解码前按 base64 长度、解码后按像素双重拦截，失败返回 null 由调用方提示换图。
   function compressImage(dataUrl, maxSide) {
     return new Promise((resolve) => {
+      // 解码前拦截：>8MB base64（≈6MB 原图，48MP/ProRAW 级别）不解码不存储；
+      // 1200 万像素普通照片（2-6MB base64）不受影响
+      if (typeof dataUrl === 'string' && dataUrl.length > 8 * 1024 * 1024) {
+        resolve(null);
+        return;
+      }
       const img = new Image();
       img.onload = () => {
         try {
+          // 解码后像素拦截：高压缩格式小文件也可能是超大图（48MP HEIC 约 5-8MB）
+          if (img.width * img.height > 26000000) { resolve(null); return; }
           const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
           const w = Math.max(1, Math.round(img.width * scale));
           const h = Math.max(1, Math.round(img.height * scale));
@@ -18,10 +30,11 @@
           c.getContext('2d').drawImage(img, 0, 0, w, h);
           resolve(c.toDataURL('image/jpeg', 0.85));
         } catch (e) {
-          resolve(dataUrl);
+          // 压缩失败不再回退存原图（原图可能超大，存进去会让后续每次渲染重新崩溃）
+          resolve(null);
         }
       };
-      img.onerror = () => resolve(dataUrl);
+      img.onerror = () => resolve(null);
       img.src = dataUrl;
     });
   }
@@ -41,7 +54,15 @@
     const box = document.getElementById(id);
     if (!box) return;
     const ring = box.querySelector('.ring');
-    const saved = store.get(key);
+    let saved = store.get(key);
+    // v3.6.x：渲染前防护——256px 头像压缩后正常 <50KB；旧版本压缩失败时回退存过
+    // 原图（可能十几 MB），直接渲染 img.src 会让 iOS Safari 解码崩溃（画面正常但
+    // 点击无响应，且刷新后恢复数据再次崩溃）。发现超大值即清除（LS+IDB 双清），
+    // 回到默认头像——保证存量坏数据在用户刷新后不再复现。
+    if (saved && saved.length > 500 * 1024) {
+      try { store.remove(key); } catch (e) {}
+      saved = null;
+    }
     // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
     if (saved && ring) {
       ring.innerHTML = '';
@@ -65,6 +86,8 @@
         const reader = new FileReader();
         reader.onload = () => {
           compressImage(reader.result, 256).then(data => {
+            // v3.6.x：压缩失败/图片过大返回 null——不再存原图（防 iOS 解码崩溃），提示换图
+            if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
             const ring = box.querySelector('.ring');
             // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
             if (ring) {
@@ -375,6 +398,8 @@
         const reader = new FileReader();
         reader.onload = () => {
           compressImage(reader.result, phoneBgMaxSide()).then(data => {
+            // v3.6.x：压缩失败/图片过大返回 null——不存原图（防 iOS 解码崩溃）
+            if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
             applyPhoneBg(data);
             store.set('phone-bg', data);
             syncBgUI();
@@ -444,8 +469,13 @@
   });
   const restoreAppIcons = () => {
     document.querySelectorAll('.app').forEach(app => {
-      const saved = store.get('app-icon-' + app.dataset.app);
+      let saved = store.get('app-icon-' + app.dataset.app);
       const ico = app.querySelector('.app-ico');
+      // v3.6.x：与头像同款防护——旧版本压缩失败存过超大原图，渲染会触发 iOS 解码崩溃
+      if (saved && saved.length > 500 * 1024) {
+        try { store.remove('app-icon-' + app.dataset.app); } catch (e) {}
+        saved = null;
+      }
       if (saved) {
         // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
         if (ico) {
@@ -496,6 +526,8 @@
           const reader = new FileReader();
           reader.onload = () => {
             compressImage(reader.result, 256).then(data => {
+              // v3.6.x：压缩失败/图片过大返回 null——不存原图（防 iOS 解码崩溃）
+              if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
               // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
               if (ico) {
                 ico.innerHTML = '';

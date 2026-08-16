@@ -2790,7 +2790,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.30 · 部署于 2026-08-16 21:50</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.31 · 部署于 2026-08-16 22:06</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3432,7 +3432,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.30</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.31</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5501,9 +5501,14 @@ const uid = 'xy-home-v2';
 const store = window.xyStore(uid);
 function compressImage(dataUrl, maxSide) {
 return new Promise((resolve) => {
+if (typeof dataUrl === 'string' && dataUrl.length > 8 * 1024 * 1024) {
+resolve(null);
+return;
+}
 const img = new Image();
 img.onload = () => {
 try {
+if (img.width * img.height > 26000000) { resolve(null); return; }
 const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
 const w = Math.max(1, Math.round(img.width * scale));
 const h = Math.max(1, Math.round(img.height * scale));
@@ -5512,10 +5517,10 @@ c.width = w; c.height = h;
 c.getContext('2d').drawImage(img, 0, 0, w, h);
 resolve(c.toDataURL('image/jpeg', 0.85));
 } catch (e) {
-resolve(dataUrl);
+resolve(null);
 }
 };
-img.onerror = () => resolve(dataUrl);
+img.onerror = () => resolve(null);
 img.src = dataUrl;
 });
 }
@@ -5528,7 +5533,11 @@ function applyAvatar(id, key) {
 const box = document.getElementById(id);
 if (!box) return;
 const ring = box.querySelector('.ring');
-const saved = store.get(key);
+let saved = store.get(key);
+if (saved && saved.length > 500 * 1024) {
+try { store.remove(key); } catch (e) {}
+saved = null;
+}
 if (saved && ring) {
 ring.innerHTML = '';
 const img = document.createElement('img');
@@ -5551,6 +5560,7 @@ if (!f) return;
 const reader = new FileReader();
 reader.onload = () => {
 compressImage(reader.result, 256).then(data => {
+if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
 const ring = box.querySelector('.ring');
 if (ring) {
 ring.innerHTML = '';
@@ -5828,6 +5838,7 @@ if (!f) return;
 const reader = new FileReader();
 reader.onload = () => {
 compressImage(reader.result, phoneBgMaxSide()).then(data => {
+if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
 applyPhoneBg(data);
 store.set('phone-bg', data);
 syncBgUI();
@@ -5884,8 +5895,12 @@ if (!ico.dataset.orig) ico.dataset.orig = ico.innerHTML;
 });
 const restoreAppIcons = () => {
 document.querySelectorAll('.app').forEach(app => {
-const saved = store.get('app-icon-' + app.dataset.app);
+let saved = store.get('app-icon-' + app.dataset.app);
 const ico = app.querySelector('.app-ico');
+if (saved && saved.length > 500 * 1024) {
+try { store.remove('app-icon-' + app.dataset.app); } catch (e) {}
+saved = null;
+}
 if (saved) {
 if (ico) {
 ico.innerHTML = '';
@@ -5933,6 +5948,7 @@ if (!f) { return; }
 const reader = new FileReader();
 reader.onload = () => {
 compressImage(reader.result, 256).then(data => {
+if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
 if (ico) {
 ico.innerHTML = '';
 const img = document.createElement('img');
@@ -6719,7 +6735,8 @@ return escMigrated;
 function fillAvatar(el, key) {
 if (typeof el === 'string') el = document.getElementById(el);
 if (!el) return;
-const data = store.get(key);
+let data = store.get(key);
+if (data && data.length > 500 * 1024) data = null;
 if (data) {
 const img = document.createElement('img');
 img.src = data;
@@ -7373,13 +7390,17 @@ return v === null || v === undefined || v === '' ? true : v === '1';
 }
 function showDeskPopup(opts) {
 opts = opts || {};
-if (!deskMsgEl || !deskMsgEnabled()) return;
 let t = String(opts.text || '');
+if (!t && opts.img) t = opts.type === 'sticker' ? '[表情包]' : '[图片]';
 if (!t) return;
-if (t.indexOf('data:') === 0) t = opts.type === 'image' ? '[图片]' : '[表情包]';
+if (t.indexOf('data:') === 0) t = opts.type === 'sticker' ? '[表情包]' : '[图片]';
 else if (t.indexOf('data:') > 0) t = t.replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[图片]');
 else if (t.indexOf('<svg') >= 0) t = t.replace(/<[^>]*>/g, '').trim();
 else if (t.length > 40) t = t.slice(0, 40) + '…';
+if (document.visibilityState === 'hidden' && window.bgNotifyCheck) {
+window.bgNotifyCheck(t, Date.now(), { name: opts.name, img: opts.img });
+}
+if (!deskMsgEl || !deskMsgEnabled()) return;
 if (deskMsgText) deskMsgText.textContent = t;
 if (deskMsgName) deskMsgName.textContent = opts.name || store.get('lbl-partner') || 'TA';
 if (deskMsgAv) fillAvatar(deskMsgAv, 'avatar-partner');
@@ -7393,9 +7414,20 @@ deskMsgEl.hidden = false;
 clearTimeout(deskMsgTimer);
 deskMsgTimer = setTimeout(() => { if (deskMsgEl) deskMsgEl.hidden = true; }, 6000);
 }
-function showDeskMsg(text, type) {
+function showDeskMsg(rec) {
 if (chatVisible()) return;
-showDeskPopup({ name: store.get('lbl-partner') || 'TA', text: text, type: type, onClick: () => { if (!chatVisible()) enterChat(); } });
+let text = rec.text || '';
+let img = '';
+if (rec.parts && rec.parts.length) {
+const ims = rec.parts.filter(p => p.k === 'img');
+if (ims.length) img = ims[0].v || '';
+const tp = rec.parts.filter(p => p.k === 'text').map(p => p.v).join(' ');
+if (tp) text = tp;
+} else if (text.indexOf('data:image/') === 0) {
+img = text;
+text = '';
+}
+showDeskPopup({ name: store.get('lbl-partner') || 'TA', text: text, type: rec.type, img: img, onClick: () => { if (!chatVisible()) enterChat(); } });
 }
 function hideDeskMsg() {
 clearTimeout(deskMsgTimer);
@@ -7503,13 +7535,10 @@ function addRec(rec) {
 if (!rec.ts) rec.ts = Date.now();
 msgs.push(rec);
 saveMsgs();
-if (rec.side === 'in' && !rec.special && window.bgNotifyCheck) {
-window.bgNotifyCheck(rec.text, rec.ts);
-}
 const notable = rec.side === 'in' && (!rec.special || rec.special === 'poke');
 if (notable && !chatVisible()) {
 incChatUnread();
-showDeskMsg(rec.text, rec.type);
+showDeskMsg(rec);
 }
 if (renderStart > 0 && msgs.length - renderStart > RENDER_MAX && chatNearBottom()) {
 renderWindow(false, true);
@@ -7888,8 +7917,9 @@ if (cfgn(c, 'as-en', 1) !== 1) {
 autoTimer = setTimeout(scheduleAutoSend, 30000);
 return;
 }
-let asMin = cfgn(c, 'as-min', 5) * 60, asMax = cfgn(c, 'as-max', 10) * 60;
-if (cfgn(c, 'dnd-en', 0) === 1) { asMin = 1; asMax = 10800; }
+let asMin = Math.min(30, Number(cfgn(c, 'as-min', 5)) || 5) * 60;
+let asMax = Math.min(180, Number(cfgn(c, 'as-max', 10)) || 10) * 60;
+if (cfgn(c, 'dnd-en', 0) === 1) { asMin = 1; asMax = 180 * 60; }
 const delay = (asMin + Math.random() * Math.max(1, asMax - asMin)) * 1000;
 autoTimer = setTimeout(() => {
 tryAutoSend();
@@ -7897,6 +7927,7 @@ scheduleAutoSend();
 }, delay);
 }
 function tryAutoSend() {
+try {
 const c = cfg();
 if (cfgn(c, 'as-en', 1) !== 1) return;
 let prob = cfgn(c, 'as-prob', 30);
@@ -7934,6 +7965,12 @@ if (i < count - 1) showTyping();
 }, i * randInt(900, 2600));
 }
 setTimeout(() => { if (window.callMaybeTrigger) window.callMaybeTrigger(); }, count * 2600 + 3500);
+} catch (e) {
+try {
+const errArr = (window.__jsErrors = window.__jsErrors || []);
+errArr.push('autoSend:' + (e && e.message || e));
+} catch (x) {}
+}
 }
 const chatApp = document.querySelector('.app[data-app="chat"]');
 const chatPage = document.getElementById('page-chat');
@@ -8955,9 +8992,14 @@ renderEmojiPanel();
 }));
 function compressMyEmoji(dataUrl, maxSide) {
 return new Promise((resolve) => {
+if (typeof dataUrl === 'string' && dataUrl.length > 8 * 1024 * 1024) {
+resolve(null);
+return;
+}
 const img = new Image();
 img.onload = () => {
 try {
+if (img.width * img.height > 26000000) { resolve(null); return; }
 const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
 const w = Math.max(1, Math.round(img.width * scale));
 const h = Math.max(1, Math.round(img.height * scale));
@@ -8965,9 +9007,9 @@ const c = document.createElement('canvas');
 c.width = w; c.height = h;
 c.getContext('2d').drawImage(img, 0, 0, w, h);
 resolve(c.toDataURL('image/png'));
-} catch (e) { resolve(dataUrl); }
+} catch (e) { resolve(null); }
 };
-img.onerror = () => resolve(dataUrl);
+img.onerror = () => resolve(null);
 img.src = dataUrl;
 });
 }
@@ -9007,6 +9049,11 @@ files.forEach(f => {
 const reader = new FileReader();
 reader.onload = () => {
 compressMyEmoji(reader.result, 260).then(data => {
+if (!data) {
+done++;
+if (done === files.length) { myEmojiSave(); renderEmojiPanel(); toast('图片过大或格式不支持，已跳过'); }
+return;
+}
 g[1].push(data);
 okCount++;
 done++;
@@ -9406,9 +9453,14 @@ return n;
 }
 function compressImage(dataUrl, maxSide) {
 return new Promise((resolve) => {
+if (typeof dataUrl === 'string' && dataUrl.length > 8 * 1024 * 1024) {
+resolve(null);
+return;
+}
 const img = new Image();
 img.onload = () => {
 try {
+if (img.width * img.height > 26000000) { resolve(null); return; }
 const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
 const w = Math.max(1, Math.round(img.width * scale));
 const h = Math.max(1, Math.round(img.height * scale));
@@ -9416,9 +9468,9 @@ const c = document.createElement('canvas');
 c.width = w; c.height = h;
 c.getContext('2d').drawImage(img, 0, 0, w, h);
 resolve(c.toDataURL('image/png'));
-} catch (e) { resolve(dataUrl); }
+} catch (e) { resolve(null); }
 };
-img.onerror = () => resolve(dataUrl);
+img.onerror = () => resolve(null);
 img.src = dataUrl;
 });
 }
@@ -9996,7 +10048,10 @@ done++;
 if (done === files.length) finishUpload(done - skipped, skipped);
 };
 if (cur === 'voice') process(reader.result);
-else compressImage(reader.result, 260).then(process);
+else compressImage(reader.result, 260).then((data) => {
+if (!data) { skipped++; done++; if (done === files.length) finishUpload(done - skipped, skipped); return; }
+process(data);
+});
 };
 reader.readAsDataURL(f);
 });
@@ -13600,11 +13655,11 @@ else if (opts && opts.popup === false) popup = false;
 window.chatAddSystem('TA想问你一个问题。');
 const el = window.chatAddSystem(q.text, { special: 'ask-card', askQuestion: q.text, askOptions: isSingle ? q.options : null, askType: isSingle ? 'single' : 'text' });
 const idx = el ? Number(el.dataset.idx) : -1;
-if (popup) setTimeout(() => { if (idx >= 0 && window.openAskReply && !cardPopupBusy()) window.openAskReply(idx); }, 400);
+if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'TA的询问' });
+if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openAskReply && !cardPopupBusy()) window.openAskReply(idx); }, 400);
 }
 function maybeTriggerTAAsk() {
 try {
-if (document.hidden) return; // v3.5.127：后台不触发
 const d = taAskLoad();
 const s = d.settings || { enabled: true, prob: 20, popupProb: 70 };
 if (s.enabled === false) return;
@@ -14023,11 +14078,11 @@ const el = window.chatAddSystem(q.text, {
 special: 'ask-choose', choiceQuestion: q.text, choiceOptions: q.options, choicePref: q.pref, choiceCat: q.cat || ''
 });
 const idx = el ? Number(el.dataset.idx) : -1;
-if (popup) setTimeout(() => { if (idx >= 0 && window.openTC && !cardPopupBusy()) window.openTC(idx); }, 400);
+if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'TA的小问题' });
+if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openTC && !cardPopupBusy()) window.openTC(idx); }, 400);
 }
 function maybeTriggerTC() {
 try {
-if (document.hidden) return; // v3.5.127：后台不触发
 const d = tcLoad();
 const s = d.settings || { enabled: true, prob: 15, popupProb: 70 };
 if (s.enabled === false) return;
@@ -14450,11 +14505,11 @@ special: 'ask-curious', curiousQuestion: q.text, curiousQuick: q.quick || [], cu
 curiousFollowup: q.followup || '', curiousQid: q.id || '', curiousCat: q.cat || ''
 });
 const idx = el ? Number(el.dataset.idx) : -1;
-if (popup) setTimeout(() => { if (idx >= 0 && window.openCurious && !cardPopupBusy()) window.openCurious(idx); }, 400);
+if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'Ta的好奇' });
+if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openCurious && !cardPopupBusy()) window.openCurious(idx); }, 400);
 }
 function maybeTriggerTCU() {
 try {
-if (document.hidden) return; // v3.5.127：后台不触发
 const d = tcuLoad();
 const s = d.settings || { enabled: true, prob: 15, popupProb: 70 };
 if (s.enabled === false) return;
@@ -14807,7 +14862,8 @@ else if (opts && opts.popup === false) popup = false;
 window.chatAddSystem('TA吐槽了你一句。');
 const el = window.chatAddSystem(q.text, { special: 'ask-roast', roastText: q.text, roastCat: q.cat || 'light' });
 const idx = el ? Number(el.dataset.idx) : -1;
-if (popup) setTimeout(() => { if (idx >= 0 && window.openRoast && !cardPopupBusy()) window.openRoast(idx); }, 400);
+if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'Ta的吐槽' });
+if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openRoast && !cardPopupBusy()) window.openRoast(idx); }, 400);
 }
 function lastUserMsg() {
 try {
@@ -14820,7 +14876,6 @@ return '';
 }
 function maybeTriggerTR() {
 try {
-if (document.hidden) return; // v3.5.127：后台不触发
 const d = trLoad();
 const s = d.settings || { enabled: true, prob: 30, popupProb: 70 };
 if (s.enabled === false) return;
@@ -15285,6 +15340,11 @@ if (!swOpts.urgency) swOpts.urgency = 'high';
 if (!swOpts.icon && NOTIFY_ICON) swOpts.icon = NOTIFY_ICON;
 navigator.serviceWorker.ready.then(function (reg) {
 reg.showNotification(title, swOpts).then(function () { resolve(true); }, function () {
+const tryNoImage = function () {
+if (swOpts.image) {
+const noImg = Object.assign({}, swOpts);
+delete noImg.image;
+reg.showNotification(title, noImg).then(function () { resolve(true); }, function () {
 if (swOpts.icon) {
 const noIcon = Object.assign({}, swOpts);
 delete noIcon.icon;
@@ -15293,15 +15353,27 @@ reg.showNotification(title, noIcon).then(function () { resolve(true); }, functio
 resolve(false);
 }
 });
-}).catch(function () {
-const noIcon = Object.assign({}, opts);
+} else if (swOpts.icon) {
+const noIcon = Object.assign({}, swOpts);
 delete noIcon.icon;
-try { new Notification(title, noIcon); resolve(true); } catch (e) { resolve(false); }
+reg.showNotification(title, noIcon).then(function () { resolve(true); }, function () { resolve(false); });
+} else {
+resolve(false);
+}
+};
+tryNoImage();
+});
+}).catch(function () {
+const noMedia = Object.assign({}, opts);
+delete noMedia.image;
+delete noMedia.icon;
+try { new Notification(title, noMedia); resolve(true); } catch (e) { resolve(false); }
 });
 } else {
-const noIcon = Object.assign({}, opts);
-delete noIcon.icon;
-try { new Notification(title, noIcon); resolve(true); } catch (e) { resolve(false); }
+const noMedia = Object.assign({}, opts);
+delete noMedia.image;
+delete noMedia.icon;
+try { new Notification(title, noMedia); resolve(true); } catch (e) { resolve(false); }
 }
 } catch (e) { resolve(false); }
 });
@@ -15453,20 +15525,23 @@ window.showDeskPopup({ name: name, text: '你不在的时候收到 ' + unread + 
 }
 } catch (e) {}
 });
-window.bgNotifyCheck = function (text, ts) {
+window.bgNotifyCheck = function (text, ts, extra) {
 if (!notifyEnabled) return;
 if (document.visibilityState === 'visible') return;
 if (!('Notification' in window) || Notification.permission !== 'granted') return;
-const name = store.get('lbl-partner') || 'TA';
+extra = extra || {};
+const name = extra.name || store.get('lbl-partner') || 'TA';
 let t = '';
 if (ts) {
 const d = new Date(ts);
 t = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
 }
-const body = text && text.length > 40 ? text.slice(0, 40) + '…' : (text || '收到一条新消息');
-const opts = { body: (t ? t + '  ' : '') + body };
+const body = String(text || '收到一条新消息')
+.replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[图片]');
+const opts = { body: (t ? t + '  ' : '') + (body && body.length > 40 ? body.slice(0, 40) + '…' : body) };
 const avatar = store.get('avatar-partner') || '';
 if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) opts.icon = avatar;
+if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) opts.image = extra.img;
 showSysNotification(name, opts);
 };
 })();
@@ -16388,7 +16463,6 @@ return n;
 }
 function maybeIncomingLetter() {
 try {
-if (document.hidden) return; // v3.5.127：后台不来信
 const now = Date.now();
 const cfg = mailCfg();
 let last = letterLast(), next = letterNext();
@@ -17452,7 +17526,6 @@ return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
 }
 function maybeAutoPost() {
 try {
-if (document.hidden) return; // v3.5.127：后台不自动发动态
 const now = Date.now();
 const cfg = feedCfg();
 let last = feedLast(), next = feedNext();

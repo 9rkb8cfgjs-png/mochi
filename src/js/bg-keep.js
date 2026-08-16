@@ -174,27 +174,44 @@
           if (!swOpts.icon && NOTIFY_ICON) swOpts.icon = NOTIFY_ICON;
           navigator.serviceWorker.ready.then(function (reg) {
             reg.showNotification(title, swOpts).then(function () { resolve(true); }, function () {
-              // v3.5.138：带图标发送失败（个别机型对 dataURL 图标/图片处理异常）时，
-              // 去掉图标重发一次——保证通知不因头像问题整条丢失
-              if (swOpts.icon) {
-                const noIcon = Object.assign({}, swOpts);
-                delete noIcon.icon;
-                reg.showNotification(title, noIcon).then(function () { resolve(true); }, function () { resolve(false); });
-              } else {
-                resolve(false);
-              }
+              // v3.5.142：逐级降级重发——带 image（图片缩略图）失败 → 去 image 重发；
+              // 仍失败且带 icon → 再去 icon 重发；保证文字通知不因图片/图标异常整条丢失
+              const tryNoImage = function () {
+                if (swOpts.image) {
+                  const noImg = Object.assign({}, swOpts);
+                  delete noImg.image;
+                  reg.showNotification(title, noImg).then(function () { resolve(true); }, function () {
+                    if (swOpts.icon) {
+                      const noIcon = Object.assign({}, swOpts);
+                      delete noIcon.icon;
+                      reg.showNotification(title, noIcon).then(function () { resolve(true); }, function () { resolve(false); });
+                    } else {
+                      resolve(false);
+                    }
+                  });
+                } else if (swOpts.icon) {
+                  const noIcon = Object.assign({}, swOpts);
+                  delete noIcon.icon;
+                  reg.showNotification(title, noIcon).then(function () { resolve(true); }, function () { resolve(false); });
+                } else {
+                  resolve(false);
+                }
+              };
+              tryNoImage();
             });
           }).catch(function () {
-            // SW 不可用回退页面路径：去掉图标（页面 Notification 对 dataURL 图标不稳定，
-            // 带上会导致整条通知失败，v3.5.118 教训）
-            const noIcon = Object.assign({}, opts);
-            delete noIcon.icon;
-            try { new Notification(title, noIcon); resolve(true); } catch (e) { resolve(false); }
+            // SW 不可用回退页面路径：去掉 image 与 icon（页面 Notification 对
+            // dataURL 图片/图标不稳定，带上会导致整条通知失败，v3.5.118 教训）
+            const noMedia = Object.assign({}, opts);
+            delete noMedia.image;
+            delete noMedia.icon;
+            try { new Notification(title, noMedia); resolve(true); } catch (e) { resolve(false); }
           });
         } else {
-          const noIcon = Object.assign({}, opts);
-          delete noIcon.icon;
-          try { new Notification(title, noIcon); resolve(true); } catch (e) { resolve(false); }
+          const noMedia = Object.assign({}, opts);
+          delete noMedia.image;
+          delete noMedia.icon;
+          try { new Notification(title, noMedia); resolve(true); } catch (e) { resolve(false); }
         }
       } catch (e) { resolve(false); }
     });
@@ -373,26 +390,33 @@
     } catch (e) {}
   });
 
-  // 供 chat.js 调用：收到 TA 新消息且页面不在前台时弹浏览器通知
-  // 通知显示：联系人头像 + 昵称 + 消息发送时间（精确到秒）+ 内容
-  window.bgNotifyCheck = function (text, ts) {
+  // 供 chat.js（showDeskPopup 联动）/ 信箱 / 朋友圈调用：TA 相关新事件且页面不在
+  // 前台时弹系统通知。第三参 extra：name 通知标题（信箱/朋友圈/机制名，默认 TA 昵称）、
+  // img 图片 dataURL（通知 image 字段显示缩略图）；头像 + 昵称 + 时间（精确到秒）+ 内容
+  window.bgNotifyCheck = function (text, ts, extra) {
     if (!notifyEnabled) return;
     if (document.visibilityState === 'visible') return;
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    const name = store.get('lbl-partner') || 'TA';
+    extra = extra || {};
+    const name = extra.name || store.get('lbl-partner') || 'TA';
     let t = '';
     if (ts) {
       const d = new Date(ts);
       // v3.5.138：时间精确到秒（原只有 时:分）
       t = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
     }
-    const body = text && text.length > 40 ? text.slice(0, 40) + '…' : (text || '收到一条新消息');
-    const opts = { body: (t ? t + '  ' : '') + body };
+    // v3.5.142：正文防乱码——任何混入的 dataURL（图片/表情包）都替换为占位文案，
+    // 图片本体由 image 字段单独显示缩略图
+    const body = String(text || '收到一条新消息')
+      .replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[图片]');
+    const opts = { body: (t ? t + '  ' : '') + (body && body.length > 40 ? body.slice(0, 40) + '…' : body) };
     // v3.5.138：头像无论 dataURL 还是 http(s) URL 都作为通知图标（走 SW 路径，
     //   dataURL 图标可正常显示；个别机型异常时 showSysNotification 已做去图标降级重发，
     //   不会因头像拖垮整条通知）
     const avatar = store.get('avatar-partner') || '';
     if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) opts.icon = avatar;
+    // v3.5.142：图片缩略图——聊天图文消息/表情包以通知 image 字段展示（正文预览大图）
+    if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) opts.image = extra.img;
     // v3.5.135：核心修复——后台消息通知必须走 Service Worker showNotification：
     //   页面在后台（隐藏）时 Chrome 会静默抑制页面脚本的 new Notification()，
     //   这是此功能此前"开关全开也弹不出来"的代码级根因。

@@ -274,7 +274,10 @@
   function fillAvatar(el, key) {
     if (typeof el === 'string') el = document.getElementById(el);
     if (!el) return;
-    const data = store.get(key);
+    let data = store.get(key);
+    // v3.6.x：渲染前防护——超大 dataURL 不渲染（personalize 启动时已清除存量坏数据，
+    // 这里兜底防止清理前渲染触发 iOS Safari 解码崩溃：画面正常但点击无响应）
+    if (data && data.length > 500 * 1024) data = null;
     // v3.6.x：改用 src 属性赋值——dataURL 里若含引号，拼 innerHTML 会逃逸出属性注入 HTML
     if (data) {
       const img = document.createElement('img');
@@ -1049,13 +1052,15 @@
     return v === null || v === undefined || v === '' ? true : v === '1';
   }
   // v3.5.107：通用前台桌面弹窗——聊天新消息、信箱来信/回信、朋友圈通知共用顶部横幅
-  // opts：{ name: 标题（默认 TA 昵称）, text: 内容, type: 消息类型（图片/表情包等）, onClick: 点击回调 }
+  // opts：{ name: 标题（默认 TA 昵称）, text: 内容, type: 消息类型（图片/表情包等）, img: 图片 dataURL（缩略图）, onClick: 点击回调 }
   function showDeskPopup(opts) {
     opts = opts || {};
-    if (!deskMsgEl || !deskMsgEnabled()) return;
     let t = String(opts.text || '');
+    // v3.5.142：图片/表情包消息可能没有文字（纯图片），此时显示占位文案
+    // v3.5.143：占位类型判定——type 明确为 sticker → [表情包]；其余（image/缺失）→ [图片]
+    if (!t && opts.img) t = opts.type === 'sticker' ? '[表情包]' : '[图片]';
     if (!t) return;
-    if (t.indexOf('data:') === 0) t = opts.type === 'image' ? '[图片]' : '[表情包]';
+    if (t.indexOf('data:') === 0) t = opts.type === 'sticker' ? '[表情包]' : '[图片]';
     // v3.5.132：正文里混入的 dataURL 片段（写信内容带表情包/图片时，data: 前缀判断失效）
     // 统一替换为占位文案，不再显示 base64 乱码
     else if (t.indexOf('data:') > 0) t = t.replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[图片]');
@@ -1064,6 +1069,14 @@
     // v3.5.131：仅对含 svg 的系统消息剥离标签——普通消息里的 `<`（如"1<2"）不再被误删
     else if (t.indexOf('<svg') >= 0) t = t.replace(/<[^>]*>/g, '').trim();
     else if (t.length > 40) t = t.slice(0, 40) + '…';
+    // v3.5.140：后台弹窗联动——桌面弹窗能触发的消息（聊天/拍一拍/信箱来信回信/朋友圈
+    // 通知），页面不在前台时同步发系统通知；放在 desk-msg-en 判断之前，桌面弹窗开关
+    // 与后台通知开关互不影响（bgNotifyCheck 内部按 bg-notify 开关/权限/可见性判断）
+    // v3.5.142：附上图片 dataURL（通知 image 字段显示缩略图 + 文字）
+    if (document.visibilityState === 'hidden' && window.bgNotifyCheck) {
+      window.bgNotifyCheck(t, Date.now(), { name: opts.name, img: opts.img });
+    }
+    if (!deskMsgEl || !deskMsgEnabled()) return;
     if (deskMsgText) deskMsgText.textContent = t;
     if (deskMsgName) deskMsgName.textContent = opts.name || store.get('lbl-partner') || 'TA';
     if (deskMsgAv) fillAvatar(deskMsgAv, 'avatar-partner');
@@ -1079,9 +1092,24 @@
     deskMsgTimer = setTimeout(() => { if (deskMsgEl) deskMsgEl.hidden = true; }, 6000);
   }
   // 聊天新消息横幅（TA 普通消息进来且不在聊天页时弹出，点击进聊天）
-  function showDeskMsg(text, type) {
+  // v3.5.142：接收整个消息记录——提取文字与图片（rec.parts 的 img / 纯图片消息
+  // text 本身），文字 + 图片缩略图一起展示；文字里混的 dataURL 由 showDeskPopup 清洗
+  function showDeskMsg(rec) {
     if (chatVisible()) return;
-    showDeskPopup({ name: store.get('lbl-partner') || 'TA', text: text, type: type, onClick: () => { if (!chatVisible()) enterChat(); } });
+    let text = rec.text || '';
+    let img = '';
+    if (rec.parts && rec.parts.length) {
+      const ims = rec.parts.filter(p => p.k === 'img');
+      if (ims.length) img = ims[0].v || '';
+      const tp = rec.parts.filter(p => p.k === 'text').map(p => p.v).join(' ');
+      if (tp) text = tp;
+    } else if (text.indexOf('data:image/') === 0) {
+      // v3.5.143：纯图片/表情包消息按内容识别（data: 前缀即图片），不依赖 type——
+      // 旧数据 type 缺失时也能提取缩略图
+      img = text;
+      text = '';
+    }
+    showDeskPopup({ name: store.get('lbl-partner') || 'TA', text: text, type: rec.type, img: img, onClick: () => { if (!chatVisible()) enterChat(); } });
   }
   function hideDeskMsg() {
     clearTimeout(deskMsgTimer);
@@ -1212,18 +1240,18 @@
     if (!rec.ts) rec.ts = Date.now();
     msgs.push(rec);
     saveMsgs();
-    // 后台通知：TA 的普通消息且页面不在前台时弹浏览器通知（系统提示类不弹）
-    if (rec.side === 'in' && !rec.special && window.bgNotifyCheck) {
-      window.bgNotifyCheck(rec.text, rec.ts);
-    }
+    // v3.5.140：系统通知统一由 showDeskPopup 联动——聊天消息/拍一拍在非聊天页时
+    // 会走 showDeskMsg → showDeskPopup，页面不在前台时由那里发系统通知；
+    // 此处不再单独调用，避免同一消息发两条通知
     // v3.5.100：TA 新消息进来且聊天页未打开 → 桌面「聊天」图标未读数 +1
     // v3.6.x：换头像/拍一拍等「系统提示」也计入提醒——手机端联系人主动换头像时
     //   不在聊天页也能看到角标/横幅，而不是静默写进聊天记录
     const notable = rec.side === 'in' && (!rec.special || rec.special === 'poke');
     if (notable && !chatVisible()) {
       incChatUnread();
-      // v3.5.102：非聊天页时桌面弹出新消息横幅（点击进聊天）
-      showDeskMsg(rec.text, rec.type);
+      // v3.5.102：非聊天页时桌面弹出新消息横幅（点击进聊天；v3.5.142 传入完整记录，
+      // 文字 + 图片缩略图）
+      showDeskMsg(rec);
     }
     // v3.6.x：分页渲染下窗口已满（新增后超出 RENDER_MAX）→ 重渲染窗口并贴底，
     // 避免窗口无限膨胀；否则走增量追加（renderMsg 尾部 append）
@@ -1697,8 +1725,12 @@ function partialRetractMsg(msgEl, side) {
       autoTimer = setTimeout(scheduleAutoSend, 30000);
       return;
     }
-    let asMin = cfgn(c, 'as-min', 5) * 60, asMax = cfgn(c, 'as-max', 10) * 60;
-    if (cfgn(c, 'dnd-en', 0) === 1) { asMin = 1; asMax = 10800; }
+    // v3.6.x：异常/极端间隔值防御——真机上旧坏数据可能把 as-min/as-max 存成超大值
+    // （如 99999），TA 要等几百天才发一次，用户以为"从不主动发"。NaN 由 getCfg 兜底，
+    // 这里再限制上限：最短 ≤30 分钟、最长 ≤180 分钟（3 小时），坏数据不会让 TA 永静默
+    let asMin = Math.min(30, Number(cfgn(c, 'as-min', 5)) || 5) * 60;
+    let asMax = Math.min(180, Number(cfgn(c, 'as-max', 10)) || 10) * 60;
+    if (cfgn(c, 'dnd-en', 0) === 1) { asMin = 1; asMax = 180 * 60; }
     const delay = (asMin + Math.random() * Math.max(1, asMax - asMin)) * 1000;
     autoTimer = setTimeout(() => {
       tryAutoSend();
@@ -1706,6 +1738,7 @@ function partialRetractMsg(msgEl, side) {
     }, delay);
   }
   function tryAutoSend() {
+    try {
     const c = cfg();
     if (cfgn(c, 'as-en', 1) !== 1) return;
     // v3.5.101：概率为 0/空 时回退默认值——防止旧数据/误操作把概率存成 0 导致 TA 永不主动发送
@@ -1752,6 +1785,15 @@ function partialRetractMsg(msgEl, side) {
     // v3.6.x：来电挂钩——TA 主动发完消息后按「通话设置-来电概率」掷一次来电
     // （等整批发完再加几秒缓冲，避免来电弹窗盖住刚发出去的消息）
     setTimeout(() => { if (window.callMaybeTrigger) window.callMaybeTrigger(); }, count * 2600 + 3500);
+    } catch (e) {
+      // v3.6.x：异常不杀链——原实现 tryAutoSend 抛错会阻止 scheduleAutoSend() 执行，
+      // 一次异常（真机 DOM/媒体差异、字卡数据损坏等）后 TA 永久不再主动发送；
+      // 记录异常并让调度继续下一周期（同时作为诊断信息暴露给开发者工具）
+      try {
+        const errArr = (window.__jsErrors = window.__jsErrors || []);
+        errArr.push('autoSend:' + (e && e.message || e));
+      } catch (x) {}
+    }
   }
 
   // ---- 进入聊天页：恢复历史 ----
@@ -2905,11 +2947,20 @@ function partialRetractMsg(msgEl, side) {
   }));
 
   // 压缩图片（我的表情包添加用，260px 与字卡库一致）
+  // v3.6.x：失败/超大图不再回退存原图——iOS Safari 解码超大 dataURL 会拖崩渲染进程
+  //（画面正常但点击无响应，刷新后恢复又崩），失败返回 null 由调用方提示换图
   function compressMyEmoji(dataUrl, maxSide) {
     return new Promise((resolve) => {
+      // 解码前拦截：>8MB base64 不解码不存储
+      if (typeof dataUrl === 'string' && dataUrl.length > 8 * 1024 * 1024) {
+        resolve(null);
+        return;
+      }
       const img = new Image();
       img.onload = () => {
         try {
+          // 解码后像素拦截：高压缩格式小文件也可能是超大图（48MP HEIC）
+          if (img.width * img.height > 26000000) { resolve(null); return; }
           const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
           const w = Math.max(1, Math.round(img.width * scale));
           const h = Math.max(1, Math.round(img.height * scale));
@@ -2917,9 +2968,9 @@ function partialRetractMsg(msgEl, side) {
           c.width = w; c.height = h;
           c.getContext('2d').drawImage(img, 0, 0, w, h);
           resolve(c.toDataURL('image/png'));
-        } catch (e) { resolve(dataUrl); }
+        } catch (e) { resolve(null); }
       };
-      img.onerror = () => resolve(dataUrl);
+      img.onerror = () => resolve(null);
       img.src = dataUrl;
     });
   }
@@ -2964,6 +3015,12 @@ function partialRetractMsg(msgEl, side) {
           const reader = new FileReader();
           reader.onload = () => {
             compressMyEmoji(reader.result, 260).then(data => {
+              // v3.6.x：压缩失败/图片过大返回 null——不存原图（防 iOS 解码崩溃），提示换图
+              if (!data) {
+                done++;
+                if (done === files.length) { myEmojiSave(); renderEmojiPanel(); toast('图片过大或格式不支持，已跳过'); }
+                return;
+              }
               g[1].push(data);
               okCount++;
               done++;

@@ -877,7 +877,8 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
   }
   function maybeAutoPost() {
     try {
-      if (document.hidden) return; // v3.5.127：后台不自动发动态
+      // v3.5.141：后台也自动发动态——动态写入朋友圈 + 桌面弹窗联动（页面隐藏时
+      // 由 showDeskPopup → bgNotifyCheck 发系统通知「朋友圈：TA 发布了一条新动态」）
       const now = Date.now();
       const cfg = feedCfg();
       let last = feedLast(), next = feedNext();

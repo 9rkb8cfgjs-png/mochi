@@ -387,7 +387,8 @@
   }
   function maybeIncomingLetter() {
     try {
-      if (document.hidden) return; // v3.5.127：后台不来信
+      // v3.5.141：后台也来信——来信写入信箱 + 桌面弹窗联动（页面隐藏时由
+      // showDeskPopup → bgNotifyCheck 发系统通知「信箱：给你寄来了一封信」）
       const now = Date.now();
       const cfg = mailCfg();
       let last = letterLast(), next = letterNext();
