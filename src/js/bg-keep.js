@@ -337,6 +337,22 @@
       env.push(keepOn ? '✓ 后台保活：已开启' : '✗ 后台保活：未开启（TA 消息后台到不了，通知不会弹）');
       const isHttps = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
       env.push(isHttps ? '✓ 访问协议：HTTPS 或本地' : '✗ 访问协议：' + location.protocol + '//（安卓 Chrome 需 HTTPS 才弹通知，GitHub Pages 部署后即是 HTTPS）');
+      // v3.5.144：聊天消息后台弹窗诊断——后台收不到聊天消息 ≠ 通知问题，
+      // 多数是「后台根本没产生聊天消息」：主动发送按间隔+概率随机触发，且需页面存活
+      try {
+        const rc = (window.replyCfg && window.replyCfg()) || {};
+        const asEn = rc['as-en'] === undefined ? 1 : rc['as-en'];
+        if (asEn === 1) {
+          const p = Number(rc['as-prob']) > 0 ? rc['as-prob'] : 30;
+          const mn = Math.min(30, Number(rc['as-min']) || 5);
+          const mx = Math.min(180, Number(rc['as-max']) || 10);
+          env.push('✓ 主动发送：开启（每 ' + mn + '~' + mx + ' 分钟掷一次 · 概率 ' + p + '%）');
+          if (rc['dnd-en'] === 1) env.push('  免打扰开启中（发送大幅减弱，最长 3 小时一次）');
+        } else {
+          env.push('✗ 主动发送：关闭（TA 不会主动发聊天消息 → 后台无聊天通知）');
+        }
+        env.push('  提示：TA 聊天消息按间隔随机产生，后台需保活让定时器存活才到点触发');
+      } catch (e) {}
       if (!('Notification' in window) || Notification.permission !== 'granted') {
         toast('环境检查：\n' + env.join('\n'));
         return;
@@ -349,7 +365,7 @@
             env.push('✓ 测试通知已发送（Service Worker）');
             // 红米/小米：系统级通知可能拦截（API 不报错但通知不显示）
             if (/miui|xiaomi|redmi|hyperos/i.test(navigator.userAgent) || /android/i.test(navigator.userAgent)) {
-              env.push('提示：若没看到通知 → 系统设置 → 通知与控制中心 → 通知管理 → Chrome → 允许通知');
+              env.push('悬浮开关：系统设置→通知管理→Chrome→通知类别/横幅通知→打开「在屏幕上方显示」');
             }
           } else {
             env.push('✗ 通知发送未受理（权限或系统通知被禁）');

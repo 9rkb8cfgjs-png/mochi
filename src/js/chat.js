@@ -1094,8 +1094,10 @@
   // 聊天新消息横幅（TA 普通消息进来且不在聊天页时弹出，点击进聊天）
   // v3.5.142：接收整个消息记录——提取文字与图片（rec.parts 的 img / 纯图片消息
   // text 本身），文字 + 图片缩略图一起展示；文字里混的 dataURL 由 showDeskPopup 清洗
-  function showDeskMsg(rec) {
-    if (chatVisible()) return;
+  // v3.5.145：修复「聊天页切后台后 TA 回复不弹系统通知」——
+  // 原实现先 if (chatVisible()) return，聊天页打开（即使已切后台）时整条链路短路；
+  // 系统通知应基于浏览器可见性（hidden）判断，而非页面 UI 状态
+  function extractDeskMsg(rec) {
     let text = rec.text || '';
     let img = '';
     if (rec.parts && rec.parts.length) {
@@ -1109,7 +1111,20 @@
       img = text;
       text = '';
     }
-    showDeskPopup({ name: store.get('lbl-partner') || 'TA', text: text, type: rec.type, img: img, onClick: () => { if (!chatVisible()) enterChat(); } });
+    return { text: text, img: img };
+  }
+  function showDeskMsg(rec) {
+    const info = extractDeskMsg(rec);
+    const name = store.get('lbl-partner') || 'TA';
+    // v3.5.145：页面在后台 → 无论是否在聊天页都发系统通知（聊天页切后台，
+    // TA 回复到达也要提醒）；showDeskPopup 内部 hidden 分支发通知
+    if (document.visibilityState === 'hidden') {
+      showDeskPopup({ name: name, text: info.text, type: rec.type, img: info.img });
+      return;
+    }
+    // 前台：非聊天页才弹横幅（点击进聊天）；聊天页内消息已直接渲染，不弹
+    if (chatVisible()) return;
+    showDeskPopup({ name: name, text: info.text, type: rec.type, img: info.img, onClick: () => { if (!chatVisible()) enterChat(); } });
   }
   function hideDeskMsg() {
     clearTimeout(deskMsgTimer);
@@ -1247,10 +1262,12 @@
     // v3.6.x：换头像/拍一拍等「系统提示」也计入提醒——手机端联系人主动换头像时
     //   不在聊天页也能看到角标/横幅，而不是静默写进聊天记录
     const notable = rec.side === 'in' && (!rec.special || rec.special === 'poke');
-    if (notable && !chatVisible()) {
-      incChatUnread();
+    // v3.5.145：hidden 时聊天页打开也走 showDeskMsg（其内部按可见性发系统通知）——
+    // 修复「聊天页切后台后 TA 回复不弹通知」；未读计数仍只在非聊天页时 +1
+    if (notable && (!chatVisible() || document.visibilityState === 'hidden')) {
+      if (!chatVisible()) incChatUnread();
       // v3.5.102：非聊天页时桌面弹出新消息横幅（点击进聊天；v3.5.142 传入完整记录，
-      // 文字 + 图片缩略图）
+      // 文字 + 图片缩略图）；v3.5.145 后台时无论聊天页与否均触发通知
       showDeskMsg(rec);
     }
     // v3.6.x：分页渲染下窗口已满（新增后超出 RENDER_MAX）→ 重渲染窗口并贴底，

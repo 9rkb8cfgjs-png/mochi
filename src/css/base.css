@@ -168,7 +168,8 @@ html { margin:0; padding:0; }
    颜色/日期选择器等，避免误改视觉。 */
 @media (max-width: 900px) {
   .phone input:not([readonly]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([type="date"]):not([type="time"]):not([type="datetime-local"]):not([type="month"]):not([type="week"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
-  .phone textarea:not([readonly]) {
+  .phone textarea:not([readonly]),
+  .phone select {
     font-size:16px;
   }
   /* 双击/双指不再触发页面缩放（viewport 已锁，这里再兜一层） */

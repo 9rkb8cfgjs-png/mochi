@@ -130,7 +130,8 @@ padding:0 18px 18px;
 }
 @media (max-width: 900px) {
 .phone input:not([readonly]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([type="date"]):not([type="time"]):not([type="datetime-local"]):not([type="month"]):not([type="week"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
-.phone textarea:not([readonly]) {
+.phone textarea:not([readonly]),
+.phone select {
 font-size:16px;
 }
 html, body { touch-action:manipulation; }
@@ -2793,7 +2794,7 @@ transition:color .18s ease, background .18s ease;
           <p>1. 不开测试群</p>
           <p>2. 测试安排：先测试几天，集中修不同设备的 bug；之后会公开发帖放出链接（链接已在 GitHub 仓库，但暂不公开宣传）。</p>
           <p>3. 关于 bug：如果参与测试的人较多，不同设备差异导致的 bug 我可能无法全部修完——建议等我公开发帖后的版本，自己拿最新版代码让 AI 协助修复。</p>
-          <p>4. 使用授权：支持二传二改和自行部署。</p>
+          <p>4. 使用授权：支持二传二改和自行部署，禁止商用。</p>
           <p>5. 在边修边部署网站，有问题可以报修，使用时如果有问题也可以重新刷新用新版试试，修一天我会部署一天</p>
           <p>6. 网站与我更新修复问题是同步的，可查看开屏最新部署时间。如果浏览器还没进入新版，可以关掉浏览器再打开多试几次流量刷新，或者过一段时间再打开</p>
           <p>7. Mochi 字卡虽然是以我的另一个字卡「星言」为基础修改的，但字卡基础回复逻辑和灵感来源：小红书 @milk（2777299956）；帮我决定功能参考：小红书@FelixFelicis（9416318007）。</p>
@@ -2802,7 +2803,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.35 · 部署于 2026-08-16 23:19</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.36 · 部署于 2026-08-16 23:40</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3444,7 +3445,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.35</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.36</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -3602,7 +3603,7 @@ transition:color .18s ease, background .18s ease;
         </div>
         <div class="cal-card glass">
           <div class="lic-h">许可</div>
-          <div class="lic-li">Mochi 可自由二传、二改，支持私人部署，必须保留署名：小红书 @言序（1842523578）</div>
+          <div class="lic-li">Mochi 可自由二传、二改，支持私人部署，禁止商用，必须保留署名：小红书 @言序（1842523578）</div>
           <div class="lic-li">星言字卡本体禁止二传二改</div>
           <div class="lic-li">Mochi 字卡虽然是以我的另一个字卡「星言」为基础修改的，但字卡基础回复逻辑和灵感来源：小红书 @milk（2777299956）</div>
           <div class="lic-li">帮我决定功能参考：小红书@FelixFelicis（9416318007）</div>
@@ -3622,7 +3623,7 @@ transition:color .18s ease, background .18s ease;
         <div class="cal-card glass">
           <div class="lic-title">Mochi 字卡 · 使用说明</div>
           <div class="lic-p">基于本人「星言字卡」功能修改的简约版，代码已在 GitHub 公开，支持私人部署，与网站同步更新。</div>
-          <div class="lic-li">- 可自由二传、二改，支持私人部署</div>
+          <div class="lic-li">- 可自由二传、二改，支持私人部署，禁止商用</div>
           <div class="lic-li">- 必须保留署名：<b>小红书 @言序（1842523578）</b>（禁止删除或修改）</div>
           <div class="lic-li">- 借鉴功能或代码，希望标注灵感来源：Mochi 字卡 · 小红书 @言序（1842523578）</div>
           <div class="lic-p" style="margin-top:10px"><b>星言字卡本体禁止二传二改。</b></div>
@@ -3631,7 +3632,7 @@ transition:color .18s ease, background .18s ease;
         </div>
         <div class="cal-card glass">
           <div class="lic-h">README 配文</div>
-          <div class="lic-code">## 许可<br>Mochi 字卡可自由二传、二改，<b>支持私人部署</b>，必须保留署名：<b>小红书 @言序（1842523578）</b>。<br>星言字卡本体禁止二传二改。借鉴功能或代码的话，希望可以标注灵感来源：<b>Mochi 字卡 / 星言字卡 · 小红书 @言序（1842523578）</b>。<br>Mochi 字卡虽然是以我的另一个字卡「星言」为基础修改的，但字卡基础回复逻辑和灵感来源：<b>小红书 @milk（2777299956）</b>；帮我决定功能参考：<b>小红书@FelixFelicis（9416318007）</b>。</div>
+          <div class="lic-code">## 许可<br>Mochi 字卡可自由二传、二改，<b>支持私人部署</b>，<b>禁止商用</b>，必须保留署名：<b>小红书 @言序（1842523578）</b>。<br>星言字卡本体禁止二传二改。借鉴功能或代码的话，希望可以标注灵感来源：<b>Mochi 字卡 / 星言字卡 · 小红书 @言序（1842523578）</b>。<br>Mochi 字卡虽然是以我的另一个字卡「星言」为基础修改的，但字卡基础回复逻辑和灵感来源：<b>小红书 @milk（2777299956）</b>；帮我决定功能参考：<b>小红书@FelixFelicis（9416318007）</b>。</div>
         </div>
       </div>
     </div>
@@ -7426,8 +7427,7 @@ deskMsgEl.hidden = false;
 clearTimeout(deskMsgTimer);
 deskMsgTimer = setTimeout(() => { if (deskMsgEl) deskMsgEl.hidden = true; }, 6000);
 }
-function showDeskMsg(rec) {
-if (chatVisible()) return;
+function extractDeskMsg(rec) {
 let text = rec.text || '';
 let img = '';
 if (rec.parts && rec.parts.length) {
@@ -7439,7 +7439,17 @@ if (tp) text = tp;
 img = text;
 text = '';
 }
-showDeskPopup({ name: store.get('lbl-partner') || 'TA', text: text, type: rec.type, img: img, onClick: () => { if (!chatVisible()) enterChat(); } });
+return { text: text, img: img };
+}
+function showDeskMsg(rec) {
+const info = extractDeskMsg(rec);
+const name = store.get('lbl-partner') || 'TA';
+if (document.visibilityState === 'hidden') {
+showDeskPopup({ name: name, text: info.text, type: rec.type, img: info.img });
+return;
+}
+if (chatVisible()) return;
+showDeskPopup({ name: name, text: info.text, type: rec.type, img: info.img, onClick: () => { if (!chatVisible()) enterChat(); } });
 }
 function hideDeskMsg() {
 clearTimeout(deskMsgTimer);
@@ -7548,8 +7558,8 @@ if (!rec.ts) rec.ts = Date.now();
 msgs.push(rec);
 saveMsgs();
 const notable = rec.side === 'in' && (!rec.special || rec.special === 'poke');
-if (notable && !chatVisible()) {
-incChatUnread();
+if (notable && (!chatVisible() || document.visibilityState === 'hidden')) {
+if (!chatVisible()) incChatUnread();
 showDeskMsg(rec);
 }
 if (renderStart > 0 && msgs.length - renderStart > RENDER_MAX && chatNearBottom()) {
@@ -15577,6 +15587,20 @@ const keepOn = keep ? keep.checked : store.get('bg-keepalive') === '1';
 env.push(keepOn ? '✓ 后台保活：已开启' : '✗ 后台保活：未开启（TA 消息后台到不了，通知不会弹）');
 const isHttps = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 env.push(isHttps ? '✓ 访问协议：HTTPS 或本地' : '✗ 访问协议：' + location.protocol + '//（安卓 Chrome 需 HTTPS 才弹通知，GitHub Pages 部署后即是 HTTPS）');
+try {
+const rc = (window.replyCfg && window.replyCfg()) || {};
+const asEn = rc['as-en'] === undefined ? 1 : rc['as-en'];
+if (asEn === 1) {
+const p = Number(rc['as-prob']) > 0 ? rc['as-prob'] : 30;
+const mn = Math.min(30, Number(rc['as-min']) || 5);
+const mx = Math.min(180, Number(rc['as-max']) || 10);
+env.push('✓ 主动发送：开启（每 ' + mn + '~' + mx + ' 分钟掷一次 · 概率 ' + p + '%）');
+if (rc['dnd-en'] === 1) env.push('  免打扰开启中（发送大幅减弱，最长 3 小时一次）');
+} else {
+env.push('✗ 主动发送：关闭（TA 不会主动发聊天消息 → 后台无聊天通知）');
+}
+env.push('  提示：TA 聊天消息按间隔随机产生，后台需保活让定时器存活才到点触发');
+} catch (e) {}
 if (!('Notification' in window) || Notification.permission !== 'granted') {
 toast('环境检查：\n' + env.join('\n'));
 return;
@@ -15587,7 +15611,7 @@ showSysNotification('后台通知测试', { body: '来自 ' + name + ' · 如果
 if (ok) {
 env.push('✓ 测试通知已发送（Service Worker）');
 if (/miui|xiaomi|redmi|hyperos/i.test(navigator.userAgent) || /android/i.test(navigator.userAgent)) {
-env.push('提示：若没看到通知 → 系统设置 → 通知与控制中心 → 通知管理 → Chrome → 允许通知');
+env.push('悬浮开关：系统设置→通知管理→Chrome→通知类别/横幅通知→打开「在屏幕上方显示」');
 }
 } else {
 env.push('✗ 通知发送未受理（权限或系统通知被禁）');
@@ -19942,6 +19966,14 @@ document.body.scrollTop = 0;
 }
 } catch (e) {}
 }
+function restoreKb() {
+if (!_kbActive) return;
+_kbActive = false;
+_phone.style.height = '';
+_phone.style.alignSelf = '';
+pinScrollTop();
+stopKbWatch();
+}
 function syncIosKb() {
 if (!_vv || !_phone) return;
 var _focused = isTextEl(document.activeElement);
@@ -19952,18 +19984,29 @@ if (_open && !_kbActive) {
 _kbActive = true;
 _phone.style.alignSelf = 'flex-start';
 pinScrollTop();
+startKbWatch();
 }
 if (_kbActive) {
 var _hs = _h + 'px';
 if (_phone.style.height !== _hs) _phone.style.height = _hs; // 值不变不重排
 pinScrollTop();
 }
-if (!_open && _kbActive) {
-_kbActive = false;
-_phone.style.height = '';
-_phone.style.alignSelf = '';
-pinScrollTop();
+if (!_open && _kbActive) restoreKb();
 }
+var _kbWatch = null;
+function startKbWatch() {
+if (_kbWatch) return;
+_kbWatch = setInterval(function () {
+try {
+if (!_kbActive) { stopKbWatch(); return; }
+var noKb = _vv && (window.innerHeight - _vv.height <= 80);
+var noFocus = !isTextEl(document.activeElement);
+if (noKb || noFocus) restoreKb();
+} catch (e) {}
+}, 600);
+}
+function stopKbWatch() {
+if (_kbWatch) { clearInterval(_kbWatch); _kbWatch = null; }
 }
 if (_vv) {
 _vv.addEventListener('resize', syncIosKb);
@@ -19974,7 +20017,11 @@ setTimeout(syncIosKb, 250);
 setTimeout(syncIosKb, 450);
 });
 document.addEventListener('focusout', function () {
-setTimeout(function () { if (_kbActive && _vv && window.innerHeight - _vv.height <= 80) syncIosKb(); }, 400);
+setTimeout(syncIosKb, 250);
+setTimeout(syncIosKb, 450);
+setTimeout(function () {
+if (_kbActive && !isTextEl(document.activeElement)) restoreKb();
+}, 400);
 });
 } catch (e) {}
 }

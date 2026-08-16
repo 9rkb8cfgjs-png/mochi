@@ -358,6 +358,16 @@
           }
         } catch (e) {}
       }
+      // v3.6.x：恢复 .phone 到自然高度（键盘收起）。统一入口——避免多处重复；
+      // 恢复后若键盘又弹出，syncIosKb 会重新收缩
+      function restoreKb() {
+        if (!_kbActive) return;
+        _kbActive = false;
+        _phone.style.height = '';
+        _phone.style.alignSelf = '';
+        pinScrollTop();
+        stopKbWatch();
+      }
       function syncIosKb() {
         if (!_vv || !_phone) return;
         var _focused = isTextEl(document.activeElement);
@@ -372,6 +382,7 @@
           _phone.style.alignSelf = 'flex-start';
           // 键盘弹出瞬间浏览器可能已滚动页面，立即归零，防止灰底露出
           pinScrollTop();
+          startKbWatch();
         }
         if (_kbActive) {
           var _hs = _h + 'px';
@@ -379,12 +390,28 @@
           // 键盘动画/滚动期间持续钉在顶部（visualViewport 高频变化也不会漏）
           pinScrollTop();
         }
-        if (!_open && _kbActive) {
-          _kbActive = false;
-          _phone.style.height = '';
-          _phone.style.alignSelf = '';
-          pinScrollTop();
-        }
+        if (!_open && _kbActive) restoreKb();
+      }
+      // v3.6.x：键盘状态自愈——iOS Safari 键盘收起时**偶发不派发 visualViewport
+      // resize**（程序化 blur / 键盘下滑收起 / 完成键收起等路径，聊天发送时
+      // input.textContent='' 清空聚焦的 contenteditable 最易触发）。此时 .phone
+      // 会卡在收缩高度：页面下方露出 body 灰色背景、页面位置与比例错乱，只有
+      // 下一次完整键盘开合（如改昵称弹窗）才复位。每 600ms 复核一次：键盘实际
+      // 已收起（vv 高度≈布局高度）或焦点已离开输入框 → 立即恢复，不依赖漏事件。
+      var _kbWatch = null;
+      function startKbWatch() {
+        if (_kbWatch) return;
+        _kbWatch = setInterval(function () {
+          try {
+            if (!_kbActive) { stopKbWatch(); return; }
+            var noKb = _vv && (window.innerHeight - _vv.height <= 80);
+            var noFocus = !isTextEl(document.activeElement);
+            if (noKb || noFocus) restoreKb();
+          } catch (e) {}
+        }, 600);
+      }
+      function stopKbWatch() {
+        if (_kbWatch) { clearInterval(_kbWatch); _kbWatch = null; }
       }
       if (_vv) {
         _vv.addEventListener('resize', syncIosKb);
@@ -395,7 +422,13 @@
         setTimeout(syncIosKb, 450);
       });
       document.addEventListener('focusout', function () {
-        setTimeout(function () { if (_kbActive && _vv && window.innerHeight - _vv.height <= 80) syncIosKb(); }, 400);
+        setTimeout(syncIosKb, 250);
+        setTimeout(syncIosKb, 450);
+        // 输入框失焦即键盘收起：不依赖 vv resize（iOS 程序化失焦/滑动收起常漏事件），
+        // 400ms 后焦点仍不在输入框上就直接恢复，防止 .phone 卡在收缩高度
+        setTimeout(function () {
+          if (_kbActive && !isTextEl(document.activeElement)) restoreKb();
+        }, 400);
       });
     } catch (e) {}
   }

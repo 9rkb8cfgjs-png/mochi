@@ -13,6 +13,9 @@
 ## 记录
 
 ### 2026-08-16
+- [AI-B] 完成（iOS 默认浏览器「聊天发送完文字后界面放大、键盘与页面间一长块灰色、页面位置比例错乱，只有改联系人昵称才恢复」修复，已构建 verify 10/10 + CDP 模拟 5/5，**未提交**）：根因——iOS Safari 键盘是 overlay 模式，`syncIosKb` 键盘弹出时把 `.phone` 收缩到键盘上沿（844→500）。**发送消息时清空聚焦的 contenteditable 会触发键盘收起，但 iOS 常不派发 visualViewport resize 事件**，旧恢复逻辑（`focusout` 里 `innerHeight - vv.height <= 80` 才恢复）在 overlay 键盘下该值恒为 ~344 永远不成立、且完全依赖漏掉的 vv 事件 → `.phone` 卡在 500px 收缩高度：下方露出 body 灰底（键盘与页面间的灰色块）+ 布局位置比例错乱；只有下一次完整键盘开合（改昵称弹窗聚焦输入）才复位。修复：`src/js/mobile-adapt.js` ① 统一 `restoreKb()`（清高度/顶对齐 + 钉滚动 + 停轮询）；② `focusout` 失焦即恢复（250/450ms 两档 + 400ms 兜底，不依赖 vv 事件）；③ 新增 600ms 键盘状态自愈轮询——键盘收起但 vv 事件漏发时（vv≈布局高度或已失焦）自动恢复；④ 键盘弹出/收缩/恢复全程 `pinScrollTop` 防灰底露出（上一轮修复保留）。另 `src/css/base.css` 16px 防缩放规则补 `.phone select`（`.tc-input` 分类下拉 13px，iOS 聚焦 select 同样整页放大）。CDP 模拟 5/5：键盘弹出收缩 500、发送后失焦 250ms 即恢复（不依赖 vv 事件）、600ms 轮询兜底、再次聚焦/收起循环正常。**未提交**，等待统一提交/部署。
+
+### 2026-08-16
 - [AI-A] 完成（OPPO 雨见浏览器「来信有提示，信箱却空白」修复，已构建 + CDP 复现脚本 2 阶段 PASS + verify 10/10，**已提交推送**）：根因——v3.5.120「信箱权威加载防护」的 `mailDbReady=false` 暂存窗口未闭环：来信/回信写入只进内存 `mailPending`，而 `load()`/`render()`/`updateBadge()` 仍只读持久层 → 来信弹窗照常提示「给你寄来了一封信」，信箱列表空白；IDB 打开/读取挂起（OPPO 雨见浏览器后台挂起/存储异常，CDP 注入 indexedDB.open('mochi-db') 永不返回成功复现）时 `mailDbReady` 永远为 false，刷新后暂存信件永久丢失。修复 `src/js/mail.js` 三处：① `load()` 合并 mailPending（按 id 覆盖 + tm 保序），弹窗提示过的信件即时可见/可回/清角标；② IDB 权威读回合并基准扩展——IDB 有值用 IDB（备份导入语义），IDB 空保留本地旧信，暂存按 id 覆盖合并落盘，保险丝后迟到返回取并集不覆盖；③ 15s 权威读取保险丝（与 idbRestore 12s 同理）强制就绪并落盘暂存信件。CDP 复现验证：挂起态来信→信箱 1 封、15s 保险丝落盘、刷新后信件仍在（修复前信箱空白+刷新丢失）；`npm run verify` 10/10。另：本轮构建同时包含 AI-B 已保存的 chat-main.css/chat-settings.js 移除聊天壁纸 background-attachment:fixed 改动（无 WORKLOG 记录，已一并构建提交，请 AI-B 知悉）。
 
 ### 2026-08-16
@@ -72,3 +75,6 @@
 - [AI-A] 完成（版本号自动化，已构建已提交）：build.mjs 应用版本号改为**构建时自动从 git 提交数生成**（v3.6.<提交数>，当前 v3.6.29）——此前 APP_VERSION 手动维护 v3.5.139 与提交 v3.6.x 经常不同步，现在每次提交后构建自动 +1，无需人工对齐；非 git 环境回退 v3.6.0 兜底。顺带：构建健康检查的调试脚本检测从 tmp-*.mjs 放宽到所有未跟踪 .mjs（本次对方遗留的 smoke-ipad*.mjs 曾被漏检）。已 `node build.mjs`（产物含 v3.6.29）+ `npm run verify` 10/10；提交 build.mjs + 产物 + WORKLOG。
 - [AI-A] 完成（回复设置概率数字框下划线提示，已构建 verify 10/10，**未提交**）：`.stp-val`（回复设置/通话设置页概率数字框）底部加虚线横线提示可点击输入，点击编辑时变实线高亮——`src/css/setting.css` 新增 `border-bottom:1px dashed` + `.stp-val:not([readonly])` 实线态。已 `node build.mjs`（产物 935422 字节）+ `npm run verify` 10/10。⚠️ 本次构建已包含对方未提交的 reply-settings.js/bg-keep.js/mobile-adapt.js/music-player.js 改动（无 WORKLOG 完成记录），**未提交**，等对方收尾后统一提交；另有未跟踪临时脚本 `mtest.mjs`（种子歌旋律兜底测试）待清理，请对方确认后删除。
 - [AI-A] 完成（联系人主动发送健壮性修复，已构建 verify 10/10 + CDP 实测 3/3，**未提交**）：症状「TA 从不主动发消息（被动回复正常）」——无头浏览器实测默认链路正常，定位到两个真机可致命的健壮性缺陷：① **异常杀链**——`tryAutoSend` 抛错（真机 DOM/字卡数据损坏/媒体差异等）会阻止 `scheduleAutoSend()` 执行，一次异常后 TA **永久**不再主动发送（被动回复每次重新调度所以"看起来正常"）；修复：`tryAutoSend` 整体 try/catch，异常记录到 `window.__jsErrors`（autoSend: 前缀，供诊断）并让调度继续下一周期。② **坏间隔值**——旧数据/误操作可能把 as-min/as-max 存成超大值（如 99999），TA 要等几百天；修复：`scheduleAutoSend` 对间隔 clamp（最短 ≤30 分钟、最长 ≤180 分钟），NaN 由 getCfg 兜底。涉及 `src/js/chat.js`；已 `node build.mjs` + `npm run verify` 10/10 + CDP 实测 3/3（首个周期 getCustomCards 抛错→被 catch 记录且不发消息→恢复后下一周期正常发消息，证明调度未被杀）。**未提交**，等待统一提交（构建已含此前未提交累积改动）。
+
+### 2026-08-16
+- [AI-B] 完成：使用授权补充「禁止商用」——开屏公告（template.html + notice.json）、设置页「可二传二改的说明」页、原版功能介绍-许可、README.md、新增根目录 LICENSE 文件（明确允许二传二改/私人部署，禁止商用、保留署名）。涉及 src/template.html、src/pwa/notice.json、README.md、LICENSE；已构建，待提交。
