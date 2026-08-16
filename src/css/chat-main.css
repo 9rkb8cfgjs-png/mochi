@@ -398,6 +398,27 @@
 }
 .poke-big:active { opacity:.85; }
 .poke-big svg { width:18px; height:18px; }
+/* 拍一拍卡片：顶部分组切换栏（chips 复用 .emoji-g-chip 样式） */
+.poke-groups {
+  display:flex; gap:6px; overflow-x:auto; padding:0 2px 10px;
+  flex-shrink:0; scrollbar-width:none; -ms-overflow-style:none;
+}
+.poke-groups::-webkit-scrollbar { display:none; }
+/* 拍一拍卡片：自定义文字输入行（复用聊天搜索输入行风格） */
+.poke-input-row {
+  display:flex; gap:8px; padding:0 2px 10px; flex-shrink:0;
+}
+.poke-input {
+  flex:1; min-width:0; border:1px solid rgba(0,0,0,.1); border-radius:99px;
+  padding:9px 14px; font-size:14px; font-family:inherit; outline:none; background:#f6f6f6;
+}
+.poke-input:focus { border-color:var(--ink); background:#fff; }
+.poke-input-go {
+  flex-shrink:0; border:none; border-radius:99px; padding:0 16px;
+  background:var(--ink); color:#fff; font-size:13px; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.poke-input-go:active { opacity:.85; }
 /* 表情包面板：底部半框，露出顶部聊天消息，高度随内容自适应（最多半屏，空态紧凑）
    v3.5.110：bottom 加 safe-area，全面屏全屏模式下与输入栏同步上移，不错位 */
 .emoji-card {

@@ -958,6 +958,25 @@ cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
 .poke-big:active { opacity:.85; }
 .poke-big svg { width:18px; height:18px; }
+.poke-groups {
+display:flex; gap:6px; overflow-x:auto; padding:0 2px 10px;
+flex-shrink:0; scrollbar-width:none; -ms-overflow-style:none;
+}
+.poke-groups::-webkit-scrollbar { display:none; }
+.poke-input-row {
+display:flex; gap:8px; padding:0 2px 10px; flex-shrink:0;
+}
+.poke-input {
+flex:1; min-width:0; border:1px solid rgba(0,0,0,.1); border-radius:99px;
+padding:9px 14px; font-size:14px; font-family:inherit; outline:none; background:#f6f6f6;
+}
+.poke-input:focus { border-color:var(--ink); background:#fff; }
+.poke-input-go {
+flex-shrink:0; border:none; border-radius:99px; padding:0 16px;
+background:var(--ink); color:#fff; font-size:13px; font-weight:700;
+cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.poke-input-go:active { opacity:.85; }
 .emoji-card {
 position:fixed; top:auto; bottom:calc(96px + env(safe-area-inset-bottom, 0px)); left:18px; right:18px;
 height:auto; max-height:55%;
@@ -2790,7 +2809,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.31 · 部署于 2026-08-16 22:06</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.32 · 部署于 2026-08-16 22:29</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3432,7 +3451,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.31</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.32</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -8073,6 +8092,45 @@ const pokeCard = document.getElementById('poke-card');
 const pokeList = document.getElementById('poke-list');
 const pokeClose = document.getElementById('poke-card-close');
 const pokeName = document.getElementById('poke-partner-name');
+const pokeGroupsBar = document.createElement('div');
+pokeGroupsBar.className = 'poke-groups';
+const pokeInputRow = document.createElement('div');
+pokeInputRow.className = 'poke-input-row';
+const pokeInput = document.createElement('input');
+pokeInput.className = 'poke-input';
+pokeInput.type = 'text';
+pokeInput.placeholder = '输入拍一拍文字，如：拍了拍你的脸蛋';
+pokeInput.setAttribute('autocomplete', 'off');
+pokeInput.setAttribute('autocorrect', 'off');
+pokeInput.setAttribute('autocapitalize', 'off');
+pokeInput.setAttribute('spellcheck', 'false');
+const pokeInputGo = document.createElement('button');
+pokeInputGo.className = 'poke-input-go';
+pokeInputGo.type = 'button';
+pokeInputGo.textContent = '拍一拍';
+function doPokeInput() {
+const v = (pokeInput && pokeInput.value || '').trim();
+if (!v) { toast('先输入拍一拍文字'); return; }
+sendPoke(v);
+if (pokeInput) pokeInput.value = '';
+closePokeCard();
+}
+pokeInputGo.addEventListener('click', (e) => {
+e.stopPropagation();
+doPokeInput();
+});
+pokeInput.addEventListener('keydown', (e) => {
+if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+e.stopPropagation();
+doPokeInput();
+}
+});
+pokeInputRow.appendChild(pokeInput);
+pokeInputRow.appendChild(pokeInputGo);
+if (pokeCard) {
+pokeCard.insertBefore(pokeGroupsBar, pokeList);
+pokeCard.insertBefore(pokeInputRow, pokeList);
+}
 function sendPoke(action) {
 const name = store.get('lbl-partner') || 'TA';
 let text;
@@ -8101,17 +8159,38 @@ setTimeout(() => { retractMsg(m2, 'in'); }, 900);
 }, randInt(800, 2000));
 }, randInt(600, 1200));
 }
+let pokeCurGroup = ''; // 当前选中的拍一拍分组（'' = 全部）
+function renderPokeGroupsBar(groups) {
+if (!pokeGroupsBar) return;
+pokeGroupsBar.innerHTML = '';
+const mk = (label, val) => {
+const c = document.createElement('span');
+c.className = 'emoji-g-chip' + (pokeCurGroup === val ? ' sel' : '');
+c.textContent = label;
+c.addEventListener('click', (e) => {
+e.stopPropagation();
+pokeCurGroup = val;
+renderPokeCard();
+});
+pokeGroupsBar.appendChild(c);
+};
+mk('全部', '');
+groups.forEach(g => { if (g[1] && g[1].length) mk(g[0] + g[1].length, g[0]); });
+}
 function renderPokeCard() {
 const name = store.get('lbl-partner') || 'TA';
 if (pokeName) pokeName.textContent = name;
 const groups = (window.getPokeGroups && window.getPokeGroups()) || [];
+if (pokeCurGroup && !groups.some(g => g[0] === pokeCurGroup)) pokeCurGroup = '';
+renderPokeGroupsBar(groups);
 if (!pokeList) return;
 pokeList.innerHTML = '';
 if (!groups.length) {
-pokeList.innerHTML = '<div class="cc-empty">暂无拍一拍字卡<br>请到 自定义聊天字卡 → 拍一拍 添加</div>';
+pokeList.innerHTML = '<div class="cc-empty">暂无拍一拍字卡<br>请到 自定义聊天字卡 → 拍一拍 添加<br><span style="font-size:11px;color:var(--muted)">也可以直接在上方输入拍一拍文字</span></div>';
 return;
 }
-groups.forEach(([gname, arr]) => {
+const shown = pokeCurGroup ? groups.filter(g => g[0] === pokeCurGroup) : groups;
+shown.forEach(([gname, arr]) => {
 if (!arr.length) return;
 const h = document.createElement('div');
 h.className = 'cc-group-header';
@@ -8514,6 +8593,7 @@ if (window.closeAvlib) window.closeAvlib();
 pokeCard.hidden = false;
 if (morePanel) morePanel.hidden = true;
 closeIme(); // v3.5.116：收起输入法，面板不被键盘遮挡
+if (pokeInput) pokeInput.value = '';
 renderPokeCard();
 }
 document.addEventListener('click', (e) => {
@@ -9494,14 +9574,17 @@ groupsBar.appendChild(c);
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 function cardItemHtml(c) {
 if (typeof c === 'string' && c.indexOf('|||') > 0) {
+const pIdx = c.indexOf('|||');
+const src = c.slice(pIdx + 3) || '';
+if (src.indexOf('data:audio') === 0) {
 const parts = c.split('|||');
 const name = (parts[0] || '音频').replace(/\.[^.]+$/, '');
-const src = parts[1] || '';
 return '<div class="cc-ico" style="background:rgba(0,0,0,.05)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></div>' +
 '<div class="cc-txt"><div class="t" style="color:var(--muted)">' + esc(name) + '</div></div>' +
 '<button class="cc-play" data-src="' + esc(src) + '" title="播放">' +
 '<span class="cc-play-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>' +
 '<span class="cc-play-bars"><i></i><i></i><i></i></span></button>';
+}
 }
 if (typeof c === 'string' && c.indexOf('data:') === 0) {
 return '<div class="cc-ico cc-imgbox"><img class="cc-img" src="' + esc(c) + '" alt="图片"></div>';
@@ -9743,7 +9826,7 @@ const list = [];
 arr.forEach((c, i) => {
 if (!selected.has(gname + '\u0001' + i)) return;
 let t = c;
-if (typeof t === 'string' && t.indexOf('|||') > 0) t = '🎵 ' + t.split('|||')[0];
+if (typeof t === 'string' && t.indexOf('|||') > 0 && t.slice(t.indexOf('|||') + 3).indexOf('data:audio') === 0) t = '🎵 ' + t.split('|||')[0];
 else if (typeof t === 'string' && t.indexOf('data:') === 0) t = '🖼 图片';
 list.push(t);
 });
@@ -9761,7 +9844,8 @@ if (!mList.length) { toast('当前没有分组'); return; }
 if (window.openModal) {
 window.openModal('移动到分组', '', (v) => moveSelected(v), {
 pills: mList.map(n => ({ label: n, value: n })),
-pill: mList[0]
+pill: mList[0],
+noInput: true
 });
 }
 });
@@ -10648,7 +10732,9 @@ const val = st.querySelector('.stp-val');
 if (val) {
 const step = parseFloat(st.dataset.step) || 1;
 const v = cfg[k] !== undefined ? cfg[k] : DEFAULTS[k];
-val.value = step < 1 ? Number(v).toFixed(2) : v;
+const str = step < 1 ? Number(v).toFixed(2) : v;
+val.value = str;
+val.setAttribute('value', str);
 }
 });
 ['py-en', 'as-en', 'dnd-en', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {

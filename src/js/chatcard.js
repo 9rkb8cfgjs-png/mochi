@@ -214,17 +214,21 @@
 
   // 字卡项 HTML：图片 dataURL 显示缩略图，否则文字（删除统一走【管理字卡】）
   function cardItemHtml(c) {
-    // 语音字卡：文件名|||音频数据（播放按钮：播放中显示动态波形 + 高亮）
+    // 语音字卡：文件名|||data:audio 音频数据（播放按钮：播放中显示动态波形 + 高亮）
     // v3.6.x：显示时也去掉 mp3/mp4 后缀（旧上传的语音仍带后缀）
+    // v3.6.x：仅当 ||| 之后是音频 dataURL 才算语音——普通文字（如颜文字）里含 ||| 字符不应误判
     if (typeof c === 'string' && c.indexOf('|||') > 0) {
-      const parts = c.split('|||');
-      const name = (parts[0] || '音频').replace(/\.[^.]+$/, '');
-      const src = parts[1] || '';
-      return '<div class="cc-ico" style="background:rgba(0,0,0,.05)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></div>' +
-        '<div class="cc-txt"><div class="t" style="color:var(--muted)">' + esc(name) + '</div></div>' +
-        '<button class="cc-play" data-src="' + esc(src) + '" title="播放">' +
-        '<span class="cc-play-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>' +
-        '<span class="cc-play-bars"><i></i><i></i><i></i></span></button>';
+      const pIdx = c.indexOf('|||');
+      const src = c.slice(pIdx + 3) || '';
+      if (src.indexOf('data:audio') === 0) {
+        const parts = c.split('|||');
+        const name = (parts[0] || '音频').replace(/\.[^.]+$/, '');
+        return '<div class="cc-ico" style="background:rgba(0,0,0,.05)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></div>' +
+          '<div class="cc-txt"><div class="t" style="color:var(--muted)">' + esc(name) + '</div></div>' +
+          '<button class="cc-play" data-src="' + esc(src) + '" title="播放">' +
+          '<span class="cc-play-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>' +
+          '<span class="cc-play-bars"><i></i><i></i><i></i></span></button>';
+      }
     }
     if (typeof c === 'string' && c.indexOf('data:') === 0) {
       // 图片字卡：缩略图 + 点击查看大图（无文字标签）
@@ -497,7 +501,8 @@
             arr.forEach((c, i) => {
               if (!selected.has(gname + '\u0001' + i)) return;
               let t = c;
-              if (typeof t === 'string' && t.indexOf('|||') > 0) t = '🎵 ' + t.split('|||')[0];
+              // 语音字卡：文件名|||data:audio 音频；含 ||| 的普通文字（如颜文字）不算语音
+              if (typeof t === 'string' && t.indexOf('|||') > 0 && t.slice(t.indexOf('|||') + 3).indexOf('data:audio') === 0) t = '🎵 ' + t.split('|||')[0];
               else if (typeof t === 'string' && t.indexOf('data:') === 0) t = '🖼 图片';
               list.push(t);
             });
@@ -515,7 +520,8 @@
         if (window.openModal) {
           window.openModal('移动到分组', '', (v) => moveSelected(v), {
             pills: mList.map(n => ({ label: n, value: n })),
-            pill: mList[0]
+            pill: mList[0],
+            noInput: true
           });
         }
       });

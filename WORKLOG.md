@@ -13,6 +13,10 @@
 ## 记录
 
 ### 2026-08-16
+- [AI-A] 完成（Edge 手机端反馈「回复设置页数字只有横线、没有默认数值」修复，已构建 verify 10/10 + CDP 手机模式双视口 12/12，**未提交**）：根因——`mobile-adapt.js` 的 ce-box 转换器（安卓 Edge 等非 iOS 启用）在**定义 input.value 代理之后**才读初始值同步进 contenteditable div：`syncUI()` 只写 property（`val.value=…`）被代理遮蔽读到空 → ce-box 文本为空，只剩 CSS 虚线横线。仅静态模板 + 转换前同步赋值的回复设置 stepper 中招（动态 stepper 创建后异步转换、赋值走代理，不受影响）。修复：`src/js/reply-settings.js` syncUI 同时写 `setAttribute('value', …)`，转换器 `getAttribute('value')` 可拿到初始值（桌面原生 input 双写无副作用）。CDP 验证：390×844 / 360×640 下 ce-box 显示默认数值 1、抽检 6 个 stepper 均有数字、点 + 递增同步无回归。**未提交**，等待统一提交/部署。另：`tools/` 下上一轮遗留的 `_probe-stepper.mjs`/`_probe-shot.png` 已确认是本会话探测脚本，已删除。
+
+### 2026-08-16
+- [AI-B] 完成（聊天拍一拍卡片增强：顶部分组切换栏 + 自定义文字输入，已构建 verify 10/10 + CDP 冒烟 10/10，**未提交**）：更多功能→【拍一拍】打开的卡片现在——① 顶部新增分组切换栏（复用表情包 `.emoji-g-chip` 样式，「全部」+ 各分组 chips，横向滚动，点击切换只显示该分组字卡，选中的分组删除后自动回「全部」）；② 分组栏下方新增文字输入行（圆角输入框 + 「拍一拍」按钮），输入任意文字即可对 TA 使用拍一拍（复用 `sendPoke`：含「你」自动替换为 TA 昵称、未输入时 toast 提示、Enter 直接发送），空字卡库时也提示可直接输入。涉及 `src/js/chat.js`（新增 `pokeGroupsBar`/`pokeInputRow` 注入 + `renderPokeGroupsBar` + 分组过滤渲染 + `doPokeInput`）、`src/css/chat-main.css`（`.poke-groups`/`.poke-input-row` 样式）。Android 下输入框由 mobile-adapt 自动转 ce-box，读写仍走 `input.value` 代理（CDP 验证通过）。**未提交**，等待统一提交/部署。另：`tools/` 下发现非本会话产生的 `_probe-stepper.mjs`/`_probe-shot.png`（22:27 时间戳），疑似其他进程遗留，未处理。
 - [AI-B] 完成（iOS 默认浏览器「桌面更换头像后所有按钮失效、点击聊天框无效、发不了消息；刷新重开依然失效」修复，已构建 verify 10/10 + CDP 回归 5/5，**未提交**）：根因——旧版图片压缩 `compressImage/compressMyEmoji` 在**解码失败/压缩异常时回退存原图**（`resolve(dataUrl)`），iOS 相册选 48MP/ProRAW 级大图（base64 十几 MB）时即被原样入库；iOS Safari 对该超大 dataURL 的 `img.src` 解码会占数百 MB 位图内存、拖崩渲染进程——表现「画面正常（静态快照）但所有按钮点击无响应」；刷新后 `idbRestore` 恢复该 dataURL 又渲染 → 每次加载重现，所以**刷新重开依然失效**。修复三层防护：① `src/js/personalize.js`/`chat.js`/`chatcard.js` 的压缩函数统一：**解码前按 base64 长度（>8MB）拦截、解码后按像素（>2600 万）拦截、失败不再回退原图**，返回 null 由调用方 toast「图片过大或格式不支持，请换一张小图」（头像/壁纸/自定义图标/表情包/图片字卡全部覆盖）；② 渲染前防护——`applyAvatar`/`fillAvatar`（头像）与 `restoreAppIcons`（自定义图标）检测存量 >500KB 的异常值即清除（LS+IDB 双清）回默认图，**保证用户已有坏数据在刷新后自动恢复可用**；③ feed.js 的 compressImage 本就失败不存原图，无需改。CDP 回归 5/5：存量超大 avatar-user 启动即清除回默认 SVG、清理后聊天按钮可点、9MB 大图上传拒绝不入库且 toast 正确、正常小图上传成功（不回归）。**未提交**，等待统一提交/部署。
 
 ### 2026-08-16

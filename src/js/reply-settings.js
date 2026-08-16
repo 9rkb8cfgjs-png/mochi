@@ -80,7 +80,13 @@
       if (val) {
         const step = parseFloat(st.dataset.step) || 1;
         const v = cfg[k] !== undefined ? cfg[k] : DEFAULTS[k];
-        val.value = step < 1 ? Number(v).toFixed(2) : v;
+        const str = step < 1 ? Number(v).toFixed(2) : v;
+        val.value = str;
+        // v3.6.x：手机端 ce-box 转换器（mobile-adapt.js）在定义 value 代理之后才
+        // 读初始值做同步——只写 property 会被代理遮蔽读到空，转换后数字消失、
+        // 只剩横线（Edge 反馈「回复设置数字不显示」）。同时写 attribute 让
+        // 转换器 getAttribute('value') 能拿到初始值（桌面原生 input 双写无副作用）。
+        val.setAttribute('value', str);
       }
     });
     // 开关

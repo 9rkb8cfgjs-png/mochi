@@ -1914,6 +1914,47 @@ function partialRetractMsg(msgEl, side) {
   const pokeList = document.getElementById('poke-list');
   const pokeClose = document.getElementById('poke-card-close');
   const pokeName = document.getElementById('poke-partner-name');
+  // 拍一拍分组切换栏（chips 复用 .emoji-g-chip 样式）+ 自定义文字输入行
+  // v3.6.x：JS 注入到 poke-card（模板只放静态头/列表锚点，这里与 renderPokeCard 同步）
+  const pokeGroupsBar = document.createElement('div');
+  pokeGroupsBar.className = 'poke-groups';
+  const pokeInputRow = document.createElement('div');
+  pokeInputRow.className = 'poke-input-row';
+  const pokeInput = document.createElement('input');
+  pokeInput.className = 'poke-input';
+  pokeInput.type = 'text';
+  pokeInput.placeholder = '输入拍一拍文字，如：拍了拍你的脸蛋';
+  pokeInput.setAttribute('autocomplete', 'off');
+  pokeInput.setAttribute('autocorrect', 'off');
+  pokeInput.setAttribute('autocapitalize', 'off');
+  pokeInput.setAttribute('spellcheck', 'false');
+  const pokeInputGo = document.createElement('button');
+  pokeInputGo.className = 'poke-input-go';
+  pokeInputGo.type = 'button';
+  pokeInputGo.textContent = '拍一拍';
+  function doPokeInput() {
+    const v = (pokeInput && pokeInput.value || '').trim();
+    if (!v) { toast('先输入拍一拍文字'); return; }
+    sendPoke(v);
+    if (pokeInput) pokeInput.value = '';
+    closePokeCard();
+  }
+  pokeInputGo.addEventListener('click', (e) => {
+    e.stopPropagation();
+    doPokeInput();
+  });
+  pokeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+      e.stopPropagation();
+      doPokeInput();
+    }
+  });
+  pokeInputRow.appendChild(pokeInput);
+  pokeInputRow.appendChild(pokeInputGo);
+  if (pokeCard) {
+    pokeCard.insertBefore(pokeGroupsBar, pokeList);
+    pokeCard.insertBefore(pokeInputRow, pokeList);
+  }
   // 发送一次拍一拍（触发联系人回复）
   function sendPoke(action) {
     const name = store.get('lbl-partner') || 'TA';
@@ -1946,17 +1987,39 @@ function partialRetractMsg(msgEl, side) {
       }, randInt(800, 2000));
     }, randInt(600, 1200));
   }
+  let pokeCurGroup = ''; // 当前选中的拍一拍分组（'' = 全部）
+  function renderPokeGroupsBar(groups) {
+    if (!pokeGroupsBar) return;
+    pokeGroupsBar.innerHTML = '';
+    const mk = (label, val) => {
+      const c = document.createElement('span');
+      c.className = 'emoji-g-chip' + (pokeCurGroup === val ? ' sel' : '');
+      c.textContent = label;
+      c.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pokeCurGroup = val;
+        renderPokeCard();
+      });
+      pokeGroupsBar.appendChild(c);
+    };
+    mk('全部', '');
+    groups.forEach(g => { if (g[1] && g[1].length) mk(g[0] + g[1].length, g[0]); });
+  }
   function renderPokeCard() {
     const name = store.get('lbl-partner') || 'TA';
     if (pokeName) pokeName.textContent = name;
     const groups = (window.getPokeGroups && window.getPokeGroups()) || [];
+    // 上次选中的分组已被删除 → 回到全部
+    if (pokeCurGroup && !groups.some(g => g[0] === pokeCurGroup)) pokeCurGroup = '';
+    renderPokeGroupsBar(groups);
     if (!pokeList) return;
     pokeList.innerHTML = '';
     if (!groups.length) {
-      pokeList.innerHTML = '<div class="cc-empty">暂无拍一拍字卡<br>请到 自定义聊天字卡 → 拍一拍 添加</div>';
+      pokeList.innerHTML = '<div class="cc-empty">暂无拍一拍字卡<br>请到 自定义聊天字卡 → 拍一拍 添加<br><span style="font-size:11px;color:var(--muted)">也可以直接在上方输入拍一拍文字</span></div>';
       return;
     }
-    groups.forEach(([gname, arr]) => {
+    const shown = pokeCurGroup ? groups.filter(g => g[0] === pokeCurGroup) : groups;
+    shown.forEach(([gname, arr]) => {
       if (!arr.length) return;
       const h = document.createElement('div');
       h.className = 'cc-group-header';
@@ -2393,6 +2456,7 @@ function partialRetractMsg(msgEl, side) {
     pokeCard.hidden = false;
     if (morePanel) morePanel.hidden = true;
     closeIme(); // v3.5.116：收起输入法，面板不被键盘遮挡
+    if (pokeInput) pokeInput.value = '';
     renderPokeCard();
   }
   // 点击卡片外部关闭
