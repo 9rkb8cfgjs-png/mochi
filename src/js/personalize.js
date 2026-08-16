@@ -42,7 +42,14 @@
     if (!box) return;
     const ring = box.querySelector('.ring');
     const saved = store.get(key);
-    if (saved && ring) ring.innerHTML = '<img src="' + saved + '" alt="">';
+    // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
+    if (saved && ring) {
+      ring.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = saved;
+      img.alt = '';
+      ring.appendChild(img);
+    }
   }
   function bindAvatar(id, key) {
     const box = document.getElementById(id);
@@ -59,7 +66,14 @@
         reader.onload = () => {
           compressImage(reader.result, 256).then(data => {
             const ring = box.querySelector('.ring');
-            if (ring) ring.innerHTML = '<img src="' + data + '" alt="">';
+            // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
+            if (ring) {
+              ring.innerHTML = '';
+              const img = document.createElement('img');
+              img.src = data;
+              img.alt = '';
+              ring.appendChild(img);
+            }
             store.set(key, data);
           });
         };
@@ -433,7 +447,14 @@
       const saved = store.get('app-icon-' + app.dataset.app);
       const ico = app.querySelector('.app-ico');
       if (saved) {
-        if (ico) ico.innerHTML = '<img src="' + saved + '" alt="">';
+        // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
+        if (ico) {
+          ico.innerHTML = '';
+          const img = document.createElement('img');
+          img.src = saved;
+          img.alt = '';
+          ico.appendChild(img);
+        }
       } else if (ico && ico.dataset.orig) {
         ico.innerHTML = ico.dataset.orig;
       }
@@ -475,7 +496,14 @@
           const reader = new FileReader();
           reader.onload = () => {
             compressImage(reader.result, 256).then(data => {
-              if (ico) ico.innerHTML = '<img src="' + data + '" alt="">';
+              // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
+              if (ico) {
+                ico.innerHTML = '';
+                const img = document.createElement('img');
+                img.src = data;
+                img.alt = '';
+                ico.appendChild(img);
+              }
               store.set('app-icon-' + key, data);
               // 持续装修：上传后保持编辑模式，手动点击"退出装修模式"才退出
             });

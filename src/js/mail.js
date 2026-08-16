@@ -58,7 +58,8 @@
   // 写信纸 HTML（简约卡片：标题 + 寄信人/时间 + 正文）
   // 正文支持字卡库图片（dataURL）直接显示；插入的媒体带标记前缀（sticker:/image:）
   // 以区分表情包小图 / 图片大图；旧数据无标记按大图显示
-  function escHtml(s) { return String(s).replace(/</g, '&lt;'); }
+  // v3.6.x：完整 HTML 转义（只转 < 可被 `&lt;…&gt;` 实体绕过注入）
+  function escHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function renderBody(content) {
     const s = String(content || '');
     let html = '';

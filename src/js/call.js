@@ -150,9 +150,16 @@
   function partnerAv() { return store.get('avatar-partner') || ''; }
   function fillAv(el, data) {
     if (!el) return;
-    el.innerHTML = data
-      ? '<img src="' + data + '" alt="头像">'
-      : '<svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
+    // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
+    el.innerHTML = '';
+    if (data) {
+      const img = document.createElement('img');
+      img.src = data;
+      img.alt = '头像';
+      el.appendChild(img);
+    } else {
+      el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
+    }
   }
   function fmtDur(sec) {
     if (isNaN(sec) || sec < 0) return '00:00';

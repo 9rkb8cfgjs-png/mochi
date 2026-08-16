@@ -289,7 +289,7 @@
       ? '<div class="div-label">占卜记录</div>' + list.map((h, i) =>
           '<div class="div-h-item" data-hi="' + i + '">' +
           '<div class="div-h-main"><div class="div-h-title">' + (h.mode === 'tarot' ? '塔罗' : '雷诺曼') + ' · ' + h.count + ' 张' +
-          (h.question ? ' · 问：' + String(h.question).replace(/</g, '&lt;') : '') + '</div>' +
+          (h.question ? ' · 问：' + String(h.question).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '') + '</div>' +
           '<div class="div-h-sub">' + fmtDT(h.ts) + ' · ' + (Array.isArray(h.cards) ? h.cards.map(c => ((c && c.name) || '') + (c && c.rev ? '(逆)' : '')).join('、') : '') + '</div></div>' +
           '<button class="div-h-view" data-hi="' + i + '">查看</button>' +
           '<button class="div-h-del" data-hi="' + i + '">✕</button>' +
@@ -325,7 +325,7 @@
     });
     html += '</div>';
     html += '<div class="div-summary">' + summary + '</div>';
-    if (question) html += '<div class="div-question-q">问：' + String(question).replace(/</g, '&lt;') + '</div>';
+    if (question) html += '<div class="div-question-q">问：' + String(question).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
     html += '<button class="div-send-btn" id="div-send-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>把占卜结果发给 ' + (partnerName2() || 'TA') + '</button>';
     r.innerHTML = html;
     const sendBtn = document.getElementById('div-send-btn');

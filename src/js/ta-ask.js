@@ -329,7 +329,7 @@
         const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
         html += '<div class="ta-row' + (preset && !useDefault ? ' off' : '') + '">' +
           '<label class="toggle"><input type="checkbox"' + (q.enabled !== false ? ' checked' : '') + ' data-idx="' + idx + '"><span class="tk"></span></label>' +
-          '<span class="ta-txt">' + q.text.replace(/</g, '&lt;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</span>' +
+          '<span class="ta-txt">' + q.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</span>' +
           delBtn +
           '</div>';
       });
@@ -615,7 +615,7 @@ window.openTCPanel = openTCPanel;
     const opts = rec.choiceOptions || [];
     let html = '<div class="tc-hint">TA想问你</div><div class="tc-q">' + (rec.choiceQuestion || '') + '</div>';
     opts.forEach((o, i) => {
-      html += '<div class="tc-opt" data-i="' + i + '">' + String(o.t || '').replace(/</g, '&lt;') + '</div>';
+      html += '<div class="tc-opt" data-i="' + i + '">' + String(o.t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
     });
     openTCPanel('TA的小问题', html);
     document.querySelectorAll('#tc-body .tc-opt').forEach(el => {
@@ -671,13 +671,13 @@ window.openTCPanel = openTCPanel;
     const existed = d.favs.some(f => f.q === rec.choiceQuestion);
     let html = '';
     html += '<div class="tc-res-head"><span>你的选择</span><button class="tc-fav-btn" id="tc-fav">' + (existed ? '★' : '☆') + '</button></div>';
-    html += '<div class="tc-res-mine">' + String(rec.choiceAnswer || '').replace(/</g, '&lt;') + '</div>';
+    html += '<div class="tc-res-mine">' + String(rec.choiceAnswer || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
     if (!isPref) {
-      html += '<div class="tc-res-label">TA心里的答案</div><div class="tc-res-pref">' + String(prefTxt || '').replace(/</g, '&lt;') + '</div>';
+      html += '<div class="tc-res-label">TA心里的答案</div><div class="tc-res-pref">' + String(prefTxt || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
     }
     html += '<div class="tc-res-line"></div>';
-    html += '<div class="tc-res-reply"><b>TA：</b>“' + String(rec.choiceReply || '').replace(/</g, '&lt;') + '”</div>';
-    html += '<div class="tc-res-match ' + (isPref ? 'pref' : '') + '">' + String(rec.choiceMatch || '').replace(/</g, '&lt;') + '</div>';
+    html += '<div class="tc-res-reply"><b>TA：</b>“' + String(rec.choiceReply || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>';
+    html += '<div class="tc-res-match ' + (isPref ? 'pref' : '') + '">' + String(rec.choiceMatch || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
     if (Math.random() < 0.4 && _tcChain < 2) {
       html += '<div class="tc-res-cont" id="tc-cont">TA还想问一个 ▸</div>';
     }
@@ -743,7 +743,7 @@ window.openTCPanel = openTCPanel;
         const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
         html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) ? ' off' : '') + '">' +
           '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
-          '<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/</g, '&lt;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
+          '<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
           '<div class="tc-qopts">选项：' + q.options.map(o => o.t).join(' / ') + '</div></div>' +
           delBtn +
           '</div>';
@@ -1058,10 +1058,10 @@ window.openTCPanel = openTCPanel;
     const title = document.getElementById('qa-title');
     if (!mask || !body) return;
     if (title) title.textContent = 'Ta的好奇';
-    let html = '<div class="qa-hint">TA有点好奇</div><div class="qa-q">' + String(rec.curiousQuestion || '').replace(/</g, '&lt;') + '</div>';
+    let html = '<div class="qa-hint">TA有点好奇</div><div class="qa-q">' + String(rec.curiousQuestion || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
     const quicks = rec.curiousQuick || [];
     if (quicks.length) {
-      html += '<div class="qa-quicks">' + quicks.map(x => '<span class="qa-chip" data-v="' + String(x).replace(/"/g, '&quot;') + '">' + String(x).replace(/</g, '&lt;') + '</span>').join('') + '</div>';
+      html += '<div class="qa-quicks">' + quicks.map(x => '<span class="qa-chip" data-v="' + String(x).replace(/"/g, '&quot;') + '">' + String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</span>').join('') + '</div>';
     }
     html += '<input id="qa-input" class="qa-input" type="text" placeholder="输入你的回答…">';
     html += '<button class="qa-send" id="qa-send">告诉TA</button>';
@@ -1122,9 +1122,9 @@ window.openTCPanel = openTCPanel;
     const title = document.getElementById('qa-title');
     if (!mask || !body) return;
     if (title) title.textContent = 'Ta的好奇';
-    body.innerHTML = '<div class="qa-q">' + String(rec.curiousQuestion || '').replace(/</g, '&lt;') + '</div>' +
-      '<div class="qa-mine">你说：' + String(rec.curiousAnswer || '').replace(/</g, '&lt;') + '</div>' +
-      '<div class="qa-reply"><b>TA：</b>“' + String(rec.curiousReply || '').replace(/</g, '&lt;') + '”</div>' +
+    body.innerHTML = '<div class="qa-q">' + String(rec.curiousQuestion || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
+      '<div class="qa-mine">你说：' + String(rec.curiousAnswer || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
+      '<div class="qa-reply"><b>TA：</b>“' + String(rec.curiousReply || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>' +
       '<div class="qa-close" id="qa-close2">收起来</div>';
     mask.hidden = false;
     document.getElementById('qa-close2').addEventListener('click', () => { mask.hidden = true; });
@@ -1168,7 +1168,7 @@ window.openTCPanel = openTCPanel;
           const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
           html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) ? ' off' : '') + '">' +
             '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
-            '<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/</g, '&lt;') + (known ? ' <span class="tc-known">✓已了解</span>' : '') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
+            '<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (known ? ' <span class="tc-known">✓已了解</span>' : '') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
             (q.quick && q.quick.length ? '<div class="tc-qopts">快捷：' + q.quick.join(' / ') + '</div>' : '') +
             '</div>' + delBtn + '</div>';
         });
@@ -1203,7 +1203,7 @@ window.openTCPanel = openTCPanel;
       else knownEl.innerHTML = entries.map(en => {
         const q = TCU_DEFAULT.find(x => x.id === en.qid);
         const qText = q ? q.text : en.qid;
-        return '<div class="tc-listitem"><div class="tc-li-q">' + (q ? '[' + (TCU_CAT_LABEL[q.cat] || '') + '] ' : '') + qText + '</div><div class="tc-li-line">✓ 你：' + String(en.answer).replace(/</g, '&lt;') + '</div></div>';
+        return '<div class="tc-listitem"><div class="tc-li-q">' + (q ? '[' + (TCU_CAT_LABEL[q.cat] || '') + '] ' : '') + qText + '</div><div class="tc-li-line">✓ 你：' + String(en.answer).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div></div>';
       }).join('');
     }
   }
@@ -1449,7 +1449,7 @@ window.openTCPanel = openTCPanel;
     const title = document.getElementById('qa-title');
     if (!mask || !body) return;
     if (title) title.textContent = 'Ta的吐槽';
-    body.innerHTML = '<div class="qa-hint">TA 吐槽你</div><div class="qa-q">“' + String(rec.roastText || '').replace(/</g, '&lt;') + '”</div>' +
+    body.innerHTML = '<div class="qa-hint">TA 吐槽你</div><div class="qa-q">“' + String(rec.roastText || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>' +
       '<input id="qa-input" class="qa-input" type="text" placeholder="回 TA 一句…">' +
       '<button class="qa-send" id="qa-send">回TA一句</button>';
     mask.hidden = false;
@@ -1495,9 +1495,9 @@ window.openTCPanel = openTCPanel;
     const title = document.getElementById('qa-title');
     if (!mask || !body) return;
     if (title) title.textContent = 'Ta的吐槽';
-    body.innerHTML = '<div class="qa-q">“' + String(rec.roastText || '').replace(/</g, '&lt;') + '”</div>' +
-      '<div class="qa-mine">你说：' + String(rec.roastAnswer || '').replace(/</g, '&lt;') + '</div>' +
-      '<div class="qa-reply"><b>TA：</b>“' + String(rec.roastReply || '').replace(/</g, '&lt;') + '”</div>' +
+    body.innerHTML = '<div class="qa-q">“' + String(rec.roastText || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>' +
+      '<div class="qa-mine">你说：' + String(rec.roastAnswer || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
+      '<div class="qa-reply"><b>TA：</b>“' + String(rec.roastReply || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>' +
       '<div class="qa-close" id="qa-close2">收起来</div>';
     mask.hidden = false;
     document.getElementById('qa-close2').addEventListener('click', () => { mask.hidden = true; });
@@ -1535,7 +1535,7 @@ window.openTCPanel = openTCPanel;
           const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
           html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) ? ' off' : '') + '">' +
             '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
-            '<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/</g, '&lt;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
+            '<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
             (q.match && q.match.length ? '<div class="tc-qopts">触发：' + q.match.join(' / ') + '</div>' : '') +
             '</div>' + delBtn + '</div>';
         });
@@ -1678,8 +1678,8 @@ window.openTCPanel = openTCPanel;
       try { h = JSON.parse(store.get('invite-ask-history') || '[]'); } catch (e) {}
       inEl.innerHTML = h.length
         ? h.map(x => '<div class="tc-listitem"><div class="tc-li-q">' +
-            (x.type === 'invite' ? '邀请：' : '问：') + String(x.q || '').replace(/</g, '&lt;') + '</div>' +
-            '<div class="tc-li-line">TA：' + String(x.a || '').replace(/</g, '&lt;') + '</div>' +
+            (x.type === 'invite' ? '邀请：' : '问：') + String(x.q || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
+            '<div class="tc-li-line">TA：' + String(x.a || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
             '<div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
         : '<div class="ta-empty">暂无邀请/问问记录</div>';
     }

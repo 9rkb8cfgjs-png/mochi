@@ -102,13 +102,13 @@
       const topCount = entries[0].count;
       html += '<div class="stats-top">' +
         '<div class="stats-top-tag">' + topLabel + '</div>' +
-        '<div class="stats-top-name">「' + String(top).replace(/</g, '&lt;') + '」</div>' +
+        '<div class="stats-top-name">「' + String(top).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '」</div>' +
         '<div class="stats-top-num">' + topCount + ' 次</div></div>';
       html += '<div class="stats-list">';
       entries.slice(0, 5).forEach(e => {
         const w = Math.max(3, Math.round(e.count / entries[0].count * 100));
         html += '<div class="stats-item">' +
-          '<span class="stats-item-name">' + String(e.name).replace(/</g, '&lt;') + '</span>' +
+          '<span class="stats-item-name">' + String(e.name).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</span>' +
           '<span class="stats-item-bar"><i style="width:' + w + '%"></i></span>' +
           '<span class="stats-item-num">' + e.count + '</span></div>';
       });
@@ -518,7 +518,7 @@ if (ckRefresh) {
         ? list.map((x, i) => {
             // 系统预设 = 无自定义（整库默认）或内容匹配默认项；系统项不可删除
             const sys = !custom || def.indexOf(x) >= 0;
-            return '<div class="tc-qrow' + (sys && !useDefault ? ' off' : '') + '"><div class="tc-qmain"><div class="tc-qtext">' + String(x).replace(/</g, '&lt;') + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>' +
+            return '<div class="tc-qrow' + (sys && !useDefault ? ' off' : '') + '"><div class="tc-qmain"><div class="tc-qtext">' + String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>' +
               (custom && !sys ? '<button class="ta-del" data-i="' + i + '">✕</button>' : '') +
               '</div>';
           }).join('')

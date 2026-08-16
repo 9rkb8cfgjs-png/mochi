@@ -28,7 +28,7 @@
   function avHtml(data, cls) {
     const c = cls || 'feed-av';
     return data
-      ? '<div class="' + c + '"><img src="' + data + '" alt=""></div>'
+      ? '<div class="' + c + '"><img src="' + attrEsc(data) + '" alt=""></div>'
       : '<div class="' + c + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></div>';
   }
   const TA_COMMENT_POOL = ['收到啦~', '我看到了！', '这条动态好可爱', '记住啦', '我也是这么想的', '嗯嗯，说得对'];
@@ -51,6 +51,9 @@
     return { text: text, kaomoji: kaomoji, emoji: emoji, sticker: mediaSticker, image: mediaImage };
   }
   function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  // v3.6.x：完整 HTML 转义（昵称/评论/点赞列表/分组名是用户输入，直拼 innerHTML 可注入）
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  function attrEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   // 图文混排正文渲染（与聊天一致）：data:image 段 → 内联图片，其余文字保留空格
   function inlineBody(s) {
     const str = String(s || '');
@@ -58,11 +61,11 @@
     const re = /(data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+)/g;
     let last = 0, m;
     while ((m = re.exec(str))) {
-      html += str.slice(last, m.index).replace(/</g, '&lt;');
+      html += str.slice(last, m.index).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       html += '<img class="feed-inline-img" src="' + m[0] + '" alt="图片">';
       last = m.index + m[0].length;
     }
-    html += str.slice(last).replace(/</g, '&lt;');
+    html += str.slice(last).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     return html;
   }
   // 图文混排生成器：主字卡/颜文字/emoji/表情包/图片 全 5 类，每张卡是一块内容（图片/表情包即 1 个字卡）
@@ -111,7 +114,7 @@
     let html = inlineBody(p.content || '');
     const imgs = (p.imgs && p.imgs.length) ? p.imgs : (p.img ? [p.img] : []);
     if (imgs.length) {
-      html += '<div class="feed-imgs">' + imgs.map(u => '<img src="' + u + '" alt="图片" loading="lazy">').join('') + '</div>';
+      html += '<div class="feed-imgs">' + imgs.map(u => '<img src="' + attrEsc(u) + '" alt="图片" loading="lazy">').join('') + '</div>';
     }
     return html;
   }
@@ -119,18 +122,18 @@
   function commentsHtmlFor(p, name) {
     if (!p.comments || !p.comments.length) return '';
     return '<div class="feed-comments">' + p.comments.map((c, ci) => {
-      const cName = c.by === 'me' ? myName() : name;
+      const cName = esc(c.by === 'me' ? myName() : name);
       const cBody = inlineBody(c.content);
       let repliesHtml = '';
       if (c.replies && c.replies.length) {
         repliesHtml = '<div class="feed-replies">' + c.replies.map(r => {
-          const rName = r.by === 'me' ? myName() : name;
+          const rName = esc(r.by === 'me' ? myName() : name);
           const rBody = inlineBody(r.content);
-          return '<div class="feed-reply"><b>' + rName + '</b> \u56de\u590d <b>' + cName + '</b>\uff1a' + rBody + '</div>';
+          return '<div class="feed-reply"><b>' + rName + '</b> 回复 <b>' + cName + '</b>：' + rBody + '</div>';
         }).join('') + '</div>';
       }
       return '<div class="feed-comment" data-c="' + p.id + '" data-ci="' + ci + '">' +
-        '<div class="feed-c-line"><b>' + cName + '</b>\uff1a' + cBody + '</div>' +
+        '<div class="feed-c-line"><b>' + cName + '</b>：' + cBody + '</div>' +
         repliesHtml + '</div>';
     }).join('') + '</div>';
   }
@@ -148,7 +151,7 @@
   function renderCover() {
     const myAvEl = document.getElementById('feed-my-av');
     const myNameEl = document.getElementById('feed-my-name');
-    if (myAvEl) myAvEl.innerHTML = myAv() ? '<img src="' + myAv() + '" alt="">' : '';
+    if (myAvEl) myAvEl.innerHTML = myAv() ? '<img src="' + attrEsc(myAv()) + '" alt="">' : '';
     if (myNameEl) myNameEl.textContent = myName();
     const cover = document.getElementById('feed-cover');
     if (cover) {
@@ -201,14 +204,14 @@
           const author = isMine ? myName() : taFeedName();
           const av = isMine ? myAv() : taFeedAv();
           // v3.5.63：头像可点击 → 打开该人的全部朋友圈
-          const avWrap = '<div class="feed-head-av" data-owner="' + (isMine ? 'me' : 'ta') + '" title="查看' + author + '的全部朋友圈">' + avHtml(av) + '</div>';
+          const avWrap = '<div class="feed-head-av" data-owner="' + (isMine ? 'me' : 'ta') + '" title="查看' + esc(author) + '的全部朋友圈">' + avHtml(av) + '</div>';
           // 点赞列表：显示"XX、XX 觉得很赞"
           const likes = p.likes && p.likes.length
-            ? '<div class="feed-likes"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;vertical-align:-2px;margin-right:5px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>' + p.likes.join('、') + ' 觉得很赞</div>'
+            ? '<div class="feed-likes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;vertical-align:-2px;margin-right:5px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>' + esc(p.likes.join('、')) + ' 觉得很赞</div>'
             : '';
           const liked = p.likes && p.likes.some(l => l === myName());
           return '<div class="feed-post" id="feed-post-' + p.id + '"><div class="feed-head">' + avWrap +
-            '<div class="feed-who"><div class="feed-name">' + author + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div>' +
+            '<div class="feed-who"><div class="feed-name">' + esc(author) + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div>' +
             (isMine ? '<button class="feed-del" data-id="' + p.id + '" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg></button>' : '') + '</div>' +
             '<div class="feed-content">' + contentHtmlFor(p) + '</div>' +
             '<div class="feed-actions">' +
@@ -295,8 +298,22 @@ let comImgData = []; // 评论携带的图片（dataURL），不塞进输入框�
 function renderComPv() {
   const pv = document.getElementById('feed-comment-pv');
   if (!pv) return;
-  pv.innerHTML = comImgData.map((d, i) =>
-    '<span class="feed-pv feed-pv-sm"><img src="' + d + '" alt=""><button class="feed-preview-del" data-i="' + i + '">✕</button></span>').join('');
+  pv.innerHTML = '';
+  comImgData.forEach((d, i) => {
+    // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
+    const span = document.createElement('span');
+    span.className = 'feed-pv feed-pv-sm';
+    const img = document.createElement('img');
+    img.src = d;
+    img.alt = '';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'feed-preview-del';
+    delBtn.dataset.i = i;
+    delBtn.textContent = '✕';
+    span.appendChild(img);
+    span.appendChild(delBtn);
+    pv.appendChild(span);
+  });
   pv.hidden = comImgData.length === 0;
   pv.querySelectorAll('.feed-preview-del').forEach(b => b.addEventListener('click', () => {
     comImgData.splice(parseInt(b.dataset.i, 10), 1);
@@ -434,14 +451,18 @@ function openComStickerPanel() {
     if (!g || !g[1].length) { list.innerHTML = '<div class="ta-empty">\u8be5\u5206\u7ec4\u6682\u65e0\u8868\u60c5\u5305</div>'; return; }
     const h = document.createElement('div');
     h.className = 'cc-group-header';
-    h.innerHTML = '<span class="ccg-name">' + g[0] + '</span><span class="ccg-count">' + g[1].length + '</span>';
+    h.innerHTML = '<span class="ccg-name">' + esc(g[0]) + '</span><span class="ccg-count">' + g[1].length + '</span>';
     list.appendChild(h);
     const grid = document.createElement('div');
     grid.className = 'emoji-grid'; // 复用聊天 4 列网格样式
     g[1].forEach(src => {
       const d = document.createElement('div');
       d.className = 'emoji-item';
-      d.innerHTML = '<img src="' + src + '" alt="\u8868\u60c5">';
+      // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = '表情';
+      d.appendChild(img);
       d.addEventListener('click', (e) => {
         e.stopPropagation();
         // v3.5.130：评论图片上限 9 张（与发布一致）——无限累积会撑爆存储配额
@@ -635,7 +656,7 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     // v3.5.59：每条提醒显示联系人头像
     const av = partnerAv();
     const avHtml = av
-      ? '<span class="fn-av"><img src="' + av + '" alt=""></span>'
+      ? '<span class="fn-av"><img src="' + attrEsc(av) + '" alt=""></span>'
       : '<span class="fn-av"><svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></span>';
     listEl.innerHTML = list.length
       ? list.map(n => {
@@ -660,8 +681,22 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
   const MAX_PICK = 9;
   function renderPreview() {
     if (!preview) return;
-    preview.innerHTML = pickedImgs.map((d, i) =>
-      '<span class="feed-pv"><img src="' + d + '" alt=""><button class="feed-preview-del" data-i="' + i + '">✕</button></span>').join('');
+    preview.innerHTML = '';
+    pickedImgs.forEach((d, i) => {
+      // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
+      const span = document.createElement('span');
+      span.className = 'feed-pv';
+      const img = document.createElement('img');
+      img.src = d;
+      img.alt = '';
+      const delBtn = document.createElement('button');
+      delBtn.className = 'feed-preview-del';
+      delBtn.dataset.i = i;
+      delBtn.textContent = '✕';
+      span.appendChild(img);
+      span.appendChild(delBtn);
+      preview.appendChild(span);
+    });
     preview.hidden = pickedImgs.length === 0;
     preview.querySelectorAll('.feed-preview-del').forEach(b => b.addEventListener('click', () => {
       pickedImgs.splice(parseInt(b.dataset.i, 10), 1);
@@ -888,7 +923,7 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     else { cover.style.backgroundImage = ''; cover.classList.remove('has-bg'); }
     if (avEl) {
       const av = feedAllOwner === 'me' ? myAv() : taFeedAv();
-      avEl.innerHTML = av ? '<img src="' + av + '" alt="">' : '';
+      avEl.innerHTML = av ? '<img src="' + attrEsc(av) + '" alt="">' : '';
     }
     if (nameEl) nameEl.textContent = feedAllOwner === 'me' ? myName() : taFeedName();
   }
@@ -905,10 +940,10 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
           const author = feedAllOwner === 'me' ? myName() : taFeedName();
           const av = feedAllOwner === 'me' ? myAv() : taFeedAv();
           const likes = p.likes && p.likes.length
-            ? '<div class="feed-likes" style="font-size:11px;color:var(--muted);padding:6px 2px">' + p.likes.join('、') + ' 觉得很赞</div>'
+            ? '<div class="feed-likes" style="font-size:11px;color:var(--muted);padding:6px 2px">' + esc(p.likes.join('、')) + ' 觉得很赞</div>'
             : '';
           return '<div class="feed-post"><div class="feed-head">' + avHtml(av) +
-            '<div class="feed-who"><div class="feed-name">' + author + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div></div>' +
+            '<div class="feed-who"><div class="feed-name">' + esc(author) + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div></div>' +
             '<div class="feed-content">' + contentHtmlFor(p) + '</div>' + likes +
             commentsHtmlFor(p, author) + '</div>';
         }).join('')

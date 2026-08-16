@@ -711,13 +711,40 @@
           });
         });
       }
+      // v3.6.x：媒体类字卡 dataURL 白名单校验——导入 json 里混入的
+      // `data:image/png" onerror=…` 之类（能通过 indexOf 前缀判断）会逃逸出
+      // 聊天渲染的 src 属性注入 HTML；这里只放行合法 base64 图片/音频，其余丢弃
+      const RE_IMG = /^data:image\/(png|jpe?g|gif|webp);base64,/;
+      const RE_AUDIO = /^data:audio\/[a-zA-Z0-9.+-]+;base64,/;
+      let dropped = 0;
+      ['image', 'sticker'].forEach(cat => {
+        (byCat[cat] || []).forEach(pair => {
+          const before = pair[1].length;
+          pair[1] = pair[1].filter(c => RE_IMG.test(String(c)));
+          dropped += before - pair[1].length;
+        });
+        byCat[cat] = (byCat[cat] || []).filter(pair => pair[1].length);
+      });
+      // 语音字卡：文件名|||音频dataURL
+      if (byCat.voice) {
+        byCat.voice.forEach(pair => {
+          const before = pair[1].length;
+          pair[1] = pair[1].filter(c => {
+            const s = String(c);
+            const p = s.indexOf('|||');
+            return p > 0 && RE_AUDIO.test(s.slice(p + 3));
+          });
+          dropped += before - pair[1].length;
+        });
+        byCat.voice = byCat.voice.filter(pair => pair[1].length);
+      }
       if (!imported) { toast('文件里没有可导入的字卡'); return; }
       const res = writeImport(byCat, mode);
       saveGroups(groups);
       renderGroupsBar();
       render();
-      if (mode === 'replace') toast('已替换字卡库 · 共 ' + res.added + ' 张字卡' + fmt);
-      else toast('已导入 ' + res.added + ' 张字卡' + fmt + (res.dup ? '，自动去重 ' + res.dup + ' 条' : ''));
+      if (mode === 'replace') toast('已替换字卡库 · 共 ' + res.added + ' 张字卡' + fmt + (dropped ? '，丢弃 ' + dropped + ' 条非法媒体' : ''));
+      else toast('已导入 ' + res.added + ' 张字卡' + fmt + (res.dup ? '，自动去重 ' + res.dup + ' 条' : '') + (dropped ? '，丢弃 ' + dropped + ' 条非法媒体' : ''));
     }
   }
 

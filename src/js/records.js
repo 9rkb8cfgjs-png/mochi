@@ -89,7 +89,7 @@
       if (qEl) {
         const list = histList('quote-history');
         qEl.innerHTML = list.length
-          ? list.map(x => '<div class="tc-listitem"><div class="tc-li-q">' + String(x.text || '').replace(/</g, '&lt;') + '</div><div class="tc-li-time">' + x.date + '</div></div>').join('')
+          ? list.map(x => '<div class="tc-listitem"><div class="tc-li-q">' + String(x.text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div><div class="tc-li-time">' + x.date + '</div></div>').join('')
           : '<div class="ta-empty">暂无情话记录</div>';
       }
     }
@@ -99,7 +99,7 @@
       if (mEl) {
         const list = histList('memo-history');
         mEl.innerHTML = list.length
-          ? list.map(x => '<div class="tc-listitem"><div class="tc-li-q">' + String(x.text || '').replace(/</g, '&lt;') + '</div><div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
+          ? list.map(x => '<div class="tc-listitem"><div class="tc-li-q">' + String(x.text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div><div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
           : '<div class="ta-empty">暂无备忘记录</div>';
       }
     }
@@ -109,7 +109,7 @@
       if (wEl) {
         const list = histList('mood-history');
         wEl.innerHTML = list.length
-          ? list.map(x => '<div class="tc-listitem"><div class="tc-li-q">' + String(x.text || '').replace(/</g, '&lt;') + '</div><div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
+          ? list.map(x => '<div class="tc-listitem"><div class="tc-li-q">' + String(x.text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div><div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
           : '<div class="ta-empty">暂无心情记录</div>';
       }
     }

@@ -35,7 +35,8 @@
     clearTimeout(t._timer);
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
   }
-  function esc(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+  // v3.6.x：完整 HTML 转义（只转 < 可被 `&lt;…&gt;` 实体绕过注入）
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
   // 自定义情话库（空则用默认）
   // v3.6.x：hasCustom 区分「是否有用户自定义库」——管理页不再把默认 46 句当

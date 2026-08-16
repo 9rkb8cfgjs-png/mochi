@@ -58,13 +58,20 @@
     lib.forEach((src, idx) => {
       const d = document.createElement('div');
       d.className = 'avlib-cell' + (src === current ? ' avlib-now' : '');
-      d.innerHTML = '<img src="' + src + '" alt="头像">' +
-        '<button class="avlib-del">✕</button>';
+      // v3.6.x：img src 用属性赋值（dataURL 里含引号时拼 innerHTML 会逃逸注入 HTML）
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = '头像';
+      const delBtn = document.createElement('button');
+      delBtn.className = 'avlib-del';
+      delBtn.textContent = '✕';
+      d.appendChild(img);
+      d.appendChild(delBtn);
       // 点击图片：直接切换联系人头像（可能触发同意/拒绝回应）
-      d.querySelector('img').addEventListener('click', () => {
+      img.addEventListener('click', () => {
         switchAvatarFromLib(src);
       });
-      d.querySelector('.avlib-del').addEventListener('click', () => {
+      delBtn.addEventListener('click', () => {
         const l = getLib();
         l.splice(idx, 1);
         saveLib(l);
@@ -184,15 +191,25 @@
   // 头像实时生效：聊天页顶部头像 + 桌面纪念日卡头像 + 已渲染的对方消息气泡头像
   // （.msg-in .msg-av 是"对方消息"旁的头像；我的消息旁是 avatar-user，不动）
   // data 为空时恢复默认人物图标
+  // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
   function applyAvatarImg(data) {
     const chatAv = document.getElementById('chat-partner-av');
     const deskRing = document.querySelector('#avatar-partner .ring');
-    const html = data
-      ? '<img src="' + data + '" alt="">'
-      : '<svg viewBox="0 0 24 24" fill="none" stroke="#999999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
-    if (chatAv) chatAv.innerHTML = html;
-    if (deskRing) deskRing.innerHTML = html;
-    document.querySelectorAll('.msg-in .msg-av').forEach(av => { av.innerHTML = html; });
+    const applyTo = (el) => {
+      if (!el) return;
+      el.innerHTML = '';
+      if (data) {
+        const img = document.createElement('img');
+        img.src = data;
+        img.alt = '';
+        el.appendChild(img);
+      } else {
+        el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#999999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
+      }
+    };
+    applyTo(chatAv);
+    applyTo(deskRing);
+    document.querySelectorAll('.msg-in .msg-av').forEach(av => { applyTo(av); });
   }
   // 聊天里显示系统消息（chatAddSystem 会持久化，下次进聊天也能看到）
   // img：可选，消息里附带换的头像图片

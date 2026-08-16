@@ -75,7 +75,8 @@
     try { return Object.assign(d, JSON.parse(store.get(SETTINGS_KEY) || '{}')); } catch (e) { return d; }
   }
   function saveSettings(s) { store.set(SETTINGS_KEY, JSON.stringify(s)); }
-  function esc(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+  // v3.6.x：完整 HTML 转义（只转 < 可被 `&lt;…&gt;` 实体绕过注入）
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
   let activeTab = 'typea';
   let countdownTimer = null;

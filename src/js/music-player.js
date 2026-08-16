@@ -42,7 +42,8 @@
     const p = (n) => (n < 10 ? '0' + n : '' + n);
     return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
-  function esc(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+  // v3.6.x：完整 HTML 转义（只转 < 可被 `&lt;…&gt;` 实体绕过注入）
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
   // ================= 存储 =================
   function saveLibrary() { saveArr('music-library', library); }

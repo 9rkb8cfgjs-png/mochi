@@ -1,8 +1,8 @@
 // ===== Mochi Service Worker：离线缓存 + 网络优先 =====
 // v3.5.54：CACHE 名由 build.mjs 每次构建自动更新（mochi-<时间戳>），
 // 新版本部署后旧缓存自动失效 → 强制更新到最新版
-const CACHE = 'mochi-msvl1m0c';
-const BUILD_INFO = '部署于 2026-08-16 17:08';
+const CACHE = 'mochi-msvmfk9t';
+const BUILD_INFO = '部署于 2026-08-16 17:47';
 const PRECACHE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png'];
 
 self.addEventListener('install', (e) => {

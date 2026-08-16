@@ -2781,7 +2781,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.5.139 · 部署于 2026-08-16 17:08</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.5.139 · 部署于 2026-08-16 17:47</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -5329,7 +5329,7 @@ t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
 clearTimeout(t._timer);
 t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
 }
-function esc(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 function hasCustom() {
 try {
 const v = JSON.parse(store.get(KEY) || 'null');
@@ -5467,7 +5467,13 @@ const box = document.getElementById(id);
 if (!box) return;
 const ring = box.querySelector('.ring');
 const saved = store.get(key);
-if (saved && ring) ring.innerHTML = '<img src="' + saved + '" alt="">';
+if (saved && ring) {
+ring.innerHTML = '';
+const img = document.createElement('img');
+img.src = saved;
+img.alt = '';
+ring.appendChild(img);
+}
 }
 function bindAvatar(id, key) {
 const box = document.getElementById(id);
@@ -5484,7 +5490,13 @@ const reader = new FileReader();
 reader.onload = () => {
 compressImage(reader.result, 256).then(data => {
 const ring = box.querySelector('.ring');
-if (ring) ring.innerHTML = '<img src="' + data + '" alt="">';
+if (ring) {
+ring.innerHTML = '';
+const img = document.createElement('img');
+img.src = data;
+img.alt = '';
+ring.appendChild(img);
+}
 store.set(key, data);
 });
 };
@@ -5813,7 +5825,13 @@ document.querySelectorAll('.app').forEach(app => {
 const saved = store.get('app-icon-' + app.dataset.app);
 const ico = app.querySelector('.app-ico');
 if (saved) {
-if (ico) ico.innerHTML = '<img src="' + saved + '" alt="">';
+if (ico) {
+ico.innerHTML = '';
+const img = document.createElement('img');
+img.src = saved;
+img.alt = '';
+ico.appendChild(img);
+}
 } else if (ico && ico.dataset.orig) {
 ico.innerHTML = ico.dataset.orig;
 }
@@ -5853,7 +5871,13 @@ if (!f) { return; }
 const reader = new FileReader();
 reader.onload = () => {
 compressImage(reader.result, 256).then(data => {
-if (ico) ico.innerHTML = '<img src="' + data + '" alt="">';
+if (ico) {
+ico.innerHTML = '';
+const img = document.createElement('img');
+img.src = data;
+img.alt = '';
+ico.appendChild(img);
+}
 store.set('app-icon-' + key, data);
 });
 };
@@ -6597,13 +6621,28 @@ let changed = false;
 msgs.forEach(r => { if (r && !r.ts) { r.ts = Date.now(); changed = true; } });
 if (changed) saveMsgs();
 }
+function escTxt(s) {
+return String(s == null ? '' : s)
+.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function attrEsc(s) {
+return String(s == null ? '' : s)
+.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 function fillAvatar(el, key) {
 if (typeof el === 'string') el = document.getElementById(el);
 if (!el) return;
 const data = store.get(key);
-el.innerHTML = data
-? '<img src="' + data + '" alt="">'
-: '<svg viewBox="0 0 24 24" fill="none" stroke="#999999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
+if (data) {
+const img = document.createElement('img');
+img.src = data;
+img.alt = '';
+el.innerHTML = '';
+el.appendChild(img);
+} else {
+el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#999999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
+}
 }
 window.fillAvatar = fillAvatar;
 fillAvatar('chat-user-av', 'avatar-user');
@@ -6718,16 +6757,16 @@ function quoteHtml(q, side) {
 if (q && typeof q === 'object') {
 const imgs = (q.imgs || []).filter(s => typeof s === 'string' && s.indexOf('data:') === 0).slice(0, 3);
 const t = String(q.t || '');
-const tHtml = (t && t.indexOf('data:') !== 0) ? t.replace(/</g, '&lt;') : '';
+const tHtml = (t && t.indexOf('data:') !== 0) ? escTxt(t) : '';
 let inner = '';
-if (imgs.length) inner += '<span class="msg-quote-imgs">' + imgs.map(s => '<img class="msg-quote-img" src="' + s + '" alt="图片">').join('') + '</span>';
+if (imgs.length) inner += '<span class="msg-quote-imgs">' + imgs.map(s => '<img class="msg-quote-img" src="' + attrEsc(s) + '" alt="图片">').join('') + '</span>';
 if (tHtml) inner += '<span class="msg-quote-text">' + tHtml + '</span>';
 return '<div class="msg-quote">' + inner + '</div>';
 }
 if (typeof q === 'string' && q.indexOf('data:') === 0) {
-return '<div class="msg-quote"><img class="msg-quote-img" src="' + q + '" alt="图片"></div>';
+return '<div class="msg-quote"><img class="msg-quote-img" src="' + attrEsc(q) + '" alt="图片"></div>';
 }
-return '<div class="msg-quote"><span class="msg-quote-text">' + String(q || '').replace(/</g, '&lt;') + '</span></div>';
+return '<div class="msg-quote"><span class="msg-quote-text">' + escTxt(q) + '</span></div>';
 }
 function expandCardInPlace(idx, type) {
 const el = body.querySelector('.msg-ask[data-idx="' + idx + '"]');
@@ -6904,9 +6943,9 @@ m.className = 'msg-ask';
 m.dataset.idx = msgs.length - 1;
 const answered = rec.inviteStatus === 'answered';
 m.innerHTML = '<div class="msg-ask-card' + (answered ? ' answered' : '') + '">' +
-'<div class="msg-ask-q">邀请TA · ' + (rec.inviteContent || rec.text || '').replace(/</g, '&lt;') + '</div>' +
+'<div class="msg-ask-q">邀请TA · ' + escTxt(rec.inviteContent || rec.text || '') + '</div>' +
 (answered
-? '<div class="msg-ask-a">✓ ' + (rec.inviteAnswer || 'TA 回应了你').replace(/</g, '&lt;') + '</div>'
+? '<div class="msg-ask-a">✓ ' + escTxt(rec.inviteAnswer || 'TA 回应了你') + '</div>'
 : '<div class="msg-ask-tip">等待 TA 回应…</div>') +
 '</div>';
 body.appendChild(m);
@@ -6918,9 +6957,9 @@ m.className = 'msg-ask';
 m.dataset.idx = msgs.length - 1;
 const answered = rec.askStatus === 'answered';
 m.innerHTML = '<div class="msg-ask-card' + (answered ? ' answered' : '') + '">' +
-'<div class="msg-ask-q">问问TA · ' + (rec.askQuestion || '').replace(/</g, '&lt;') + '</div>' +
+'<div class="msg-ask-q">问问TA · ' + escTxt(rec.askQuestion || '') + '</div>' +
 (answered
-? '<div class="msg-ask-a">✓ TA：' + (rec.askAnswer || '回答了你').replace(/</g, '&lt;') + '</div>'
+? '<div class="msg-ask-a">✓ TA：' + escTxt(rec.askAnswer || '回答了你') + '</div>'
 : '<div class="msg-ask-tip">等待 TA 回答…</div>') +
 '</div>';
 body.appendChild(m);
@@ -6929,15 +6968,15 @@ return m;
 }
 if (rec.special === 'call' || rec.special === 'call-reply' || rec.special === 'invite-reply') {
 m.className = 'msg-center';
-m.innerHTML = '<div class="msg-center-card">' + rec.text + '</div>';
+m.innerHTML = '<div class="msg-center-card">' + escTxt(rec.text) + '</div>';
 body.appendChild(m);
 maybeScrollChatBottom();
 return m;
 }
 if (rec.special === 'poke') {
 m.className = 'msg-poke';
-m.innerHTML = '<span>' + rec.text + '</span>' +
-(rec.img ? '<img class="msg-poke-img" src="' + rec.img + '" alt="新头像">' : '');
+m.innerHTML = '<span>' + escTxt(rec.text) + '</span>' +
+(rec.img ? '<img class="msg-poke-img" src="' + attrEsc(rec.img) + '" alt="新头像">' : '');
 body.appendChild(m);
 maybeScrollChatBottom();
 return m;
@@ -6947,9 +6986,9 @@ m.className = 'msg-ask';
 m.dataset.idx = msgs.length - 1;
 const answered = rec.choiceStatus === 'answered';
 m.innerHTML = '<div class="msg-choose-card' + (answered ? ' answered' : '') + '">' +
-'<div class="msg-ask-q">' + (rec.choiceQuestion || '') + '</div>' +
+'<div class="msg-ask-q">' + escTxt(rec.choiceQuestion || '') + '</div>' +
 (answered
-? '<div class="msg-ask-a">✓ 你选择了：' + rec.choiceAnswer + '</div><div class="msg-choose-r">TA：' + rec.choiceReply + '</div>'
+? '<div class="msg-ask-a">✓ 你选择了：' + escTxt(rec.choiceAnswer) + '</div><div class="msg-choose-r">TA：' + escTxt(rec.choiceReply) + '</div>'
 : '<div class="msg-ask-tip">点击选择你的答案</div>') +
 '</div>';
 body.appendChild(m);
@@ -6961,9 +7000,9 @@ m.className = 'msg-ask';
 m.dataset.idx = msgs.length - 1;
 const answered = rec.curiousStatus === 'answered';
 m.innerHTML = '<div class="msg-choose-card' + (answered ? ' answered' : '') + '">' +
-'<div class="msg-ask-q">' + (rec.curiousQuestion || '') + '</div>' +
+'<div class="msg-ask-q">' + escTxt(rec.curiousQuestion || '') + '</div>' +
 (answered
-? '<div class="msg-ask-a">✓ 你：' + rec.curiousAnswer + '</div><div class="msg-choose-r">TA：' + rec.curiousReply + '</div>'
+? '<div class="msg-ask-a">✓ 你：' + escTxt(rec.curiousAnswer) + '</div><div class="msg-choose-r">TA：' + escTxt(rec.curiousReply) + '</div>'
 : '<div class="msg-ask-tip">点击回答 TA 的好奇</div>') +
 '</div>';
 body.appendChild(m);
@@ -6975,9 +7014,9 @@ m.className = 'msg-ask';
 m.dataset.idx = msgs.length - 1;
 const answered = rec.roastStatus === 'answered';
 m.innerHTML = '<div class="msg-choose-card' + (answered ? ' answered' : '') + '">' +
-'<div class="msg-ask-q">' + (rec.roastText || '') + '</div>' +
+'<div class="msg-ask-q">' + escTxt(rec.roastText || '') + '</div>' +
 (answered
-? '<div class="msg-ask-a">✓ 你：' + rec.roastAnswer + '</div><div class="msg-choose-r">TA：' + rec.roastReply + '</div>'
+? '<div class="msg-ask-a">✓ 你：' + escTxt(rec.roastAnswer) + '</div><div class="msg-choose-r">TA：' + escTxt(rec.roastReply) + '</div>'
 : '<div class="msg-ask-tip">点击回 TA 一句</div>') +
 '</div>';
 body.appendChild(m);
@@ -6989,9 +7028,9 @@ m.className = 'msg-ask';
 m.dataset.idx = msgs.length - 1;
 const answered = rec.askStatus === 'answered';
 m.innerHTML = '<div class="msg-ask-card' + (answered ? ' answered' : '') + '">' +
-'<div class="msg-ask-q">' + (rec.askQuestion || rec.text) + '</div>' +
+'<div class="msg-ask-q">' + escTxt(rec.askQuestion || rec.text) + '</div>' +
 (answered
-? '<div class="msg-ask-a">✓ 已回答：' + rec.askAnswer + '</div>'
+? '<div class="msg-ask-a">✓ 已回答：' + escTxt(rec.askAnswer) + '</div>'
 : '<div class="msg-ask-tip">点击回答 TA 的提问</div>') +
 '</div>';
 body.appendChild(m);
@@ -7014,8 +7053,8 @@ b.style.background = '';
 b.style.border = '';
 b.style.boxShadow = '';
 b.innerHTML = (rec.quote ? quoteHtml(rec.quote, rec.qside) : '') + (rec.type === 'image'
-? '<img class="msg-img msg-img-big" src="' + rec.text + '" alt="图片" loading="lazy" decoding="async">'
-: '<img class="msg-img msg-img-sm" src="' + rec.text + '" alt="表情" loading="lazy" decoding="async">');
+? '<img class="msg-img msg-img-big" src="' + attrEsc(rec.text) + '" alt="图片" loading="lazy" decoding="async">'
+: '<img class="msg-img msg-img-sm" src="' + attrEsc(rec.text) + '" alt="表情" loading="lazy" decoding="async">');
 if (rec.type === 'image') {
 b.querySelector('.msg-img-big').addEventListener('click', (e) => {
 e.stopPropagation();
@@ -7030,12 +7069,12 @@ b.style.boxShadow = '';
 const vparts = String(rec.text || '').split('|||');
 const vname = (vparts[0] || '语音消息').replace(/\.[^.]+$/, '');
 const vsrc = vparts[1] || '';
-b.innerHTML = '<div class="msg-voice" data-src="' + vsrc + '">' +
+b.innerHTML = '<div class="msg-voice" data-src="' + attrEsc(vsrc) + '">' +
 '<button class="msg-voice-play" title="播放">' +
 '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
 '</button>' +
 '<div class="msg-voice-wave"><i></i><i></i><i></i><i></i><i></i></div>' +
-'<span class="msg-voice-name">' + vname.replace(/</g, '&lt;') + '</span>' +
+'<span class="msg-voice-name">' + escTxt(vname) + '</span>' +
 '</div>';
 b.querySelector('.msg-voice-play').addEventListener('click', function (e) {
 e.stopPropagation();
@@ -7053,11 +7092,11 @@ if (imgs.length) {
 inner += '<div class="msg-parts-imgs' + (imgs.length > 1 ? ' multi' : '') + '">' +
 imgs.map(p => {
 const isSticker = p.sub === 'sticker';
-return '<img class="msg-img' + (isSticker ? ' msg-img-sm' : ' msg-img-big') + '" src="' + p.v + '" alt="' + (isSticker ? '表情' : '图片') + '" loading="lazy" decoding="async">';
+return '<img class="msg-img' + (isSticker ? ' msg-img-sm' : ' msg-img-big') + '" src="' + attrEsc(p.v) + '" alt="' + (isSticker ? '表情' : '图片') + '" loading="lazy" decoding="async">';
 }).join('') + '</div>';
 }
 if (textPart) {
-inner += '<span style="opacity:.85;word-break:break-word">' + textPart.replace(/</g, '&lt;') + '</span>';
+inner += '<span style="opacity:.85;word-break:break-word">' + escTxt(textPart) + '</span>';
 }
 b.innerHTML = rec.quote
 ? quoteHtml(rec.quote, rec.qside) + inner
@@ -7075,11 +7114,11 @@ let segHtml = '';
 for (let i = 0; i < segs.length; i++) {
 if (!rcs.some(r => r.idx === i)) {
 if (segHtml) segHtml += ' ';
-segHtml += String(segs[i]).replace(/</g, '&lt;');
+segHtml += escTxt(segs[i]);
 }
 }
 let sub = '';
-rcs.forEach(r => { sub += '<div style="padding:2px 0">（已撤回）' + String(r.text || '').replace(/</g, '&lt;') + '</div>'; });
+rcs.forEach(r => { sub += '<div style="padding:2px 0">（已撤回）' + escTxt(r.text || '') + '</div>'; });
 b.innerHTML = (rec.quote ? quoteHtml(rec.quote, rec.qside) : '') +
 '<span style="opacity:.85;word-break:break-word">' + (segHtml || '…') + '</span>' +
 '<div style="margin-top:6px;text-align:left">' +
@@ -7095,20 +7134,21 @@ if (d) d.style.display = d.style.display === 'block' ? 'none' : 'block';
 });
 }
 } else {
-const escTxt = String(rec.text || '').replace(/</g, '&lt;');
+const escTxtS = escTxt(rec.text);
 b.innerHTML = rec.quote
-? quoteHtml(rec.quote, rec.qside) + '<span style="opacity:.85">' + escTxt + '</span>'
-: '<span style="opacity:.85">' + escTxt + '</span>';
+? quoteHtml(rec.quote, rec.qside) + '<span style="opacity:.85">' + escTxtS + '</span>'
+: '<span style="opacity:.85">' + escTxtS + '</span>';
 }
 if (rec.mood && rec.mood.length) {
 const mm = document.createElement('div');
 mm.className = 'msg-moods';
 rec.mood.forEach((md, mi) => {
 if (rec.retractedMood && rec.retractedMood.indexOf(mi) >= 0) return;
+const mt = escTxt(md.tag), ml = escTxt(md.label);
 if (md.tag === '交流意图') {
-mm.innerHTML += '<div class="msg-mood msg-intent"><span class="msg-mood-tag">' + md.tag + '</span><span>' + md.label + '</span></div>';
+mm.innerHTML += '<div class="msg-mood msg-intent"><span class="msg-mood-tag">' + mt + '</span><span>' + ml + '</span></div>';
 } else {
-mm.innerHTML += '<div class="msg-mood"><span class="msg-mood-tag">' + md.tag + '</span><span>' + md.label + '</span></div>';
+mm.innerHTML += '<div class="msg-mood"><span class="msg-mood-tag">' + mt + '</span><span>' + ml + '</span></div>';
 }
 });
 if (mm.children.length) b.appendChild(mm);
@@ -7181,6 +7221,8 @@ const deskMsgName = document.getElementById('desk-msg-name');
 const deskMsgText = document.getElementById('desk-msg-text');
 let deskMsgTimer = null;
 let deskMsgAction = null; // v3.5.107：横幅点击回调（聊天进聊天页 / 信箱进信箱 / 朋友圈进朋友圈）
+let deskMsgCloseAnimTimer = null; // v3.5.136：关闭滑出动画定时器（防止与新横幅竞态）
+let deskMsgRevertTimer = null;    // v3.5.136：回弹动画定时器
 function deskMsgEnabled() {
 const v = store.get('desk-msg-en');
 return v === null || v === undefined || v === '' ? true : v === '1';
@@ -7198,6 +7240,11 @@ if (deskMsgText) deskMsgText.textContent = t;
 if (deskMsgName) deskMsgName.textContent = opts.name || store.get('lbl-partner') || 'TA';
 if (deskMsgAv) fillAvatar(deskMsgAv, 'avatar-partner');
 deskMsgAction = (typeof opts.onClick === 'function') ? opts.onClick : null;
+if (deskMsgCloseAnimTimer) { clearTimeout(deskMsgCloseAnimTimer); deskMsgCloseAnimTimer = null; }
+if (deskMsgRevertTimer) { clearTimeout(deskMsgRevertTimer); deskMsgRevertTimer = null; }
+deskMsgEl.style.transition = '';
+deskMsgEl.style.transform = '';
+deskMsgEl.style.opacity = '';
 deskMsgEl.hidden = false;
 clearTimeout(deskMsgTimer);
 deskMsgTimer = setTimeout(() => { if (deskMsgEl) deskMsgEl.hidden = true; }, 6000);
@@ -7208,8 +7255,15 @@ showDeskPopup({ name: store.get('lbl-partner') || 'TA', text: text, type: type, 
 }
 function hideDeskMsg() {
 clearTimeout(deskMsgTimer);
+if (deskMsgCloseAnimTimer) { clearTimeout(deskMsgCloseAnimTimer); deskMsgCloseAnimTimer = null; }
+if (deskMsgRevertTimer) { clearTimeout(deskMsgRevertTimer); deskMsgRevertTimer = null; }
 deskMsgAction = null;
-if (deskMsgEl) deskMsgEl.hidden = true;
+if (deskMsgEl) {
+deskMsgEl.style.transition = '';
+deskMsgEl.style.transform = '';
+deskMsgEl.style.opacity = '';
+deskMsgEl.hidden = true;
+}
 }
 window.showDeskPopup = showDeskPopup;
 window.hideDeskMsg = hideDeskMsg;
@@ -7223,45 +7277,76 @@ else if (!chatVisible()) enterChat();
 let deskMsgSuppressClick = false;
 let deskMsgSuppressTimer = null;
 let dDrag = null;
-function deskMsgDragStart(e) {
+function deskMsgDragStart(cx, cy) {
 if (!deskMsgEl || deskMsgEl.hidden) return;
-dDrag = { x: e.clientX, y: e.clientY, moved: false };
+dDrag = { x: cx, y: cy, moved: false, speed: 0, lastX: cx, lastT: Date.now() };
+deskMsgEl.style.transition = 'none'; // 拖拽过程中不带动画，实时跟手
 }
-function deskMsgDragMove(e) {
+function deskMsgDragMove(cx, cy) {
+if (!dDrag) return false;
+if (!deskMsgEl || deskMsgEl.hidden) { dDrag = null; return false; }
+const dx = cx - dDrag.x;
+const dy = cy - dDrag.y;
+const now = Date.now();
+if (now - dDrag.lastT >= 60) {
+dDrag.speed = (cx - dDrag.lastX) / (now - dDrag.lastT);
+dDrag.lastX = cx;
+dDrag.lastT = now;
+}
+if (Math.abs(dx) > 4 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+deskMsgEl.style.transform = 'translateX(' + dx + 'px) scale(' + Math.max(0.92, 1 - Math.abs(dx) / 500) + ')';
+deskMsgEl.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / 140));
+dDrag.moved = true;
+return true; // 调用方据此 preventDefault，阻止浏览器手势接管
+}
+return false;
+}
+function deskMsgDragEnd(cx) {
 if (!dDrag) return;
-if (!deskMsgEl || deskMsgEl.hidden) { dDrag = null; return; }
-const dx = e.clientX - dDrag.x;
-const dy = e.clientY - dDrag.y;
-if (Math.abs(dx) > 8) dDrag.moved = true;
-if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.25) {
-try { e.preventDefault(); } catch (err) {}
-deskMsgEl.style.transform = 'translateX(' + dx + 'px)';
-deskMsgEl.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / 120));
-}
-}
-function deskMsgDragEnd(e) {
-if (!dDrag) return;
-const dx = e.clientX - dDrag.x;
+const dx = cx - dDrag.x;
 const wasMoved = dDrag.moved;
+const speed = dDrag.speed || 0;
 dDrag = null;
-deskMsgEl.style.transform = '';
-deskMsgEl.style.opacity = '';
-if (wasMoved) {
+if (!wasMoved || !deskMsgEl) return;
 deskMsgSuppressClick = true;
 clearTimeout(deskMsgSuppressTimer);
 deskMsgSuppressTimer = setTimeout(() => { deskMsgSuppressClick = false; }, 350);
-if (Math.abs(dx) > 30) {
+const shouldClose = Math.abs(dx) > 30 || Math.abs(speed) > 0.6;
+if (shouldClose) {
 deskMsgSuppressClick = false;
 clearTimeout(deskMsgSuppressTimer);
-hideDeskMsg();
-}
+deskMsgEl.style.transition = 'transform .18s ease, opacity .18s ease';
+deskMsgEl.style.transform = 'translateX(' + (dx >= 0 ? 160 : -160) + 'px)';
+deskMsgEl.style.opacity = '0';
+deskMsgCloseAnimTimer = setTimeout(hideDeskMsg, 180);
+} else {
+deskMsgEl.style.transition = 'transform .25s cubic-bezier(.25,.8,.35,1), opacity .25s ease';
+deskMsgEl.style.transform = '';
+deskMsgEl.style.opacity = '';
+deskMsgRevertTimer = setTimeout(() => { if (deskMsgEl) deskMsgEl.style.transition = ''; }, 260);
 }
 }
 if (deskMsgEl) {
-deskMsgEl.addEventListener('pointerdown', deskMsgDragStart, { passive: true });
-window.addEventListener('pointermove', deskMsgDragMove, { passive: false });
-window.addEventListener('pointerup', deskMsgDragEnd);
-window.addEventListener('pointercancel', deskMsgDragEnd);
+deskMsgEl.addEventListener('touchstart', (e) => {
+const t = e.touches && e.touches[0];
+if (t) deskMsgDragStart(t.clientX, t.clientY);
+}, { passive: true });
+window.addEventListener('touchmove', (e) => {
+if (!dDrag) return;
+const t = e.touches && e.touches[0];
+if (t && deskMsgDragMove(t.clientX, t.clientY)) {
+try { e.preventDefault(); } catch (err) {}
+}
+}, { passive: false });
+const endTouch = (e) => {
+const c = e.changedTouches && e.changedTouches[0];
+deskMsgDragEnd(c ? c.clientX : (dDrag ? dDrag.x : 0));
+};
+window.addEventListener('touchend', endTouch);
+window.addEventListener('touchcancel', endTouch);
+deskMsgEl.addEventListener('mousedown', (e) => deskMsgDragStart(e.clientX, e.clientY));
+window.addEventListener('mousemove', (e) => { if (dDrag) deskMsgDragMove(e.clientX, e.clientY); });
+window.addEventListener('mouseup', (e) => deskMsgDragEnd(e.clientX));
 }
 const deskMsgToggle = document.getElementById('desk-msg-en');
 if (deskMsgToggle) {
@@ -7282,7 +7367,7 @@ if (notable && !chatVisible()) {
 incChatUnread();
 showDeskMsg(rec.text, rec.type);
 }
-if (renderStart > 0 && msgs.length - renderStart > RENDER_MAX) {
+if (renderStart > 0 && msgs.length - renderStart > RENDER_MAX && chatNearBottom()) {
 renderWindow(false, true);
 scrollChatBottom();
 return body.lastElementChild;
@@ -7321,7 +7406,7 @@ addOut(answer);
 addIn(reply || '…');
 const el = body.querySelector('.msg-ask[data-idx="' + msgIdx + '"]');
 if (el) {
-el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + (rec.choiceQuestion || '') + '</div><div class="msg-ask-a">✓ 你选择了：' + answer + '</div><div class="msg-choose-r">TA：' + (reply || '…') + '</div></div>';
+el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + escTxt(rec.choiceQuestion || '') + '</div><div class="msg-ask-a">✓ 你选择了：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(reply || '…') + '</div></div>';
 }
 };
 window.chatCuriousReply = function (msgIdx, answer, reply, followup) {
@@ -7337,7 +7422,7 @@ addIn(reply || '…');
 if (followup) addIn(followup);
 const el = body.querySelector('.msg-ask[data-idx="' + msgIdx + '"]');
 if (el) {
-el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + (rec.curiousQuestion || '') + '</div><div class="msg-ask-a">✓ 你：' + answer + '</div><div class="msg-choose-r">TA：' + (reply || '…') + '</div></div>';
+el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + escTxt(rec.curiousQuestion || '') + '</div><div class="msg-ask-a">✓ 你：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(reply || '…') + '</div></div>';
 }
 };
 window.chatRoastReply = function (msgIdx, answer, reply) {
@@ -7352,7 +7437,7 @@ addOut(answer);
 addIn(reply || '…');
 const el = body.querySelector('.msg-ask[data-idx="' + msgIdx + '"]');
 if (el) {
-el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + (rec.roastText || '') + '</div><div class="msg-ask-a">✓ 你：' + answer + '</div><div class="msg-choose-r">TA：' + (reply || '…') + '</div></div>';
+el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + escTxt(rec.roastText || '') + '</div><div class="msg-ask-a">✓ 你：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(reply || '…') + '</div></div>';
 }
 };
 window.chatAskReply = function (msgIdx, answer) {
@@ -7366,7 +7451,7 @@ addOut(answer);
 addIn('收到你的回答。');
 const el = body.querySelector('.msg-ask[data-idx="' + msgIdx + '"]');
 if (el) {
-el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">' + (rec.askQuestion || '') + '</div><div class="msg-ask-a">✓ 已回答：' + answer + '</div></div>';
+el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">' + escTxt(rec.askQuestion || '') + '</div><div class="msg-ask-a">✓ 已回答：' + escTxt(answer) + '</div></div>';
 }
 };
 function retractMsg(msgEl, side) {
@@ -8063,7 +8148,7 @@ rec.inviteAnswer = answer;
 saveMsgs();
 const el = body.querySelector('.msg-ask[data-idx="' + inviteIdx + '"]');
 if (el) {
-el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">邀请TA · ' + String(content).replace(/</g, '&lt;') + '</div><div class="msg-ask-a">✓ ' + answer + '</div></div>';
+el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">邀请TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ ' + escTxt(answer) + '</div></div>';
 }
 }
 try {
@@ -8090,7 +8175,7 @@ rec.askAnswer = text;
 saveMsgs();
 const el = body.querySelector('.msg-ask[data-idx="' + askIdx + '"]');
 if (el) {
-el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + String(content).replace(/</g, '&lt;') + '</div><div class="msg-ask-a">✓ TA：' + text + '</div></div>';
+el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ TA：' + escTxt(text) + '</div></div>';
 }
 }
 addIn(text);
@@ -8162,7 +8247,7 @@ if (!results.length) {
 chatSearchResults.innerHTML = '<div class="chat-search-empty">没有找到包含「' + q + '」的消息</div>';
 return;
 }
-const esc = (x) => String(x == null ? '' : x).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const hl = (x) => esc(x).split(q).join('<span class="chat-search-hl">' + esc(q) + '</span>');
 let html = '<div style="font-size:11px;color:var(--muted);margin:6px 2px 10px">共 ' + results.length + ' 条 · 点击结果跳转到对应消息</div>';
 results.slice(0, 80).forEach(r => {
@@ -8337,7 +8422,7 @@ sessionChangedIdx.add(idx); // v3.6.x：标记本会话变更，防 loadMsgs 合
 saveMsgs();
 syncLastMineText(); // v3.6.x：编辑后 TA 引用/收藏不再拿旧文本
 const b = editEl && editEl.querySelector('.msg-bubble');
-if (b) b.innerHTML = '<span style="opacity:.85">' + String(val).replace(/</g, '&lt;') + '</span>';
+if (b) b.innerHTML = '<span style="opacity:.85">' + escTxt(val) + '</span>';
 });
 }
 closeMsgActions();
@@ -8592,7 +8677,16 @@ if (mode === 'mine' && myBatchMode) {
 const k = gname + '\u0001' + i;
 const on = mySel.has(k);
 d.classList.toggle('sel', on);
-d.innerHTML = '<img src="' + src + '" alt="表情">' + (on ? '<span class="emoji-check">✓</span>' : '');
+const img = document.createElement('img');
+img.src = src;
+img.alt = '表情';
+d.appendChild(img);
+if (on) {
+const ck = document.createElement('span');
+ck.className = 'emoji-check';
+ck.textContent = '✓';
+d.appendChild(ck);
+}
 d.addEventListener('click', () => {
 if (mySel.has(k)) mySel.delete(k); else mySel.add(k);
 updateBatchCount();
@@ -8605,7 +8699,10 @@ ck.remove();
 }
 });
 } else {
-d.innerHTML = '<img src="' + src + '" alt="表情">';
+const img = document.createElement('img');
+img.src = src;
+img.alt = '表情';
+d.appendChild(img);
 d.addEventListener('click', () => {
 if (emojiInsertCb) {
 const cb = emojiInsertCb;
@@ -8918,8 +9015,16 @@ draftItems.innerHTML = '';
 draftImgs.forEach((src, i) => {
 const it = document.createElement('div');
 it.className = 'chat-draft-item';
-it.innerHTML = '<img src="' + src + '" alt=""><button class="chat-draft-x" data-i="' + i + '">✕</button>';
-it.querySelector('.chat-draft-x').addEventListener('click', () => {
+const img = document.createElement('img');
+img.src = src;
+img.alt = '';
+const xBtn = document.createElement('button');
+xBtn.className = 'chat-draft-x';
+xBtn.dataset.i = i;
+xBtn.textContent = '✕';
+it.appendChild(img);
+it.appendChild(xBtn);
+xBtn.addEventListener('click', () => {
 draftImgs.splice(i, 1);
 renderDraft();
 });
@@ -9645,13 +9750,36 @@ imported += cards.length;
 });
 });
 }
+const RE_IMG = /^data:image\/(png|jpe?g|gif|webp);base64,/;
+const RE_AUDIO = /^data:audio\/[a-zA-Z0-9.+-]+;base64,/;
+let dropped = 0;
+['image', 'sticker'].forEach(cat => {
+(byCat[cat] || []).forEach(pair => {
+const before = pair[1].length;
+pair[1] = pair[1].filter(c => RE_IMG.test(String(c)));
+dropped += before - pair[1].length;
+});
+byCat[cat] = (byCat[cat] || []).filter(pair => pair[1].length);
+});
+if (byCat.voice) {
+byCat.voice.forEach(pair => {
+const before = pair[1].length;
+pair[1] = pair[1].filter(c => {
+const s = String(c);
+const p = s.indexOf('|||');
+return p > 0 && RE_AUDIO.test(s.slice(p + 3));
+});
+dropped += before - pair[1].length;
+});
+byCat.voice = byCat.voice.filter(pair => pair[1].length);
+}
 if (!imported) { toast('文件里没有可导入的字卡'); return; }
 const res = writeImport(byCat, mode);
 saveGroups(groups);
 renderGroupsBar();
 render();
-if (mode === 'replace') toast('已替换字卡库 · 共 ' + res.added + ' 张字卡' + fmt);
-else toast('已导入 ' + res.added + ' 张字卡' + fmt + (res.dup ? '，自动去重 ' + res.dup + ' 条' : ''));
+if (mode === 'replace') toast('已替换字卡库 · 共 ' + res.added + ' 张字卡' + fmt + (dropped ? '，丢弃 ' + dropped + ' 条非法媒体' : ''));
+else toast('已导入 ' + res.added + ' 张字卡' + fmt + (res.dup ? '，自动去重 ' + res.dup + ' 条' : '') + (dropped ? '，丢弃 ' + dropped + ' 条非法媒体' : ''));
 }
 }
 const ccClearAll = document.getElementById('cc-clear-all');
@@ -10853,7 +10981,7 @@ const d = new Date(ts);
 const p = (n) => (n < 10 ? '0' + n : '' + n);
 return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
-function esc(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 function saveLibrary() { saveArr('music-library', library); }
 function savePlaylists() { saveArr('music-playlists', playlists); }
 function saveHistory() { saveArr('music-history', history); }
@@ -12657,7 +12785,7 @@ el.innerHTML = list.length
 ? '<div class="div-label">占卜记录</div>' + list.map((h, i) =>
 '<div class="div-h-item" data-hi="' + i + '">' +
 '<div class="div-h-main"><div class="div-h-title">' + (h.mode === 'tarot' ? '塔罗' : '雷诺曼') + ' · ' + h.count + ' 张' +
-(h.question ? ' · 问：' + String(h.question).replace(/</g, '&lt;') : '') + '</div>' +
+(h.question ? ' · 问：' + String(h.question).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '') + '</div>' +
 '<div class="div-h-sub">' + fmtDT(h.ts) + ' · ' + (Array.isArray(h.cards) ? h.cards.map(c => ((c && c.name) || '') + (c && c.rev ? '(逆)' : '')).join('、') : '') + '</div></div>' +
 '<button class="div-h-view" data-hi="' + i + '">查看</button>' +
 '<button class="div-h-del" data-hi="' + i + '">✕</button>' +
@@ -12692,7 +12820,7 @@ html += '<div class="div-mini' + (cards.length === 1 ? ' div-mini-single' : '') 
 });
 html += '</div>';
 html += '<div class="div-summary">' + summary + '</div>';
-if (question) html += '<div class="div-question-q">问：' + String(question).replace(/</g, '&lt;') + '</div>';
+if (question) html += '<div class="div-question-q">问：' + String(question).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
 html += '<button class="div-send-btn" id="div-send-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>把占卜结果发给 ' + (partnerName2() || 'TA') + '</button>';
 r.innerHTML = html;
 const sendBtn = document.getElementById('div-send-btn');
@@ -12812,12 +12940,18 @@ if (avEmpty) avEmpty.hidden = lib.length > 0;
 lib.forEach((src, idx) => {
 const d = document.createElement('div');
 d.className = 'avlib-cell' + (src === current ? ' avlib-now' : '');
-d.innerHTML = '<img src="' + src + '" alt="头像">' +
-'<button class="avlib-del">✕</button>';
-d.querySelector('img').addEventListener('click', () => {
+const img = document.createElement('img');
+img.src = src;
+img.alt = '头像';
+const delBtn = document.createElement('button');
+delBtn.className = 'avlib-del';
+delBtn.textContent = '✕';
+d.appendChild(img);
+d.appendChild(delBtn);
+img.addEventListener('click', () => {
 switchAvatarFromLib(src);
 });
-d.querySelector('.avlib-del').addEventListener('click', () => {
+delBtn.addEventListener('click', () => {
 const l = getLib();
 l.splice(idx, 1);
 saveLib(l);
@@ -12926,12 +13060,21 @@ toast('已清空头像池');
 function applyAvatarImg(data) {
 const chatAv = document.getElementById('chat-partner-av');
 const deskRing = document.querySelector('#avatar-partner .ring');
-const html = data
-? '<img src="' + data + '" alt="">'
-: '<svg viewBox="0 0 24 24" fill="none" stroke="#999999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
-if (chatAv) chatAv.innerHTML = html;
-if (deskRing) deskRing.innerHTML = html;
-document.querySelectorAll('.msg-in .msg-av').forEach(av => { av.innerHTML = html; });
+const applyTo = (el) => {
+if (!el) return;
+el.innerHTML = '';
+if (data) {
+const img = document.createElement('img');
+img.src = data;
+img.alt = '';
+el.appendChild(img);
+} else {
+el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#999999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
+}
+};
+applyTo(chatAv);
+applyTo(deskRing);
+document.querySelectorAll('.msg-in .msg-av').forEach(av => { applyTo(av); });
 }
 function chatSystem(text, img) {
 if (window.chatAddSystem) window.chatAddSystem(text, { img: img });
@@ -13289,7 +13432,7 @@ const preset = q.isPreset === true;
 const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
 html += '<div class="ta-row' + (preset && !useDefault ? ' off' : '') + '">' +
 '<label class="toggle"><input type="checkbox"' + (q.enabled !== false ? ' checked' : '') + ' data-idx="' + idx + '"><span class="tk"></span></label>' +
-'<span class="ta-txt">' + q.text.replace(/</g, '&lt;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</span>' +
+'<span class="ta-txt">' + q.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</span>' +
 delBtn +
 '</div>';
 });
@@ -13551,7 +13694,7 @@ if (rec.choiceStatus === 'answered') { renderTCResult(msgIdx); return; }
 const opts = rec.choiceOptions || [];
 let html = '<div class="tc-hint">TA想问你</div><div class="tc-q">' + (rec.choiceQuestion || '') + '</div>';
 opts.forEach((o, i) => {
-html += '<div class="tc-opt" data-i="' + i + '">' + String(o.t || '').replace(/</g, '&lt;') + '</div>';
+html += '<div class="tc-opt" data-i="' + i + '">' + String(o.t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
 });
 openTCPanel('TA的小问题', html);
 document.querySelectorAll('#tc-body .tc-opt').forEach(el => {
@@ -13600,13 +13743,13 @@ const d = tcLoad();
 const existed = d.favs.some(f => f.q === rec.choiceQuestion);
 let html = '';
 html += '<div class="tc-res-head"><span>你的选择</span><button class="tc-fav-btn" id="tc-fav">' + (existed ? '★' : '☆') + '</button></div>';
-html += '<div class="tc-res-mine">' + String(rec.choiceAnswer || '').replace(/</g, '&lt;') + '</div>';
+html += '<div class="tc-res-mine">' + String(rec.choiceAnswer || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
 if (!isPref) {
-html += '<div class="tc-res-label">TA心里的答案</div><div class="tc-res-pref">' + String(prefTxt || '').replace(/</g, '&lt;') + '</div>';
+html += '<div class="tc-res-label">TA心里的答案</div><div class="tc-res-pref">' + String(prefTxt || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
 }
 html += '<div class="tc-res-line"></div>';
-html += '<div class="tc-res-reply"><b>TA：</b>“' + String(rec.choiceReply || '').replace(/</g, '&lt;') + '”</div>';
-html += '<div class="tc-res-match ' + (isPref ? 'pref' : '') + '">' + String(rec.choiceMatch || '').replace(/</g, '&lt;') + '</div>';
+html += '<div class="tc-res-reply"><b>TA：</b>“' + String(rec.choiceReply || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>';
+html += '<div class="tc-res-match ' + (isPref ? 'pref' : '') + '">' + String(rec.choiceMatch || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
 if (Math.random() < 0.4 && _tcChain < 2) {
 html += '<div class="tc-res-cont" id="tc-cont">TA还想问一个 ▸</div>';
 }
@@ -13668,7 +13811,7 @@ const preset = q.isPreset === true;
 const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
 html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) ? ' off' : '') + '">' +
 '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
-'<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/</g, '&lt;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
+'<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
 '<div class="tc-qopts">选项：' + q.options.map(o => o.t).join(' / ') + '</div></div>' +
 delBtn +
 '</div>';
@@ -13967,10 +14110,10 @@ const body = document.getElementById('qa-body');
 const title = document.getElementById('qa-title');
 if (!mask || !body) return;
 if (title) title.textContent = 'Ta的好奇';
-let html = '<div class="qa-hint">TA有点好奇</div><div class="qa-q">' + String(rec.curiousQuestion || '').replace(/</g, '&lt;') + '</div>';
+let html = '<div class="qa-hint">TA有点好奇</div><div class="qa-q">' + String(rec.curiousQuestion || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
 const quicks = rec.curiousQuick || [];
 if (quicks.length) {
-html += '<div class="qa-quicks">' + quicks.map(x => '<span class="qa-chip" data-v="' + String(x).replace(/"/g, '&quot;') + '">' + String(x).replace(/</g, '&lt;') + '</span>').join('') + '</div>';
+html += '<div class="qa-quicks">' + quicks.map(x => '<span class="qa-chip" data-v="' + String(x).replace(/"/g, '&quot;') + '">' + String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</span>').join('') + '</div>';
 }
 html += '<input id="qa-input" class="qa-input" type="text" placeholder="输入你的回答…">';
 html += '<button class="qa-send" id="qa-send">告诉TA</button>';
@@ -14027,9 +14170,9 @@ const body = document.getElementById('qa-body');
 const title = document.getElementById('qa-title');
 if (!mask || !body) return;
 if (title) title.textContent = 'Ta的好奇';
-body.innerHTML = '<div class="qa-q">' + String(rec.curiousQuestion || '').replace(/</g, '&lt;') + '</div>' +
-'<div class="qa-mine">你说：' + String(rec.curiousAnswer || '').replace(/</g, '&lt;') + '</div>' +
-'<div class="qa-reply"><b>TA：</b>“' + String(rec.curiousReply || '').replace(/</g, '&lt;') + '”</div>' +
+body.innerHTML = '<div class="qa-q">' + String(rec.curiousQuestion || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
+'<div class="qa-mine">你说：' + String(rec.curiousAnswer || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
+'<div class="qa-reply"><b>TA：</b>“' + String(rec.curiousReply || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>' +
 '<div class="qa-close" id="qa-close2">收起来</div>';
 mask.hidden = false;
 document.getElementById('qa-close2').addEventListener('click', () => { mask.hidden = true; });
@@ -14069,7 +14212,7 @@ const preset = q.isPreset === true;
 const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
 html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) ? ' off' : '') + '">' +
 '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
-'<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/</g, '&lt;') + (known ? ' <span class="tc-known">✓已了解</span>' : '') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
+'<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (known ? ' <span class="tc-known">✓已了解</span>' : '') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
 (q.quick && q.quick.length ? '<div class="tc-qopts">快捷：' + q.quick.join(' / ') + '</div>' : '') +
 '</div>' + delBtn + '</div>';
 });
@@ -14102,7 +14245,7 @@ if (!entries.length) knownEl.innerHTML = '<div class="ta-empty">TA 还没有了�
 else knownEl.innerHTML = entries.map(en => {
 const q = TCU_DEFAULT.find(x => x.id === en.qid);
 const qText = q ? q.text : en.qid;
-return '<div class="tc-listitem"><div class="tc-li-q">' + (q ? '[' + (TCU_CAT_LABEL[q.cat] || '') + '] ' : '') + qText + '</div><div class="tc-li-line">✓ 你：' + String(en.answer).replace(/</g, '&lt;') + '</div></div>';
+return '<div class="tc-listitem"><div class="tc-li-q">' + (q ? '[' + (TCU_CAT_LABEL[q.cat] || '') + '] ' : '') + qText + '</div><div class="tc-li-line">✓ 你：' + String(en.answer).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div></div>';
 }).join('');
 }
 }
@@ -14333,7 +14476,7 @@ const body = document.getElementById('qa-body');
 const title = document.getElementById('qa-title');
 if (!mask || !body) return;
 if (title) title.textContent = 'Ta的吐槽';
-body.innerHTML = '<div class="qa-hint">TA 吐槽你</div><div class="qa-q">“' + String(rec.roastText || '').replace(/</g, '&lt;') + '”</div>' +
+body.innerHTML = '<div class="qa-hint">TA 吐槽你</div><div class="qa-q">“' + String(rec.roastText || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>' +
 '<input id="qa-input" class="qa-input" type="text" placeholder="回 TA 一句…">' +
 '<button class="qa-send" id="qa-send">回TA一句</button>';
 mask.hidden = false;
@@ -14376,9 +14519,9 @@ const body = document.getElementById('qa-body');
 const title = document.getElementById('qa-title');
 if (!mask || !body) return;
 if (title) title.textContent = 'Ta的吐槽';
-body.innerHTML = '<div class="qa-q">“' + String(rec.roastText || '').replace(/</g, '&lt;') + '”</div>' +
-'<div class="qa-mine">你说：' + String(rec.roastAnswer || '').replace(/</g, '&lt;') + '</div>' +
-'<div class="qa-reply"><b>TA：</b>“' + String(rec.roastReply || '').replace(/</g, '&lt;') + '”</div>' +
+body.innerHTML = '<div class="qa-q">“' + String(rec.roastText || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>' +
+'<div class="qa-mine">你说：' + String(rec.roastAnswer || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
+'<div class="qa-reply"><b>TA：</b>“' + String(rec.roastReply || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>' +
 '<div class="qa-close" id="qa-close2">收起来</div>';
 mask.hidden = false;
 document.getElementById('qa-close2').addEventListener('click', () => { mask.hidden = true; });
@@ -14413,7 +14556,7 @@ const preset = q.isPreset === true;
 const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
 html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) ? ' off' : '') + '">' +
 '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
-'<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/</g, '&lt;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
+'<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
 (q.match && q.match.length ? '<div class="tc-qopts">触发：' + q.match.join(' / ') + '</div>' : '') +
 '</div>' + delBtn + '</div>';
 });
@@ -14545,8 +14688,8 @@ let h = [];
 try { h = JSON.parse(store.get('invite-ask-history') || '[]'); } catch (e) {}
 inEl.innerHTML = h.length
 ? h.map(x => '<div class="tc-listitem"><div class="tc-li-q">' +
-(x.type === 'invite' ? '邀请：' : '问：') + String(x.q || '').replace(/</g, '&lt;') + '</div>' +
-'<div class="tc-li-line">TA：' + String(x.a || '').replace(/</g, '&lt;') + '</div>' +
+(x.type === 'invite' ? '邀请：' : '问：') + String(x.q || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
+'<div class="tc-li-line">TA：' + String(x.a || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
 '<div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
 : '<div class="ta-empty">暂无邀请/问问记录</div>';
 }
@@ -14695,12 +14838,11 @@ toast('后台保活已启动（注意：本环境不支持系统通知，需 HTT
 } else if (Notification.permission !== 'granted') {
 toast('后台保活已启动（通知未授权：去设置→后台通知→开启并允许权限）');
 } else {
-try {
-new Notification('后台保活已启动', { body: '正在播放静音音频以保持后台活跃，请勿关闭此页面' });
-toast('后台保活已启动 · 通知栏应弹出提示条，若没有请到系统设置→通知→Chrome→允许通知');
-} catch (e) {
-toast('后台保活已启动（通知发送异常，请检查系统通知权限）');
-}
+showSysNotification('后台保活已启动', { body: '正在播放静音音频以保持后台活跃，请勿关闭此页面' }).then(function (ok) {
+toast(ok
+? '后台保活已启动 · 通知栏应弹出提示条，若没有请到系统设置→通知→Chrome→允许通知'
+: '后台保活已启动（通知发送未受理，请检查系统通知权限）');
+});
 }
 }
 } catch (e) {}
@@ -14756,6 +14898,23 @@ syncKeepUI();
 if (keepEnabled) startKeepAlive(false);
 })();
 let notifyEnabled = false;
+function showSysNotification(title, opts) {
+opts = opts || {};
+return new Promise(function (resolve) {
+try {
+if (!('Notification' in window) || Notification.permission !== 'granted') { resolve(false); return; }
+if ('serviceWorker' in navigator && navigator.serviceWorker) {
+navigator.serviceWorker.ready.then(function (reg) {
+reg.showNotification(title, opts).then(function () { resolve(true); }, function () { resolve(false); });
+}).catch(function () {
+try { new Notification(title, opts); resolve(true); } catch (e) { resolve(false); }
+});
+} else {
+try { new Notification(title, opts); resolve(true); } catch (e) { resolve(false); }
+}
+} catch (e) { resolve(false); }
+});
+}
 function requestNotifyPermission(cb, failCb) {
 if (!('Notification' in window)) {
 toast('iPhone 网页版不支持系统通知\n请安装到主屏幕后由系统接管');
@@ -14785,7 +14944,7 @@ requestNotifyPermission(function () {
 notifyEnabled = true;
 store.set('bg-notify', '1');
 syncNotifyUI();
-try { new Notification('通知已开启', { body: '后台消息提醒将正常弹窗' }); } catch (e) {}
+showSysNotification('通知已开启', { body: '后台消息提醒将正常弹窗' });
 setTimeout(function () {
 const keep = document.getElementById('bg-keepalive');
 const keepOn = keep ? keep.checked : store.get('bg-keepalive') === '1';
@@ -14867,13 +15026,17 @@ return;
 }
 try {
 const name = store.get('lbl-partner') || 'TA';
-const n = new Notification('后台通知测试', { body: '来自 ' + name + ' · 如果能看到这条，后台通知就通了' });
-setTimeout(function () { try { n.close(); } catch (e) {} }, 5000);
-env.push('✓ 测试通知已发送');
+showSysNotification('后台通知测试', { body: '来自 ' + name + ' · 如果能看到这条，后台通知就通了' }).then(function (ok) {
+if (ok) {
+env.push('✓ 测试通知已发送（Service Worker）');
 if (/miui|xiaomi|redmi|hyperos/i.test(navigator.userAgent) || /android/i.test(navigator.userAgent)) {
 env.push('提示：若没看到通知 → 系统设置 → 通知与控制中心 → 通知管理 → Chrome → 允许通知');
 }
+} else {
+env.push('✗ 通知发送未受理（权限或系统通知被禁）');
+}
 toast('测试结果：\n' + env.join('\n'));
+});
 } catch (e) {
 toast('发送失败：\n' + env.join('\n'));
 }
@@ -14893,7 +15056,6 @@ window.bgNotifyCheck = function (text, ts) {
 if (!notifyEnabled) return;
 if (document.visibilityState === 'visible') return;
 if (!('Notification' in window) || Notification.permission !== 'granted') return;
-try {
 const name = store.get('lbl-partner') || 'TA';
 let t = '';
 if (ts) {
@@ -14904,9 +15066,7 @@ const body = text && text.length > 40 ? text.slice(0, 40) + '…' : (text || '�
 const opts = { body: (t ? t + '  ' : '') + body };
 const avatar = store.get('avatar-partner') || '';
 if (avatar && /^https?:\/\//i.test(avatar)) opts.icon = avatar;
-const n = new Notification(name, opts);
-setTimeout(function () { try { n.close(); } catch (e) {} }, 6000);
-} catch (e) {}
+showSysNotification(name, opts);
 };
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
@@ -14990,7 +15150,7 @@ const qEl = document.getElementById('home-quotes');
 if (qEl) {
 const list = histList('quote-history');
 qEl.innerHTML = list.length
-? list.map(x => '<div class="tc-listitem"><div class="tc-li-q">' + String(x.text || '').replace(/</g, '&lt;') + '</div><div class="tc-li-time">' + x.date + '</div></div>').join('')
+? list.map(x => '<div class="tc-listitem"><div class="tc-li-q">' + String(x.text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div><div class="tc-li-time">' + x.date + '</div></div>').join('')
 : '<div class="ta-empty">暂无情话记录</div>';
 }
 }
@@ -14999,7 +15159,7 @@ const mEl = document.getElementById('home-memos');
 if (mEl) {
 const list = histList('memo-history');
 mEl.innerHTML = list.length
-? list.map(x => '<div class="tc-listitem"><div class="tc-li-q">' + String(x.text || '').replace(/</g, '&lt;') + '</div><div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
+? list.map(x => '<div class="tc-listitem"><div class="tc-li-q">' + String(x.text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div><div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
 : '<div class="ta-empty">暂无备忘记录</div>';
 }
 }
@@ -15008,7 +15168,7 @@ const wEl = document.getElementById('home-moods');
 if (wEl) {
 const list = histList('mood-history');
 wEl.innerHTML = list.length
-? list.map(x => '<div class="tc-listitem"><div class="tc-li-q">' + String(x.text || '').replace(/</g, '&lt;') + '</div><div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
+? list.map(x => '<div class="tc-listitem"><div class="tc-li-q">' + String(x.text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div><div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
 : '<div class="ta-empty">暂无心情记录</div>';
 }
 }
@@ -15221,9 +15381,15 @@ function partnerName() { return store.get('lbl-partner') || 'TA'; }
 function partnerAv() { return store.get('avatar-partner') || ''; }
 function fillAv(el, data) {
 if (!el) return;
-el.innerHTML = data
-? '<img src="' + data + '" alt="头像">'
-: '<svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
+el.innerHTML = '';
+if (data) {
+const img = document.createElement('img');
+img.src = data;
+img.alt = '头像';
+el.appendChild(img);
+} else {
+el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
+}
 }
 function fmtDur(sec) {
 if (isNaN(sec) || sec < 0) return '00:00';
@@ -15531,7 +15697,7 @@ document.querySelectorAll('.page').forEach(p => p.hidden = true);
 const mp = document.getElementById('page-mail');
 if (mp) mp.hidden = false;
 }
-function escHtml(s) { return String(s).replace(/</g, '&lt;'); }
+function escHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 function renderBody(content) {
 const s = String(content || '');
 let html = '';
@@ -16007,7 +16173,7 @@ function save(list) { store.set(KEY, JSON.stringify(list)); }
 function avHtml(data, cls) {
 const c = cls || 'feed-av';
 return data
-? '<div class="' + c + '"><img src="' + data + '" alt=""></div>'
+? '<div class="' + c + '"><img src="' + attrEsc(data) + '" alt=""></div>'
 : '<div class="' + c + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></div>';
 }
 const TA_COMMENT_POOL = ['收到啦~', '我看到了！', '这条动态好可爱', '记住啦', '我也是这么想的', '嗯嗯，说得对'];
@@ -16026,17 +16192,19 @@ else text.push(c);
 return { text: text, kaomoji: kaomoji, emoji: emoji, sticker: mediaSticker, image: mediaImage };
 }
 function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+function attrEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 function inlineBody(s) {
 const str = String(s || '');
 let html = '';
 const re = /(data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+)/g;
 let last = 0, m;
 while ((m = re.exec(str))) {
-html += str.slice(last, m.index).replace(/</g, '&lt;');
+html += str.slice(last, m.index).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 html += '<img class="feed-inline-img" src="' + m[0] + '" alt="图片">';
 last = m.index + m[0].length;
 }
-html += str.slice(last).replace(/</g, '&lt;');
+html += str.slice(last).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 return html;
 }
 function genMixedCards(cfg, minN, maxN, opts) {
@@ -16077,25 +16245,25 @@ function contentHtmlFor(p) {
 let html = inlineBody(p.content || '');
 const imgs = (p.imgs && p.imgs.length) ? p.imgs : (p.img ? [p.img] : []);
 if (imgs.length) {
-html += '<div class="feed-imgs">' + imgs.map(u => '<img src="' + u + '" alt="图片" loading="lazy">').join('') + '</div>';
+html += '<div class="feed-imgs">' + imgs.map(u => '<img src="' + attrEsc(u) + '" alt="图片" loading="lazy">').join('') + '</div>';
 }
 return html;
 }
 function commentsHtmlFor(p, name) {
 if (!p.comments || !p.comments.length) return '';
 return '<div class="feed-comments">' + p.comments.map((c, ci) => {
-const cName = c.by === 'me' ? myName() : name;
+const cName = esc(c.by === 'me' ? myName() : name);
 const cBody = inlineBody(c.content);
 let repliesHtml = '';
 if (c.replies && c.replies.length) {
 repliesHtml = '<div class="feed-replies">' + c.replies.map(r => {
-const rName = r.by === 'me' ? myName() : name;
+const rName = esc(r.by === 'me' ? myName() : name);
 const rBody = inlineBody(r.content);
-return '<div class="feed-reply"><b>' + rName + '</b> \u56de\u590d <b>' + cName + '</b>\uff1a' + rBody + '</div>';
+return '<div class="feed-reply"><b>' + rName + '</b> 回复 <b>' + cName + '</b>：' + rBody + '</div>';
 }).join('') + '</div>';
 }
 return '<div class="feed-comment" data-c="' + p.id + '" data-ci="' + ci + '">' +
-'<div class="feed-c-line"><b>' + cName + '</b>\uff1a' + cBody + '</div>' +
+'<div class="feed-c-line"><b>' + cName + '</b>：' + cBody + '</div>' +
 repliesHtml + '</div>';
 }).join('') + '</div>';
 }
@@ -16108,7 +16276,7 @@ const TA_REPLY_POOL = ['哈哈，好呀', '那你呢？', '嗯嗯，说得对', 
 function renderCover() {
 const myAvEl = document.getElementById('feed-my-av');
 const myNameEl = document.getElementById('feed-my-name');
-if (myAvEl) myAvEl.innerHTML = myAv() ? '<img src="' + myAv() + '" alt="">' : '';
+if (myAvEl) myAvEl.innerHTML = myAv() ? '<img src="' + attrEsc(myAv()) + '" alt="">' : '';
 if (myNameEl) myNameEl.textContent = myName();
 const cover = document.getElementById('feed-cover');
 if (cover) {
@@ -16157,13 +16325,13 @@ listEl.innerHTML = posts.length
 const isMine = p.by === 'me';
 const author = isMine ? myName() : taFeedName();
 const av = isMine ? myAv() : taFeedAv();
-const avWrap = '<div class="feed-head-av" data-owner="' + (isMine ? 'me' : 'ta') + '" title="查看' + author + '的全部朋友圈">' + avHtml(av) + '</div>';
+const avWrap = '<div class="feed-head-av" data-owner="' + (isMine ? 'me' : 'ta') + '" title="查看' + esc(author) + '的全部朋友圈">' + avHtml(av) + '</div>';
 const likes = p.likes && p.likes.length
-? '<div class="feed-likes"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;vertical-align:-2px;margin-right:5px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>' + p.likes.join('、') + ' 觉得很赞</div>'
+? '<div class="feed-likes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;vertical-align:-2px;margin-right:5px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>' + esc(p.likes.join('、')) + ' 觉得很赞</div>'
 : '';
 const liked = p.likes && p.likes.some(l => l === myName());
 return '<div class="feed-post" id="feed-post-' + p.id + '"><div class="feed-head">' + avWrap +
-'<div class="feed-who"><div class="feed-name">' + author + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div>' +
+'<div class="feed-who"><div class="feed-name">' + esc(author) + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div>' +
 (isMine ? '<button class="feed-del" data-id="' + p.id + '" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg></button>' : '') + '</div>' +
 '<div class="feed-content">' + contentHtmlFor(p) + '</div>' +
 '<div class="feed-actions">' +
@@ -16241,8 +16409,21 @@ let comImgData = []; // 评论携带的图片（dataURL），不塞进输入框�
 function renderComPv() {
 const pv = document.getElementById('feed-comment-pv');
 if (!pv) return;
-pv.innerHTML = comImgData.map((d, i) =>
-'<span class="feed-pv feed-pv-sm"><img src="' + d + '" alt=""><button class="feed-preview-del" data-i="' + i + '">✕</button></span>').join('');
+pv.innerHTML = '';
+comImgData.forEach((d, i) => {
+const span = document.createElement('span');
+span.className = 'feed-pv feed-pv-sm';
+const img = document.createElement('img');
+img.src = d;
+img.alt = '';
+const delBtn = document.createElement('button');
+delBtn.className = 'feed-preview-del';
+delBtn.dataset.i = i;
+delBtn.textContent = '✕';
+span.appendChild(img);
+span.appendChild(delBtn);
+pv.appendChild(span);
+});
 pv.hidden = comImgData.length === 0;
 pv.querySelectorAll('.feed-preview-del').forEach(b => b.addEventListener('click', () => {
 comImgData.splice(parseInt(b.dataset.i, 10), 1);
@@ -16374,14 +16555,17 @@ const g = groups.find(x => x[0] === comStickerCur);
 if (!g || !g[1].length) { list.innerHTML = '<div class="ta-empty">\u8be5\u5206\u7ec4\u6682\u65e0\u8868\u60c5\u5305</div>'; return; }
 const h = document.createElement('div');
 h.className = 'cc-group-header';
-h.innerHTML = '<span class="ccg-name">' + g[0] + '</span><span class="ccg-count">' + g[1].length + '</span>';
+h.innerHTML = '<span class="ccg-name">' + esc(g[0]) + '</span><span class="ccg-count">' + g[1].length + '</span>';
 list.appendChild(h);
 const grid = document.createElement('div');
 grid.className = 'emoji-grid'; // 复用聊天 4 列网格样式
 g[1].forEach(src => {
 const d = document.createElement('div');
 d.className = 'emoji-item';
-d.innerHTML = '<img src="' + src + '" alt="\u8868\u60c5">';
+const img = document.createElement('img');
+img.src = src;
+img.alt = '表情';
+d.appendChild(img);
 d.addEventListener('click', (e) => {
 e.stopPropagation();
 if (comImgData.length >= 9) { toast('最多附带 9 张图片/表情'); return; }
@@ -16556,7 +16740,7 @@ if (!listEl) return;
 const list = notices();
 const av = partnerAv();
 const avHtml = av
-? '<span class="fn-av"><img src="' + av + '" alt=""></span>'
+? '<span class="fn-av"><img src="' + attrEsc(av) + '" alt=""></span>'
 : '<span class="fn-av"><svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></span>';
 listEl.innerHTML = list.length
 ? list.map(n => {
@@ -16580,8 +16764,21 @@ let pickedImgs = [];
 const MAX_PICK = 9;
 function renderPreview() {
 if (!preview) return;
-preview.innerHTML = pickedImgs.map((d, i) =>
-'<span class="feed-pv"><img src="' + d + '" alt=""><button class="feed-preview-del" data-i="' + i + '">✕</button></span>').join('');
+preview.innerHTML = '';
+pickedImgs.forEach((d, i) => {
+const span = document.createElement('span');
+span.className = 'feed-pv';
+const img = document.createElement('img');
+img.src = d;
+img.alt = '';
+const delBtn = document.createElement('button');
+delBtn.className = 'feed-preview-del';
+delBtn.dataset.i = i;
+delBtn.textContent = '✕';
+span.appendChild(img);
+span.appendChild(delBtn);
+preview.appendChild(span);
+});
 preview.hidden = pickedImgs.length === 0;
 preview.querySelectorAll('.feed-preview-del').forEach(b => b.addEventListener('click', () => {
 pickedImgs.splice(parseInt(b.dataset.i, 10), 1);
@@ -16790,7 +16987,7 @@ if (bg) { cover.style.backgroundImage = 'url("' + bg + '")'; cover.classList.add
 else { cover.style.backgroundImage = ''; cover.classList.remove('has-bg'); }
 if (avEl) {
 const av = feedAllOwner === 'me' ? myAv() : taFeedAv();
-avEl.innerHTML = av ? '<img src="' + av + '" alt="">' : '';
+avEl.innerHTML = av ? '<img src="' + attrEsc(av) + '" alt="">' : '';
 }
 if (nameEl) nameEl.textContent = feedAllOwner === 'me' ? myName() : taFeedName();
 }
@@ -16806,10 +17003,10 @@ listEl.innerHTML = posts.length
 const author = feedAllOwner === 'me' ? myName() : taFeedName();
 const av = feedAllOwner === 'me' ? myAv() : taFeedAv();
 const likes = p.likes && p.likes.length
-? '<div class="feed-likes" style="font-size:11px;color:var(--muted);padding:6px 2px">' + p.likes.join('、') + ' 觉得很赞</div>'
+? '<div class="feed-likes" style="font-size:11px;color:var(--muted);padding:6px 2px">' + esc(p.likes.join('、')) + ' 觉得很赞</div>'
 : '';
 return '<div class="feed-post"><div class="feed-head">' + avHtml(av) +
-'<div class="feed-who"><div class="feed-name">' + author + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div></div>' +
+'<div class="feed-who"><div class="feed-name">' + esc(author) + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div></div>' +
 '<div class="feed-content">' + contentHtmlFor(p) + '</div>' + likes +
 commentsHtmlFor(p, author) + '</div>';
 }).join('')
@@ -17101,13 +17298,13 @@ const top = entries[0].name;
 const topCount = entries[0].count;
 html += '<div class="stats-top">' +
 '<div class="stats-top-tag">' + topLabel + '</div>' +
-'<div class="stats-top-name">「' + String(top).replace(/</g, '&lt;') + '」</div>' +
+'<div class="stats-top-name">「' + String(top).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '」</div>' +
 '<div class="stats-top-num">' + topCount + ' 次</div></div>';
 html += '<div class="stats-list">';
 entries.slice(0, 5).forEach(e => {
 const w = Math.max(3, Math.round(e.count / entries[0].count * 100));
 html += '<div class="stats-item">' +
-'<span class="stats-item-name">' + String(e.name).replace(/</g, '&lt;') + '</span>' +
+'<span class="stats-item-name">' + String(e.name).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</span>' +
 '<span class="stats-item-bar"><i style="width:' + w + '%"></i></span>' +
 '<span class="stats-item-num">' + e.count + '</span></div>';
 });
@@ -17469,7 +17666,7 @@ const custom = ckHasCustom(ckTab);
 listEl.innerHTML = list.length
 ? list.map((x, i) => {
 const sys = !custom || def.indexOf(x) >= 0;
-return '<div class="tc-qrow' + (sys && !useDefault ? ' off' : '') + '"><div class="tc-qmain"><div class="tc-qtext">' + String(x).replace(/</g, '&lt;') + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>' +
+return '<div class="tc-qrow' + (sys && !useDefault ? ' off' : '') + '"><div class="tc-qmain"><div class="tc-qtext">' + String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>' +
 (custom && !sys ? '<button class="ta-del" data-i="' + i + '">✕</button>' : '') +
 '</div>';
 }).join('')
@@ -17649,7 +17846,7 @@ const d = { replyToChat: true, thinkA: 3, maxA: 1, thinkB: 3, maxB: 1 };
 try { return Object.assign(d, JSON.parse(store.get(SETTINGS_KEY) || '{}')); } catch (e) { return d; }
 }
 function saveSettings(s) { store.set(SETTINGS_KEY, JSON.stringify(s)); }
-function esc(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 let activeTab = 'typea';
 let countdownTimer = null;
 let decideTimer = null; // v3.6.x：结果 setTimeout 句柄——防连点导致历史/聊天消息重复
@@ -18458,6 +18655,17 @@ return;
 impHide();
 if (!data || typeof data !== 'object' || !data.ls || typeof data.ls !== 'object') {
 toast('不是 mochi 导出的数据文件');
+return;
+}
+if (data.app && data.app !== 'mochi-zika') {
+toast('不是 mochi 导出的数据文件');
+return;
+}
+const hasMochiKeys =
+Object.keys(data.ls).some(k => k.indexOf(uid + ':') === 0) ||
+!!(data.idb && typeof data.idb === 'object' && Object.keys(data.idb).some(k => k.indexOf(uid + ':') === 0));
+if (!hasMochiKeys) {
+toast('备份文件里没有 mochi 数据（键前缀不匹配）');
 return;
 }
 if (!window.openModal) return;

@@ -166,6 +166,20 @@
       toast('不是 mochi 导出的数据文件');
       return;
     }
+    // v3.6.x：备份结构强校验——① app 标识不匹配直接拒绝（防误导其他应用的 json）；
+    // ② 键前缀完全不匹配 mochi（xy-home-v2:）视为无效文件——原实现 {ls:{},idb:{}}
+    // 空结构也能通过校验，配合先清空再写入，会把用户数据全清掉
+    if (data.app && data.app !== 'mochi-zika') {
+      toast('不是 mochi 导出的数据文件');
+      return;
+    }
+    const hasMochiKeys =
+      Object.keys(data.ls).some(k => k.indexOf(uid + ':') === 0) ||
+      !!(data.idb && typeof data.idb === 'object' && Object.keys(data.idb).some(k => k.indexOf(uid + ':') === 0));
+    if (!hasMochiKeys) {
+      toast('备份文件里没有 mochi 数据（键前缀不匹配）');
+      return;
+    }
     if (!window.openModal) return;
     // v3.5.101：导入前先预览该备份的内容摘要，确认无误再覆盖
     const summary = backupSummary(data);

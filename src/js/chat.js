@@ -223,14 +223,33 @@
     if (changed) saveMsgs();
   }
 
+  // v3.6.x：XSS 修复——完整 HTML 转义（原各处只转 <，可被 `&lt;img onerror=…&gt;`
+  // 预编码实体绕过，导入恶意字卡 json / 备份 json 时可注入任意 HTML）。
+  // 文本用 escTxt（全量转义），属性值（src/data-src）用 attrEsc（引号优先）。
+  function escTxt(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function attrEsc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
   // 头像回填（接受元素或 id）
   function fillAvatar(el, key) {
     if (typeof el === 'string') el = document.getElementById(el);
     if (!el) return;
     const data = store.get(key);
-    el.innerHTML = data
-      ? '<img src="' + data + '" alt="">'
-      : '<svg viewBox="0 0 24 24" fill="none" stroke="#999999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
+    // v3.6.x：改用 src 属性赋值——dataURL 里若含引号，拼 innerHTML 会逃逸出属性注入 HTML
+    if (data) {
+      const img = document.createElement('img');
+      img.src = data;
+      img.alt = '';
+      el.innerHTML = '';
+      el.appendChild(img);
+    } else {
+      el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#999999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
+    }
   }
   // v3.5.113：供 personalize.js 在 IndexedDB 回填完成后重绘聊天头像
   window.fillAvatar = fillAvatar;
@@ -382,17 +401,17 @@
       const imgs = (q.imgs || []).filter(s => typeof s === 'string' && s.indexOf('data:') === 0).slice(0, 3);
       const t = String(q.t || '');
       // t 若是 dataURL（纯表情包消息的 text 就是图片），不当作文字显示，避免 base64 乱码
-      const tHtml = (t && t.indexOf('data:') !== 0) ? t.replace(/</g, '&lt;') : '';
+      const tHtml = (t && t.indexOf('data:') !== 0) ? escTxt(t) : '';
       let inner = '';
-      if (imgs.length) inner += '<span class="msg-quote-imgs">' + imgs.map(s => '<img class="msg-quote-img" src="' + s + '" alt="图片">').join('') + '</span>';
+      if (imgs.length) inner += '<span class="msg-quote-imgs">' + imgs.map(s => '<img class="msg-quote-img" src="' + attrEsc(s) + '" alt="图片">').join('') + '</span>';
       if (tHtml) inner += '<span class="msg-quote-text">' + tHtml + '</span>';
       return '<div class="msg-quote">' + inner + '</div>';
     }
     if (typeof q === 'string' && q.indexOf('data:') === 0) {
       // 引用图片（表情包）缩略图
-      return '<div class="msg-quote"><img class="msg-quote-img" src="' + q + '" alt="图片"></div>';
+      return '<div class="msg-quote"><img class="msg-quote-img" src="' + attrEsc(q) + '" alt="图片"></div>';
     }
-    return '<div class="msg-quote"><span class="msg-quote-text">' + String(q || '').replace(/</g, '&lt;') + '</span></div>';
+    return '<div class="msg-quote"><span class="msg-quote-text">' + escTxt(q) + '</span></div>';
   }
   // v3.6.x：互动卡片就地作答——点击聊天里的互动卡片（小问题/好奇/吐槽/询问），
   // 直接在卡片内展开选项/输入框作答，不再强制弹窗。
@@ -595,9 +614,9 @@
       m.dataset.idx = msgs.length - 1;
       const answered = rec.inviteStatus === 'answered';
       m.innerHTML = '<div class="msg-ask-card' + (answered ? ' answered' : '') + '">' +
-        '<div class="msg-ask-q">邀请TA · ' + (rec.inviteContent || rec.text || '').replace(/</g, '&lt;') + '</div>' +
+        '<div class="msg-ask-q">邀请TA · ' + escTxt(rec.inviteContent || rec.text || '') + '</div>' +
         (answered
-          ? '<div class="msg-ask-a">✓ ' + (rec.inviteAnswer || 'TA 回应了你').replace(/</g, '&lt;') + '</div>'
+          ? '<div class="msg-ask-a">✓ ' + escTxt(rec.inviteAnswer || 'TA 回应了你') + '</div>'
           : '<div class="msg-ask-tip">等待 TA 回应…</div>') +
         '</div>';
       body.appendChild(m);
@@ -610,9 +629,9 @@
       m.dataset.idx = msgs.length - 1;
       const answered = rec.askStatus === 'answered';
       m.innerHTML = '<div class="msg-ask-card' + (answered ? ' answered' : '') + '">' +
-        '<div class="msg-ask-q">问问TA · ' + (rec.askQuestion || '').replace(/</g, '&lt;') + '</div>' +
+        '<div class="msg-ask-q">问问TA · ' + escTxt(rec.askQuestion || '') + '</div>' +
         (answered
-          ? '<div class="msg-ask-a">✓ TA：' + (rec.askAnswer || '回答了你').replace(/</g, '&lt;') + '</div>'
+          ? '<div class="msg-ask-a">✓ TA：' + escTxt(rec.askAnswer || '回答了你') + '</div>'
           : '<div class="msg-ask-tip">等待 TA 回答…</div>') +
         '</div>';
       body.appendChild(m);
@@ -622,7 +641,7 @@
     // 通话：居中卡片
     if (rec.special === 'call' || rec.special === 'call-reply' || rec.special === 'invite-reply') {
       m.className = 'msg-center';
-      m.innerHTML = '<div class="msg-center-card">' + rec.text + '</div>';
+      m.innerHTML = '<div class="msg-center-card">' + escTxt(rec.text) + '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
       return m;
@@ -630,8 +649,8 @@
     // 拍一拍 / 换头像系统提示：居中灰字小卡片，可选附带一张头像图
     if (rec.special === 'poke') {
       m.className = 'msg-poke';
-      m.innerHTML = '<span>' + rec.text + '</span>' +
-        (rec.img ? '<img class="msg-poke-img" src="' + rec.img + '" alt="新头像">' : '');
+      m.innerHTML = '<span>' + escTxt(rec.text) + '</span>' +
+        (rec.img ? '<img class="msg-poke-img" src="' + attrEsc(rec.img) + '" alt="新头像">' : '');
       body.appendChild(m);
       maybeScrollChatBottom();
       return m;
@@ -642,9 +661,9 @@
       m.dataset.idx = msgs.length - 1;
       const answered = rec.choiceStatus === 'answered';
       m.innerHTML = '<div class="msg-choose-card' + (answered ? ' answered' : '') + '">' +
-        '<div class="msg-ask-q">' + (rec.choiceQuestion || '') + '</div>' +
+        '<div class="msg-ask-q">' + escTxt(rec.choiceQuestion || '') + '</div>' +
         (answered
-          ? '<div class="msg-ask-a">✓ 你选择了：' + rec.choiceAnswer + '</div><div class="msg-choose-r">TA：' + rec.choiceReply + '</div>'
+          ? '<div class="msg-ask-a">✓ 你选择了：' + escTxt(rec.choiceAnswer) + '</div><div class="msg-choose-r">TA：' + escTxt(rec.choiceReply) + '</div>'
           : '<div class="msg-ask-tip">点击选择你的答案</div>') +
         '</div>';
       body.appendChild(m);
@@ -657,9 +676,9 @@
       m.dataset.idx = msgs.length - 1;
       const answered = rec.curiousStatus === 'answered';
       m.innerHTML = '<div class="msg-choose-card' + (answered ? ' answered' : '') + '">' +
-        '<div class="msg-ask-q">' + (rec.curiousQuestion || '') + '</div>' +
+        '<div class="msg-ask-q">' + escTxt(rec.curiousQuestion || '') + '</div>' +
         (answered
-          ? '<div class="msg-ask-a">✓ 你：' + rec.curiousAnswer + '</div><div class="msg-choose-r">TA：' + rec.curiousReply + '</div>'
+          ? '<div class="msg-ask-a">✓ 你：' + escTxt(rec.curiousAnswer) + '</div><div class="msg-choose-r">TA：' + escTxt(rec.curiousReply) + '</div>'
           : '<div class="msg-ask-tip">点击回答 TA 的好奇</div>') +
         '</div>';
       body.appendChild(m);
@@ -672,9 +691,9 @@
       m.dataset.idx = msgs.length - 1;
       const answered = rec.roastStatus === 'answered';
       m.innerHTML = '<div class="msg-choose-card' + (answered ? ' answered' : '') + '">' +
-        '<div class="msg-ask-q">' + (rec.roastText || '') + '</div>' +
+        '<div class="msg-ask-q">' + escTxt(rec.roastText || '') + '</div>' +
         (answered
-          ? '<div class="msg-ask-a">✓ 你：' + rec.roastAnswer + '</div><div class="msg-choose-r">TA：' + rec.roastReply + '</div>'
+          ? '<div class="msg-ask-a">✓ 你：' + escTxt(rec.roastAnswer) + '</div><div class="msg-choose-r">TA：' + escTxt(rec.roastReply) + '</div>'
           : '<div class="msg-ask-tip">点击回 TA 一句</div>') +
         '</div>';
       body.appendChild(m);
@@ -687,9 +706,9 @@
       m.dataset.idx = msgs.length - 1;
       const answered = rec.askStatus === 'answered';
       m.innerHTML = '<div class="msg-ask-card' + (answered ? ' answered' : '') + '">' +
-        '<div class="msg-ask-q">' + (rec.askQuestion || rec.text) + '</div>' +
+        '<div class="msg-ask-q">' + escTxt(rec.askQuestion || rec.text) + '</div>' +
         (answered
-          ? '<div class="msg-ask-a">✓ 已回答：' + rec.askAnswer + '</div>'
+          ? '<div class="msg-ask-a">✓ 已回答：' + escTxt(rec.askAnswer) + '</div>'
           : '<div class="msg-ask-tip">点击回答 TA 的提问</div>') +
         '</div>';
       body.appendChild(m);
@@ -716,8 +735,8 @@
       b.style.border = '';
       b.style.boxShadow = '';
       b.innerHTML = (rec.quote ? quoteHtml(rec.quote, rec.qside) : '') + (rec.type === 'image'
-        ? '<img class="msg-img msg-img-big" src="' + rec.text + '" alt="图片" loading="lazy" decoding="async">'
-        : '<img class="msg-img msg-img-sm" src="' + rec.text + '" alt="表情" loading="lazy" decoding="async">');
+        ? '<img class="msg-img msg-img-big" src="' + attrEsc(rec.text) + '" alt="图片" loading="lazy" decoding="async">'
+        : '<img class="msg-img msg-img-sm" src="' + attrEsc(rec.text) + '" alt="表情" loading="lazy" decoding="async">');
       if (rec.type === 'image') {
         // v3.6.x：stopPropagation 防穿透——否则点图片会同时冒泡到 body 委托弹出操作菜单
         b.querySelector('.msg-img-big').addEventListener('click', (e) => {
@@ -735,12 +754,12 @@
       // v3.6.x：语音名称去掉 mp3/mp4 等后缀（旧消息存的名字仍带后缀）
       const vname = (vparts[0] || '语音消息').replace(/\.[^.]+$/, '');
       const vsrc = vparts[1] || '';
-      b.innerHTML = '<div class="msg-voice" data-src="' + vsrc + '">' +
+      b.innerHTML = '<div class="msg-voice" data-src="' + attrEsc(vsrc) + '">' +
         '<button class="msg-voice-play" title="播放">' +
         '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
         '</button>' +
         '<div class="msg-voice-wave"><i></i><i></i><i></i><i></i><i></i></div>' +
-        '<span class="msg-voice-name">' + vname.replace(/</g, '&lt;') + '</span>' +
+        '<span class="msg-voice-name">' + escTxt(vname) + '</span>' +
         '</div>';
       // v3.6.x：stopPropagation 防穿透——否则点播放会同时冒泡弹出操作菜单
       b.querySelector('.msg-voice-play').addEventListener('click', function (e) {
@@ -761,11 +780,11 @@
         inner += '<div class="msg-parts-imgs' + (imgs.length > 1 ? ' multi' : '') + '">' +
           imgs.map(p => {
             const isSticker = p.sub === 'sticker';
-            return '<img class="msg-img' + (isSticker ? ' msg-img-sm' : ' msg-img-big') + '" src="' + p.v + '" alt="' + (isSticker ? '表情' : '图片') + '" loading="lazy" decoding="async">';
+            return '<img class="msg-img' + (isSticker ? ' msg-img-sm' : ' msg-img-big') + '" src="' + attrEsc(p.v) + '" alt="' + (isSticker ? '表情' : '图片') + '" loading="lazy" decoding="async">';
           }).join('') + '</div>';
       }
       if (textPart) {
-        inner += '<span style="opacity:.85;word-break:break-word">' + textPart.replace(/</g, '&lt;') + '</span>';
+        inner += '<span style="opacity:.85;word-break:break-word">' + escTxt(textPart) + '</span>';
       }
       b.innerHTML = rec.quote
         ? quoteHtml(rec.quote, rec.qside) + inner
@@ -785,11 +804,11 @@
       for (let i = 0; i < segs.length; i++) {
         if (!rcs.some(r => r.idx === i)) {
           if (segHtml) segHtml += ' ';
-          segHtml += String(segs[i]).replace(/</g, '&lt;');
+          segHtml += escTxt(segs[i]);
         }
       }
       let sub = '';
-      rcs.forEach(r => { sub += '<div style="padding:2px 0">（已撤回）' + String(r.text || '').replace(/</g, '&lt;') + '</div>'; });
+      rcs.forEach(r => { sub += '<div style="padding:2px 0">（已撤回）' + escTxt(r.text || '') + '</div>'; });
       b.innerHTML = (rec.quote ? quoteHtml(rec.quote, rec.qside) : '') +
         '<span style="opacity:.85;word-break:break-word">' + (segHtml || '…') + '</span>' +
         '<div style="margin-top:6px;text-align:left">' +
@@ -807,10 +826,11 @@
       }
     } else {
       // v3.5.131：文本转义（用户输入含 < 会破坏气泡结构/注入 HTML）
-      const escTxt = String(rec.text || '').replace(/</g, '&lt;');
+      // v3.6.x：升级为完整转义（只转 < 可被 `&lt;…&gt;` 实体绕过）
+      const escTxtS = escTxt(rec.text);
       b.innerHTML = rec.quote
-        ? quoteHtml(rec.quote, rec.qside) + '<span style="opacity:.85">' + escTxt + '</span>'
-        : '<span style="opacity:.85">' + escTxt + '</span>';
+        ? quoteHtml(rec.quote, rec.qside) + '<span style="opacity:.85">' + escTxtS + '</span>'
+        : '<span style="opacity:.85">' + escTxtS + '</span>';
     }
     // 恢复情绪字卡（持久化）：所有字卡包进一个 .msg-moods 容器，
     // 容器用一条虚线与正文隔离，字卡在容器内紧凑同行、放不下才自动换行
@@ -820,10 +840,11 @@
       rec.mood.forEach((md, mi) => {
         // 局部撤回：被撤的情绪字卡不显示
         if (rec.retractedMood && rec.retractedMood.indexOf(mi) >= 0) return;
+        const mt = escTxt(md.tag), ml = escTxt(md.label);
         if (md.tag === '交流意图') {
-          mm.innerHTML += '<div class="msg-mood msg-intent"><span class="msg-mood-tag">' + md.tag + '</span><span>' + md.label + '</span></div>';
+          mm.innerHTML += '<div class="msg-mood msg-intent"><span class="msg-mood-tag">' + mt + '</span><span>' + ml + '</span></div>';
         } else {
-          mm.innerHTML += '<div class="msg-mood"><span class="msg-mood-tag">' + md.tag + '</span><span>' + md.label + '</span></div>';
+          mm.innerHTML += '<div class="msg-mood"><span class="msg-mood-tag">' + mt + '</span><span>' + ml + '</span></div>';
         }
       });
       if (mm.children.length) b.appendChild(mm);
@@ -912,6 +933,8 @@
   const deskMsgText = document.getElementById('desk-msg-text');
   let deskMsgTimer = null;
   let deskMsgAction = null; // v3.5.107：横幅点击回调（聊天进聊天页 / 信箱进信箱 / 朋友圈进朋友圈）
+  let deskMsgCloseAnimTimer = null; // v3.5.136：关闭滑出动画定时器（防止与新横幅竞态）
+  let deskMsgRevertTimer = null;    // v3.5.136：回弹动画定时器
   // v3.5.103：设置页「桌面消息弹窗」开关（默认开启；关闭后 TA 消息只进聊天角标，不弹横幅）
   function deskMsgEnabled() {
     const v = store.get('desk-msg-en');
@@ -937,6 +960,12 @@
     if (deskMsgName) deskMsgName.textContent = opts.name || store.get('lbl-partner') || 'TA';
     if (deskMsgAv) fillAvatar(deskMsgAv, 'avatar-partner');
     deskMsgAction = (typeof opts.onClick === 'function') ? opts.onClick : null;
+    // v3.5.136：清除上次关闭/回弹动画残留，避免新横幅带上 transform/transition
+    if (deskMsgCloseAnimTimer) { clearTimeout(deskMsgCloseAnimTimer); deskMsgCloseAnimTimer = null; }
+    if (deskMsgRevertTimer) { clearTimeout(deskMsgRevertTimer); deskMsgRevertTimer = null; }
+    deskMsgEl.style.transition = '';
+    deskMsgEl.style.transform = '';
+    deskMsgEl.style.opacity = '';
     deskMsgEl.hidden = false;
     clearTimeout(deskMsgTimer);
     deskMsgTimer = setTimeout(() => { if (deskMsgEl) deskMsgEl.hidden = true; }, 6000);
@@ -948,8 +977,15 @@
   }
   function hideDeskMsg() {
     clearTimeout(deskMsgTimer);
+    if (deskMsgCloseAnimTimer) { clearTimeout(deskMsgCloseAnimTimer); deskMsgCloseAnimTimer = null; }
+    if (deskMsgRevertTimer) { clearTimeout(deskMsgRevertTimer); deskMsgRevertTimer = null; }
     deskMsgAction = null;
-    if (deskMsgEl) deskMsgEl.hidden = true;
+    if (deskMsgEl) {
+      deskMsgEl.style.transition = '';
+      deskMsgEl.style.transform = '';
+      deskMsgEl.style.opacity = '';
+      deskMsgEl.hidden = true;
+    }
   }
   // 供信箱 / 朋友圈等模块复用（构建顺序：chat.js 先于 mail.js / feed.js 加载）
   window.showDeskPopup = showDeskPopup;
@@ -962,64 +998,97 @@
     if (action) action();
     else if (!chatVisible()) enterChat();
   });
-  // v3.5.117：横幅滑动/拖动关闭——手机右滑、桌面鼠标拖动，超过阈值松手即关闭；
-  // 拖动距离不够则回弹（不触发点击进入，避免误触）
-  // v3.5.119：手感调优——拖动跟随阈值 6px → 24px：
-  //   手指轻划/轻斜滑（<24px）横幅纹丝不动，松手=正常点击进入页面；
-  //   只有明显横滑（≥24px）横幅才开始跟随位移，≥70px 松手才关闭
-  // v3.6.x：手机端反馈右滑关闭「过于不灵敏」（70px 才关、24px 才开始跟随）——
-  //   跟随阈值收到 12px、关闭阈值收到 45px（中间值）：轻滑即跟手，滑过屏宽约 1/8 即关闭
-  // v3.5.134：继续收紧——跟随 8px、关闭 30px（配 touch-action:pan-y 后水平手势
-  //   不再被浏览器抢占，真实位移即可跟手）；斜滑容忍放宽：dy 不超过 dx 的 1.25 倍
-  //   仍按横滑处理（手指右滑时难免带一点纵向，之前 dy>dx 就放弃导致不灵敏）
+  // v3.5.136：横幅右滑关闭重写为「系统通知式」交互——
+  //   1) 触摸主力用原生 touch 事件（touchstart/touchmove/touchend）：比 pointer 事件
+  //      在安卓 WebView / 部分 Chrome 上更稳定，配合 touch-action:pan-y 手势不丢；
+  //   2) 跟手阈值 4px（仅防点击抖动，几乎无感），手指一动横幅即 1:1 跟随 + 微缩 + 淡出；
+  //   3) 松手判定 = 位移 >30px **或** 甩动速度 >0.6px/ms（快速右滑即使位移不大也关闭）；
+  //   4) 松手动画：关闭时平滑滑出后隐藏，未达阈值时平滑回弹（系统通知同款手感）；
+  //   5) 鼠标拖拽（桌面）保留。
   let deskMsgSuppressClick = false;
   let deskMsgSuppressTimer = null;
   let dDrag = null;
-  function deskMsgDragStart(e) {
+  function deskMsgDragStart(cx, cy) {
     if (!deskMsgEl || deskMsgEl.hidden) return;
-    dDrag = { x: e.clientX, y: e.clientY, moved: false };
+    dDrag = { x: cx, y: cy, moved: false, speed: 0, lastX: cx, lastT: Date.now() };
+    deskMsgEl.style.transition = 'none'; // 拖拽过程中不带动画，实时跟手
   }
-  function deskMsgDragMove(e) {
-    if (!dDrag) return;
+  function deskMsgDragMove(cx, cy) {
+    if (!dDrag) return false;
     // v3.6.x：横幅已隐藏时立即放弃拖动状态——防止横幅计时关闭后 window 级
-    // pointermove 继续 preventDefault 拦截页面手势（iOS Safari 上表现为页面
-    // 触摸滚动/点击失灵，像"卡死"）
-    if (!deskMsgEl || deskMsgEl.hidden) { dDrag = null; return; }
-    const dx = e.clientX - dDrag.x;
-    const dy = e.clientY - dDrag.y;
-    // 横向位移 ≥8px 才视为拖动（明显右滑/左滑）；轻微斜划不算，不打扰点击
-    if (Math.abs(dx) > 8) dDrag.moved = true;
-    // 仅横向拖动跟随（纵向交给页面滚动；dy 不超过 dx 1.25 倍的轻微斜滑仍算横向）
-    if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.25) {
-      try { e.preventDefault(); } catch (err) {}
-      deskMsgEl.style.transform = 'translateX(' + dx + 'px)';
-      deskMsgEl.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / 120));
+    // 事件继续拦截页面手势（iOS Safari 上表现为页面触摸滚动/点击失灵，像"卡死"）
+    if (!deskMsgEl || deskMsgEl.hidden) { dDrag = null; return false; }
+    const dx = cx - dDrag.x;
+    const dy = cy - dDrag.y;
+    // 记录滑动速度（估算最近 60ms 位移，用于甩动关闭）
+    const now = Date.now();
+    if (now - dDrag.lastT >= 60) {
+      dDrag.speed = (cx - dDrag.lastX) / (now - dDrag.lastT);
+      dDrag.lastX = cx;
+      dDrag.lastT = now;
     }
+    // 横向占优（dy ≤ dx×1.2，轻微斜滑仍算横向）且位移 >4px 即跟手
+    if (Math.abs(dx) > 4 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      deskMsgEl.style.transform = 'translateX(' + dx + 'px) scale(' + Math.max(0.92, 1 - Math.abs(dx) / 500) + ')';
+      deskMsgEl.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / 140));
+      dDrag.moved = true;
+      return true; // 调用方据此 preventDefault，阻止浏览器手势接管
+    }
+    return false;
   }
-  function deskMsgDragEnd(e) {
+  function deskMsgDragEnd(cx) {
     if (!dDrag) return;
-    const dx = e.clientX - dDrag.x;
+    const dx = cx - dDrag.x;
     const wasMoved = dDrag.moved;
+    const speed = dDrag.speed || 0;
     dDrag = null;
-    deskMsgEl.style.transform = '';
-    deskMsgEl.style.opacity = '';
-    if (wasMoved) {
-      // 只要有拖动，都抑制随后的 click——否则滑动松手会触发横幅点击进入页面
-      deskMsgSuppressClick = true;
+    if (!wasMoved || !deskMsgEl) return;
+    // 只要有拖动，都抑制随后的 click——否则滑动松手会触发横幅点击进入页面
+    deskMsgSuppressClick = true;
+    clearTimeout(deskMsgSuppressTimer);
+    deskMsgSuppressTimer = setTimeout(() => { deskMsgSuppressClick = false; }, 350);
+    // 关闭判定：位移 >30px，或快速甩动（估算速度 >0.6px/ms）
+    const shouldClose = Math.abs(dx) > 30 || Math.abs(speed) > 0.6;
+    if (shouldClose) {
+      deskMsgSuppressClick = false;
       clearTimeout(deskMsgSuppressTimer);
-      deskMsgSuppressTimer = setTimeout(() => { deskMsgSuppressClick = false; }, 350);
-      if (Math.abs(dx) > 30) {
-        deskMsgSuppressClick = false;
-        clearTimeout(deskMsgSuppressTimer);
-        hideDeskMsg();
-      }
+      // 平滑滑出后再隐藏（系统通知式关闭动画）
+      deskMsgEl.style.transition = 'transform .18s ease, opacity .18s ease';
+      deskMsgEl.style.transform = 'translateX(' + (dx >= 0 ? 160 : -160) + 'px)';
+      deskMsgEl.style.opacity = '0';
+      deskMsgCloseAnimTimer = setTimeout(hideDeskMsg, 180);
+    } else {
+      // 平滑回弹
+      deskMsgEl.style.transition = 'transform .25s cubic-bezier(.25,.8,.35,1), opacity .25s ease';
+      deskMsgEl.style.transform = '';
+      deskMsgEl.style.opacity = '';
+      deskMsgRevertTimer = setTimeout(() => { if (deskMsgEl) deskMsgEl.style.transition = ''; }, 260);
     }
   }
   if (deskMsgEl) {
-    deskMsgEl.addEventListener('pointerdown', deskMsgDragStart, { passive: true });
-    window.addEventListener('pointermove', deskMsgDragMove, { passive: false });
-    window.addEventListener('pointerup', deskMsgDragEnd);
-    window.addEventListener('pointercancel', deskMsgDragEnd);
+    // 触摸拖拽（手机端主力路径）
+    deskMsgEl.addEventListener('touchstart', (e) => {
+      const t = e.touches && e.touches[0];
+      if (t) deskMsgDragStart(t.clientX, t.clientY);
+    }, { passive: true });
+    window.addEventListener('touchmove', (e) => {
+      if (!dDrag) return;
+      const t = e.touches && e.touches[0];
+      // 横向跟手时 preventDefault，阻止浏览器把横滑判定成滚动/手势接管
+      if (t && deskMsgDragMove(t.clientX, t.clientY)) {
+        try { e.preventDefault(); } catch (err) {}
+      }
+    }, { passive: false });
+    const endTouch = (e) => {
+      const c = e.changedTouches && e.changedTouches[0];
+      deskMsgDragEnd(c ? c.clientX : (dDrag ? dDrag.x : 0));
+    };
+    window.addEventListener('touchend', endTouch);
+    window.addEventListener('touchcancel', endTouch);
+    // 鼠标拖拽（桌面）
+    deskMsgEl.addEventListener('mousedown', (e) => deskMsgDragStart(e.clientX, e.clientY));
+    window.addEventListener('mousemove', (e) => { if (dDrag) deskMsgDragMove(e.clientX, e.clientY); });
+    window.addEventListener('mouseup', (e) => deskMsgDragEnd(e.clientX));
   }
   // v3.5.103：桌面消息弹窗开关绑定（设置页回复设置-主动发送组）
   const deskMsgToggle = document.getElementById('desk-msg-en');
@@ -1050,7 +1119,10 @@
     }
     // v3.6.x：分页渲染下窗口已满（新增后超出 RENDER_MAX）→ 重渲染窗口并贴底，
     // 避免窗口无限膨胀；否则走增量追加（renderMsg 尾部 append）
-    if (renderStart > 0 && msgs.length - renderStart > RENDER_MAX) {
+    // v3.6.x+：加贴底守卫——用户翻旧消息（renderStart>0、窗口已扩）时新消息
+    // 进来不打断阅读位置，走增量追加（窗口暂时超 RENDER_MAX 无害，
+    // 下次 enterChat / restore-done 合并会收紧）
+    if (renderStart > 0 && msgs.length - renderStart > RENDER_MAX && chatNearBottom()) {
       renderWindow(false, true);
       scrollChatBottom();
       return body.lastElementChild;
@@ -1113,7 +1185,7 @@
     // 就地更新已渲染的卡片
     const el = body.querySelector('.msg-ask[data-idx="' + msgIdx + '"]');
     if (el) {
-      el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + (rec.choiceQuestion || '') + '</div><div class="msg-ask-a">✓ 你选择了：' + answer + '</div><div class="msg-choose-r">TA：' + (reply || '…') + '</div></div>';
+      el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + escTxt(rec.choiceQuestion || '') + '</div><div class="msg-ask-a">✓ 你选择了：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(reply || '…') + '</div></div>';
     }
   };
   // 回答 TA 的好奇（开放式）：更新记录 + 插入"我的回答"和 TA 回应（含 30% 追问）
@@ -1130,7 +1202,7 @@
     if (followup) addIn(followup);
     const el = body.querySelector('.msg-ask[data-idx="' + msgIdx + '"]');
     if (el) {
-      el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + (rec.curiousQuestion || '') + '</div><div class="msg-ask-a">✓ 你：' + answer + '</div><div class="msg-choose-r">TA：' + (reply || '…') + '</div></div>';
+      el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + escTxt(rec.curiousQuestion || '') + '</div><div class="msg-ask-a">✓ 你：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(reply || '…') + '</div></div>';
     }
   };
   // 回应 TA 的吐槽：更新记录 + 插入"我的回应"和 TA 回应
@@ -1146,7 +1218,7 @@
     addIn(reply || '…');
     const el = body.querySelector('.msg-ask[data-idx="' + msgIdx + '"]');
     if (el) {
-      el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + (rec.roastText || '') + '</div><div class="msg-ask-a">✓ 你：' + answer + '</div><div class="msg-choose-r">TA：' + (reply || '…') + '</div></div>';
+      el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + escTxt(rec.roastText || '') + '</div><div class="msg-ask-a">✓ 你：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(reply || '…') + '</div></div>';
     }
   };
   // 回答 TA 的询问：更新记录 + 插入"我的回答"和 TA 确认消息
@@ -1162,7 +1234,7 @@
     // 就地更新已渲染的询问卡片
     const el = body.querySelector('.msg-ask[data-idx="' + msgIdx + '"]');
     if (el) {
-      el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">' + (rec.askQuestion || '') + '</div><div class="msg-ask-a">✓ 已回答：' + answer + '</div></div>';
+      el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">' + escTxt(rec.askQuestion || '') + '</div><div class="msg-ask-a">✓ 已回答：' + escTxt(answer) + '</div></div>';
     }
   };
   // 撤回：更新记录 + DOM（点击可查看原文）
@@ -1966,7 +2038,7 @@ function partialRetractMsg(msgEl, side) {
           saveMsgs();
           const el = body.querySelector('.msg-ask[data-idx="' + inviteIdx + '"]');
           if (el) {
-            el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">邀请TA · ' + String(content).replace(/</g, '&lt;') + '</div><div class="msg-ask-a">✓ ' + answer + '</div></div>';
+            el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">邀请TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ ' + escTxt(answer) + '</div></div>';
           }
         }
         try {
@@ -1994,7 +2066,7 @@ function partialRetractMsg(msgEl, side) {
           saveMsgs();
           const el = body.querySelector('.msg-ask[data-idx="' + askIdx + '"]');
           if (el) {
-            el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + String(content).replace(/</g, '&lt;') + '</div><div class="msg-ask-a">✓ TA：' + text + '</div></div>';
+            el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ TA：' + escTxt(text) + '</div></div>';
           }
         }
         addIn(text);
@@ -2070,7 +2142,8 @@ function partialRetractMsg(msgEl, side) {
       chatSearchResults.innerHTML = '<div class="chat-search-empty">没有找到包含「' + q + '」的消息</div>';
       return;
     }
-    const esc = (x) => String(x == null ? '' : x).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // v3.6.x：完整转义（原只转 </>，搜索词/昵称含 `&lt;…&gt;` 可绕过）
+    const esc = (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const hl = (x) => esc(x).split(q).join('<span class="chat-search-hl">' + esc(q) + '</span>');
     let html = '<div style="font-size:11px;color:var(--muted);margin:6px 2px 10px">共 ' + results.length + ' 条 · 点击结果跳转到对应消息</div>';
     results.slice(0, 80).forEach(r => {
@@ -2273,7 +2346,7 @@ function partialRetractMsg(msgEl, side) {
             saveMsgs();
             syncLastMineText(); // v3.6.x：编辑后 TA 引用/收藏不再拿旧文本
             const b = editEl && editEl.querySelector('.msg-bubble');
-            if (b) b.innerHTML = '<span style="opacity:.85">' + String(val).replace(/</g, '&lt;') + '</span>';
+            if (b) b.innerHTML = '<span style="opacity:.85">' + escTxt(val) + '</span>';
           });
         }
         closeMsgActions();
@@ -2564,7 +2637,17 @@ function partialRetractMsg(msgEl, side) {
         const k = gname + '\u0001' + i;
         const on = mySel.has(k);
         d.classList.toggle('sel', on);
-        d.innerHTML = '<img src="' + src + '" alt="表情">' + (on ? '<span class="emoji-check">✓</span>' : '');
+        // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = '表情';
+        d.appendChild(img);
+        if (on) {
+          const ck = document.createElement('span');
+          ck.className = 'emoji-check';
+          ck.textContent = '✓';
+          d.appendChild(ck);
+        }
         d.addEventListener('click', () => {
           if (mySel.has(k)) mySel.delete(k); else mySel.add(k);
           updateBatchCount();
@@ -2578,7 +2661,10 @@ function partialRetractMsg(msgEl, side) {
           }
         });
       } else {
-        d.innerHTML = '<img src="' + src + '" alt="表情">';
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = '表情';
+        d.appendChild(img);
         d.addEventListener('click', () => {
           // v3.6.x：写信/回信场景通过 openEmojiPanelForInsert 打开面板 →
           // 点击表情插入信纸而不是发消息（与聊天发消息共用同一个面板）
@@ -2923,8 +3009,17 @@ function partialRetractMsg(msgEl, side) {
     draftImgs.forEach((src, i) => {
       const it = document.createElement('div');
       it.className = 'chat-draft-item';
-      it.innerHTML = '<img src="' + src + '" alt=""><button class="chat-draft-x" data-i="' + i + '">✕</button>';
-      it.querySelector('.chat-draft-x').addEventListener('click', () => {
+      // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = '';
+      const xBtn = document.createElement('button');
+      xBtn.className = 'chat-draft-x';
+      xBtn.dataset.i = i;
+      xBtn.textContent = '✕';
+      it.appendChild(img);
+      it.appendChild(xBtn);
+      xBtn.addEventListener('click', () => {
         draftImgs.splice(i, 1);
         renderDraft();
       });

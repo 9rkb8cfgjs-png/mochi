@@ -85,12 +85,11 @@
         } else if (Notification.permission !== 'granted') {
           toast('后台保活已启动（通知未授权：去设置→后台通知→开启并允许权限）');
         } else {
-          try {
-            new Notification('后台保活已启动', { body: '正在播放静音音频以保持后台活跃，请勿关闭此页面' });
-            toast('后台保活已启动 · 通知栏应弹出提示条，若没有请到系统设置→通知→Chrome→允许通知');
-          } catch (e) {
-            toast('后台保活已启动（通知发送异常，请检查系统通知权限）');
-          }
+          showSysNotification('后台保活已启动', { body: '正在播放静音音频以保持后台活跃，请勿关闭此页面' }).then(function (ok) {
+            toast(ok
+              ? '后台保活已启动 · 通知栏应弹出提示条，若没有请到系统设置→通知→Chrome→允许通知'
+              : '后台保活已启动（通知发送未受理，请检查系统通知权限）');
+          });
         }
       }
     } catch (e) {}
@@ -150,6 +149,28 @@
 
   // ================= 后台通知 =================
   let notifyEnabled = false;
+  // v3.5.135：统一走 Service Worker 显示通知——Chrome Android 规范：页面在后台（隐藏）
+  //   时，页面脚本直接 new Notification() 会被静默抑制（通知不弹也不报错），
+  //   标准做法是 navigator.serviceWorker.ready → reg.showNotification()（SW 独立于页面，
+  //   隐藏时允许显示）。此辅助函数统一封装：优先 SW，失败回退页面 Notification。
+  //   返回 Promise<boolean>：true=已提交显示（能否真正显示仍由系统通知权限决定）
+  function showSysNotification(title, opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      try {
+        if (!('Notification' in window) || Notification.permission !== 'granted') { resolve(false); return; }
+        if ('serviceWorker' in navigator && navigator.serviceWorker) {
+          navigator.serviceWorker.ready.then(function (reg) {
+            reg.showNotification(title, opts).then(function () { resolve(true); }, function () { resolve(false); });
+          }).catch(function () {
+            try { new Notification(title, opts); resolve(true); } catch (e) { resolve(false); }
+          });
+        } else {
+          try { new Notification(title, opts); resolve(true); } catch (e) { resolve(false); }
+        }
+      } catch (e) { resolve(false); }
+    });
+  }
   // v3.5.114：请求权限（支持成功/失败回调）——失败时开关要弹回关闭，
   //   否则 iOS 不支持 / 权限被拒时开关显示"开"但实际无效，误导用户
   function requestNotifyPermission(cb, failCb) {
@@ -182,7 +203,7 @@
           notifyEnabled = true;
           store.set('bg-notify', '1');
           syncNotifyUI();
-          try { new Notification('通知已开启', { body: '后台消息提醒将正常弹窗' }); } catch (e) {}
+          showSysNotification('通知已开启', { body: '后台消息提醒将正常弹窗' });
           // v3.5.132：开启通知时自动联动开启后台保活——后台消息要"到达"必须
           //   页面定时器在后台仍运行（静音音频保活）；否则开关开了但页面休眠，
           //   消息根本不产生，通知永远不会弹（旧版只 toast 提醒，用户容易漏开）
@@ -275,17 +296,21 @@
         toast('环境检查：\n' + env.join('\n'));
         return;
       }
-      // 环境 OK：真发一条测试通知
+      // 环境 OK：真发一条测试通知（走 SW showNotification，页面隐藏也能显示）
       try {
         const name = store.get('lbl-partner') || 'TA';
-        const n = new Notification('后台通知测试', { body: '来自 ' + name + ' · 如果能看到这条，后台通知就通了' });
-        setTimeout(function () { try { n.close(); } catch (e) {} }, 5000);
-        env.push('✓ 测试通知已发送');
-        // 红米/小米：系统级通知可能拦截（API 不报错但通知不显示）
-        if (/miui|xiaomi|redmi|hyperos/i.test(navigator.userAgent) || /android/i.test(navigator.userAgent)) {
-          env.push('提示：若没看到通知 → 系统设置 → 通知与控制中心 → 通知管理 → Chrome → 允许通知');
-        }
-        toast('测试结果：\n' + env.join('\n'));
+        showSysNotification('后台通知测试', { body: '来自 ' + name + ' · 如果能看到这条，后台通知就通了' }).then(function (ok) {
+          if (ok) {
+            env.push('✓ 测试通知已发送（Service Worker）');
+            // 红米/小米：系统级通知可能拦截（API 不报错但通知不显示）
+            if (/miui|xiaomi|redmi|hyperos/i.test(navigator.userAgent) || /android/i.test(navigator.userAgent)) {
+              env.push('提示：若没看到通知 → 系统设置 → 通知与控制中心 → 通知管理 → Chrome → 允许通知');
+            }
+          } else {
+            env.push('✗ 通知发送未受理（权限或系统通知被禁）');
+          }
+          toast('测试结果：\n' + env.join('\n'));
+        });
       } catch (e) {
         toast('发送失败：\n' + env.join('\n'));
       }
@@ -311,22 +336,21 @@
     if (!notifyEnabled) return;
     if (document.visibilityState === 'visible') return;
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    try {
-      const name = store.get('lbl-partner') || 'TA';
-      let t = '';
-      if (ts) {
-        const d = new Date(ts);
-        t = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-      }
-      const body = text && text.length > 40 ? text.slice(0, 40) + '…' : (text || '收到一条新消息');
-      const opts = { body: (t ? t + '  ' : '') + body };
-      // v3.5.118：通知图标只在使用 http(s) URL 时附带——头像存的是 dataURL，
-      //   Android Chrome 对 dataURL 图标支持不稳定，会导致整个 new Notification
-      //   抛异常被吞掉、通知不弹。去掉图标后通知 100% 稳定弹出。
-      const avatar = store.get('avatar-partner') || '';
-      if (avatar && /^https?:\/\//i.test(avatar)) opts.icon = avatar;
-      const n = new Notification(name, opts);
-      setTimeout(function () { try { n.close(); } catch (e) {} }, 6000);
-    } catch (e) {}
+    const name = store.get('lbl-partner') || 'TA';
+    let t = '';
+    if (ts) {
+      const d = new Date(ts);
+      t = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+    const body = text && text.length > 40 ? text.slice(0, 40) + '…' : (text || '收到一条新消息');
+    const opts = { body: (t ? t + '  ' : '') + body };
+    // v3.5.118：通知图标只在使用 http(s) URL 时附带——头像存的是 dataURL，
+    //   Android Chrome 对 dataURL 图标支持不稳定，会导致整个通知发送异常
+    const avatar = store.get('avatar-partner') || '';
+    if (avatar && /^https?:\/\//i.test(avatar)) opts.icon = avatar;
+    // v3.5.135：核心修复——后台消息通知必须走 Service Worker showNotification：
+    //   页面在后台（隐藏）时 Chrome 会静默抑制页面脚本的 new Notification()，
+    //   这是此功能此前"开关全开也弹不出来"的代码级根因。
+    showSysNotification(name, opts);
   };
 })();
