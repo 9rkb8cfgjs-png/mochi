@@ -72,6 +72,19 @@
       return el && !el.hidden;
     });
   }
+  // v3.6.x：用户是否正在输入——TA 互动弹窗自动弹出时会抢焦点
+  // （setTimeout(inp.focus()) 让原输入框 blur），手机端输入法被收起、
+  // IME 组合中的文字直接丢失（表现：正在打的字消失、输入法弹窗被关闭）。
+  // 正在打字时不自动弹窗（卡片照常进聊天记录，输完点卡片再答）；手动打开
+  // 弹窗时也不抢焦点，用户继续输入。
+  function chatInputFocused() {
+    // 聊天输入栏聚焦（contenteditable 打字中）
+    const ci = document.getElementById('chat-input');
+    if (ci && document.activeElement === ci) return true;
+    // 其他输入框聚焦（设置分组名/编辑昵称/写信等），同样不打断用户输入
+    const ae = document.activeElement;
+    return !!ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
+  }
 
   // ---- 数据读写 ----
   // v3.6.x：题库合并改为「增量 + 持久化」：
@@ -177,7 +190,8 @@
     // 权限/可见性判断，前台调用无副作用）
     if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'TA的询问' });
     // v3.5.141：页面弹窗在后台不弹（不可见弹了也没用），只发系统通知
-    if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openAskReply && !cardPopupBusy()) window.openAskReply(idx); }, 400);
+    // v3.6.x：用户正在聊天输入栏打字时不弹（弹窗会抢焦点打断输入法，见 chatInputFocused）
+    if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openAskReply && !cardPopupBusy()) window.openAskReply(idx); }, 400);
   }
   // ---- 触发调度（v3.5.34：启用开关 + 触发概率滑块 + 自动弹窗概率滑块） ----
   function maybeTriggerTAAsk() {
@@ -642,7 +656,7 @@
     const idx = el ? Number(el.dataset.idx) : -1;
     // v3.5.141：后台收到互动卡片 → 系统通知提示
     if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'TA的小问题' });
-    if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openTC && !cardPopupBusy()) window.openTC(idx); }, 400);
+    if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openTC && !cardPopupBusy()) window.openTC(idx); }, 400);
   }
   // 自动触发：一次会话最多 1 个；冷却 30 分钟；概率可调（默认 15%）；启动 90 秒后、每 4 分钟轮询
   function maybeTriggerTC() {
@@ -1103,7 +1117,8 @@ window.openTCPanel = openTCPanel;
     const idx = el ? Number(el.dataset.idx) : -1;
     // v3.5.141：后台收到互动卡片 → 系统通知提示
     if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'Ta的好奇' });
-    if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openCurious && !cardPopupBusy()) window.openCurious(idx); }, 400);
+    // v3.6.x：用户正在聊天输入栏打字时不弹（弹窗会抢焦点打断输入法，见 chatInputFocused）
+    if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openCurious && !cardPopupBusy()) window.openCurious(idx); }, 400);
   }
   function maybeTriggerTCU() {
     try {
@@ -1162,7 +1177,8 @@ window.openTCPanel = openTCPanel;
     document.getElementById('qa-send').addEventListener('click', send);
     const inp = document.getElementById('qa-input');
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) send(); });
-    setTimeout(() => inp.focus(), 60);
+    // v3.6.x：用户正在聊天输入栏打字时不抢焦点（不打断输入法/不丢字），输完再点弹窗输入框
+    setTimeout(() => { if (!chatInputFocused()) inp.focus(); }, 60);
   };
   function submitCurious(msgIdx, answer) {
     let rec = getCardAt(msgIdx);
@@ -1487,7 +1503,8 @@ window.openTCPanel = openTCPanel;
     const idx = el ? Number(el.dataset.idx) : -1;
     // v3.5.141：后台收到互动卡片 → 系统通知提示
     if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'Ta的吐槽' });
-    if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openRoast && !cardPopupBusy()) window.openRoast(idx); }, 400);
+    // v3.6.x：用户正在聊天输入栏打字时不弹（弹窗会抢焦点打断输入法，见 chatInputFocused）
+    if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openRoast && !cardPopupBusy()) window.openRoast(idx); }, 400);
   }
   function lastUserMsg() {
     try {
@@ -1544,7 +1561,8 @@ window.openTCPanel = openTCPanel;
     document.getElementById('qa-send').addEventListener('click', send);
     const inp = document.getElementById('qa-input');
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) send(); });
-    setTimeout(() => inp.focus(), 60);
+    // v3.6.x：用户正在聊天输入栏打字时不抢焦点（不打断输入法/不丢字），输完再点弹窗输入框
+    setTimeout(() => { if (!chatInputFocused()) inp.focus(); }, 60);
   };
   function submitRoast(msgIdx, answer) {
     let rec = getCardAt(msgIdx);

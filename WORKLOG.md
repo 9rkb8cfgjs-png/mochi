@@ -13,6 +13,9 @@
 ## 记录
 
 ### 2026-08-16
+- [AI-B] 完成（iOS 默认浏览器「聊天点击输入栏，键盘上方出现灰色栏把所有页面遮盖，关掉键盘才恢复」修复，已构建 verify 10/10 + CDP 模拟 3/3，**未提交**）：根因——iOS Safari 键盘是 overlay 模式，`mobile-adapt.js` 的 `syncIosKb` 已把 `.phone` 按 visualViewport 收缩到键盘上沿（高度 844→约 500）；但 **iOS 键盘弹出时会自动把页面滚动到聚焦的输入框**（聊天输入栏在 `.phone` 底部），而 `.phone` 是普通文档流元素（flex 顶对齐，非 fixed），window 滚动后它整体上移，**下方露出 body 灰色背景（#e9e9e9）**——表现就是「键盘上方一条横贯全屏的灰色栏，把所有页面都遮盖」。修复：`src/js/mobile-adapt.js` `syncIosKb` 增加 `pinScrollTop()`——键盘弹出瞬间、收缩持续期间、收起恢复时都把页面滚动钉在顶部（window/html/body 三级归零，只在有滚动偏移时执行，避免无谓 reflow）。收缩态下页面内容全部在 `.phone` 内，任何滚动都只会露出灰底，归零无副作用。CDP 模拟验证 3/3：键盘弹出 phone 收缩 500、模拟 iOS 滚动 150 后被钉回 0（phoneTop=0 不露出灰底）、键盘收起后高度/顶对齐/滚动全部恢复。**未提交**，等待统一提交/部署。另：工作区有对方遗留未跟踪文件 `_test_backup.json`/`inject-hook.mjs`，请确认后清理。
+
+### 2026-08-16
 - [AI-A] 完成（「回复速度最长」不再限制 84 秒，可任意调大，已构建 verify 10/10 + CDP 手机模式 8/8，**未提交**）：① `src/template.html` rs-max 移除 `data-max="84"`（保留 data-min=2）；② `src/js/reply-settings.js` 两处 stepper 范围校验 `data-max` 缺失兜底 `Infinity` = 不设上限（± 按钮/直接输入/保存按钮统一走一套校验，其他有 data-max 的 stepper 不受影响），`commit`/保存按钮用 `isFinite` 防 NaN/Infinity 入库；③ **顺带修复保存按钮读值 bug**：运行时 `st.querySelector('.stp-val')` 在转换后页面会先匹配到 ce-box DIV（继承了 stp-val 类），读到 DIV 的过期 value expando 而非当前显示值 → 保存按钮可能把设置还原成旧值。syncUI 与保存按钮均改为固定 `input.stp-val`（value 代理始终读写 ce-box 当前文本）。CDP 验证：+ 按钮超 84 到 97、直接输入 600/1000 保存成功、刷新后回显 1000、聊天延迟公式兼容大数、rs-min 仍钳 60、非法输入回退下限 2。**未提交**，等待统一提交/部署。
 
 ### 2026-08-16

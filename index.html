@@ -2809,7 +2809,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.33 · 部署于 2026-08-16 22:36</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.34 · 部署于 2026-08-16 23:00</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3451,7 +3451,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.33</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.34</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -13671,6 +13671,12 @@ const el = document.getElementById(id);
 return el && !el.hidden;
 });
 }
+function chatInputFocused() {
+const ci = document.getElementById('chat-input');
+if (ci && document.activeElement === ci) return true;
+const ae = document.activeElement;
+return !!ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
+}
 function taAskMerge(d) {
 const ids = {};
 (d.questions || []).forEach(q => { if (q && q.id) ids[q.id] = true; });
@@ -13750,7 +13756,7 @@ window.chatAddSystem('TA想问你一个问题。');
 const el = window.chatAddSystem(q.text, { special: 'ask-card', askQuestion: q.text, askOptions: isSingle ? q.options : null, askType: isSingle ? 'single' : 'text' });
 const idx = el ? Number(el.dataset.idx) : -1;
 if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'TA的询问' });
-if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openAskReply && !cardPopupBusy()) window.openAskReply(idx); }, 400);
+if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openAskReply && !cardPopupBusy()) window.openAskReply(idx); }, 400);
 }
 function maybeTriggerTAAsk() {
 try {
@@ -14173,7 +14179,7 @@ special: 'ask-choose', choiceQuestion: q.text, choiceOptions: q.options, choiceP
 });
 const idx = el ? Number(el.dataset.idx) : -1;
 if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'TA的小问题' });
-if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openTC && !cardPopupBusy()) window.openTC(idx); }, 400);
+if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openTC && !cardPopupBusy()) window.openTC(idx); }, 400);
 }
 function maybeTriggerTC() {
 try {
@@ -14600,7 +14606,7 @@ curiousFollowup: q.followup || '', curiousQid: q.id || '', curiousCat: q.cat || 
 });
 const idx = el ? Number(el.dataset.idx) : -1;
 if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'Ta的好奇' });
-if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openCurious && !cardPopupBusy()) window.openCurious(idx); }, 400);
+if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openCurious && !cardPopupBusy()) window.openCurious(idx); }, 400);
 }
 function maybeTriggerTCU() {
 try {
@@ -14656,7 +14662,7 @@ submitCurious(msgIdx, answer);
 document.getElementById('qa-send').addEventListener('click', send);
 const inp = document.getElementById('qa-input');
 inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) send(); });
-setTimeout(() => inp.focus(), 60);
+setTimeout(() => { if (!chatInputFocused()) inp.focus(); }, 60);
 };
 function submitCurious(msgIdx, answer) {
 let rec = getCardAt(msgIdx);
@@ -14957,7 +14963,7 @@ window.chatAddSystem('TA吐槽了你一句。');
 const el = window.chatAddSystem(q.text, { special: 'ask-roast', roastText: q.text, roastCat: q.cat || 'light' });
 const idx = el ? Number(el.dataset.idx) : -1;
 if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'Ta的吐槽' });
-if (popup) setTimeout(() => { if (document.hidden) return; if (idx >= 0 && window.openRoast && !cardPopupBusy()) window.openRoast(idx); }, 400);
+if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openRoast && !cardPopupBusy()) window.openRoast(idx); }, 400);
 }
 function lastUserMsg() {
 try {
@@ -15011,7 +15017,7 @@ submitRoast(msgIdx, answer);
 document.getElementById('qa-send').addEventListener('click', send);
 const inp = document.getElementById('qa-input');
 inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) send(); });
-setTimeout(() => inp.focus(), 60);
+setTimeout(() => { if (!chatInputFocused()) inp.focus(); }, 60);
 };
 function submitRoast(msgIdx, answer) {
 let rec = getCardAt(msgIdx);
@@ -16241,7 +16247,12 @@ clearTimeout(t._timer);
 t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
 }
 function load() { try { return JSON.parse(store.get(KEY) || '[]'); } catch (e) { return []; } }
-function save(list) { store.set(KEY, JSON.stringify(list)); }
+let mailDbReady = false;
+let mailPending = null;
+function save(list) {
+if (!mailDbReady) { try { mailPending = (list || []).slice(); } catch (e) {} return; }
+store.set(KEY, JSON.stringify(list));
+}
 function updateBadge() {
 const badge = document.getElementById('mail-badge');
 if (!badge) return;
@@ -16814,11 +16825,28 @@ updateBadge();
 try {
 if (window.idbGet) {
 window.idbGet(uid + ':' + KEY).then(v => {
-if (v && typeof v === 'string' && v.length > 2 && !store.get(KEY)) store.set(KEY, v);
+try {
+if (v && typeof v === 'string' && v.length > 2) {
+const idbArr = JSON.parse(v);
+if (Array.isArray(idbArr)) {
+const pending = mailPending || [];
+const map = {};
+idbArr.forEach(x => { if (x && x.id) map[x.id] = x; });
+pending.forEach(x => { if (x && x.id) map[x.id] = x; });
+const merged = Object.keys(map).map(k => map[k]).sort((a, b) => (b.tm || 0) - (a.tm || 0));
+mailPending = null;
+store.set(KEY, JSON.stringify(merged));
+}
+}
+} catch (e) { /* 解析失败：仍置就绪，避免下次启动重复合并 */ }
+mailDbReady = true;
+render();
 updateBadge();
 });
+} else {
+mailDbReady = true;
 }
-} catch (e) {}
+} catch (e) { mailDbReady = true; }
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
@@ -19881,6 +19909,15 @@ if (_cb) _cb.style.transform = 'none'; // iOS 豁免合成层，避免滚动卡�
 var _vv = window.visualViewport;
 var _kbActive = false;
 var _noKbH = _vv ? _vv.height : window.innerHeight;
+function pinScrollTop() {
+try {
+if (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop) {
+window.scrollTo(0, 0);
+document.documentElement.scrollTop = 0;
+document.body.scrollTop = 0;
+}
+} catch (e) {}
+}
 function syncIosKb() {
 if (!_vv || !_phone) return;
 var _focused = isTextEl(document.activeElement);
@@ -19890,15 +19927,18 @@ var _open = _focused && _h < _noKbH - 60;
 if (_open && !_kbActive) {
 _kbActive = true;
 _phone.style.alignSelf = 'flex-start';
+pinScrollTop();
 }
 if (_kbActive) {
 var _hs = _h + 'px';
 if (_phone.style.height !== _hs) _phone.style.height = _hs; // 值不变不重排
+pinScrollTop();
 }
 if (!_open && _kbActive) {
 _kbActive = false;
 _phone.style.height = '';
 _phone.style.alignSelf = '';
+pinScrollTop();
 }
 }
 if (_vv) {

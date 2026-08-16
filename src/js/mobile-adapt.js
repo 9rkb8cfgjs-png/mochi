@@ -344,6 +344,20 @@
       var _vv = window.visualViewport;
       var _kbActive = false;
       var _noKbH = _vv ? _vv.height : window.innerHeight;
+      // v3.6.x：键盘弹出期间把页面滚动钉在顶部——iOS Safari 键盘弹出时会自动把页面
+      // 滚动到聚焦的输入框（聊天输入栏在 .phone 底部），而 .phone 已按 visualViewport
+      // 收缩到键盘上沿，此时 window 再滚动会把 .phone 整体上移，其下方露出 body 灰色
+      // 背景——表现就是「键盘上方出现一条横贯全屏的灰色栏，把所有页面都遮盖」。
+      // 收缩状态下任何滚动都只会露出灰底（页面内容已全部在 .phone 内），直接归零。
+      function pinScrollTop() {
+        try {
+          if (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop) {
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+          }
+        } catch (e) {}
+      }
       function syncIosKb() {
         if (!_vv || !_phone) return;
         var _focused = isTextEl(document.activeElement);
@@ -356,15 +370,20 @@
           // 顶对齐（替代 position:fixed）——避免 iOS contenteditable 在 fixed
           // 容器内无法输入的已知问题；水平居中交给 body flex 原有规则
           _phone.style.alignSelf = 'flex-start';
+          // 键盘弹出瞬间浏览器可能已滚动页面，立即归零，防止灰底露出
+          pinScrollTop();
         }
         if (_kbActive) {
           var _hs = _h + 'px';
           if (_phone.style.height !== _hs) _phone.style.height = _hs; // 值不变不重排
+          // 键盘动画/滚动期间持续钉在顶部（visualViewport 高频变化也不会漏）
+          pinScrollTop();
         }
         if (!_open && _kbActive) {
           _kbActive = false;
           _phone.style.height = '';
           _phone.style.alignSelf = '';
+          pinScrollTop();
         }
       }
       if (_vv) {

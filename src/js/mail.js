@@ -23,7 +23,16 @@
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
   }
   function load() { try { return JSON.parse(store.get(KEY) || '[]'); } catch (e) { return []; } }
-  function save(list) { store.set(KEY, JSON.stringify(list)); }
+  // v3.5.120：信箱权威加载防护——修复「刷新后信箱数据丢失」：
+  // 信箱数据导入后只在 IndexedDB（备份把它归为大键），localStorage 空时
+  // load() 返回 []，此时任何 save([]) 都会用空列表覆盖 IDB 里的全部信件。
+  // 权威未从 IDB 读回前，save 只暂存内存、绝不落盘。
+  let mailDbReady = false;
+  let mailPending = null;
+  function save(list) {
+    if (!mailDbReady) { try { mailPending = (list || []).slice(); } catch (e) {} return; }
+    store.set(KEY, JSON.stringify(list));
+  }
 
   // v3.5.99：桌面「信箱」图标未读角标——有新来信（未读）时显示数字，进入信箱或打开信件后清除
   function updateBadge() {
@@ -682,13 +691,34 @@
   updateBadge();
 
   // v3.5.94：信件含图片 dataURL，可能只存在 IndexedDB → 启动补读（信箱打开时才渲染，届时读到）
-  // v3.5.132：本地已有值时不覆盖（防补读窗口内新写的信被旧 IDB 值回退）
+  // v3.5.120：改为权威加载——每次启动都从 IDB 读 mail-letters，并合并暂存期间
+  // （mailDbReady=false）用户写入的信件/已读标记（按 id 覆盖 + 按 tm 保序），
+  // 就绪后重渲染。修复「刷新后信箱数据丢失」：旧逻辑只在 localStorage 空时补读一次，
+  // 补读窗口内任何 save([]) 都会先覆盖 IDB，导致补读被跳过、信件永久丢失。
   try {
     if (window.idbGet) {
       window.idbGet(uid + ':' + KEY).then(v => {
-        if (v && typeof v === 'string' && v.length > 2 && !store.get(KEY)) store.set(KEY, v);
+        try {
+          if (v && typeof v === 'string' && v.length > 2) {
+            const idbArr = JSON.parse(v);
+            if (Array.isArray(idbArr)) {
+              const pending = mailPending || [];
+              // 按 id 合并：暂存期间的信件/已读变更覆盖 IDB 旧值（新信 tm 更新，追加自然成立）
+              const map = {};
+              idbArr.forEach(x => { if (x && x.id) map[x.id] = x; });
+              pending.forEach(x => { if (x && x.id) map[x.id] = x; });
+              const merged = Object.keys(map).map(k => map[k]).sort((a, b) => (b.tm || 0) - (a.tm || 0));
+              mailPending = null;
+              store.set(KEY, JSON.stringify(merged));
+            }
+          }
+        } catch (e) { /* 解析失败：仍置就绪，避免下次启动重复合并 */ }
+        mailDbReady = true;
+        render();
         updateBadge();
       });
+    } else {
+      mailDbReady = true;
     }
-  } catch (e) {}
+  } catch (e) { mailDbReady = true; }
 })();
