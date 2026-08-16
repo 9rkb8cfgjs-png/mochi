@@ -719,16 +719,16 @@
   }
 
   // ================= 清除全部字卡（v3.6.x） =================
-  // 一键清空所有分类的全部字卡（保留空分组结构）；危险操作，需二次确认
+  // 一键清空所有分类的全部字卡与全部分组；危险操作，需二次确认
   const ccClearAll = document.getElementById('cc-clear-all');
   if (ccClearAll) {
     ccClearAll.addEventListener('click', () => {
       if (window.openModal) {
         const total = totalCount(groups);
         window.openModal('清除全部字卡？', '', () => {
-          // 各分类清空字卡数组（分组保留，内置分组名不消失）
+          // 各分类全清：字卡与分组一起删除，字卡库回到空状态
           Object.keys(groups).forEach(t => {
-            groups[t] = (groups[t] || []).map(g => [g[0], []]);
+            groups[t] = [];
           });
           // 退出管理模式、清空搜索与分组筛选，回到全部视图
           if (manageMode) exitManage();
@@ -740,8 +740,8 @@
           saveGroups(groups);
           renderGroupsBar();
           render();
-          toast('已清除全部字卡');
-        }, { noInput: true, staticText: '将删除全部 ' + total + ' 张字卡（主字卡、颜文字、emoji、表情包、图片、拍一拍、语音），且无法恢复。确定继续吗？' });
+          toast('已清除全部字卡与分组');
+        }, { noInput: true, staticText: '将删除全部 ' + total + ' 张字卡及所有分组（主字卡、颜文字、emoji、表情包、图片、拍一拍、语音），且无法恢复。确定继续吗？' });
       }
     });
   }
