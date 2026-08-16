@@ -2016,12 +2016,15 @@ input.ce-ghost, textarea.ce-ghost {
 .mem-add-cancel { border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.92); color:#666; }
 .mem-add-ok { border:none; background:var(--ink); color:#fff; }
 
-/* 收藏页分类 tab */
+/* 收藏页分类 tab —— v3.5.138：横向滚动（7 个 tab 在 393px 内 flex:1 均分会换行挤压） */
 .fav-tabs {
   display:flex; gap:8px; padding:4px 18px 12px; flex-shrink:0;
+  overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;
+  -webkit-overflow-scrolling:touch;
 }
+.fav-tabs::-webkit-scrollbar { display:none; }
 .fav-tab {
-  flex:1; padding:12px 10px; font-size:13px; font-weight:600;
+  flex:0 0 auto; white-space:nowrap; padding:12px 14px; font-size:13px; font-weight:600;
   border:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.92);
   color:#666; border-radius:12px; cursor:pointer; font-family:inherit;
   -webkit-tap-highlight-color:transparent;
@@ -2801,6 +2804,8 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
   display:flex; align-items:center; gap:12px;
   padding:10px 14px; background:rgba(255,255,255,.97);
   border-top:1px solid rgba(0,0,0,.08);
+  /* v3.5.138：Android 手势导航安全区（PWA 全屏时按钮不被手势条压住） */
+  padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px));
 }
 .sm-player-bar[hidden] { display:none; }
 .sm-pb-info { flex:1; min-width:0; }
@@ -3236,7 +3241,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 14:23</div>
+      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 14:26</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -12689,6 +12694,9 @@ window.getReplyCard = function () {
       bar.querySelector('#mb-exit').addEventListener('click', exitBatch);
     }
     document.getElementById('music-batch-bar').hidden = false;
+    // v3.5.138：批量条盖住底部播放条（播放/暂停/切歌不可操作）——批量期间隐藏播放条
+    const pb = document.getElementById('sm-player-bar');
+    if (pb) pb.hidden = true;
     updateBatchCount();
   }
   function exitBatch() {
@@ -12696,6 +12704,9 @@ window.getReplyCard = function () {
     batchSel.clear();
     const bar = document.getElementById('music-batch-bar');
     if (bar) bar.hidden = true;
+    // v3.5.138：退出批量恢复播放条（仅当有歌在播/有 currentId 时；无歌保持隐藏）
+    const pb = document.getElementById('sm-player-bar');
+    if (pb) pb.hidden = !(currentId && audio);
     renderLibrary();
   }
   function updateBatchCount() {
@@ -14658,19 +14669,28 @@ window.getReplyCard = function () {
   setInterval(maybeTriggerTAAsk, 240000);
 
   // v3.6.x：异步 IDB 合并（chat.js loadMsgs）可能让自动弹窗持有过期 msgIdx——
-  // 打开/作答前先校验索引指向的仍是同类卡片；已错位则从末尾回退找最近的
-  // 未作答同类卡片（自动触发场景卡片就是最新一条；点击卡片场景索引恒有效，不受影响）
+  // 打开/作答前先校验索引指向的仍是「同类且未作答」的卡片；已错位/指向已作答
+  // 卡片则从末尾回退找最近的未作答同类卡片（自动触发场景卡片就是最新一条；
+  // 点击卡片路径由聊天页委托保证传入的必是未作答卡片的索引）
   function locateCardIdx(msgIdx, special, statusKey) {
     let arr = [];
     try { arr = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]')); } catch (e) {}
     if (!Array.isArray(arr)) arr = [];
     const rec = arr[msgIdx];
-    if (rec && rec.special === special) return msgIdx;
+    if (rec && rec.special === special && !rec[statusKey]) return msgIdx;
     for (let i = arr.length - 1; i >= 0; i--) {
       const r = arr[i];
       if (r && r.special === special && !r[statusKey]) return i;
     }
     return -1;
+  }
+  // 读取指定索引的聊天记录（异常返回 null）
+  function getCardAt(msgIdx) {
+    try {
+      const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
+      if (Array.isArray(msgs) && msgs[msgIdx]) return msgs[msgIdx];
+    } catch (e) {}
+    return null;
   }
 
   // ---- 回答弹窗（点击聊天里的询问卡片触发） ----
@@ -14687,10 +14707,15 @@ window.getReplyCard = function () {
     window.openModal('回答TA的询问', '', (v) => {
       const answer = (v || '').trim();
       if (!answer) { toast('请输入回答'); return; }
-      const fixedIdx = locateCardIdx(msgIdx, 'ask-card', 'askStatus');
-      if (fixedIdx < 0) return;
+      // 提交时再校验：索引仍指向本卡片则直接用，错位则重定位（防连点重定位到别的卡片）
+      let rec = getCardAt(msgIdx);
+      if (!rec || rec.special !== 'ask-card') {
+        const fixedIdx = locateCardIdx(msgIdx, 'ask-card', 'askStatus');
+        if (fixedIdx < 0) return;
+        msgIdx = fixedIdx;
+      }
       if (window.chatAskReply) {
-        window.chatAskReply(fixedIdx, answer);
+        window.chatAskReply(msgIdx, answer);
         // 记入历史（保存全部，不截断），含 TA 的回复
         const d = taAskLoad();
         d.history.push({ q: question, a: answer, reply: '收到你的回答。', ts: Date.now() });
@@ -15092,13 +15117,13 @@ window.openTCPanel = openTCPanel;
   };
   // 提交选择
   function submitTC(msgIdx, optIdx) {
-    msgIdx = locateCardIdx(msgIdx, 'ask-choose', 'choiceStatus');
-    if (msgIdx < 0) return;
-    let rec = null;
-    try {
-      const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
-      if (Array.isArray(msgs) && msgs[msgIdx]) rec = msgs[msgIdx];
-    } catch (e) {}
+    let rec = getCardAt(msgIdx);
+    // 索引仍指向本类型卡片则直接用；错位则重定位（防连点重定位到别的卡片）
+    if (!rec || rec.special !== 'ask-choose') {
+      msgIdx = locateCardIdx(msgIdx, 'ask-choose', 'choiceStatus');
+      if (msgIdx < 0) return;
+      rec = getCardAt(msgIdx);
+    }
     if (!rec || rec.special !== 'ask-choose' || rec.choiceStatus === 'answered') return;
     const opts = rec.choiceOptions || [];
     const opt = opts[optIdx];
@@ -15550,13 +15575,12 @@ window.openTCPanel = openTCPanel;
     setTimeout(() => inp.focus(), 60);
   };
   function submitCurious(msgIdx, answer) {
-    msgIdx = locateCardIdx(msgIdx, 'ask-curious', 'curiousStatus');
-    if (msgIdx < 0) return;
-    let rec = null;
-    try {
-      const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
-      if (Array.isArray(msgs) && msgs[msgIdx]) rec = msgs[msgIdx];
-    } catch (e) {}
+    let rec = getCardAt(msgIdx);
+    if (!rec || rec.special !== 'ask-curious') {
+      msgIdx = locateCardIdx(msgIdx, 'ask-curious', 'curiousStatus');
+      if (msgIdx < 0) return;
+      rec = getCardAt(msgIdx);
+    }
     if (!rec || rec.special !== 'ask-curious' || rec.curiousStatus === 'answered') return;
     const replies = (rec.curiousReplies && rec.curiousReplies.length) ? rec.curiousReplies : TCU_FALLBACK.slice();
     const reply = replies[Math.floor(Math.random() * replies.length)];
@@ -15931,13 +15955,12 @@ window.openTCPanel = openTCPanel;
     setTimeout(() => inp.focus(), 60);
   };
   function submitRoast(msgIdx, answer) {
-    msgIdx = locateCardIdx(msgIdx, 'ask-roast', 'roastStatus');
-    if (msgIdx < 0) return;
-    let rec = null;
-    try {
-      const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
-      if (Array.isArray(msgs) && msgs[msgIdx]) rec = msgs[msgIdx];
-    } catch (e) {}
+    let rec = getCardAt(msgIdx);
+    if (!rec || rec.special !== 'ask-roast') {
+      msgIdx = locateCardIdx(msgIdx, 'ask-roast', 'roastStatus');
+      if (msgIdx < 0) return;
+      rec = getCardAt(msgIdx);
+    }
     if (!rec || rec.special !== 'ask-roast' || rec.roastStatus === 'answered') return;
     const defs = ['你觉得我会信？', '少骗我。', '哼。', '好吧好吧。', '就这一次？', '行吧，放过你。', '嗯，这还差不多。'];
     const reply = defs[Math.floor(Math.random() * defs.length)];
@@ -20230,6 +20253,12 @@ if (ckRefresh) {
         }, 900);
       } else {
         if (isIOS && inIosStandalone) { applyIosFs(false); return; }
+        // v3.6.x：display_override fullscreen 直启（已安装应用）时系统级全屏无法用
+        // API 退出——开关不可关闭，回弹到开启态，避免「关了还在全屏」的假状态
+        if (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches) {
+          fsToggle.checked = true;
+          return;
+        }
         // 无论原生全屏还是 CSS 兜底，关闭时都退出并清兜底类
         applyFsCss(false);
         exitFs();

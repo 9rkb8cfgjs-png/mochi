@@ -290,14 +290,14 @@
           '<div class="div-h-item" data-hi="' + i + '">' +
           '<div class="div-h-main"><div class="div-h-title">' + (h.mode === 'tarot' ? '塔罗' : '雷诺曼') + ' · ' + h.count + ' 张' +
           (h.question ? ' · 问：' + String(h.question).replace(/</g, '&lt;') : '') + '</div>' +
-          '<div class="div-h-sub">' + fmtDT(h.ts) + ' · ' + h.cards.map(c => c.name + (c.rev ? '(逆)' : '')).join('、') + '</div></div>' +
+          '<div class="div-h-sub">' + fmtDT(h.ts) + ' · ' + (Array.isArray(h.cards) ? h.cards.map(c => ((c && c.name) || '') + (c && c.rev ? '(逆)' : '')).join('、') : '') + '</div></div>' +
           '<button class="div-h-view" data-hi="' + i + '">查看</button>' +
           '<button class="div-h-del" data-hi="' + i + '">✕</button>' +
           '</div>').join('')
       : '';
     el.querySelectorAll('.div-h-view').forEach(b => b.addEventListener('click', () => {
       const h = histLoad()[parseInt(b.dataset.hi, 10)];
-      if (h) renderDrawResult(h.cards, h.mode, h.question, h.summary);
+      if (h && Array.isArray(h.cards)) renderDrawResult(h.cards, h.mode, h.question, h.summary);
     }));
     el.querySelectorAll('.div-h-del').forEach(b => b.addEventListener('click', () => {
       const list = histLoad();

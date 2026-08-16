@@ -28,7 +28,8 @@
   // 空数组，直接写会丢历史）。暂存待写，恢复完成后与 IDB 合并去重再写入。
   let histReady = false;
   let histPending = null;
-  function loadHistory() { try { return JSON.parse(store.get(HISTORY_KEY) || '[]'); } catch (e) { return []; } }
+  // v3.6.x：历史数据损坏（非数组）时返回空数组，避免 unshift/map 抛错中断
+  function loadHistory() { try { const v = JSON.parse(store.get(HISTORY_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
   function saveHistory(h) {
     if (!histReady) {
       try { histPending = Array.isArray(h) ? h.slice() : []; } catch (e) {}

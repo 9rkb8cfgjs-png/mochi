@@ -246,6 +246,12 @@
         }, 900);
       } else {
         if (isIOS && inIosStandalone) { applyIosFs(false); return; }
+        // v3.6.x：display_override fullscreen 直启（已安装应用）时系统级全屏无法用
+        // API 退出——开关不可关闭，回弹到开启态，避免「关了还在全屏」的假状态
+        if (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches) {
+          fsToggle.checked = true;
+          return;
+        }
         // 无论原生全屏还是 CSS 兜底，关闭时都退出并清兜底类
         applyFsCss(false);
         exitFs();

@@ -386,12 +386,15 @@
 .mem-add-cancel { border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.92); color:#666; }
 .mem-add-ok { border:none; background:var(--ink); color:#fff; }
 
-/* 收藏页分类 tab */
+/* 收藏页分类 tab —— v3.5.138：横向滚动（7 个 tab 在 393px 内 flex:1 均分会换行挤压） */
 .fav-tabs {
   display:flex; gap:8px; padding:4px 18px 12px; flex-shrink:0;
+  overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;
+  -webkit-overflow-scrolling:touch;
 }
+.fav-tabs::-webkit-scrollbar { display:none; }
 .fav-tab {
-  flex:1; padding:12px 10px; font-size:13px; font-weight:600;
+  flex:0 0 auto; white-space:nowrap; padding:12px 14px; font-size:13px; font-weight:600;
   border:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.92);
   color:#666; border-radius:12px; cursor:pointer; font-family:inherit;
   -webkit-tap-highlight-color:transparent;
@@ -1171,6 +1174,8 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
   display:flex; align-items:center; gap:12px;
   padding:10px 14px; background:rgba(255,255,255,.97);
   border-top:1px solid rgba(0,0,0,.08);
+  /* v3.5.138：Android 手势导航安全区（PWA 全屏时按钮不被手势条压住） */
+  padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px));
 }
 .sm-player-bar[hidden] { display:none; }
 .sm-pb-info { flex:1; min-width:0; }

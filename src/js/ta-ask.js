@@ -194,6 +194,14 @@
     }
     return -1;
   }
+  // 读取指定索引的聊天记录（异常返回 null）
+  function getCardAt(msgIdx) {
+    try {
+      const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
+      if (Array.isArray(msgs) && msgs[msgIdx]) return msgs[msgIdx];
+    } catch (e) {}
+    return null;
+  }
 
   // ---- 回答弹窗（点击聊天里的询问卡片触发） ----
   window.openAskReply = function (msgIdx) {
@@ -209,10 +217,15 @@
     window.openModal('回答TA的询问', '', (v) => {
       const answer = (v || '').trim();
       if (!answer) { toast('请输入回答'); return; }
-      const fixedIdx = locateCardIdx(msgIdx, 'ask-card', 'askStatus');
-      if (fixedIdx < 0) return;
+      // 提交时再校验：索引仍指向本卡片则直接用，错位则重定位（防连点重定位到别的卡片）
+      let rec = getCardAt(msgIdx);
+      if (!rec || rec.special !== 'ask-card') {
+        const fixedIdx = locateCardIdx(msgIdx, 'ask-card', 'askStatus');
+        if (fixedIdx < 0) return;
+        msgIdx = fixedIdx;
+      }
       if (window.chatAskReply) {
-        window.chatAskReply(fixedIdx, answer);
+        window.chatAskReply(msgIdx, answer);
         // 记入历史（保存全部，不截断），含 TA 的回复
         const d = taAskLoad();
         d.history.push({ q: question, a: answer, reply: '收到你的回答。', ts: Date.now() });
@@ -614,13 +627,13 @@ window.openTCPanel = openTCPanel;
   };
   // 提交选择
   function submitTC(msgIdx, optIdx) {
-    msgIdx = locateCardIdx(msgIdx, 'ask-choose', 'choiceStatus');
-    if (msgIdx < 0) return;
-    let rec = null;
-    try {
-      const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
-      if (Array.isArray(msgs) && msgs[msgIdx]) rec = msgs[msgIdx];
-    } catch (e) {}
+    let rec = getCardAt(msgIdx);
+    // 索引仍指向本类型卡片则直接用；错位则重定位（防连点重定位到别的卡片）
+    if (!rec || rec.special !== 'ask-choose') {
+      msgIdx = locateCardIdx(msgIdx, 'ask-choose', 'choiceStatus');
+      if (msgIdx < 0) return;
+      rec = getCardAt(msgIdx);
+    }
     if (!rec || rec.special !== 'ask-choose' || rec.choiceStatus === 'answered') return;
     const opts = rec.choiceOptions || [];
     const opt = opts[optIdx];
@@ -1072,13 +1085,12 @@ window.openTCPanel = openTCPanel;
     setTimeout(() => inp.focus(), 60);
   };
   function submitCurious(msgIdx, answer) {
-    msgIdx = locateCardIdx(msgIdx, 'ask-curious', 'curiousStatus');
-    if (msgIdx < 0) return;
-    let rec = null;
-    try {
-      const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
-      if (Array.isArray(msgs) && msgs[msgIdx]) rec = msgs[msgIdx];
-    } catch (e) {}
+    let rec = getCardAt(msgIdx);
+    if (!rec || rec.special !== 'ask-curious') {
+      msgIdx = locateCardIdx(msgIdx, 'ask-curious', 'curiousStatus');
+      if (msgIdx < 0) return;
+      rec = getCardAt(msgIdx);
+    }
     if (!rec || rec.special !== 'ask-curious' || rec.curiousStatus === 'answered') return;
     const replies = (rec.curiousReplies && rec.curiousReplies.length) ? rec.curiousReplies : TCU_FALLBACK.slice();
     const reply = replies[Math.floor(Math.random() * replies.length)];
@@ -1453,13 +1465,12 @@ window.openTCPanel = openTCPanel;
     setTimeout(() => inp.focus(), 60);
   };
   function submitRoast(msgIdx, answer) {
-    msgIdx = locateCardIdx(msgIdx, 'ask-roast', 'roastStatus');
-    if (msgIdx < 0) return;
-    let rec = null;
-    try {
-      const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
-      if (Array.isArray(msgs) && msgs[msgIdx]) rec = msgs[msgIdx];
-    } catch (e) {}
+    let rec = getCardAt(msgIdx);
+    if (!rec || rec.special !== 'ask-roast') {
+      msgIdx = locateCardIdx(msgIdx, 'ask-roast', 'roastStatus');
+      if (msgIdx < 0) return;
+      rec = getCardAt(msgIdx);
+    }
     if (!rec || rec.special !== 'ask-roast' || rec.roastStatus === 'answered') return;
     const defs = ['你觉得我会信？', '少骗我。', '哼。', '好吧好吧。', '就这一次？', '行吧，放过你。', '嗯，这还差不多。'];
     const reply = defs[Math.floor(Math.random() * defs.length)];

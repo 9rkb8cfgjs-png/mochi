@@ -579,6 +579,9 @@
       bar.querySelector('#mb-exit').addEventListener('click', exitBatch);
     }
     document.getElementById('music-batch-bar').hidden = false;
+    // v3.5.138：批量条盖住底部播放条（播放/暂停/切歌不可操作）——批量期间隐藏播放条
+    const pb = document.getElementById('sm-player-bar');
+    if (pb) pb.hidden = true;
     updateBatchCount();
   }
   function exitBatch() {
@@ -586,6 +589,9 @@
     batchSel.clear();
     const bar = document.getElementById('music-batch-bar');
     if (bar) bar.hidden = true;
+    // v3.5.138：退出批量恢复播放条（仅当有歌在播/有 currentId 时；无歌保持隐藏）
+    const pb = document.getElementById('sm-player-bar');
+    if (pb) pb.hidden = !(currentId && audio);
     renderLibrary();
   }
   function updateBatchCount() {
