@@ -153,16 +153,43 @@
         try {
           if (box.querySelector('span.mail-media-mark')) {
             let out = '';
+            let lastWasMedia = false; // 上一段是媒体标记 → 后续文字补空格，防止 base64 与文字粘连
             box.childNodes.forEach(function (n) {
-              if (n.nodeType === 3) { out += n.textContent; return; }
+              if (n.nodeType === 3) {
+                const t = n.textContent || '';
+                if (lastWasMedia && t && out && !out.endsWith(' ') && !out.endsWith('\n')) out += ' ';
+                out += t;
+                lastWasMedia = false;
+                return;
+              }
               if (n.nodeType === 1) {
-                if (n.classList && n.classList.contains('mail-media-mark')) out += (out ? ' ' : '') + n.textContent;
-                else if (n.tagName === 'IMG' && n.src && n.src.indexOf('data:image') === 0) {
-                  // v3.5.136：img 的标记 span 被用户退格删掉时，从 src 重建标记——
-                  // 否则该图片在保存时丢失（数据丢失风险）
-                  out += (out ? ' ' : '') + 'image:' + n.src;
+                if (n.classList && n.classList.contains('mail-media-mark')) {
+                  if (out && !out.endsWith(' ') && !out.endsWith('\n')) out += ' ';
+                  out += n.textContent;
+                  lastWasMedia = true;
+                  return;
                 }
-                else if (n.tagName === 'DIV' || n.tagName === 'BR') out += '\n';
+                if (n.tagName === 'IMG' && n.src && n.src.indexOf('data:image') === 0) {
+                  // v3.5.137：mailInsertInto 插入图片时 <img> 后面紧跟隐藏标记 span，
+                  // 完整标记文本已由 span 提供，这里跳过 img，避免同一张图被输出两遍
+                  // （安卓写信/回信插入表情包/图片后，信件里同一张图出现两次的 bug）
+                  let nx = n.nextSibling;
+                  let companion = false;
+                  while (nx && nx.nodeType === 3 && !String(nx.textContent || '').trim()) nx = nx.nextSibling;
+                  if (nx && nx.nodeType === 1 && nx.classList && nx.classList.contains('mail-media-mark')) companion = true;
+                  if (!companion) {
+                    // img 的标记 span 被用户退格删掉时，从 src 重建标记——
+                    // 否则该图片在保存时丢失（数据丢失风险）
+                    if (out && !out.endsWith(' ') && !out.endsWith('\n')) out += ' ';
+                    out += 'image:' + n.src;
+                    lastWasMedia = true;
+                  }
+                  return;
+                }
+                if (n.tagName === 'DIV' || n.tagName === 'BR') {
+                  out += '\n';
+                  lastWasMedia = false;
+                }
               }
             });
             return out;

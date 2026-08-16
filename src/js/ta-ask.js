@@ -178,9 +178,27 @@
   setTimeout(maybeTriggerTAAsk, 60000);
   setInterval(maybeTriggerTAAsk, 240000);
 
+  // v3.6.x：异步 IDB 合并（chat.js loadMsgs）可能让自动弹窗持有过期 msgIdx——
+  // 打开/作答前先校验索引指向的仍是同类卡片；已错位则从末尾回退找最近的
+  // 未作答同类卡片（自动触发场景卡片就是最新一条；点击卡片场景索引恒有效，不受影响）
+  function locateCardIdx(msgIdx, special, statusKey) {
+    let arr = [];
+    try { arr = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]')); } catch (e) {}
+    if (!Array.isArray(arr)) arr = [];
+    const rec = arr[msgIdx];
+    if (rec && rec.special === special) return msgIdx;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const r = arr[i];
+      if (r && r.special === special && !r[statusKey]) return i;
+    }
+    return -1;
+  }
+
   // ---- 回答弹窗（点击聊天里的询问卡片触发） ----
   window.openAskReply = function (msgIdx) {
     if (!window.openModal) return;
+    msgIdx = locateCardIdx(msgIdx, 'ask-card', 'askStatus');
+    if (msgIdx < 0) return;
     // 读聊天记录拿问题
     let question = '';
     try {
@@ -569,6 +587,8 @@ window.openTCPanel = openTCPanel;
 
   // 打开选择题（读聊天记录里的卡片）
   window.openTC = function (msgIdx) {
+    msgIdx = locateCardIdx(msgIdx, 'ask-choose', 'choiceStatus');
+    if (msgIdx < 0) return;
     let rec = null;
     try {
       const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
@@ -591,6 +611,8 @@ window.openTCPanel = openTCPanel;
   };
   // 提交选择
   function submitTC(msgIdx, optIdx) {
+    msgIdx = locateCardIdx(msgIdx, 'ask-choose', 'choiceStatus');
+    if (msgIdx < 0) return;
     let rec = null;
     try {
       const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
