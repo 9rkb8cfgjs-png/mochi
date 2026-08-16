@@ -8,11 +8,21 @@ html,body { overflow-x:hidden;
   font-family:'PingFang SC','Microsoft YaHei',-apple-system,sans-serif;
   background:radial-gradient(80% 60% at 50% 0%, #f6f6f6 0%, transparent 60%), #e9e9e9;
   display:flex; align-items:center; justify-content:center;
-  padding:24px; color:var(--ink);
+  color:var(--ink);
   /* v3.5.105：iOS 横竖屏切换不放大字号；安卓下拉不整页回弹 */
   -webkit-text-size-adjust:100%; text-size-adjust:100%;
   overscroll-behavior:none;
 }
+/* v3.5.139：body 固定视口高度、留白放自身（padding 内含）——
+   原来 html/body 共享 padding:24px 且 body 高度由内容撑开，桌面矮视口下
+   .phone 会超出视口，形成页面级灰色滚动条（html 溢出）。固定后
+   .phone 的 min(844px, calc(100dvh - 48px)) 精确填满 body 内部，永不溢出。
+   100vh 兜底老浏览器（dvh 需 Chrome 108+）；手机端由下方媒体查询覆盖。
+   box-sizing/margin 显式声明：不依赖全局 * 重置（个别环境 * 规则不生效时，
+   缺声明会退回浏览器默认的 content-box + body margin 8px，padding 外扩、
+   margin 撑出页面上下 16px 灰色滚动条） */
+body { height:100vh; height:100dvh; padding:24px; box-sizing:border-box; margin:0; }
+html { margin:0; padding:0; }
 
 /* ===== 开屏加载动画 ===== */
 .splash {
@@ -82,7 +92,18 @@ html,body { overflow-x:hidden;
 
 /* 手机屏幕 */
 .phone {
-  width:390px; height:844px; max-width:100vw; flex-shrink:0; position:relative;
+  /* v3.5.139：box-sizing 显式声明——不依赖全局 * 规则（个别渲染引擎对 * 的
+     box-sizing 支持异常时，缺声明会退回 content-box，padding 外扩把 .phone
+     撑得比设定高度高，底部导航栏又被推出屏幕/页面出现灰色滚动条） */
+  box-sizing:border-box;
+  width:390px; max-width:100vw; flex-shrink:0; position:relative;
+  /* v3.5.139：桌面矮视口（浏览器全屏 / 小窗口）时高度自适应收缩——
+     原来固定 844px，视口不足时底部导航栏被 overflow:hidden 推出屏幕截断。
+     48px = body 上下 padding 24×2，保证矮视口下 .phone 完整落在视口内。
+     dvh 后跟 vh 兜底：老浏览器（<Chrome 108）不支持 dvh 时退回 vh，
+     否则 calc(100dvh-48px) 无效、高度回退内容撑开（底部又截断） */
+  height:min(844px, calc(100dvh - 48px));
+  height:min(844px, calc(100vh - 48px));
   border-radius:44px; padding:16px 18px 18px;
   display:flex; flex-direction:column; overflow:hidden;
   box-shadow:0 30px 70px rgba(0,0,0,.1), inset 0 0 0 1px #e8e8e8;
@@ -99,6 +120,9 @@ html,body { overflow-x:hidden;
 @media (max-width: 900px) {
   html, body { padding:0; min-height:100vh; min-height:100svh; min-height:100dvh; }
   .phone {
+    /* v3.5.139：显式声明——padding(0 18px 18px) 必须算进 100dvh 内，
+       否则实际高度超视口、底部导航栏/组件被截 */
+    box-sizing:border-box;
     width:100vw; height:100vh; height:100svh; height:100dvh;
     border-radius:0; box-shadow:none;
     padding:0 18px 18px;
@@ -107,6 +131,23 @@ html,body { overflow-x:hidden;
     /* v3.5.127：max 兜底——真全屏挖孔屏 env() 返回 0 时保留 14px 最小留白 */
     padding-top:max(calc(14px + env(safe-area-inset-top, 0px)), 14px);
     padding-bottom:10px;
+  }
+}
+
+/* v3.5.139：真全屏（Fullscreen API / PWA display_override 直启）时 .phone 铺满整个窗口——
+   桌面 F11 等全屏由 fullscreen.js 加 .fs-active 类触发；PWA 安装直启走 display-mode 媒体查询。
+   作用：壁纸（.phone 背景图）随之盖满全屏（电脑上包括模拟器两侧灰底），
+   且 .phone 占满 100dvh 后底部导航栏/桌面组件必然完整显示，不再被固定高度推出屏幕。 */
+.fs-active .phone, .fs-css-active .phone {
+  width:100vw; height:100vh; height:100svh; height:100dvh;
+  max-width:none; border-radius:0; box-shadow:none;
+  padding:0 18px 18px;
+}
+@media (display-mode: fullscreen) {
+  .phone {
+    width:100vw; height:100vh; height:100svh; height:100dvh;
+    max-width:none; border-radius:0; box-shadow:none;
+    padding:0 18px 18px;
   }
 }
 
@@ -183,6 +224,14 @@ html,body { overflow-x:hidden;
 @media (max-width: 900px) {
   .ios-fs-active .phone { padding-top: env(safe-area-inset-top, 0px); }
   .ios-fs-active .phone .statusbar { display: none; }
+}
+
+/* v3.6.x：Via 等浏览器「网页全屏」强制转横屏时的 CSS 兜底全屏
+   （fs-css-active 类，由 fullscreen.js 控制）——原生全屏被浏览器转成横屏时
+   自动退出并改走此模式：保持竖屏布局 + 顶部安全区，观感与原生全屏一致。
+   仅真实手机窄屏生效，桌面模拟器外壳不受影响。 */
+@media (max-width: 900px) {
+  .fs-css-active .phone { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
 }
 
 /* v3.6.x：输入法弹出适配已改为「最小干预」——mobile-adapt.js 不再锁定 .phone 高度、

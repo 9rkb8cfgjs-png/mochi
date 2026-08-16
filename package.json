@@ -1,0 +1,8 @@
+{
+  "name": "mochi",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs",
+    "verify": "node tools/verify.mjs"
+  }
+}

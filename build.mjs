@@ -15,6 +15,8 @@ const pad = (n) => (n < 10 ? '0' + n : '' + n);
 const buildInfo = '部署于 ' + buildTime.getFullYear() + '-' + pad(buildTime.getMonth() + 1) + '-' + pad(buildTime.getDate()) +
   ' ' + pad(buildTime.getHours()) + ':' + pad(buildTime.getMinutes());
 const buildStamp = buildTime.getTime().toString(36); // sw 缓存名版本号（每次构建必变）
+// 应用版本号（设置页底部与开屏共用，升级版本时只改这一处）
+const APP_VERSION = 'v3.5.119';
 
 // 按顺序拼接样式 / 脚本（顺序即生效顺序）
 const cssFiles = ['base.css', 'home.css', 'chat-main.css', 'chat-pages.css', 'setting.css', 'tabbar.css'];
@@ -33,6 +35,8 @@ html = html.replace('/*__STYLES__*/', styles);
 html = html.replace('/*__SCRIPTS__*/', scripts);
 // 注入部署时间（开屏显示）
 html = html.replace('__BUILD_INFO__', buildInfo);
+// 版本号两处（开屏 + 设置页底部）都要替换：replace 用字符串只替换第一处，改用 split/join 全局替换
+html = html.split('__APP_VERSION__').join(APP_VERSION);
 
 const out = join(root, 'index.html');
 writeFileSync(out, html);

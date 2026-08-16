@@ -299,6 +299,25 @@
   const bgVal = document.getElementById('bg-val');
   const bgRemove = document.getElementById('row-bg-remove');
   const bgHome = document.getElementById('page-phone');
+  // v3.5.139：壁纸同时铺到 body——电脑桌面下 .phone 只是 390px 模拟器框，
+  // 只设 .phone 的话两侧灰底还是默认背景，视觉上"壁纸没铺满页面"。
+  // body 背景铺满整个窗口（桌面含两侧灰底；手机端 body 即全屏，与 .phone 同图无缝）。
+  const applyBodyBg = (data) => {
+    try {
+      const b = document.body;
+      if (data) {
+        b.style.backgroundImage = 'url("' + data + '")';
+        b.style.backgroundSize = 'cover';
+        b.style.backgroundPosition = 'center';
+        b.style.backgroundAttachment = 'scroll';
+      } else {
+        b.style.backgroundImage = '';
+        b.style.backgroundSize = '';
+        b.style.backgroundPosition = '';
+        b.style.backgroundAttachment = '';
+      }
+    } catch (e) {}
+  };
   const applyPhoneBg = (data) => {
     if (!phoneEl) return;
     // 壁纸铺满整个手机屏幕（含状态栏/导航条区域），且只在桌面显示
@@ -306,6 +325,7 @@
     phoneEl.style.backgroundSize = 'cover';
     phoneEl.style.backgroundPosition = 'center';
     phoneEl.style.backgroundAttachment = 'scroll';
+    applyBodyBg(data);
     if (bgHome) {
       bgHome.classList.add('has-bg');
       bgHome.style.backgroundImage = 'none';
@@ -318,6 +338,7 @@
   };
   const clearPhoneBg = () => {
     if (phoneEl) phoneEl.style.backgroundImage = '';
+    applyBodyBg(null);
     if (bgHome) {
       bgHome.classList.remove('has-bg');
       bgHome.style.backgroundImage = '';
@@ -367,8 +388,10 @@
       phoneEl.style.backgroundSize = 'cover';
       phoneEl.style.backgroundPosition = 'center';
       phoneEl.style.backgroundAttachment = 'scroll';
+      applyBodyBg(bgData());
     } else {
       phoneEl.style.backgroundImage = '';
+      applyBodyBg(null);
     }
   };
   // 页面切换时同步壁纸显示

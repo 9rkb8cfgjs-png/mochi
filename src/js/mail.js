@@ -146,7 +146,8 @@
   function submitReply() {
     const l = viewLetter;
     if (!l) return;
-    const val = stripMediaTags(document.getElementById('mail-reply-input').value.trim());
+    // v3.6.x：保留 sticker:/image: 标记前缀（渲染区分大小图），不再剥掉
+    const val = document.getElementById('mail-reply-input').value.trim();
     if (!val) { toast('回信内容不能为空'); return; }
     const name = partnerName();
     const list = load();
@@ -219,14 +220,14 @@
       }));
     }
   }
-  // 存储前去掉媒体标记前缀（sticker:/image:）——标记只在渲染时用于区分大小图
-  function stripMediaTags(s) {
-    return String(s || '').replace(/(?:sticker|image):(data:image\/)/g, '$1');
-  }
+  // 存储时保留媒体标记前缀（sticker:/image:）——渲染时靠前缀区分表情包小图/图片大图
+  // v3.6.x：旧实现提交时剥掉前缀，renderBody 匹配不到 sticker: 导致表情包按大图显示；
+  // 现在保留前缀存储；历史无前缀数据仍按大图显示不变
   // 寄信
   function sendLetter() {
     const input = document.getElementById('mail-input');
-    const content = stripMediaTags(input ? input.value.trim() : '');
+    // v3.6.x：保留 sticker:/image: 标记前缀（渲染区分大小图），不再剥掉
+    const content = input ? input.value.trim() : '';
     if (!content) { toast('信件内容不能为空'); return; }
     const name = partnerName();
     const title = TITLES[Math.floor(Math.random() * TITLES.length)];
@@ -447,9 +448,15 @@
         span.style.display = 'none';
         span.textContent = s;
         span.contentEditable = 'false';
-        range.insertNode(img);
-        range.insertNode(span);
-        range.insertNode(document.createTextNode(' '));
+        // v3.6.x：用 DocumentFragment 一次性插入保证 DOM 顺序为 img → span → 空格。
+        // 直接连续 range.insertNode 每次都插到 range 起点且起点不移动，结果是逆序
+        // （span 跑到 img 前面）；mobile-adapt 的 value getter 靠「img 后紧跟标记 span」
+        // 跳过 img 去重，逆序时检测失败 → 同一张图被输出两遍（信件里表情包变两个）。
+        const frag = document.createDocumentFragment();
+        frag.appendChild(img);
+        frag.appendChild(span);
+        frag.appendChild(document.createTextNode(' '));
+        range.insertNode(frag);
         // 光标移到插入内容之后
         range.setStartAfter(span);
         range.collapse(true);
