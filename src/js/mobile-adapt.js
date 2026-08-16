@@ -177,11 +177,15 @@
                   // v3.5.137：mailInsertInto 插入图片时 <img> 后面紧跟隐藏标记 span，
                   // 完整标记文本已由 span 提供，这里跳过 img，避免同一张图被输出两遍
                   // （安卓写信/回信插入表情包/图片后，信件里同一张图出现两次的 bug）
-                  let nx = n.nextSibling;
-                  let companion = false;
-                  while (nx && nx.nodeType === 3 && !String(nx.textContent || '').trim()) nx = nx.nextSibling;
-                  if (nx && nx.nodeType === 1 && nx.classList && nx.classList.contains('mail-media-mark')) companion = true;
-                  if (!companion) {
+                  // v3.6.x：兼容「用户在图片后点光标输入文字」（文本被插到 img 与
+                  // span 之间，紧邻判断失效）——改为整框查找包含该 src 的隐藏标记
+                  let covered = false;
+                  try {
+                    box.querySelectorAll('span.mail-media-mark').forEach(function (sp) {
+                      if (!covered && sp.textContent && sp.textContent.indexOf(n.src) >= 0) covered = true;
+                    });
+                  } catch (e) {}
+                  if (!covered) {
                     // img 的标记 span 被用户退格删掉时，从 src 重建标记——
                     // 否则该图片在保存时丢失（数据丢失风险）
                     if (out && !out.endsWith(' ') && !out.endsWith('\n')) out += ' ';
@@ -192,6 +196,16 @@
                 }
                 if (n.tagName === 'DIV' || n.tagName === 'BR') {
                   out += '\n';
+                  lastWasMedia = false;
+                  return;
+                }
+                // v3.6.x：其它内联元素（粘贴富文本产生的 <span>/<b>/<i> 等）——
+                // 补充其文字，否则插入过图片后粘贴带格式文本，这些文字在保存时
+                // 会静默丢失（信寄出去正文缺字）
+                const inner = n.textContent || '';
+                if (inner) {
+                  if (out && !out.endsWith(' ') && !out.endsWith('\n')) out += ' ';
+                  out += inner;
                   lastWasMedia = false;
                 }
               }
@@ -304,10 +318,20 @@
   // iOS Safari 键盘是 overlay 模式——弹出时【不收缩布局视口】，.phone 的 100dvh
   // 不会重算，输入栏会被键盘盖住，看起来像"键盘没弹/无法输入"（安卓 Chrome/Edge
   // 靠 viewport 的 interactive-widget=resizes-content 自动收缩，无需此处理）。
-  // 这里仅对 iOS 启用 visualViewport 锁高：键盘弹出时把 .phone 固定到可视高度，
+  // 这里仅对 iOS 启用 visualViewport 锁高：键盘弹出时把 .phone 收缩到可视高度，
   // 输入栏天然停靠键盘上方；收起时恢复。安卓不受影响（isIOS 分支）。
   // .chat-body 的 translateZ(0)（防安卓白屏）在 iOS 上也会引发滚动异常——
   // 一并在此用内联 transform:none 豁免（JS 判断 iOS 比 CSS @supports 可靠）。
+  // v3.6.x：不用 position:fixed 锁高——iOS Safari 已知问题：contenteditable
+  // （聊天输入框就是模板原生 contenteditable div）位于 fixed 祖先内、键盘弹起时
+  // 无法输入（caret 与 visualViewport 冲突，表现：点了输入框、键盘弹出、打不进字）。
+  // 改用 flex 顶对齐 + 高度收缩：body 是 flex 容器（align-items:center），
+  // 给 .phone 设 align-self:flex-start 顶对齐后高度=可视高度，底部恰好停在键盘
+  // 上沿，效果与 fixed 一致；但 .phone 保持普通流定位（水平居中由 body 的
+  // justify-content:center 负责，宽屏手机内容限宽也无需额外 hack），
+  // contenteditable 正常输入。高度写入只在值变化时执行——键盘动画期间
+  // visualViewport 高频 resize 事件不再每次触发整页 reflow（几千条消息时
+  // 反复重排 = 打字卡顿）。
   if (isIOS) {
     try {
       var _phone = document.querySelector('.phone');
@@ -325,28 +349,18 @@
         var _open = _focused && _h < _noKbH - 60;
         if (_open && !_kbActive) {
           _kbActive = true;
-          _phone.style.position = 'fixed';
-          _phone.style.top = '0';
-          // v3.5.137：保持内容限宽（max-width:480px 居中）——left:0 right:0 会撑成
-          // 全视口宽（Moto G100 等 800px 视口下内容区被拉宽）
-          _phone.style.left = '50%';
-          _phone.style.right = 'auto';
-          _phone.style.transform = 'translateX(-50%)';
-          _phone.style.width = 'min(480px, 100vw)';
-          _phone.style.margin = '0';
+          // 顶对齐（替代 position:fixed）——避免 iOS contenteditable 在 fixed
+          // 容器内无法输入的已知问题；水平居中交给 body flex 原有规则
+          _phone.style.alignSelf = 'flex-start';
         }
         if (_kbActive) {
-          _phone.style.height = _h + 'px';
+          var _hs = _h + 'px';
+          if (_phone.style.height !== _hs) _phone.style.height = _hs; // 值不变不重排
         }
         if (!_open && _kbActive) {
           _kbActive = false;
           _phone.style.height = '';
-          _phone.style.position = '';
-          _phone.style.left = '';
-          _phone.style.right = '';
-          _phone.style.transform = '';
-          _phone.style.width = '';
-          _phone.style.margin = '';
+          _phone.style.alignSelf = '';
         }
       }
       if (_vv) {

@@ -61,13 +61,21 @@
     root.style.setProperty('--msg-av-radius', avShape === 'square' ? '10px' : '50%');
     set('cs-av-shape-val', avShape === 'square' ? '方形' : '圆形');
     // 聊天壁纸：铺满整个聊天页
+    // v3.6.x：值没变时不重写 style——applySettings 在每次进入聊天页时调用，
+    // 反复重设 background-image（大图 dataURL）会让浏览器重新解码、触发重绘
     const bg = store.get('cs-bg');
     if (bg && chatPage) {
-      chatPage.style.backgroundImage = 'url("' + bg + '")';
-      chatPage.style.backgroundSize = 'cover';
-      chatPage.style.backgroundPosition = 'center';
-    } else if (chatPage) {
+      if (chatPage.style.backgroundImage !== 'url("' + bg + '")') {
+        chatPage.style.backgroundImage = 'url("' + bg + '")';
+        chatPage.style.backgroundSize = 'cover';
+        chatPage.style.backgroundPosition = 'center';
+        // v3.6.x：fixed 让背景独立图层，滚动消息时不再逐帧重绘整张大图
+        // （聊天页 overflow:hidden 不滚动，只有 .chat-body 内部滚动，安全）
+        chatPage.style.backgroundAttachment = 'fixed';
+      }
+    } else if (chatPage && (chatPage.style.backgroundImage || chatPage.style.backgroundAttachment)) {
       chatPage.style.backgroundImage = '';
+      chatPage.style.backgroundAttachment = '';
     }
     set('cs-font-size-val', fs);
     const pn = BUBBLE_SIZES.find(p => p.value === pad);

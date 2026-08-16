@@ -340,7 +340,14 @@
 .mem-add:active { background:rgba(255,255,255,.6); }
 
 /* 添加纪念日 / 倒数日：日历选择弹层（v3.5.29） */
-.mem-add-panel { width:min(300px, 86vw); }
+/* v3.6.x：手机键盘弹出加固——面板继承 .mg-panel 的 max-height:70vh 且无 overflow，
+   真机点击名称输入框弹出输入法后布局视口被键盘压缩，70vh 骤减把面板压矮，
+   内容（日历/按钮/输入框占位文字）溢出圆角边框「飞出」面板；
+   改 88vh + 面板内滚动，任何视口高度下内容都在面板框内 */
+#mem-add-mask .mem-add-panel {
+  width:min(300px, 86vw);
+  max-height:88vh; overflow-y:auto; overscroll-behavior:contain;
+}
 .mem-add-input {
   width:100%; box-sizing:border-box; padding:11px 14px; border-radius:12px;
   border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.92);

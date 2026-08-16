@@ -159,21 +159,11 @@
       if (Math.random() * 100 < cfg.replyProb) {
         const replyMsg = taLetterContent(cfg);
         const delayMs = (cfg.replyMin + Math.random() * Math.max(1, cfg.replyMax - cfg.replyMin)) * 60000;
-        const timer = setTimeout(() => {
-          const l2 = load();
-          const i2 = l2.findIndex(x => x.id === l.id);
-          if (i2 >= 0) {
-            l2[i2].partnerReply = { content: replyMsg, tm: Date.now() };
-            save(l2);
-            if (window.chatAddSystem) window.chatAddSystem(name + ' 给你回了信');
-            // v3.5.107：TA 回信且不在信箱页 → 前台桌面弹窗（点击进信箱）
-            if (window.showDeskPopup && !mailPageVisible()) {
-              window.showDeskPopup({ name: '信箱', text: '给你回了一封信：' + replyMsg, onClick: openMailPage });
-            }
-          }
-        }, delayMs);
-        // v3.6.x：不再把定时器 id 写进持久化的信件对象（_replyTimer 只在本会话有效，
-        // 序列化后会残留垃圾字段，且导出/导入备份会带上无意义的数字）
+        // v3.6.x：TA 回信计划持久化——不再用内存 setTimeout（页面刷新/重开即丢失，
+        // 表现为「回了信却永远收不到回信」）；写入计划，由 checkPendingReply 到期落地
+        const pending = replyPendingLoad();
+        pending.push({ id: l.id, due: Date.now() + delayMs, content: replyMsg });
+        replyPendingSave(pending);
       }
       save(list);
       viewLetter = null;
@@ -183,6 +173,44 @@
       if (window.chatAddSystem) window.chatAddSystem('你给 ' + name + ' 回了一封信');
       toast('回信已寄出');
     }
+  }
+  // ===== TA 回信计划（持久化）：回信命中概率后，TA 的回信写入本地计划 =====
+  // 到期由 checkPendingReply 落地为 partnerReply；刷新/重开页面不丢（旧逻辑用内存
+  // setTimeout，刷新即丢失，回信永远收不到）。
+  const REPLY_PENDING_KEY = 'mail-reply-pending';
+  function replyPendingLoad() {
+    try { const v = JSON.parse(store.get(REPLY_PENDING_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+  }
+  function replyPendingSave(arr) { try { store.set(REPLY_PENDING_KEY, JSON.stringify(arr)); } catch (e) {} }
+  // 检查到期回信计划并落地（启动时 + 每分钟 tick 调用）
+  function checkPendingReply() {
+    try {
+      const now = Date.now();
+      const pending = replyPendingLoad();
+      if (!pending.length) return;
+      const name = partnerName();
+      const rest = [];
+      let changed = false;
+      pending.forEach(p => {
+        if (!p || !p.id) { changed = true; return; }
+        const list = load();
+        const idx = list.findIndex(x => x.id === p.id);
+        if (idx < 0) { changed = true; return; }          // 信件已不存在 → 丢弃计划
+        if (list[idx].partnerReply) { changed = true; return; } // 已有 TA 回信 → 丢弃计划
+        if (p.due > now) { rest.push(p); return; }        // 未到期 → 保留
+        // 到期：落地 TA 回信
+        list[idx].partnerReply = { content: p.content, tm: now };
+        save(list);
+        if (window.chatAddSystem) window.chatAddSystem(name + ' 给你回了信');
+        // v3.5.107：TA 回信且不在信箱页 → 前台桌面弹窗（点击进信箱）
+        if (window.showDeskPopup && !mailPageVisible()) {
+          window.showDeskPopup({ name: '信箱', text: '给你回了一封信：' + p.content, onClick: openMailPage });
+        }
+        changed = true;
+      });
+      if (changed) replyPendingSave(rest);
+      updateBadge();
+    } catch (e) {}
   }
   // 渲染列表
   function render() {
@@ -367,8 +395,9 @@
     } catch (e) {}
   }
   setTimeout(() => {
-    setInterval(maybeIncomingLetter, 60000);
+    setInterval(() => { maybeIncomingLetter(); checkPendingReply(); }, 60000);
     maybeIncomingLetter();
+    checkPendingReply(); // v3.6.x：启动立即补上「刷新期间已到期」的 TA 回信
   }, (20 + Math.random() * 40) * 1000);
 
   // ================= 入口与交互 =================

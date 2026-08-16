@@ -804,6 +804,10 @@ input.ce-ghost, textarea.ce-ghost {
   border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.12);
   cursor:pointer; animation:deskMsgIn .25s ease;
   box-sizing:border-box;
+  /* v3.5.134：水平手势交给 JS（右滑关闭），垂直滚动仍由浏览器处理——
+     Chrome Android 上无此声明时浏览器会接管横滑判定滚动方向，pointermove
+     被抢占/pointercancel，表现为「右滑关闭非常不灵敏」 */
+  touch-action:pan-y;
 }
 @keyframes deskMsgIn { from{opacity:0; transform:translateX(-50%) translateY(-8px);} to{opacity:1; transform:translateX(-50%) translateY(0);} }
 .desk-msg-av { width:38px; height:38px; border-radius:50%; overflow:hidden; flex-shrink:0; background:#f1f1f1; display:flex; align-items:center; justify-content:center; }
@@ -855,7 +859,7 @@ input.ce-ghost, textarea.ce-ghost {
 .ch-av svg { width:16px; height:16px; }
 .ch-av img { width:100%; height:100%; object-fit:cover; display:block; border-radius:var(--msg-av-radius, 50%); }
 /* 顶部昵称：点击「让对方继续说」 */
-#chat-partner-name { cursor:pointer; }
+#chat-partner-name { cursor:pointer; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
 #chat-partner-name:active { opacity:.6; }
 
 .chat-body {
@@ -1628,6 +1632,18 @@ input.ce-ghost, textarea.ce-ghost {
 /* 系统消息（来电/通话）内联矢量图标 */
 .msg-poke svg, .msg-center-card svg { width:15px; height:15px; vertical-align:-2px; margin-right:3px; color:inherit; }
 
+/* v3.6.x：手机端聊天壁纸独立图层——聊天页本身不滚动（overflow:hidden），
+   滚动发生在 .chat-body，背景用 fixed 固定后消息滚动时不再逐帧重绘整张大图
+   （dataURL 壁纸在低端机/iPhone 上是滚动卡顿源之一）。
+   JS 侧 applySettings 已同步设置 background-attachment，这里 CSS 兜底保证生效 */
+@media (max-width: 480px) {
+  #page-chat {
+    background-attachment: fixed;
+    -webkit-background-size: cover;
+    background-size: cover;
+  }
+}
+
 /* ===== 聊天页面样式（字卡库 / 管理面板 / 日历 / 占卜 / 查岗 / 统计等） ===== */
 /* ===== 聊天字卡库列表页 ===== */
 .chat-title { font-size:22px; font-weight:700; padding:4px 2px 8px; letter-spacing:1px; }
@@ -1970,7 +1986,14 @@ input.ce-ghost, textarea.ce-ghost {
 .mem-add:active { background:rgba(255,255,255,.6); }
 
 /* 添加纪念日 / 倒数日：日历选择弹层（v3.5.29） */
-.mem-add-panel { width:min(300px, 86vw); }
+/* v3.6.x：手机键盘弹出加固——面板继承 .mg-panel 的 max-height:70vh 且无 overflow，
+   真机点击名称输入框弹出输入法后布局视口被键盘压缩，70vh 骤减把面板压矮，
+   内容（日历/按钮/输入框占位文字）溢出圆角边框「飞出」面板；
+   改 88vh + 面板内滚动，任何视口高度下内容都在面板框内 */
+#mem-add-mask .mem-add-panel {
+  width:min(300px, 86vw);
+  max-height:88vh; overflow-y:auto; overscroll-behavior:contain;
+}
 .mem-add-input {
   width:100%; box-sizing:border-box; padding:11px 14px; border-radius:12px;
   border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.92);
@@ -3242,7 +3265,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.5.139 · 部署于 2026-08-16 15:40</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.5.139 · 部署于 2026-08-16 16:41</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3926,6 +3949,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
           <div class="lic-li">联系人可随机收藏我发送的消息；我也可以收藏联系方发送的消息</div>
           <div class="lic-li">主动发送：TA 会主动找你，可调概率、间隔与免打扰</div>
           <div class="lic-li">聊天里点击顶部栏联系人的头像可打开【查岗 TA 的日常】页面</div>
+          <div class="lic-li">聊天页面点击顶部栏联系人的昵称，可以让对方立即发送消息</div>
           <div class="lic-li">可搜索聊天记录并跳转到对应位置</div>
         </div>
         <div class="cal-card glass">
@@ -6262,7 +6286,9 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
     cancelBtn.addEventListener('click', close);
     mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { fire(); close(); }
+      // v3.6.x：与 OK 按钮一致用 try/finally——回调抛异常（如存储配额满）时也必须
+      // 关闭弹窗，否则残留卡死、后续再点 OK 每次都抛
+      if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { try { fire(); } finally { close(); } }
     });
   })();
 
@@ -7185,6 +7211,10 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
 
   // ---- 消息存储 ----
   let msgs = [];
+  // v3.6.x：本会话内被编辑/撤回/局部撤回过的消息索引——loadMsgs 用 IndexedDB 快照
+  // 合并时，若命中索引（且与 IDB 条数对齐），以内存版本为准，防止防抖窗口内
+  // 的编辑/撤回被旧 IDB 快照回滚（索引在消息只增不改的模型下稳定）
+  const sessionChangedIdx = new Set();
   // v3.5.118：聊天记录权威加载防护——修复「导入后聊天记录丢失」的启动竞态：
   // 导入时聊天记录被挪进 IndexedDB（localStorage 无此键）；页面加载瞬间
   // 查岗/日常等模块会立即写入一条新消息（p2-features.doCheckin），此时 IDB
@@ -7195,6 +7225,10 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
   let pendingLocal = null; // 权威就绪前暂存的内存消息（绝不落盘，防止污染读取/覆盖 IDB）
   // v3.5.127：防抖——TA 连发多条（间隔 1-3s）时把多次全量序列化合并成一次
   //（历史上千条带图消息时每次 stringify 是几十 MB，逐条写会明显卡顿）
+  // v3.6.x：防抖回调里只写 localStorage——IndexedDB 双写由 store.set 内部统一执行
+  //（idb.js 的 set 总会调 idbSet），这里再写一次是同键全量重复写入
+  //（几十 MB 结构化克隆，低端机/iPhone 卡顿源头之一）；权威落盘仍有 store.set 的
+  // IDB 双写 + saveMsgsNow 显式路径保证
   let saveTimer = null;
   function saveMsgs() {
     const data = JSON.stringify(msgs);
@@ -7292,6 +7326,16 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
             // 聊天记录只增不改（作答只是给旧记录打状态），按位置对齐后，
             // 内存中已作答的记录以内存版本为准，防止状态被回滚。
             const curArr = pendingLocal || msgs || [];
+            // v3.6.x：本会话编辑/撤回过的消息，在「与 IDB 条数对齐」（同一批消息）
+            // 时以内存版本为准——否则防抖窗口内 loadMsgs 用旧 IDB 快照把这些变更
+            // 回滚，随后任意一次落盘就把「已编辑/已撤回」固化回旧内容（编辑/撤回失效）
+            if (merged.length === curArr.length) {
+              curArr.forEach((m, i) => {
+                if (!m || i >= merged.length) return;
+                if (sessionChangedIdx.has(i)) merged[i] = m;
+              });
+            }
+            // 已作答卡片保护（原有逻辑，条数不一致时也生效）
             curArr.forEach((m, i) => {
               if (!m || i >= merged.length) return;
               if (!answeredRec(m) || answeredRec(merged[i])) return;
@@ -7299,14 +7343,22 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
             });
             const changed = localNew.length > 0 || merged.length !== msgs.length;
             msgs = merged;
+            // 条数不一致（IDB 快照与内存不是同一批消息）→ 索引已失效，清空会话改动标记
+            if (merged.length !== curArr.length) sessionChangedIdx.clear();
             migrateLegacyMediaMsgs();
             pendingLocal = null;
             chatDbReady = true;
             // v3.5.127：无变化（localNew 空且长度相同）时跳过重复写盘 + 全量重渲染
+            // v3.6.x：写回只在 IDB 合并结果比 localStorage 快照新时执行——否则每次
+            // loadMsgs 都全量重写 localStorage（几十 MB 序列化）；重渲染只在聊天页
+            // 可见且贴近底部时执行（用户翻旧消息时不打断阅读）
             if (changed) {
-              store.set('chat-msgs', JSON.stringify(msgs));
-              // 聊天页当前可见 → 重新渲染，让恢复出的历史立即显示
-              if (chatVisible()) {
+              const mergedJson = JSON.stringify(msgs);
+              if ((store.get('chat-msgs') || '') !== mergedJson) {
+                store.set('chat-msgs', mergedJson);
+              }
+              // 聊天页当前可见且贴近底部 → 重新渲染，让恢复出的历史立即显示
+              if (chatVisible() && chatNearBottom()) {
                 body.innerHTML = '';
                 batchRendering = true;
                 msgs.forEach((rec, i) => {
@@ -7370,10 +7422,12 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
   fillAvatar('chat-partner-av', 'avatar-partner');
   // v3.5.113：IndexedDB 回填完成后（mochi-restore-done）轻量重绘——
   // 导入/配额异常恢复后聊天记录已在内存，聊天页可见时重新渲染一遍
+  // v3.6.x：加贴底判断——数据恢复期间用户可能已在翻旧消息，全量重渲染
+  // 会把滚动位置重置到底部（之前每条恢复消息也强制滚动到底）
   try {
     document.addEventListener('mochi-restore-done', function () {
       try {
-        if (chatVisible() && body && msgs.length) {
+        if (chatVisible() && chatNearBottom() && body && msgs.length) {
           body.innerHTML = '';
           batchRendering = true;
           msgs.forEach(function (rec, i) {
@@ -7409,6 +7463,20 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
   function scrollChatBottom() {
     const cb = document.getElementById('chat-body');
     if (cb) cb.scrollTop = cb.scrollHeight;
+  }
+  // v3.6.x：消息区是否「贴近底部」（最后一条可见）。追加消息自动滚动只在贴底时执行，
+  // 用户正在翻旧消息时不打断阅读位置
+  function chatNearBottom() {
+    const cb = document.getElementById('chat-body');
+    if (!cb) return true;
+    return cb.scrollHeight - cb.scrollTop - cb.clientHeight < 120;
+  }
+  // v3.6.x：追加消息后滚动——批量渲染（进入聊天/恢复历史）或聊天页未打开时跳过；
+  // 原实现 renderMsg 每条消息都执行 scrollTop=scrollHeight（同步布局，强制整页 reflow），
+  // TA 连发多条（间隔 1-3s）时每条都卡一下 = 收消息卡顿的主因之一
+  function maybeScrollChatBottom() {
+    if (batchRendering || !chatVisible() || !chatNearBottom()) return;
+    body.scrollTop = body.scrollHeight;
   }
   function showTyping() {
     if (!typingEl) return;
@@ -7677,7 +7745,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
           : '<div class="msg-ask-tip">等待 TA 回应…</div>') +
         '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // 问问TA：居中完整卡片（问题 + TA 的回答）
@@ -7692,7 +7760,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
           : '<div class="msg-ask-tip">等待 TA 回答…</div>') +
         '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // 通话：居中卡片
@@ -7700,7 +7768,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       m.className = 'msg-center';
       m.innerHTML = '<div class="msg-center-card">' + rec.text + '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // 拍一拍 / 换头像系统提示：居中灰字小卡片，可选附带一张头像图
@@ -7709,7 +7777,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       m.innerHTML = '<span>' + rec.text + '</span>' +
         (rec.img ? '<img class="msg-poke-img" src="' + rec.img + '" alt="新头像">' : '');
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // TA 的小问题：居中选择题卡片，未作答点击弹出选项
@@ -7724,7 +7792,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
           : '<div class="msg-ask-tip">点击选择你的答案</div>') +
         '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // TA 的好奇：居中白卡显示问题，未回答可点击回答
@@ -7739,7 +7807,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
           : '<div class="msg-ask-tip">点击回答 TA 的好奇</div>') +
         '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // TA 的吐槽：居中白卡显示吐槽，未回应可点击回一句
@@ -7754,7 +7822,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
           : '<div class="msg-ask-tip">点击回 TA 一句</div>') +
         '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // TA 的询问卡片：居中白卡显示问题，未回答可点击回答（星言 ta 的询问）
@@ -7769,7 +7837,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
           : '<div class="msg-ask-tip">点击回答 TA 的提问</div>') +
         '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     m.className = 'msg ' + (rec.side === 'out' ? 'msg-out' : 'msg-in');
@@ -7916,7 +7984,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
     }
     if (rec.side === 'in' || rec.side === 'out') m.dataset.idx = msgs.length - 1;
     body.appendChild(m);
-    if (!batchRendering) body.scrollTop = body.scrollHeight;
+    maybeScrollChatBottom();
     return m;
   }
 
@@ -8029,6 +8097,9 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
   //   只有明显横滑（≥24px）横幅才开始跟随位移，≥70px 松手才关闭
   // v3.6.x：手机端反馈右滑关闭「过于不灵敏」（70px 才关、24px 才开始跟随）——
   //   跟随阈值收到 12px、关闭阈值收到 45px（中间值）：轻滑即跟手，滑过屏宽约 1/8 即关闭
+  // v3.5.134：继续收紧——跟随 8px、关闭 30px（配 touch-action:pan-y 后水平手势
+  //   不再被浏览器抢占，真实位移即可跟手）；斜滑容忍放宽：dy 不超过 dx 的 1.25 倍
+  //   仍按横滑处理（手指右滑时难免带一点纵向，之前 dy>dx 就放弃导致不灵敏）
   let deskMsgSuppressClick = false;
   let deskMsgSuppressTimer = null;
   let dDrag = null;
@@ -8044,10 +8115,10 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
     if (!deskMsgEl || deskMsgEl.hidden) { dDrag = null; return; }
     const dx = e.clientX - dDrag.x;
     const dy = e.clientY - dDrag.y;
-    // 横向位移 ≥12px 才视为拖动（明显右滑/左滑）；轻微斜划不算，不打扰点击
-    if (Math.abs(dx) > 12) dDrag.moved = true;
-    // 仅横向拖动跟随（纵向交给页面滚动）
-    if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) {
+    // 横向位移 ≥8px 才视为拖动（明显右滑/左滑）；轻微斜划不算，不打扰点击
+    if (Math.abs(dx) > 8) dDrag.moved = true;
+    // 仅横向拖动跟随（纵向交给页面滚动；dy 不超过 dx 1.25 倍的轻微斜滑仍算横向）
+    if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.25) {
       try { e.preventDefault(); } catch (err) {}
       deskMsgEl.style.transform = 'translateX(' + dx + 'px)';
       deskMsgEl.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / 120));
@@ -8065,7 +8136,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       deskMsgSuppressClick = true;
       clearTimeout(deskMsgSuppressTimer);
       deskMsgSuppressTimer = setTimeout(() => { deskMsgSuppressClick = false; }, 350);
-      if (Math.abs(dx) > 45) {
+      if (Math.abs(dx) > 30) {
         deskMsgSuppressClick = false;
         clearTimeout(deskMsgSuppressTimer);
         hideDeskMsg();
@@ -8122,14 +8193,17 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
   // opts.choice*：TA 的小问题选择题数据
   // 注意：页面加载时 msgs 尚未 loadMsgs()（进入聊天才加载），
   // 写入前必须重新读取历史，否则会把空数组覆盖回 localStorage 导致聊天记录丢失
+  // v3.6.x：boot 已同步加载聊天记录到内存（loadMsgs 在模块末尾调用），
+  // 且 chatDbReady 未就绪时 saveMsgs 只暂存 pendingLocal 不落盘、IDB 合并会补上——
+  // 这里不再每次全量 loadMsgs()（同步 JSON.parse 全量历史 + 异步 IDB 全量合并，
+  // changed 时还 innerHTML='' 全量重渲染，查岗/日常/TA 模块频繁调用时反复重建
+  // 整个消息列表 = 收消息卡顿来源之一）
   window.chatAddSystem = function (text, opts) {
     opts = opts || {};
-    loadMsgs();
     return addIn(text, { special: opts.special || 'poke', img: opts.img, askQuestion: opts.askQuestion, askStatus: opts.askStatus, choiceQuestion: opts.choiceQuestion, choiceOptions: opts.choiceOptions, choicePref: opts.choicePref, choiceCat: opts.choiceCat, curiousQuestion: opts.curiousQuestion, curiousQuick: opts.curiousQuick, curiousReplies: opts.curiousReplies, curiousFollowup: opts.curiousFollowup, curiousQid: opts.curiousQid, curiousCat: opts.curiousCat, roastText: opts.roastText, roastCat: opts.roastCat });
   };
   // 供外部模块推送普通"联系人消息"（如查岗日常更新），持久化 + 渲染
   window.chatAddIn = function (text) {
-    loadMsgs();
     return addIn(text);
   };
   // v3.6.x：提交互动答案后立即同步写盘（不等防抖）——
@@ -8228,6 +8302,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
     if (!isNaN(idx) && msgs[idx]) {
       msgs[idx].retracted = true;
       msgs[idx].orig = b.innerHTML;
+      sessionChangedIdx.add(idx); // v3.6.x：标记本会话变更，防 loadMsgs 合并回滚撤回
       saveMsgs();
       // v3.6.x：撤回我的消息后同步 lastMineText（TA 引用/收藏不再指向已撤回内容）
       if (msgs[idx].side === 'out') syncLastMineText();
@@ -8312,6 +8387,7 @@ function partialRetractMsg(msgEl, side) {
         const si = remain.splice(Math.floor(Math.random() * remain.length), 1)[0];
         rec.retractedSegs.push({ text: segs[si], idx: si });
       }
+      sessionChangedIdx.add(idx); // v3.6.x：标记本会话变更，防 loadMsgs 合并回滚局部撤回
       saveMsgs();
       // 重建该条消息 DOM（沿用 renderMsg 渲染局部撤回样式）
       const m = renderMsg(rec);
@@ -8330,6 +8406,7 @@ function partialRetractMsg(msgEl, side) {
     if (remain.length) {
       const pick = remain[Math.floor(Math.random() * remain.length)];
       rec.retractedMood.push(pick);
+      sessionChangedIdx.add(idx); // v3.6.x：标记本会话变更，防 loadMsgs 合并回滚局部撤回
       saveMsgs();
       const m = renderMsg(rec);
       m.dataset.idx = idx;
@@ -8634,14 +8711,15 @@ function partialRetractMsg(msgEl, side) {
       m.dataset.idx = i;
     });
     batchRendering = false;
-    // 定位到最新消息：立即滚 + 下一帧 + 图片加载完成后各补一次，
+    // 定位到最新消息：立即滚 + 下一帧各补一次，
     // 避免图片/头像异步解码改变布局高度导致停在中间
+    // v3.6.x：去重——原实现 rAF(→rAF) 与 setTimeout(80/400) 四重滚动效果相同，
+    // 保留 rAF 双帧（等图片解码最紧的一帧）+ 单次延迟兜底，减少重复滚动
     scrollToBottom();
     if (window.requestAnimationFrame) {
       requestAnimationFrame(scrollToBottom);
       requestAnimationFrame(() => requestAnimationFrame(scrollToBottom));
     }
-    setTimeout(scrollToBottom, 80);
     setTimeout(scrollToBottom, 400);
     if (typingOn && chatVisible()) {
       typingEl.hidden = false;
@@ -9312,6 +9390,7 @@ function partialRetractMsg(msgEl, side) {
             // 更新记录与 DOM
             rec.text = val;
             rec.type = 'text';
+            sessionChangedIdx.add(idx); // v3.6.x：标记本会话变更，防 loadMsgs 合并回滚编辑
             saveMsgs();
             syncLastMineText(); // v3.6.x：编辑后 TA 引用/收藏不再拿旧文本
             const b = editEl && editEl.querySelector('.msg-bubble');
@@ -11094,13 +11173,21 @@ function partialRetractMsg(msgEl, side) {
     root.style.setProperty('--msg-av-radius', avShape === 'square' ? '10px' : '50%');
     set('cs-av-shape-val', avShape === 'square' ? '方形' : '圆形');
     // 聊天壁纸：铺满整个聊天页
+    // v3.6.x：值没变时不重写 style——applySettings 在每次进入聊天页时调用，
+    // 反复重设 background-image（大图 dataURL）会让浏览器重新解码、触发重绘
     const bg = store.get('cs-bg');
     if (bg && chatPage) {
-      chatPage.style.backgroundImage = 'url("' + bg + '")';
-      chatPage.style.backgroundSize = 'cover';
-      chatPage.style.backgroundPosition = 'center';
-    } else if (chatPage) {
+      if (chatPage.style.backgroundImage !== 'url("' + bg + '")') {
+        chatPage.style.backgroundImage = 'url("' + bg + '")';
+        chatPage.style.backgroundSize = 'cover';
+        chatPage.style.backgroundPosition = 'center';
+        // v3.6.x：fixed 让背景独立图层，滚动消息时不再逐帧重绘整张大图
+        // （聊天页 overflow:hidden 不滚动，只有 .chat-body 内部滚动，安全）
+        chatPage.style.backgroundAttachment = 'fixed';
+      }
+    } else if (chatPage && (chatPage.style.backgroundImage || chatPage.style.backgroundAttachment)) {
       chatPage.style.backgroundImage = '';
+      chatPage.style.backgroundAttachment = '';
     }
     set('cs-font-size-val', fs);
     const pn = BUBBLE_SIZES.find(p => p.value === pad);
@@ -13620,7 +13707,7 @@ window.getReplyCard = function () {
       if (typeof c === 'string' && c.indexOf('data:') !== 0 && c.indexOf('|||') < 0) cards.push(c);
     });
     const defs = (window.getDefaultCardGroups && window.getDefaultCardGroups('main')) || [];
-    defs.forEach(([g, arr]) => arr.forEach(c => cards.push(c)));
+    defs.forEach(([g, arr]) => { if (Array.isArray(arr)) arr.forEach(c => cards.push(c)); });
     if (!cards.length) return '今天也想对你说点什么...';
     const maxCount = Math.min(8, cards.length);
     const minCount = Math.min(3, maxCount);
@@ -16373,13 +16460,23 @@ window.openTCPanel = openTCPanel;
       // v3.5.132：visibilitychange 监听移到模块顶层注册一次（在 startKeepAlive 内
       // 每次开关都会累积一个监听器 + 一个旧 wakeLock 永不释放）
 
-      if (showToast) toast('后台保活已启动');
-      // 浏览器通知提示
-      try {
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('后台保活已启动', { body: '正在播放静音音频以保持后台活跃，请勿关闭此页面' });
+      if (showToast) {
+        // v3.5.133：保活开启时通知发送结果做成可感知诊断——
+        // 系统通知能不能显示由浏览器+系统决定，API 不报错但可能被系统拦截；
+        // 分情况提示用户卡在哪一环，避免"开了保活但通知栏永远没消息"的静默失效
+        if (!('Notification' in window)) {
+          toast('后台保活已启动（注意：本环境不支持系统通知，需 HTTPS 访问）');
+        } else if (Notification.permission !== 'granted') {
+          toast('后台保活已启动（通知未授权：去设置→后台通知→开启并允许权限）');
+        } else {
+          try {
+            new Notification('后台保活已启动', { body: '正在播放静音音频以保持后台活跃，请勿关闭此页面' });
+            toast('后台保活已启动 · 通知栏应弹出提示条，若没有请到系统设置→通知→Chrome→允许通知');
+          } catch (e) {
+            toast('后台保活已启动（通知发送异常，请检查系统通知权限）');
+          }
         }
-      } catch (e) {}
+      }
     } catch (e) {}
   }
   function stopKeepAlive(showToast) {
@@ -17440,21 +17537,11 @@ window.openTCPanel = openTCPanel;
       if (Math.random() * 100 < cfg.replyProb) {
         const replyMsg = taLetterContent(cfg);
         const delayMs = (cfg.replyMin + Math.random() * Math.max(1, cfg.replyMax - cfg.replyMin)) * 60000;
-        const timer = setTimeout(() => {
-          const l2 = load();
-          const i2 = l2.findIndex(x => x.id === l.id);
-          if (i2 >= 0) {
-            l2[i2].partnerReply = { content: replyMsg, tm: Date.now() };
-            save(l2);
-            if (window.chatAddSystem) window.chatAddSystem(name + ' 给你回了信');
-            // v3.5.107：TA 回信且不在信箱页 → 前台桌面弹窗（点击进信箱）
-            if (window.showDeskPopup && !mailPageVisible()) {
-              window.showDeskPopup({ name: '信箱', text: '给你回了一封信：' + replyMsg, onClick: openMailPage });
-            }
-          }
-        }, delayMs);
-        // v3.6.x：不再把定时器 id 写进持久化的信件对象（_replyTimer 只在本会话有效，
-        // 序列化后会残留垃圾字段，且导出/导入备份会带上无意义的数字）
+        // v3.6.x：TA 回信计划持久化——不再用内存 setTimeout（页面刷新/重开即丢失，
+        // 表现为「回了信却永远收不到回信」）；写入计划，由 checkPendingReply 到期落地
+        const pending = replyPendingLoad();
+        pending.push({ id: l.id, due: Date.now() + delayMs, content: replyMsg });
+        replyPendingSave(pending);
       }
       save(list);
       viewLetter = null;
@@ -17464,6 +17551,44 @@ window.openTCPanel = openTCPanel;
       if (window.chatAddSystem) window.chatAddSystem('你给 ' + name + ' 回了一封信');
       toast('回信已寄出');
     }
+  }
+  // ===== TA 回信计划（持久化）：回信命中概率后，TA 的回信写入本地计划 =====
+  // 到期由 checkPendingReply 落地为 partnerReply；刷新/重开页面不丢（旧逻辑用内存
+  // setTimeout，刷新即丢失，回信永远收不到）。
+  const REPLY_PENDING_KEY = 'mail-reply-pending';
+  function replyPendingLoad() {
+    try { const v = JSON.parse(store.get(REPLY_PENDING_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+  }
+  function replyPendingSave(arr) { try { store.set(REPLY_PENDING_KEY, JSON.stringify(arr)); } catch (e) {} }
+  // 检查到期回信计划并落地（启动时 + 每分钟 tick 调用）
+  function checkPendingReply() {
+    try {
+      const now = Date.now();
+      const pending = replyPendingLoad();
+      if (!pending.length) return;
+      const name = partnerName();
+      const rest = [];
+      let changed = false;
+      pending.forEach(p => {
+        if (!p || !p.id) { changed = true; return; }
+        const list = load();
+        const idx = list.findIndex(x => x.id === p.id);
+        if (idx < 0) { changed = true; return; }          // 信件已不存在 → 丢弃计划
+        if (list[idx].partnerReply) { changed = true; return; } // 已有 TA 回信 → 丢弃计划
+        if (p.due > now) { rest.push(p); return; }        // 未到期 → 保留
+        // 到期：落地 TA 回信
+        list[idx].partnerReply = { content: p.content, tm: now };
+        save(list);
+        if (window.chatAddSystem) window.chatAddSystem(name + ' 给你回了信');
+        // v3.5.107：TA 回信且不在信箱页 → 前台桌面弹窗（点击进信箱）
+        if (window.showDeskPopup && !mailPageVisible()) {
+          window.showDeskPopup({ name: '信箱', text: '给你回了一封信：' + p.content, onClick: openMailPage });
+        }
+        changed = true;
+      });
+      if (changed) replyPendingSave(rest);
+      updateBadge();
+    } catch (e) {}
   }
   // 渲染列表
   function render() {
@@ -17648,8 +17773,9 @@ window.openTCPanel = openTCPanel;
     } catch (e) {}
   }
   setTimeout(() => {
-    setInterval(maybeIncomingLetter, 60000);
+    setInterval(() => { maybeIncomingLetter(); checkPendingReply(); }, 60000);
     maybeIncomingLetter();
+    checkPendingReply(); // v3.6.x：启动立即补上「刷新期间已到期」的 TA 回信
   }, (20 + Math.random() * 40) * 1000);
 
   // ================= 入口与交互 =================
@@ -21217,11 +21343,15 @@ if (ckRefresh) {
                   // v3.5.137：mailInsertInto 插入图片时 <img> 后面紧跟隐藏标记 span，
                   // 完整标记文本已由 span 提供，这里跳过 img，避免同一张图被输出两遍
                   // （安卓写信/回信插入表情包/图片后，信件里同一张图出现两次的 bug）
-                  let nx = n.nextSibling;
-                  let companion = false;
-                  while (nx && nx.nodeType === 3 && !String(nx.textContent || '').trim()) nx = nx.nextSibling;
-                  if (nx && nx.nodeType === 1 && nx.classList && nx.classList.contains('mail-media-mark')) companion = true;
-                  if (!companion) {
+                  // v3.6.x：兼容「用户在图片后点光标输入文字」（文本被插到 img 与
+                  // span 之间，紧邻判断失效）——改为整框查找包含该 src 的隐藏标记
+                  let covered = false;
+                  try {
+                    box.querySelectorAll('span.mail-media-mark').forEach(function (sp) {
+                      if (!covered && sp.textContent && sp.textContent.indexOf(n.src) >= 0) covered = true;
+                    });
+                  } catch (e) {}
+                  if (!covered) {
                     // img 的标记 span 被用户退格删掉时，从 src 重建标记——
                     // 否则该图片在保存时丢失（数据丢失风险）
                     if (out && !out.endsWith(' ') && !out.endsWith('\n')) out += ' ';
@@ -21232,6 +21362,16 @@ if (ckRefresh) {
                 }
                 if (n.tagName === 'DIV' || n.tagName === 'BR') {
                   out += '\n';
+                  lastWasMedia = false;
+                  return;
+                }
+                // v3.6.x：其它内联元素（粘贴富文本产生的 <span>/<b>/<i> 等）——
+                // 补充其文字，否则插入过图片后粘贴带格式文本，这些文字在保存时
+                // 会静默丢失（信寄出去正文缺字）
+                const inner = n.textContent || '';
+                if (inner) {
+                  if (out && !out.endsWith(' ') && !out.endsWith('\n')) out += ' ';
+                  out += inner;
                   lastWasMedia = false;
                 }
               }
@@ -21344,10 +21484,20 @@ if (ckRefresh) {
   // iOS Safari 键盘是 overlay 模式——弹出时【不收缩布局视口】，.phone 的 100dvh
   // 不会重算，输入栏会被键盘盖住，看起来像"键盘没弹/无法输入"（安卓 Chrome/Edge
   // 靠 viewport 的 interactive-widget=resizes-content 自动收缩，无需此处理）。
-  // 这里仅对 iOS 启用 visualViewport 锁高：键盘弹出时把 .phone 固定到可视高度，
+  // 这里仅对 iOS 启用 visualViewport 锁高：键盘弹出时把 .phone 收缩到可视高度，
   // 输入栏天然停靠键盘上方；收起时恢复。安卓不受影响（isIOS 分支）。
   // .chat-body 的 translateZ(0)（防安卓白屏）在 iOS 上也会引发滚动异常——
   // 一并在此用内联 transform:none 豁免（JS 判断 iOS 比 CSS @supports 可靠）。
+  // v3.6.x：不用 position:fixed 锁高——iOS Safari 已知问题：contenteditable
+  // （聊天输入框就是模板原生 contenteditable div）位于 fixed 祖先内、键盘弹起时
+  // 无法输入（caret 与 visualViewport 冲突，表现：点了输入框、键盘弹出、打不进字）。
+  // 改用 flex 顶对齐 + 高度收缩：body 是 flex 容器（align-items:center），
+  // 给 .phone 设 align-self:flex-start 顶对齐后高度=可视高度，底部恰好停在键盘
+  // 上沿，效果与 fixed 一致；但 .phone 保持普通流定位（水平居中由 body 的
+  // justify-content:center 负责，宽屏手机内容限宽也无需额外 hack），
+  // contenteditable 正常输入。高度写入只在值变化时执行——键盘动画期间
+  // visualViewport 高频 resize 事件不再每次触发整页 reflow（几千条消息时
+  // 反复重排 = 打字卡顿）。
   if (isIOS) {
     try {
       var _phone = document.querySelector('.phone');
@@ -21365,28 +21515,18 @@ if (ckRefresh) {
         var _open = _focused && _h < _noKbH - 60;
         if (_open && !_kbActive) {
           _kbActive = true;
-          _phone.style.position = 'fixed';
-          _phone.style.top = '0';
-          // v3.5.137：保持内容限宽（max-width:480px 居中）——left:0 right:0 会撑成
-          // 全视口宽（Moto G100 等 800px 视口下内容区被拉宽）
-          _phone.style.left = '50%';
-          _phone.style.right = 'auto';
-          _phone.style.transform = 'translateX(-50%)';
-          _phone.style.width = 'min(480px, 100vw)';
-          _phone.style.margin = '0';
+          // 顶对齐（替代 position:fixed）——避免 iOS contenteditable 在 fixed
+          // 容器内无法输入的已知问题；水平居中交给 body flex 原有规则
+          _phone.style.alignSelf = 'flex-start';
         }
         if (_kbActive) {
-          _phone.style.height = _h + 'px';
+          var _hs = _h + 'px';
+          if (_phone.style.height !== _hs) _phone.style.height = _hs; // 值不变不重排
         }
         if (!_open && _kbActive) {
           _kbActive = false;
           _phone.style.height = '';
-          _phone.style.position = '';
-          _phone.style.left = '';
-          _phone.style.right = '';
-          _phone.style.transform = '';
-          _phone.style.width = '';
-          _phone.style.margin = '';
+          _phone.style.alignSelf = '';
         }
       }
       if (_vv) {

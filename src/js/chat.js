@@ -20,6 +20,10 @@
 
   // ---- 消息存储 ----
   let msgs = [];
+  // v3.6.x：本会话内被编辑/撤回/局部撤回过的消息索引——loadMsgs 用 IndexedDB 快照
+  // 合并时，若命中索引（且与 IDB 条数对齐），以内存版本为准，防止防抖窗口内
+  // 的编辑/撤回被旧 IDB 快照回滚（索引在消息只增不改的模型下稳定）
+  const sessionChangedIdx = new Set();
   // v3.5.118：聊天记录权威加载防护——修复「导入后聊天记录丢失」的启动竞态：
   // 导入时聊天记录被挪进 IndexedDB（localStorage 无此键）；页面加载瞬间
   // 查岗/日常等模块会立即写入一条新消息（p2-features.doCheckin），此时 IDB
@@ -30,6 +34,10 @@
   let pendingLocal = null; // 权威就绪前暂存的内存消息（绝不落盘，防止污染读取/覆盖 IDB）
   // v3.5.127：防抖——TA 连发多条（间隔 1-3s）时把多次全量序列化合并成一次
   //（历史上千条带图消息时每次 stringify 是几十 MB，逐条写会明显卡顿）
+  // v3.6.x：防抖回调里只写 localStorage——IndexedDB 双写由 store.set 内部统一执行
+  //（idb.js 的 set 总会调 idbSet），这里再写一次是同键全量重复写入
+  //（几十 MB 结构化克隆，低端机/iPhone 卡顿源头之一）；权威落盘仍有 store.set 的
+  // IDB 双写 + saveMsgsNow 显式路径保证
   let saveTimer = null;
   function saveMsgs() {
     const data = JSON.stringify(msgs);
@@ -127,6 +135,16 @@
             // 聊天记录只增不改（作答只是给旧记录打状态），按位置对齐后，
             // 内存中已作答的记录以内存版本为准，防止状态被回滚。
             const curArr = pendingLocal || msgs || [];
+            // v3.6.x：本会话编辑/撤回过的消息，在「与 IDB 条数对齐」（同一批消息）
+            // 时以内存版本为准——否则防抖窗口内 loadMsgs 用旧 IDB 快照把这些变更
+            // 回滚，随后任意一次落盘就把「已编辑/已撤回」固化回旧内容（编辑/撤回失效）
+            if (merged.length === curArr.length) {
+              curArr.forEach((m, i) => {
+                if (!m || i >= merged.length) return;
+                if (sessionChangedIdx.has(i)) merged[i] = m;
+              });
+            }
+            // 已作答卡片保护（原有逻辑，条数不一致时也生效）
             curArr.forEach((m, i) => {
               if (!m || i >= merged.length) return;
               if (!answeredRec(m) || answeredRec(merged[i])) return;
@@ -134,14 +152,22 @@
             });
             const changed = localNew.length > 0 || merged.length !== msgs.length;
             msgs = merged;
+            // 条数不一致（IDB 快照与内存不是同一批消息）→ 索引已失效，清空会话改动标记
+            if (merged.length !== curArr.length) sessionChangedIdx.clear();
             migrateLegacyMediaMsgs();
             pendingLocal = null;
             chatDbReady = true;
             // v3.5.127：无变化（localNew 空且长度相同）时跳过重复写盘 + 全量重渲染
+            // v3.6.x：写回只在 IDB 合并结果比 localStorage 快照新时执行——否则每次
+            // loadMsgs 都全量重写 localStorage（几十 MB 序列化）；重渲染只在聊天页
+            // 可见且贴近底部时执行（用户翻旧消息时不打断阅读）
             if (changed) {
-              store.set('chat-msgs', JSON.stringify(msgs));
-              // 聊天页当前可见 → 重新渲染，让恢复出的历史立即显示
-              if (chatVisible()) {
+              const mergedJson = JSON.stringify(msgs);
+              if ((store.get('chat-msgs') || '') !== mergedJson) {
+                store.set('chat-msgs', mergedJson);
+              }
+              // 聊天页当前可见且贴近底部 → 重新渲染，让恢复出的历史立即显示
+              if (chatVisible() && chatNearBottom()) {
                 body.innerHTML = '';
                 batchRendering = true;
                 msgs.forEach((rec, i) => {
@@ -205,10 +231,12 @@
   fillAvatar('chat-partner-av', 'avatar-partner');
   // v3.5.113：IndexedDB 回填完成后（mochi-restore-done）轻量重绘——
   // 导入/配额异常恢复后聊天记录已在内存，聊天页可见时重新渲染一遍
+  // v3.6.x：加贴底判断——数据恢复期间用户可能已在翻旧消息，全量重渲染
+  // 会把滚动位置重置到底部（之前每条恢复消息也强制滚动到底）
   try {
     document.addEventListener('mochi-restore-done', function () {
       try {
-        if (chatVisible() && body && msgs.length) {
+        if (chatVisible() && chatNearBottom() && body && msgs.length) {
           body.innerHTML = '';
           batchRendering = true;
           msgs.forEach(function (rec, i) {
@@ -244,6 +272,20 @@
   function scrollChatBottom() {
     const cb = document.getElementById('chat-body');
     if (cb) cb.scrollTop = cb.scrollHeight;
+  }
+  // v3.6.x：消息区是否「贴近底部」（最后一条可见）。追加消息自动滚动只在贴底时执行，
+  // 用户正在翻旧消息时不打断阅读位置
+  function chatNearBottom() {
+    const cb = document.getElementById('chat-body');
+    if (!cb) return true;
+    return cb.scrollHeight - cb.scrollTop - cb.clientHeight < 120;
+  }
+  // v3.6.x：追加消息后滚动——批量渲染（进入聊天/恢复历史）或聊天页未打开时跳过；
+  // 原实现 renderMsg 每条消息都执行 scrollTop=scrollHeight（同步布局，强制整页 reflow），
+  // TA 连发多条（间隔 1-3s）时每条都卡一下 = 收消息卡顿的主因之一
+  function maybeScrollChatBottom() {
+    if (batchRendering || !chatVisible() || !chatNearBottom()) return;
+    body.scrollTop = body.scrollHeight;
   }
   function showTyping() {
     if (!typingEl) return;
@@ -512,7 +554,7 @@
           : '<div class="msg-ask-tip">等待 TA 回应…</div>') +
         '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // 问问TA：居中完整卡片（问题 + TA 的回答）
@@ -527,7 +569,7 @@
           : '<div class="msg-ask-tip">等待 TA 回答…</div>') +
         '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // 通话：居中卡片
@@ -535,7 +577,7 @@
       m.className = 'msg-center';
       m.innerHTML = '<div class="msg-center-card">' + rec.text + '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // 拍一拍 / 换头像系统提示：居中灰字小卡片，可选附带一张头像图
@@ -544,7 +586,7 @@
       m.innerHTML = '<span>' + rec.text + '</span>' +
         (rec.img ? '<img class="msg-poke-img" src="' + rec.img + '" alt="新头像">' : '');
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // TA 的小问题：居中选择题卡片，未作答点击弹出选项
@@ -559,7 +601,7 @@
           : '<div class="msg-ask-tip">点击选择你的答案</div>') +
         '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // TA 的好奇：居中白卡显示问题，未回答可点击回答
@@ -574,7 +616,7 @@
           : '<div class="msg-ask-tip">点击回答 TA 的好奇</div>') +
         '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // TA 的吐槽：居中白卡显示吐槽，未回应可点击回一句
@@ -589,7 +631,7 @@
           : '<div class="msg-ask-tip">点击回 TA 一句</div>') +
         '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     // TA 的询问卡片：居中白卡显示问题，未回答可点击回答（星言 ta 的询问）
@@ -604,7 +646,7 @@
           : '<div class="msg-ask-tip">点击回答 TA 的提问</div>') +
         '</div>';
       body.appendChild(m);
-      if (!batchRendering) body.scrollTop = body.scrollHeight;
+      maybeScrollChatBottom();
       return m;
     }
     m.className = 'msg ' + (rec.side === 'out' ? 'msg-out' : 'msg-in');
@@ -751,7 +793,7 @@
     }
     if (rec.side === 'in' || rec.side === 'out') m.dataset.idx = msgs.length - 1;
     body.appendChild(m);
-    if (!batchRendering) body.scrollTop = body.scrollHeight;
+    maybeScrollChatBottom();
     return m;
   }
 
@@ -864,6 +906,9 @@
   //   只有明显横滑（≥24px）横幅才开始跟随位移，≥70px 松手才关闭
   // v3.6.x：手机端反馈右滑关闭「过于不灵敏」（70px 才关、24px 才开始跟随）——
   //   跟随阈值收到 12px、关闭阈值收到 45px（中间值）：轻滑即跟手，滑过屏宽约 1/8 即关闭
+  // v3.5.134：继续收紧——跟随 8px、关闭 30px（配 touch-action:pan-y 后水平手势
+  //   不再被浏览器抢占，真实位移即可跟手）；斜滑容忍放宽：dy 不超过 dx 的 1.25 倍
+  //   仍按横滑处理（手指右滑时难免带一点纵向，之前 dy>dx 就放弃导致不灵敏）
   let deskMsgSuppressClick = false;
   let deskMsgSuppressTimer = null;
   let dDrag = null;
@@ -879,10 +924,10 @@
     if (!deskMsgEl || deskMsgEl.hidden) { dDrag = null; return; }
     const dx = e.clientX - dDrag.x;
     const dy = e.clientY - dDrag.y;
-    // 横向位移 ≥12px 才视为拖动（明显右滑/左滑）；轻微斜划不算，不打扰点击
-    if (Math.abs(dx) > 12) dDrag.moved = true;
-    // 仅横向拖动跟随（纵向交给页面滚动）
-    if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) {
+    // 横向位移 ≥8px 才视为拖动（明显右滑/左滑）；轻微斜划不算，不打扰点击
+    if (Math.abs(dx) > 8) dDrag.moved = true;
+    // 仅横向拖动跟随（纵向交给页面滚动；dy 不超过 dx 1.25 倍的轻微斜滑仍算横向）
+    if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.25) {
       try { e.preventDefault(); } catch (err) {}
       deskMsgEl.style.transform = 'translateX(' + dx + 'px)';
       deskMsgEl.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / 120));
@@ -900,7 +945,7 @@
       deskMsgSuppressClick = true;
       clearTimeout(deskMsgSuppressTimer);
       deskMsgSuppressTimer = setTimeout(() => { deskMsgSuppressClick = false; }, 350);
-      if (Math.abs(dx) > 45) {
+      if (Math.abs(dx) > 30) {
         deskMsgSuppressClick = false;
         clearTimeout(deskMsgSuppressTimer);
         hideDeskMsg();
@@ -957,14 +1002,17 @@
   // opts.choice*：TA 的小问题选择题数据
   // 注意：页面加载时 msgs 尚未 loadMsgs()（进入聊天才加载），
   // 写入前必须重新读取历史，否则会把空数组覆盖回 localStorage 导致聊天记录丢失
+  // v3.6.x：boot 已同步加载聊天记录到内存（loadMsgs 在模块末尾调用），
+  // 且 chatDbReady 未就绪时 saveMsgs 只暂存 pendingLocal 不落盘、IDB 合并会补上——
+  // 这里不再每次全量 loadMsgs()（同步 JSON.parse 全量历史 + 异步 IDB 全量合并，
+  // changed 时还 innerHTML='' 全量重渲染，查岗/日常/TA 模块频繁调用时反复重建
+  // 整个消息列表 = 收消息卡顿来源之一）
   window.chatAddSystem = function (text, opts) {
     opts = opts || {};
-    loadMsgs();
     return addIn(text, { special: opts.special || 'poke', img: opts.img, askQuestion: opts.askQuestion, askStatus: opts.askStatus, choiceQuestion: opts.choiceQuestion, choiceOptions: opts.choiceOptions, choicePref: opts.choicePref, choiceCat: opts.choiceCat, curiousQuestion: opts.curiousQuestion, curiousQuick: opts.curiousQuick, curiousReplies: opts.curiousReplies, curiousFollowup: opts.curiousFollowup, curiousQid: opts.curiousQid, curiousCat: opts.curiousCat, roastText: opts.roastText, roastCat: opts.roastCat });
   };
   // 供外部模块推送普通"联系人消息"（如查岗日常更新），持久化 + 渲染
   window.chatAddIn = function (text) {
-    loadMsgs();
     return addIn(text);
   };
   // v3.6.x：提交互动答案后立即同步写盘（不等防抖）——
@@ -1063,6 +1111,7 @@
     if (!isNaN(idx) && msgs[idx]) {
       msgs[idx].retracted = true;
       msgs[idx].orig = b.innerHTML;
+      sessionChangedIdx.add(idx); // v3.6.x：标记本会话变更，防 loadMsgs 合并回滚撤回
       saveMsgs();
       // v3.6.x：撤回我的消息后同步 lastMineText（TA 引用/收藏不再指向已撤回内容）
       if (msgs[idx].side === 'out') syncLastMineText();
@@ -1147,6 +1196,7 @@ function partialRetractMsg(msgEl, side) {
         const si = remain.splice(Math.floor(Math.random() * remain.length), 1)[0];
         rec.retractedSegs.push({ text: segs[si], idx: si });
       }
+      sessionChangedIdx.add(idx); // v3.6.x：标记本会话变更，防 loadMsgs 合并回滚局部撤回
       saveMsgs();
       // 重建该条消息 DOM（沿用 renderMsg 渲染局部撤回样式）
       const m = renderMsg(rec);
@@ -1165,6 +1215,7 @@ function partialRetractMsg(msgEl, side) {
     if (remain.length) {
       const pick = remain[Math.floor(Math.random() * remain.length)];
       rec.retractedMood.push(pick);
+      sessionChangedIdx.add(idx); // v3.6.x：标记本会话变更，防 loadMsgs 合并回滚局部撤回
       saveMsgs();
       const m = renderMsg(rec);
       m.dataset.idx = idx;
@@ -1469,14 +1520,15 @@ function partialRetractMsg(msgEl, side) {
       m.dataset.idx = i;
     });
     batchRendering = false;
-    // 定位到最新消息：立即滚 + 下一帧 + 图片加载完成后各补一次，
+    // 定位到最新消息：立即滚 + 下一帧各补一次，
     // 避免图片/头像异步解码改变布局高度导致停在中间
+    // v3.6.x：去重——原实现 rAF(→rAF) 与 setTimeout(80/400) 四重滚动效果相同，
+    // 保留 rAF 双帧（等图片解码最紧的一帧）+ 单次延迟兜底，减少重复滚动
     scrollToBottom();
     if (window.requestAnimationFrame) {
       requestAnimationFrame(scrollToBottom);
       requestAnimationFrame(() => requestAnimationFrame(scrollToBottom));
     }
-    setTimeout(scrollToBottom, 80);
     setTimeout(scrollToBottom, 400);
     if (typingOn && chatVisible()) {
       typingEl.hidden = false;
@@ -2147,6 +2199,7 @@ function partialRetractMsg(msgEl, side) {
             // 更新记录与 DOM
             rec.text = val;
             rec.type = 'text';
+            sessionChangedIdx.add(idx); // v3.6.x：标记本会话变更，防 loadMsgs 合并回滚编辑
             saveMsgs();
             syncLastMineText(); // v3.6.x：编辑后 TA 引用/收藏不再拿旧文本
             const b = editEl && editEl.querySelector('.msg-bubble');

@@ -39,7 +39,7 @@
 .ch-av svg { width:16px; height:16px; }
 .ch-av img { width:100%; height:100%; object-fit:cover; display:block; border-radius:var(--msg-av-radius, 50%); }
 /* 顶部昵称：点击「让对方继续说」 */
-#chat-partner-name { cursor:pointer; }
+#chat-partner-name { cursor:pointer; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
 #chat-partner-name:active { opacity:.6; }
 
 .chat-body {
@@ -811,3 +811,15 @@
 
 /* 系统消息（来电/通话）内联矢量图标 */
 .msg-poke svg, .msg-center-card svg { width:15px; height:15px; vertical-align:-2px; margin-right:3px; color:inherit; }
+
+/* v3.6.x：手机端聊天壁纸独立图层——聊天页本身不滚动（overflow:hidden），
+   滚动发生在 .chat-body，背景用 fixed 固定后消息滚动时不再逐帧重绘整张大图
+   （dataURL 壁纸在低端机/iPhone 上是滚动卡顿源之一）。
+   JS 侧 applySettings 已同步设置 background-attachment，这里 CSS 兜底保证生效 */
+@media (max-width: 480px) {
+  #page-chat {
+    background-attachment: fixed;
+    -webkit-background-size: cover;
+    background-size: cover;
+  }
+}

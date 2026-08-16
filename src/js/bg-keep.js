@@ -76,13 +76,23 @@
       // v3.5.132：visibilitychange 监听移到模块顶层注册一次（在 startKeepAlive 内
       // 每次开关都会累积一个监听器 + 一个旧 wakeLock 永不释放）
 
-      if (showToast) toast('后台保活已启动');
-      // 浏览器通知提示
-      try {
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('后台保活已启动', { body: '正在播放静音音频以保持后台活跃，请勿关闭此页面' });
+      if (showToast) {
+        // v3.5.133：保活开启时通知发送结果做成可感知诊断——
+        // 系统通知能不能显示由浏览器+系统决定，API 不报错但可能被系统拦截；
+        // 分情况提示用户卡在哪一环，避免"开了保活但通知栏永远没消息"的静默失效
+        if (!('Notification' in window)) {
+          toast('后台保活已启动（注意：本环境不支持系统通知，需 HTTPS 访问）');
+        } else if (Notification.permission !== 'granted') {
+          toast('后台保活已启动（通知未授权：去设置→后台通知→开启并允许权限）');
+        } else {
+          try {
+            new Notification('后台保活已启动', { body: '正在播放静音音频以保持后台活跃，请勿关闭此页面' });
+            toast('后台保活已启动 · 通知栏应弹出提示条，若没有请到系统设置→通知→Chrome→允许通知');
+          } catch (e) {
+            toast('后台保活已启动（通知发送异常，请检查系统通知权限）');
+          }
         }
-      } catch (e) {}
+      }
     } catch (e) {}
   }
   function stopKeepAlive(showToast) {

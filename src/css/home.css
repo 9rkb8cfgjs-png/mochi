@@ -315,6 +315,10 @@
   border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.12);
   cursor:pointer; animation:deskMsgIn .25s ease;
   box-sizing:border-box;
+  /* v3.5.134：水平手势交给 JS（右滑关闭），垂直滚动仍由浏览器处理——
+     Chrome Android 上无此声明时浏览器会接管横滑判定滚动方向，pointermove
+     被抢占/pointercancel，表现为「右滑关闭非常不灵敏」 */
+  touch-action:pan-y;
 }
 @keyframes deskMsgIn { from{opacity:0; transform:translateX(-50%) translateY(-8px);} to{opacity:1; transform:translateX(-50%) translateY(0);} }
 .desk-msg-av { width:38px; height:38px; border-radius:50%; overflow:hidden; flex-shrink:0; background:#f1f1f1; display:flex; align-items:center; justify-content:center; }

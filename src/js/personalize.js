@@ -262,7 +262,9 @@
     cancelBtn.addEventListener('click', close);
     mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { fire(); close(); }
+      // v3.6.x：与 OK 按钮一致用 try/finally——回调抛异常（如存储配额满）时也必须
+      // 关闭弹窗，否则残留卡死、后续再点 OK 每次都抛
+      if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { try { fire(); } finally { close(); } }
     });
   })();
 
