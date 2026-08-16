@@ -929,8 +929,8 @@
     const day = new Date().getDay(); // 0=日 6=六
     let daysTo = (6 - day + 7) % 7;   // 距周六
     if (day === 6 || day === 0) {
-      // v3.5.131：周日距周六还有 6 天（原"明天是周六"文案错误）
-      weDays.textContent = day === 6 ? '今天就是周末啦' : '离周末还有 6 天';
+      // 周六/周日都算周末（v3.5.x：周日曾误显示"离周末还有 6 天"）
+      weDays.textContent = '今天是周末';
     } else {
       weDays.textContent = '离周末还有 ' + daysTo + ' 天';
     }

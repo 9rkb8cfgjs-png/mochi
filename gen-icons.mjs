@@ -1,4 +1,4 @@
-// ===== 生成 PWA 图标（深色底 + 简约白色爱心）=====
+// ===== 生成 PWA 图标（白底 + 深色 mochi 文字）=====
 // 用法：node gen-icons.mjs  → 生成 src/pwa/icon-192.png、icon-512.png、icon-180.png、icon-maskable-512.png
 import { deflateSync } from 'node:zlib';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -51,77 +51,86 @@ function encodePng(size, pixelFn) {
   return Buffer.concat([sig, chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
 }
 
-// ---------- 爱心判定（心形公式，4x4 超采样抗锯齿） ----------
-// (x²+y²-1)³ - x²y³ ≤ 0，范围 x∈[-1.2,1.2], y∈[-1.25,1.3]
-// 注意：图片坐标 y 向下增长，公式坐标 y 向上，需取反，否则爱心会上下颠倒
-function heartCover(px, py, cx, cy, scale) {
+// ---------- "mochi" 点阵字（5x7，每行 5 bit，bit4=最左） ----------
+const GLYPHS = {
+  m: [0b00000, 0b11011, 0b10101, 0b10101, 0b10101, 0b10101, 0b00000],
+  o: [0b00000, 0b01110, 0b10001, 0b10001, 0b10001, 0b01110, 0b00000],
+  c: [0b00000, 0b01110, 0b10000, 0b10000, 0b10000, 0b01110, 0b00000],
+  h: [0b10000, 0b10000, 0b11110, 0b10001, 0b10001, 0b10001, 0b00000],
+  i: [0b00100, 0b00000, 0b00100, 0b00100, 0b00100, 0b00100, 0b00000],
+};
+const GLYPH_W = 5, GLYPH_H = 7, GAP = 1;
+const WORD = 'mochi';
+const TEXT_W = WORD.length * GLYPH_W + (WORD.length - 1) * GAP; // 29
+const TEXT_H = GLYPH_H; // 7
+
+// 文字实际墨迹范围（单位）——末尾 'i' 很窄，按整格居中会让文字视觉左偏，按墨迹居中才平衡
+let INK_MIN_X = GLYPH_W, INK_MAX_X = -1, INK_MIN_Y = GLYPH_H, INK_MAX_Y = -1;
+for (let gi = 0; gi < WORD.length; gi++) {
+  const g = GLYPHS[WORD[gi]];
+  for (let r = 0; r < GLYPH_H; r++) {
+    for (let c = 0; c < GLYPH_W; c++) {
+      if (g[r] & (1 << (4 - c))) {
+        const gx = gi * (GLYPH_W + GAP) + c;
+        if (gx < INK_MIN_X) INK_MIN_X = gx;
+        if (gx > INK_MAX_X) INK_MAX_X = gx;
+        if (r < INK_MIN_Y) INK_MIN_Y = r;
+        if (r > INK_MAX_Y) INK_MAX_Y = r;
+      }
+    }
+  }
+}
+const INK_W = INK_MAX_X - INK_MIN_X + 1;
+const INK_H = INK_MAX_Y - INK_MIN_Y + 1;
+
+// 文字覆盖率（8x8 超采样抗锯齿）→ 返回 0~1，1=全墨
+function wordCover(px, py, left, top, unit) {
   let hit = 0;
-  const steps = 4;
+  const steps = 8;
   for (let i = 0; i < steps; i++) {
     for (let j = 0; j < steps; j++) {
-      const x = (px + (i + 0.5) / steps - cx) / scale;
-      const y = -(py + (j + 0.5) / steps - cy) / scale;
-      const f = (x * x + y * y - 1) ** 3 - x * x * y ** 3;
-      if (f <= 0) hit++;
+      const tx = (px + (i + 0.5) / steps - left) / unit;
+      const ty = (py + (j + 0.5) / steps - top) / unit;
+      if (tx < 0 || ty < 0 || tx >= TEXT_W || ty >= TEXT_H) continue;
+      const gi = Math.floor(tx / (GLYPH_W + GAP));
+      const gx = tx - gi * (GLYPH_W + GAP);
+      if (gx >= GLYPH_W) continue;
+      const glyph = GLYPHS[WORD[gi]];
+      const row = Math.floor(ty);
+      const col = Math.floor(gx);
+      if (glyph && (glyph[row] & (1 << (4 - col)))) hit++;
     }
   }
   return hit / (steps * steps);
 }
 
-// 圆角矩形覆盖率（深色底）
-function roundRectCover(sx, sy, size, radius) {
-  const steps = 3;
-  let inside = 0;
-  for (let i = 0; i < steps; i++) {
-    for (let j = 0; j < steps; j++) {
-      const px = sx + (i + 0.5) / steps;
-      const py = sy + (j + 0.5) / steps;
-      const dx = Math.min(px, size - 1 - px);
-      const dy = Math.min(py, size - 1 - py);
-      if (dx < 0 || dy < 0) continue;
-      if (dx >= radius || dy >= radius) { inside++; continue; }
-      const cx = radius - dx, cy = radius - dy;
-      if (cx * cx + cy * cy <= radius * radius) inside++;
-    }
-  }
-  return inside / (steps * steps);
-}
+const INK = [17, 17, 17]; // #111111 深色文字，与开屏 logo 同风格
 
-const BG = [255, 255, 255]; // 白色底
-const HEART = [255, 255, 255]; // 白色爱心填充
-const OUTLINE = [17, 17, 17]; // #111111 细描边
-
-// 普通图标：白色底（不透明，圆角外也是白——避免系统把透明区域渲染成黑角）+ 白色爱心（细描边），与开屏 logo 同风格
+// 普通图标：白色底（不透明，圆角外也是白——避免系统把透明区域渲染成黑角）+ 深色 mochi 文字
 function makeIcon(size) {
-  const radius = size * 0.22;
-  const cy = size / 2 + size * 0.02; // 心形重心略偏上
-  const scale = size * 0.30;
-  const stroke = size * 0.022; // 描边粗细
+  const unit = (size * 0.76) / TEXT_W;
+  const left = (size - unit * INK_W) / 2 - unit * INK_MIN_X;
+  const top = (size - unit * INK_H) / 2 - unit * INK_MIN_Y;
   return encodePng(size, (x, y) => {
-    const sx = x + 0.5, sy = y + 0.5;
-    const bg = roundRectCover(sx, sy, size, radius);
-    const ink = heartCover(sx, sy, size / 2, cy, scale);
-    const inkBig = heartCover(sx, sy, size / 2, cy, scale + stroke);
-    let c = BG;
-    if (inkBig > 0 && ink < 0.5) c = OUTLINE;   // 爱心边缘 → 描边
-    else if (ink >= 0.5) c = HEART;             // 爱心内部 → 白色填充
-    return [c[0], c[1], c[2], 255];             // 全图不透明（白底），杜绝黑角
+    const c = wordCover(x + 0.5, y + 0.5, left, top, unit);
+    const r = Math.round(255 + (INK[0] - 255) * c);
+    const g = Math.round(255 + (INK[1] - 255) * c);
+    const b = Math.round(255 + (INK[2] - 255) * c);
+    return [r, g, b, 255]; // 全图不透明（白底），杜绝黑角
   });
 }
 
-// maskable：白色铺满整张，白色爱心（细描边）收进中央安全区
+// maskable：白色铺满整张，深色 mochi 文字收进中央安全区
 function makeMaskable(size) {
-  const cy = size / 2 + size * 0.015;
-  const scale = size * 0.235;
-  const stroke = size * 0.017;
+  const unit = (size * 0.52) / TEXT_W;
+  const left = (size - unit * INK_W) / 2 - unit * INK_MIN_X;
+  const top = (size - unit * INK_H) / 2 - unit * INK_MIN_Y;
   return encodePng(size, (x, y) => {
-    const sx = x + 0.5, sy = y + 0.5;
-    const ink = heartCover(sx, sy, size / 2, cy, scale);
-    const inkBig = heartCover(sx, sy, size / 2, cy, scale + stroke);
-    let c = BG;
-    if (inkBig > 0 && ink < 0.5) c = OUTLINE;
-    else if (ink >= 0.5) c = HEART;
-    return [c[0], c[1], c[2], 255];
+    const c = wordCover(x + 0.5, y + 0.5, left, top, unit);
+    const r = Math.round(255 + (INK[0] - 255) * c);
+    const g = Math.round(255 + (INK[1] - 255) * c);
+    const b = Math.round(255 + (INK[2] - 255) * c);
+    return [r, g, b, 255];
   });
 }
 

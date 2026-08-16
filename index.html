@@ -2167,11 +2167,9 @@ padding:1px 7px; border-radius:6px; flex-shrink:0;
 .stats-list { display:flex; flex-direction:column; gap:8px; }
 .stats-item { display:flex; align-items:center; gap:10px; }
 .stats-item-name {
-width:64px; flex-shrink:0; font-size:12px; color:#555;
+flex:1; min-width:0; font-size:12px; color:#555;
 white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left;
 }
-.stats-item-bar { flex:1; height:6px; background:rgba(0,0,0,.07); border-radius:99px; overflow:hidden; }
-.stats-item-bar i { display:block; height:100%; background:var(--ink); border-radius:99px; }
 .stats-item-num { width:30px; flex-shrink:0; font-size:11px; color:var(--ink); text-align:right; font-weight:600; }
 .mail-item {
 display:flex; align-items:center; gap:10px;
@@ -2219,7 +2217,7 @@ padding:10px 14px 0;
 display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;
 }
 .mail-data-actions {
-display:flex; flex-direction:column; gap:8px;
+display:flex; flex-direction:column; gap:8px; padding:4px 0 6px;
 }
 .mail-data-actions .cc-tool { width:100%; padding:11px 10px; }
 .mail-tb {
@@ -2793,7 +2791,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.5.139 · 部署于 2026-08-16 18:38</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.5.139 · 部署于 2026-08-16 18:57</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4263,6 +4261,7 @@ transition:color .18s ease, background .18s ease;
         <button class="fav-tab sel" data-mtab="in">收到的信</button>
         <button class="fav-tab" data-mtab="out">寄出的信</button>
         <button class="fav-tab" data-mtab="write">写封信</button>
+        <button class="fav-tab" data-mtab="data">信件数据</button>
       </div>
       <div class="cal-scroll">
         <div class="cal-card glass" data-mpanel="in">
@@ -4277,10 +4276,13 @@ transition:color .18s ease, background .18s ease;
           <button class="ta-add-btn" style="width:100%;margin-top:10px" id="mail-open-write">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-2px;margin-right:4px"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>提笔写信
           </button>
-          <div class="cal-card-title" style="margin-top:16px">信箱数据</div>
+        </div>
+        <!-- 信件数据（第4个 tab：数据管理） -->
+        <div class="cal-card glass" data-mpanel="data" hidden>
+          <div class="cal-card-title">信件数据</div>
           <div class="mail-data-actions">
-            <button class="cc-tool" id="mail-export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>导出信箱数据</button>
-            <button class="cc-tool" id="mail-import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>导入信箱数据</button>
+            <button class="cc-tool" id="mail-export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>导出信件数据</button>
+            <button class="cc-tool" id="mail-import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>导入信件数据</button>
             <button class="cc-tool cc-tool-danger" id="mail-clear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>清空所有信件</button>
           </div>
         </div>
@@ -4819,6 +4821,14 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="gs-title">数据</div>
       <div class="set-group glass">
+        <div class="set-row" id="cs-export-msgs">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v12"/></svg></div>
+          <div class="txt">导出聊天记录</div>
+        </div>
+        <div class="set-row" id="cs-import-msgs">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 5v12"/></svg></div>
+          <div class="txt">导入聊天记录</div>
+        </div>
         <div class="set-row danger" id="cs-clear-msgs">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></div>
           <div class="txt">删除全部聊天记录</div>
@@ -5401,7 +5411,7 @@ const custom = hasCustom();
 const useDefault = getUseDefault();
 const defEl = document.getElementById('cq-default');
 if (defEl) defEl.checked = useDefault;
-if (cnt) cnt.textContent = (custom ? getQuotes().length : 0) + (custom ? '' : '（默认）');
+if (cnt) cnt.textContent = getQuotes().length + (custom ? '' : '（默认）');
 if (!el) return;
 const quotes = getQuotes();
 el.innerHTML = quotes.length
@@ -6280,7 +6290,7 @@ if (weDays) {
 const day = new Date().getDay(); // 0=日 6=六
 let daysTo = (6 - day + 7) % 7;   // 距周六
 if (day === 6 || day === 0) {
-weDays.textContent = day === 6 ? '今天就是周末啦' : '离周末还有 6 天';
+weDays.textContent = '今天是周末';
 } else {
 weDays.textContent = '离周末还有 ' + daysTo + ' 天';
 }
@@ -7307,6 +7317,28 @@ try { store.remove('chat-msgs'); } catch (e) {}
 if (body) body.innerHTML = '';
 clearChatUnread();
 };
+window.chatExportMsgs = function () {
+if (window.chatFlushSave) window.chatFlushSave();
+return (msgs || []).slice();
+};
+window.chatImportMsgs = function (arr) {
+if (!Array.isArray(arr)) return false;
+msgs = arr.filter(m => m && typeof m === 'object');
+pendingLocal = null;
+sessionChangedIdx.clear();
+chatDbReady = true;
+renderStart = 0;
+if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+try { store.remove('chat-msgs'); } catch (e) {}
+try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+if (body) body.innerHTML = '';
+clearChatUnread();
+if (chatVisible() && msgs.length) {
+renderWindow(false, true);
+scrollChatBottom();
+}
+return true;
+};
 const deskMsgEl = document.getElementById('desk-msg');
 const deskMsgAv = document.getElementById('desk-msg-av');
 const deskMsgName = document.getElementById('desk-msg-name');
@@ -7758,6 +7790,7 @@ setTimeout(() => { hideTyping(); replyOnce(c, null); }, 600);
 }
 }, 900);
 }
+setTimeout(() => { if (window.callMaybeTrigger) window.callMaybeTrigger(); }, 3500);
 }
 window.continueChat = function () {
 const c = cfg();
@@ -7880,6 +7913,7 @@ setTimeout(() => { hideTyping(); addIn(pick(pool.text) || '…'); }, 600);
 if (i < count - 1) showTyping();
 }, i * randInt(900, 2600));
 }
+setTimeout(() => { if (window.callMaybeTrigger) window.callMaybeTrigger(); }, count * 2600 + 3500);
 }
 const chatApp = document.querySelector('.app[data-app="chat"]');
 const chatPage = document.getElementById('page-chat');
@@ -10395,6 +10429,63 @@ toast('气泡样式已应用');
 });
 }
 applyCss();
+const csExport = row('cs-export-msgs');
+if (csExport) {
+csExport.addEventListener('click', () => {
+if (!window.chatExportMsgs) { toast('聊天记录暂不可用'); return; }
+toast('正在导出，请稍候…');
+const arr = window.chatExportMsgs();
+const data = { app: 'mochi-zika-chat', version: '1.0', exportTime: new Date().toISOString(), msgs: arr };
+const json = JSON.stringify(data);
+const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+const a = document.createElement('a');
+a.href = URL.createObjectURL(blob);
+a.download = '聊天记录_' + new Date().toISOString().slice(0, 10) + '.json';
+document.body.appendChild(a);
+a.click();
+setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+toast('已导出 ' + arr.length + ' 条聊天记录');
+});
+}
+const csImport = row('cs-import-msgs');
+if (csImport) {
+csImport.addEventListener('click', () => {
+const input = document.createElement('input');
+input.type = 'file';
+input.accept = '.json,application/json';
+input.onchange = () => {
+const f = input.files && input.files[0];
+if (!f) return;
+const reader = new FileReader();
+reader.onload = () => {
+let data;
+try { data = JSON.parse(String(reader.result || '')); } catch (e) { toast('无效的聊天记录文件'); return; }
+if (!data || typeof data !== 'object') { toast('无效的聊天记录文件'); return; }
+let arr = Array.isArray(data) ? data : null;
+if (!arr && data.msgs && Array.isArray(data.msgs)) arr = data.msgs;
+if (!arr && data.ls && typeof data.ls === 'object') {
+const raw = (data.idb && data.idb['xy-home-v2:chat-msgs']) || data.ls['xy-home-v2:chat-msgs'];
+try { arr = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { arr = null; }
+}
+if (!Array.isArray(arr) || !arr.length) { toast('文件里没有聊天记录数据'); return; }
+const n = arr.length;
+const fmt = (t) => t ? new Date(t).toLocaleString() : '未知';
+const lines = ['文件包含 ' + n + ' 条消息：',
+'· 最早：' + fmt(arr[0] && arr[0].ts),
+'· 最新：' + fmt(arr[n - 1] && arr[n - 1].ts),
+'导入将覆盖当前全部聊天记录（不可恢复）。'];
+if (!window.openModal) return;
+window.openModal('确认导入聊天记录？', '', () => {
+if (window.chatImportMsgs && window.chatImportMsgs(arr)) toast('已导入 ' + n + ' 条聊天记录');
+else toast('导入失败');
+}, { noInput: true, staticText: lines.join('\n') });
+};
+reader.onerror = () => { toast('文件读取失败，请重试'); };
+reader.readAsText(f, 'utf-8');
+};
+input.click();
+});
+}
 const csClear = row('cs-clear-msgs');
 if (csClear) {
 csClear.addEventListener('click', () => {
@@ -10451,7 +10542,7 @@ const DEFAULTS = {
 'fd-min-interval': 1, 'fd-max-interval': 720,
 'fd-min-cards-post': 4, 'fd-max-cards-post': 15,
 'fd-post-kaomoji': 10, 'fd-post-emoji': 10, 'fd-post-sticker': 30, 'fd-post-image': 30,
-'call-incoming': 8, 'call-pickup': 70, 'call-busy': 15, 'call-reject': 15, 'call-hangup': 5
+'call-incoming': 15, 'call-pickup': 70, 'call-busy': 15, 'call-reject': 15, 'call-hangup': 5
 };
 function getCfg() {
 const out = {};
@@ -15418,7 +15509,7 @@ if (v && typeof v === 'string' && v.length > 2) store.set('records-avatar', v);
 (function () {
 const uid = 'xy-home-v2';
 const store = window.xyStore(uid);
-const CALL = { incoming: 8, pickup: 70, busy: 15, reject: 15, hangup: 5 };
+const CALL = { incoming: 15, pickup: 70, busy: 15, reject: 15, hangup: 5 };
 function callCfg() {
 const c = (window.replyCfg && window.replyCfg()) || {};
 return {
@@ -15801,17 +15892,18 @@ try {
 if (document.hidden) return; // v3.5.127：后台不触发来电
 if (currentCall) return;
 const now = Date.now();
-const last = callLast();
+const last = Math.min(callLast(), now);
 if (now - last < 300000) return; // 5 分钟冷却
 if (Math.random() * 100 >= callCfg().incoming) return;
 store.set('records-call-last', String(now));
 incomingCall();
 } catch (e) {}
 }
+window.callMaybeTrigger = maybeIncoming;
 setTimeout(() => {
 setInterval(maybeIncoming, 60000);
 maybeIncoming();
-}, (120 + Math.random() * 180) * 1000);
+}, (45 + Math.random() * 75) * 1000);
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
@@ -17574,10 +17666,8 @@ html += '<div class="stats-top">' +
 '<div class="stats-top-num">' + topCount + ' 次</div></div>';
 html += '<div class="stats-list">';
 entries.slice(0, 5).forEach(e => {
-const w = Math.max(3, Math.round(e.count / entries[0].count * 100));
 html += '<div class="stats-item">' +
 '<span class="stats-item-name">' + String(e.name).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</span>' +
-'<span class="stats-item-bar"><i style="width:' + w + '%"></i></span>' +
 '<span class="stats-item-num">' + e.count + '</span></div>';
 });
 html += '</div>';
@@ -17673,10 +17763,10 @@ else emotion[md.label] = (emotion[md.label] || 0) + 1;
 });
 });
 exprEl.innerHTML =
-statsBarSection('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 13l2 2 4-4"/></svg>', '文字字卡', textCount, '常用文字', '暂无使用记录') +
-statsBarSection('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6a6 6 0 010 12H9c-1 0-2-.2-2.8-.6L3 16l1-3.5A5 5 0 019 3z"/><path d="M17 9h4"/></svg>', '情绪字卡', emotion, '常见情绪', '暂无使用记录') +
-statsBarSection('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>', '心意字卡', heart, '常传递心意', '暂无使用记录') +
-statsBarSection('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>', '交流意图', intent, '常用交流', '暂无使用记录');
+statsBarSection('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>', '文字字卡', textCount, '常用文字', '暂无使用记录') +
+statsBarSection('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9.5l.01.01M15 9.5l.01.01"/></svg>', '情绪字卡', emotion, '常见情绪', '暂无使用记录') +
+statsBarSection('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5S4.5 15.2 4.5 9.9A4.9 4.9 0 0112 7.1a4.9 4.9 0 017.5 2.8c0 5.3-7.5 10.6-7.5 10.6z"/><path d="M19 3.5l.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9-1.9-.6 1.9-.6z"/></svg>', '心意字卡', heart, '常传递心意', '暂无使用记录') +
+statsBarSection('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8.5 8.5 0 01-12.6 7.4L4 21l1.5-4.4A8.5 8.5 0 1121 12z"/><path d="M8.5 10h7M8.5 13h4.5"/></svg>', '交流意图', intent, '常用交流', '暂无使用记录');
 }
 }
 const daysEl = document.getElementById('st-days');

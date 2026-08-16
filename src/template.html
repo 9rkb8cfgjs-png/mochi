@@ -1514,6 +1514,7 @@
         <button class="fav-tab sel" data-mtab="in">收到的信</button>
         <button class="fav-tab" data-mtab="out">寄出的信</button>
         <button class="fav-tab" data-mtab="write">写封信</button>
+        <button class="fav-tab" data-mtab="data">信件数据</button>
       </div>
       <div class="cal-scroll">
         <div class="cal-card glass" data-mpanel="in">
@@ -1529,8 +1530,8 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-2px;margin-right:4px"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>提笔写信
           </button>
         </div>
-        <!-- 信箱数据（所有 tab 下都显示，置于列表底部） -->
-        <div class="mail-data-section">
+        <!-- 信件数据（第4个 tab：数据管理） -->
+        <div class="cal-card glass" data-mpanel="data" hidden>
           <div class="cal-card-title">信件数据</div>
           <div class="mail-data-actions">
             <button class="cc-tool" id="mail-export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>导出信件数据</button>
@@ -1966,14 +1967,6 @@
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg></span>
             <span>占卜</span>
           </button>
-          <button class="more-item" id="more-export-chat" title="导出聊天记录">
-            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></span>
-            <span>导出聊天</span>
-          </button>
-          <button class="more-item" id="more-import-chat" title="导入聊天记录">
-            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg></span>
-            <span>导入聊天</span>
-          </button>
         </div>
         <div class="more-grid" id="more-grid-ask" hidden>
           <button class="more-item" id="more-ask-now" title="让TA现在问一次（TA的询问）">
@@ -2081,6 +2074,14 @@
       </div>
       <div class="gs-title">数据</div>
       <div class="set-group glass">
+        <div class="set-row" id="cs-export-msgs">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v12"/></svg></div>
+          <div class="txt">导出聊天记录</div>
+        </div>
+        <div class="set-row" id="cs-import-msgs">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 5v12"/></svg></div>
+          <div class="txt">导入聊天记录</div>
+        </div>
         <div class="set-row danger" id="cs-clear-msgs">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></div>
           <div class="txt">删除全部聊天记录</div>

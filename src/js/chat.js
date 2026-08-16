@@ -1002,6 +1002,37 @@
     clearChatUnread();
   };
 
+  // v3.6.x：导出聊天记录——聊天设置页调用，返回当前完整消息数组
+  //（内存 msgs 即全量历史，renderStart 只影响渲染窗口不影响数据；导出前强制落盘，
+  //  防抖窗口内未写盘的最后几条也已在内存里，返回切片避免调用方改动内部数组）
+  window.chatExportMsgs = function () {
+    if (window.chatFlushSave) window.chatFlushSave();
+    return (msgs || []).slice();
+  };
+
+  // v3.6.x：导入聊天记录——聊天设置页调用，用传入数组整体覆盖当前历史（导出文件的还原）：
+  // 校验 → 写 IndexedDB（权威，与 loadMsgs 读取路径一致）→ 清 localStorage 残留 →
+  // 复位分页窗口起点/未读角标 → 聊天页可见时就地重渲染，无需刷新页面。
+  // 消息渲染侧本就全量转义（escTxt），导入数据无需再预处理。
+  window.chatImportMsgs = function (arr) {
+    if (!Array.isArray(arr)) return false;
+    msgs = arr.filter(m => m && typeof m === 'object');
+    pendingLocal = null;
+    sessionChangedIdx.clear();
+    chatDbReady = true;
+    renderStart = 0;
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+    try { store.remove('chat-msgs'); } catch (e) {}
+    try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+    if (body) body.innerHTML = '';
+    clearChatUnread();
+    if (chatVisible() && msgs.length) {
+      renderWindow(false, true);
+      scrollChatBottom();
+    }
+    return true;
+  };
+
   // v3.5.102：桌面新消息横幅——TA 的普通消息进来且当前不在聊天页时，
   // 在桌面/任意页面顶部弹出横幅（头像 + 昵称 + 内容），点击直接进聊天
   const deskMsgEl = document.getElementById('desk-msg');
@@ -1569,6 +1600,9 @@ function partialRetractMsg(msgEl, side) {
         }
       }, 900);
     }
+    // v3.6.x：来电挂钩——TA 回复消息后按「通话设置-来电概率」掷一次来电
+    // （call.js 提供 window.callMaybeTrigger，与 maybeMusicRequest 同模式；延迟几秒更自然）
+    setTimeout(() => { if (window.callMaybeTrigger) window.callMaybeTrigger(); }, 3500);
   }
   // 「让对方继续说」：点击顶部联系人昵称触发，立即发 1 条（forceSingle）
   window.continueChat = function () {
@@ -1715,6 +1749,9 @@ function partialRetractMsg(msgEl, side) {
         if (i < count - 1) showTyping();
       }, i * randInt(900, 2600));
     }
+    // v3.6.x：来电挂钩——TA 主动发完消息后按「通话设置-来电概率」掷一次来电
+    // （等整批发完再加几秒缓冲，避免来电弹窗盖住刚发出去的消息）
+    setTimeout(() => { if (window.callMaybeTrigger) window.callMaybeTrigger(); }, count * 2600 + 3500);
   }
 
   // ---- 进入聊天页：恢复历史 ----
@@ -2273,98 +2310,7 @@ function partialRetractMsg(msgEl, side) {
     });
   }
 
-  // ---- 聊天记录 导出 / 导入（v3.6.x） ----
-  const moreExportChat = document.getElementById('more-export-chat');
-  if (moreExportChat) {
-    moreExportChat.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (morePanel) morePanel.hidden = true;
-      // 强制落盘防抖窗口内的最后几条消息，再导出
-      if (window.chatFlushSave) window.chatFlushSave();
-      const out = { version: '1.0', app: 'mochi-chat', exportTime: new Date().toISOString(), msgs: msgs };
-      try {
-        const blob = new Blob([JSON.stringify(out)], { type: 'application/json;charset=utf-8' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = '聊天记录_' + new Date().toISOString().slice(0, 10) + '.json';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-        toast('已导出聊天记录（' + msgs.length + ' 条）');
-      } catch (err) { toast('导出失败'); }
-    });
-  }
-  const moreImportChat = document.getElementById('more-import-chat');
-  if (moreImportChat) {
-    moreImportChat.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (morePanel) morePanel.hidden = true;
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.json,application/json';
-      input.onchange = () => {
-        const f = input.files && input.files[0];
-        if (f) importChatFile(f);
-      };
-      input.click();
-    });
-  }
-  // 兼容旧 iOS：读取文件文本（File.text() 不支持时退回 FileReader）
-  function chatReadFileText(file) {
-    return new Promise((resolve) => {
-      if (typeof file.text === 'function') {
-        file.text().then(resolve).catch(() => readViaReader());
-      } else readViaReader();
-      function readViaReader() {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result || ''));
-        r.onerror = () => resolve('');
-        r.readAsText(file, 'utf-8');
-      }
-    });
-  }
-  // 导入聊天记录：按 内容+时间 去重合并，导入的消息按 ts 插入正确位置
-  function importChatFile(file) {
-    chatReadFileText(file).then((text) => {
-      let arr = null;
-      try {
-        const data = JSON.parse(text || 'null');
-        if (Array.isArray(data)) arr = data;
-        else if (data && Array.isArray(data.msgs)) arr = data.msgs;
-      } catch (err) {}
-      if (!arr || !arr.length) { toast('无效的聊天记录文件'); return; }
-      const valid = arr.filter(x => x && typeof x === 'object' && x.side && x.text !== undefined);
-      if (!valid.length) { toast('文件中没有有效的聊天消息'); return; }
-      // 去重 key：side + 内容 + 时间 + 类型（消息无稳定 id）
-      const keyOf = (r) => JSON.stringify({ side: r.side, text: r.text, ts: r.ts, type: r.type || '' });
-      const map = new Map();
-      msgs.forEach(r => { if (r) map.set(keyOf(r), r); });
-      const before = map.size;
-      valid.forEach(r => map.set(keyOf(r), r));
-      const merged = Array.from(map.values());
-      merged.sort((a, b) => ((a.ts || 0) - (b.ts || 0)) || 0);
-      const added = merged.length - before;
-      if (window.openModal) {
-        window.openModal('导入 ' + valid.length + ' 条聊天记录？', '', () => {
-          msgs = merged;
-          saveMsgs();
-          saveMsgsNow();
-          renderStart = Math.max(0, merged.length - RENDER_MAX);
-          renderWindow(false, false);
-          scrollToBottom();
-          toast('已导入 ' + valid.length + ' 条（新增 ' + added + ' 条，共 ' + merged.length + ' 条）');
-        }, { noInput: true, staticText: '将合并进当前聊天记录（现有 ' + before + ' 条）：\n· 导入 ' + valid.length + ' 条，按 内容+时间 自动去重\n· 重复消息以导入内容为准，新增的按时间插入\n导入后共 ' + merged.length + ' 条。' });
-      } else {
-        msgs = merged;
-        saveMsgs();
-        saveMsgsNow();
-        renderStart = Math.max(0, merged.length - RENDER_MAX);
-        renderWindow(false, false);
-        scrollToBottom();
-        toast('已导入 ' + valid.length + ' 条聊天记录');
-      }
-    });
-  }
+  // ---- 聊天记录 导出 / 导入：已移至右上角三点 → 聊天设置「数据」分组（chat-settings.js） ----
   if (chatSearchGo) chatSearchGo.addEventListener('click', (e) => { e.stopPropagation(); runChatSearch(); });
   if (chatSearchInput) chatSearchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.stopPropagation(); runChatSearch(); } });
   const chatSearchClose = document.getElementById('chat-search-close');

@@ -86,7 +86,9 @@
     const useDefault = getUseDefault();
     const defEl = document.getElementById('cq-default');
     if (defEl) defEl.checked = useDefault;
-    if (cnt) cnt.textContent = (custom ? getQuotes().length : 0) + (custom ? '' : '（默认）');
+    // v3.6.x：无自定义库时显示默认库实际句数（原逻辑显示 0（默认），
+    //   明明默认 46 句在正常用，却让用户以为字卡是空的）
+    if (cnt) cnt.textContent = getQuotes().length + (custom ? '' : '（默认）');
     if (!el) return;
     const quotes = getQuotes();
     el.innerHTML = quotes.length

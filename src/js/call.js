@@ -2,11 +2,11 @@
 // 来电：全屏弹窗（头像/名称/对方来电 + 接听/拒绝 + 30 秒倒计时未接）
 // 去电：拨打 → 忙线/拒绝/接通/未接 概率
 // 接通：显示通话时长，2 秒后最小化为通话小框（底部悬浮，可挂断）
-// 概率（与星言一致）：来电 8% / 接通 70% / 忙线 15% / 拒绝 15% / 对方挂断 5%（每 30 秒检查）
+// 概率（与星言一致）：来电 15% / 接通 70% / 忙线 15% / 拒绝 15% / 对方挂断 5%（每 30 秒检查）
 (function () {
   const uid = 'xy-home-v2';
   const store = window.xyStore(uid);
-  const CALL = { incoming: 8, pickup: 70, busy: 15, reject: 15, hangup: 5 };
+  const CALL = { incoming: 15, pickup: 70, busy: 15, reject: 15, hangup: 5 };
   // 从回复设置读取（可自由调整概率，与星言通话设置一致）
   function callCfg() {
     const c = (window.replyCfg && window.replyCfg()) || {};
@@ -439,24 +439,29 @@
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
   }
 
-  // ================= 联系人主动来电（星言机制：每 5 分钟冷却 + 8% 概率） =================
+  // ================= 联系人主动来电（星言机制：每 5 分钟冷却 + 来电概率） =================
   window.triggerIncomingCall = incomingCall;
-  // 上次来电时间戳：首次 2-5 分钟后，之后每 5 分钟检查一次（概率 8%，冷却至少 5 分钟）
+  // 上次来电时间戳：首次约 1-2 分钟检查（原 2-5 分钟太久，用户会以为 TA 从不来电），
+  // 之后每 60 秒检查一次（来电概率 + 冷却至少 5 分钟）
   function callLast() { const v = parseInt(store.get('records-call-last'), 10); return isNaN(v) ? 0 : v; }
   function maybeIncoming() {
     try {
       if (document.hidden) return; // v3.5.127：后台不触发来电
       if (currentCall) return;
       const now = Date.now();
-      const last = callLast();
+      // v3.6.x：冷却戳为未来时间（设备时钟被改动过）→ 按 0 处理，避免来电被永久锁死
+      const last = Math.min(callLast(), now);
       if (now - last < 300000) return; // 5 分钟冷却
       if (Math.random() * 100 >= callCfg().incoming) return;
       store.set('records-call-last', String(now));
       incomingCall();
     } catch (e) {}
   }
+  // v3.6.x：暴露给聊天模块——TA 回复消息/主动发消息后按「通话设置-来电概率」掷一次来电
+  // （与 maybeMusicRequest 同模式：chat.js 只调 window 钩子，来电逻辑全在本模块）
+  window.callMaybeTrigger = maybeIncoming;
   setTimeout(() => {
     setInterval(maybeIncoming, 60000);
     maybeIncoming();
-  }, (120 + Math.random() * 180) * 1000);
+  }, (45 + Math.random() * 75) * 1000);
 })();

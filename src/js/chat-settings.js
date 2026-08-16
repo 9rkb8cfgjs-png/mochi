@@ -354,6 +354,69 @@
   }
   applyCss();
 
+  // ================= 导出 / 导入聊天记录（数据，与清空同组） =================
+  // 导出：打包为独立 JSON 下载（聊天记录可能含图片 dataURL，体积大也直接下载，不走 localStorage）
+  const csExport = row('cs-export-msgs');
+  if (csExport) {
+    csExport.addEventListener('click', () => {
+      if (!window.chatExportMsgs) { toast('聊天记录暂不可用'); return; }
+      toast('正在导出，请稍候…');
+      const arr = window.chatExportMsgs();
+      const data = { app: 'mochi-zika-chat', version: '1.0', exportTime: new Date().toISOString(), msgs: arr };
+      const json = JSON.stringify(data);
+      const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '聊天记录_' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      toast('已导出 ' + arr.length + ' 条聊天记录');
+    });
+  }
+  // 导入：读取 JSON → 校验 → 预览摘要二次确认 → 覆盖当前记录
+  const csImport = row('cs-import-msgs');
+  if (csImport) {
+    csImport.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json,application/json';
+      input.onchange = () => {
+        const f = input.files && input.files[0];
+        if (!f) return;
+        // FileReader 全兼容（旧 iOS File.text() 不支持）
+        const reader = new FileReader();
+        reader.onload = () => {
+          let data;
+          try { data = JSON.parse(String(reader.result || '')); } catch (e) { toast('无效的聊天记录文件'); return; }
+          if (!data || typeof data !== 'object') { toast('无效的聊天记录文件'); return; }
+          // 兼容三种结构：本功能导出的 {app,msgs} / 裸数组 / 整份 mochi 备份（取其中聊天记录）
+          let arr = Array.isArray(data) ? data : null;
+          if (!arr && data.msgs && Array.isArray(data.msgs)) arr = data.msgs;
+          if (!arr && data.ls && typeof data.ls === 'object') {
+            const raw = (data.idb && data.idb['xy-home-v2:chat-msgs']) || data.ls['xy-home-v2:chat-msgs'];
+            try { arr = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { arr = null; }
+          }
+          if (!Array.isArray(arr) || !arr.length) { toast('文件里没有聊天记录数据'); return; }
+          const n = arr.length;
+          const fmt = (t) => t ? new Date(t).toLocaleString() : '未知';
+          const lines = ['文件包含 ' + n + ' 条消息：',
+            '· 最早：' + fmt(arr[0] && arr[0].ts),
+            '· 最新：' + fmt(arr[n - 1] && arr[n - 1].ts),
+            '导入将覆盖当前全部聊天记录（不可恢复）。'];
+          if (!window.openModal) return;
+          window.openModal('确认导入聊天记录？', '', () => {
+            if (window.chatImportMsgs && window.chatImportMsgs(arr)) toast('已导入 ' + n + ' 条聊天记录');
+            else toast('导入失败');
+          }, { noInput: true, staticText: lines.join('\n') });
+        };
+        reader.onerror = () => { toast('文件读取失败，请重试'); };
+        reader.readAsText(f, 'utf-8');
+      };
+      input.click();
+    });
+  }
+
   // ================= 删除全部聊天记录（危险操作，二次确认） =================
   const csClear = row('cs-clear-msgs');
   if (csClear) {

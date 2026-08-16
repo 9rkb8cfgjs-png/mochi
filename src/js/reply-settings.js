@@ -40,7 +40,9 @@
     // 通话（星言通话设置）
     // v3.6.x：对方挂断默认 0.01% 实际几乎永不触发（每 30 秒检查一次），
     // 用户反馈"联系人从不挂断"——提到 5%，通话中约每 30 秒掷一次，几分钟后大概率会遇到
-    'call-incoming': 8, 'call-pickup': 70, 'call-busy': 15, 'call-reject': 15, 'call-hangup': 5
+    // v3.6.x：来电默认 8% → 15%——原来只靠独立定时器每 60 秒掷一次、首次检查还延迟 2-5 分钟，
+    // 默认设置下用户会以为 TA 从不来电；已改为「TA 回复/主动发消息后按概率来电」+ 定时器兜底
+    'call-incoming': 15, 'call-pickup': 70, 'call-busy': 15, 'call-reject': 15, 'call-hangup': 5
   };
 
   function getCfg() {
