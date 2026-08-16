@@ -3236,7 +3236,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 14:21</div>
+      <div class="splash-ver" id="splash-ver">部署于 2026-08-16 14:23</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -20167,7 +20167,7 @@ if (ckRefresh) {
   // 抛异常且不检查，用户点了开关毫无反馈，看起来像「不能用」）
   function showIosGuide() {
     const msg = inIosStandalone
-      ? '已进入全屏模式。iOS 的系统状态栏（时间/电量）由系统控制，任何网页都无法隐藏，这是所有 iPhone 应用的共同限制。\n\n本开关已隐藏应用内的模拟状态栏，内容顶到系统状态栏下方，屏幕利用更满。'
+      ? 'iOS 的系统状态栏（时间/电量）由系统控制，任何网页都无法隐藏，这是所有 iPhone 应用的共同限制。\n\n应用内的模拟状态栏已自动隐藏，内容直接顶到系统状态栏下方，屏幕利用更满，无需额外设置。'
       : 'iOS Safari 不支持网页隐藏系统状态栏（Fullscreen API 仅对视频生效）。\n\n真正全屏的方法：点底部「分享」→「添加到主屏幕」，再从主屏幕图标打开 Mochi，即可全屏（无浏览器栏）。';
     if (window.openModal) {
       window.openModal('iOS 全屏说明', '', () => {}, { noInput: true, staticText: msg });
@@ -20184,6 +20184,7 @@ if (ckRefresh) {
     if (el) el.checked = on;
   }
   // v3.6.x：iOS 上改开关文案，明示平台限制，避免「点了没反应 / 不是真全屏」的困惑
+  //   （模拟状态栏已在手机端统一隐藏，iOS 开关仅保留持久化 + 说明，不再声称"隐藏状态栏"）
   function relabelIosToggle() {
     const el = document.getElementById('sf-fullscreen');
     if (!el) return;
@@ -20192,7 +20193,7 @@ if (ckRefresh) {
     const span = row.querySelector('span');
     if (!span) return;
     span.textContent = inIosStandalone
-      ? '全屏模式（隐藏模拟状态栏，系统状态栏不可隐藏）'
+      ? '全屏模式（iOS 系统状态栏不可隐藏）'
       : '全屏模式（iOS 需添加到主屏幕）';
   }
   const fsToggle = document.getElementById('sf-fullscreen');

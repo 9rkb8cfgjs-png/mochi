@@ -179,14 +179,15 @@
   setInterval(maybeTriggerTAAsk, 240000);
 
   // v3.6.x：异步 IDB 合并（chat.js loadMsgs）可能让自动弹窗持有过期 msgIdx——
-  // 打开/作答前先校验索引指向的仍是同类卡片；已错位则从末尾回退找最近的
-  // 未作答同类卡片（自动触发场景卡片就是最新一条；点击卡片场景索引恒有效，不受影响）
+  // 打开/作答前先校验索引指向的仍是「同类且未作答」的卡片；已错位/指向已作答
+  // 卡片则从末尾回退找最近的未作答同类卡片（自动触发场景卡片就是最新一条；
+  // 点击卡片路径由聊天页委托保证传入的必是未作答卡片的索引）
   function locateCardIdx(msgIdx, special, statusKey) {
     let arr = [];
     try { arr = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]')); } catch (e) {}
     if (!Array.isArray(arr)) arr = [];
     const rec = arr[msgIdx];
-    if (rec && rec.special === special) return msgIdx;
+    if (rec && rec.special === special && !rec[statusKey]) return msgIdx;
     for (let i = arr.length - 1; i >= 0; i--) {
       const r = arr[i];
       if (r && r.special === special && !r[statusKey]) return i;
