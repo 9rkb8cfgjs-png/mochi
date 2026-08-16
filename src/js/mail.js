@@ -22,7 +22,28 @@
     clearTimeout(t._timer);
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
   }
-  function load() { try { return JSON.parse(store.get(KEY) || '[]'); } catch (e) { return []; } }
+  // v3.6.x：load() 合并暂存——权威读取（mailDbReady=false）期间收到的信只暂存在
+  // mailPending，原 load() 只读持久层 → 来信弹窗已提示「给你寄来了一封信」、信箱列表
+  // 却是空白（OPPO 雨见浏览器 IndexedDB 打开/读取慢或挂起时真实复现）；这里把暂存
+  // 信件按 id 合并在持久层之上，弹窗提示过的一切信件都可见可回可清角标。
+  function load() {
+    let list = [];
+    try { list = JSON.parse(store.get(KEY) || '[]'); } catch (e) { list = []; }
+    if (!mailDbReady && mailPending && mailPending.length) {
+      const map = {};
+      list.forEach(x => { if (x && x.id) map[x.id] = x; });
+      mailPending.forEach(x => { if (x && x.id) map[x.id] = x; });
+      list = Object.keys(map).map(k => map[k]).sort((a, b) => (b.tm || 0) - (a.tm || 0));
+    }
+    return list;
+  }
+  // 按 id 合并两个信件列表（后者覆盖同 id），按 tm 倒序
+  function mergeLists(a, b) {
+    const map = {};
+    (a || []).forEach(x => { if (x && x.id) map[x.id] = x; });
+    (b || []).forEach(x => { if (x && x.id) map[x.id] = x; });
+    return Object.keys(map).map(k => map[k]).sort((x, y) => (y.tm || 0) - (x.tm || 0));
+  }
   // v3.5.120：信箱权威加载防护——修复「刷新后信箱数据丢失」：
   // 信箱数据导入后只在 IndexedDB（备份把它归为大键），localStorage 空时
   // load() 返回 []，此时任何 save([]) 都会用空列表覆盖 IDB 里的全部信件。
@@ -695,24 +716,31 @@
   // （mailDbReady=false）用户写入的信件/已读标记（按 id 覆盖 + 按 tm 保序），
   // 就绪后重渲染。修复「刷新后信箱数据丢失」：旧逻辑只在 localStorage 空时补读一次，
   // 补读窗口内任何 save([]) 都会先覆盖 IDB，导致补读被跳过、信件永久丢失。
+  // v3.6.x：① 合并基准扩展——原实现只在「IDB 有信件」时合并 mailPending，IDB 空时
+  // 暂存被静默丢弃；改为：基准 = IDB 信件（备份导入语义），否则当前 localStorage，
+  // 暂存按 id 覆盖合并后落盘。② 保险丝后 IDB 迟到返回时取并集，不覆盖已落盘信件。
+  function mailMergeFromIdb(v) {
+    try {
+      const pending = mailPending || [];
+      mailPending = null;
+      let base = [];
+      if (v && typeof v === 'string' && v.length > 2) {
+        const idbArr = JSON.parse(v);
+        if (Array.isArray(idbArr)) base = idbArr;
+      }
+      let cur = null;
+      if (mailDbReady || !base.length) {
+        // 保险丝已就绪：store 里已含暂存信件，并集保留；IDB 空：保留本地旧信
+        try { cur = JSON.parse(store.get(KEY) || '[]'); } catch (e) { cur = []; }
+      }
+      const merged = mergeLists(base, mergeLists(cur || [], pending));
+      if (merged.length) store.set(KEY, JSON.stringify(merged));
+    } catch (e) { /* 解析失败：仍置就绪，避免下次启动重复合并 */ }
+  }
   try {
     if (window.idbGet) {
       window.idbGet(uid + ':' + KEY).then(v => {
-        try {
-          if (v && typeof v === 'string' && v.length > 2) {
-            const idbArr = JSON.parse(v);
-            if (Array.isArray(idbArr)) {
-              const pending = mailPending || [];
-              // 按 id 合并：暂存期间的信件/已读变更覆盖 IDB 旧值（新信 tm 更新，追加自然成立）
-              const map = {};
-              idbArr.forEach(x => { if (x && x.id) map[x.id] = x; });
-              pending.forEach(x => { if (x && x.id) map[x.id] = x; });
-              const merged = Object.keys(map).map(k => map[k]).sort((a, b) => (b.tm || 0) - (a.tm || 0));
-              mailPending = null;
-              store.set(KEY, JSON.stringify(merged));
-            }
-          }
-        } catch (e) { /* 解析失败：仍置就绪，避免下次启动重复合并 */ }
+        mailMergeFromIdb(v);
         mailDbReady = true;
         render();
         updateBadge();
@@ -721,4 +749,19 @@
       mailDbReady = true;
     }
   } catch (e) { mailDbReady = true; }
+  // v3.6.x：权威读取保险丝——IndexedDB 打开/读取在个别手机（OPPO 雨见浏览器后台
+  // 挂起/存储异常）可能迟迟不返回，mailDbReady 一直为 false，来信只进内存暂存：
+  // 弹窗提示了「给你寄来了一封信」信箱却空白、刷新后信件丢失。15 秒后强制就绪并
+  // 把暂存信件落盘（与 idbRestore 的 12s 保险同理；正常情况 idbGet 早已返回，
+  // 该保险只在病理场景触发，mailDbReady 已真时直接跳过）
+  setTimeout(function () {
+    if (mailDbReady) return;
+    try {
+      const all = load();
+      if (all.length) store.set(KEY, JSON.stringify(all));
+    } catch (e) {}
+    mailDbReady = true;
+    render();
+    updateBadge();
+  }, 15000);
 })();

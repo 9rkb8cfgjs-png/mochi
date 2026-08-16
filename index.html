@@ -1339,13 +1339,6 @@ margin-top:6px; padding:8px 12px; border-radius:10px;
 background:rgba(0,0,0,.04); font-size:12px; color:var(--ink); line-height:1.8;
 }
 .msg-poke svg, .msg-center-card svg { width:15px; height:15px; vertical-align:-2px; margin-right:3px; color:inherit; }
-@media (max-width: 480px) {
-#page-chat {
-background-attachment: fixed;
--webkit-background-size: cover;
-background-size: cover;
-}
-}
 .chat-title { font-size:22px; font-weight:700; padding:4px 2px 8px; letter-spacing:1px; }
 .chat-sub { font-size:12px; color:var(--muted); font-weight:400; letter-spacing:1px; padding-bottom:12px; }
 .chat-search {
@@ -2809,7 +2802,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.34 · 部署于 2026-08-16 23:00</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.35 · 部署于 2026-08-16 23:19</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3451,7 +3444,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.34</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.35</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -10326,11 +10319,9 @@ if (chatPage.style.backgroundImage !== 'url("' + bg + '")') {
 chatPage.style.backgroundImage = 'url("' + bg + '")';
 chatPage.style.backgroundSize = 'cover';
 chatPage.style.backgroundPosition = 'center';
-chatPage.style.backgroundAttachment = 'fixed';
 }
-} else if (chatPage && (chatPage.style.backgroundImage || chatPage.style.backgroundAttachment)) {
+} else if (chatPage && chatPage.style.backgroundImage) {
 chatPage.style.backgroundImage = '';
-chatPage.style.backgroundAttachment = '';
 }
 set('cs-font-size-val', fs);
 const pn = BUBBLE_SIZES.find(p => p.value === pad);
@@ -10355,8 +10346,11 @@ reader.onload = () => {
 const img = new Image();
 img.onload = () => {
 try {
+const dpr = Math.max(1, window.devicePixelRatio || 1);
+const screenH = (window.screen && window.screen.height) || 1920;
+const maxSide = Math.min(4096, Math.max(2160, Math.round(screenH * dpr)));
 const c = document.createElement('canvas');
-const scale = Math.min(1, 900 / Math.max(img.width, img.height));
+const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
 c.width = Math.max(1, Math.round(img.width * scale));
 c.height = Math.max(1, Math.round(img.height * scale));
 c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
@@ -16246,7 +16240,23 @@ t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
 clearTimeout(t._timer);
 t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
 }
-function load() { try { return JSON.parse(store.get(KEY) || '[]'); } catch (e) { return []; } }
+function load() {
+let list = [];
+try { list = JSON.parse(store.get(KEY) || '[]'); } catch (e) { list = []; }
+if (!mailDbReady && mailPending && mailPending.length) {
+const map = {};
+list.forEach(x => { if (x && x.id) map[x.id] = x; });
+mailPending.forEach(x => { if (x && x.id) map[x.id] = x; });
+list = Object.keys(map).map(k => map[k]).sort((a, b) => (b.tm || 0) - (a.tm || 0));
+}
+return list;
+}
+function mergeLists(a, b) {
+const map = {};
+(a || []).forEach(x => { if (x && x.id) map[x.id] = x; });
+(b || []).forEach(x => { if (x && x.id) map[x.id] = x; });
+return Object.keys(map).map(k => map[k]).sort((x, y) => (y.tm || 0) - (x.tm || 0));
+}
 let mailDbReady = false;
 let mailPending = null;
 function save(list) {
@@ -16822,23 +16832,27 @@ const mailClearBtn = document.getElementById('mail-clear');
 if (mailClearBtn) mailClearBtn.addEventListener('click', mailClearAll);
 render();
 updateBadge();
+function mailMergeFromIdb(v) {
+try {
+const pending = mailPending || [];
+mailPending = null;
+let base = [];
+if (v && typeof v === 'string' && v.length > 2) {
+const idbArr = JSON.parse(v);
+if (Array.isArray(idbArr)) base = idbArr;
+}
+let cur = null;
+if (mailDbReady || !base.length) {
+try { cur = JSON.parse(store.get(KEY) || '[]'); } catch (e) { cur = []; }
+}
+const merged = mergeLists(base, mergeLists(cur || [], pending));
+if (merged.length) store.set(KEY, JSON.stringify(merged));
+} catch (e) { /* 解析失败：仍置就绪，避免下次启动重复合并 */ }
+}
 try {
 if (window.idbGet) {
 window.idbGet(uid + ':' + KEY).then(v => {
-try {
-if (v && typeof v === 'string' && v.length > 2) {
-const idbArr = JSON.parse(v);
-if (Array.isArray(idbArr)) {
-const pending = mailPending || [];
-const map = {};
-idbArr.forEach(x => { if (x && x.id) map[x.id] = x; });
-pending.forEach(x => { if (x && x.id) map[x.id] = x; });
-const merged = Object.keys(map).map(k => map[k]).sort((a, b) => (b.tm || 0) - (a.tm || 0));
-mailPending = null;
-store.set(KEY, JSON.stringify(merged));
-}
-}
-} catch (e) { /* 解析失败：仍置就绪，避免下次启动重复合并 */ }
+mailMergeFromIdb(v);
 mailDbReady = true;
 render();
 updateBadge();
@@ -16847,6 +16861,16 @@ updateBadge();
 mailDbReady = true;
 }
 } catch (e) { mailDbReady = true; }
+setTimeout(function () {
+if (mailDbReady) return;
+try {
+const all = load();
+if (all.length) store.set(KEY, JSON.stringify(all));
+} catch (e) {}
+mailDbReady = true;
+render();
+updateBadge();
+}, 15000);
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {

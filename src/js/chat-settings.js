@@ -63,19 +63,20 @@
     // 聊天壁纸：铺满整个聊天页
     // v3.6.x：值没变时不重写 style——applySettings 在每次进入聊天页时调用，
     // 反复重设 background-image（大图 dataURL）会让浏览器重新解码、触发重绘
+    // v3.5.126：去掉 background-attachment:fixed——手机上 fixed 背景相对视口定位，
+    // 全屏/输入法/安全区变化时与元素尺寸不一致 → 比例错位、露白；且移动端
+    // 对 fixed 背景降采样 → 发糊。聊天页本身 overflow:hidden 不滚动（只有
+    // .chat-body 内部滚动），默认 scroll 模式下背景相对 page 本来就是固定的，
+    // fixed 纯属多余并引入视口耦合。
     const bg = store.get('cs-bg');
     if (bg && chatPage) {
       if (chatPage.style.backgroundImage !== 'url("' + bg + '")') {
         chatPage.style.backgroundImage = 'url("' + bg + '")';
         chatPage.style.backgroundSize = 'cover';
         chatPage.style.backgroundPosition = 'center';
-        // v3.6.x：fixed 让背景独立图层，滚动消息时不再逐帧重绘整张大图
-        // （聊天页 overflow:hidden 不滚动，只有 .chat-body 内部滚动，安全）
-        chatPage.style.backgroundAttachment = 'fixed';
       }
-    } else if (chatPage && (chatPage.style.backgroundImage || chatPage.style.backgroundAttachment)) {
+    } else if (chatPage && chatPage.style.backgroundImage) {
       chatPage.style.backgroundImage = '';
-      chatPage.style.backgroundAttachment = '';
     }
     set('cs-font-size-val', fs);
     const pn = BUBBLE_SIZES.find(p => p.value === pad);
@@ -99,12 +100,16 @@
         if (!f) return;
         const reader = new FileReader();
         reader.onload = () => {
-          // 压缩
+          // 压缩：v3.5.126 按设备物理像素定上限——之前固定 900px，
+          // 在 2-3x 高分屏（物理宽 1080-1440）铺满时被放大发糊
           const img = new Image();
           img.onload = () => {
             try {
+              const dpr = Math.max(1, window.devicePixelRatio || 1);
+              const screenH = (window.screen && window.screen.height) || 1920;
+              const maxSide = Math.min(4096, Math.max(2160, Math.round(screenH * dpr)));
               const c = document.createElement('canvas');
-              const scale = Math.min(1, 900 / Math.max(img.width, img.height));
+              const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
               c.width = Math.max(1, Math.round(img.width * scale));
               c.height = Math.max(1, Math.round(img.height * scale));
               c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);

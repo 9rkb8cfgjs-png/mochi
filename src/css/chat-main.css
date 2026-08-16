@@ -833,14 +833,7 @@
 /* 系统消息（来电/通话）内联矢量图标 */
 .msg-poke svg, .msg-center-card svg { width:15px; height:15px; vertical-align:-2px; margin-right:3px; color:inherit; }
 
-/* v3.6.x：手机端聊天壁纸独立图层——聊天页本身不滚动（overflow:hidden），
-   滚动发生在 .chat-body，背景用 fixed 固定后消息滚动时不再逐帧重绘整张大图
-   （dataURL 壁纸在低端机/iPhone 上是滚动卡顿源之一）。
-   JS 侧 applySettings 已同步设置 background-attachment，这里 CSS 兜底保证生效 */
-@media (max-width: 480px) {
-  #page-chat {
-    background-attachment: fixed;
-    -webkit-background-size: cover;
-    background-size: cover;
-  }
-}
+/* v3.5.126：移除 background-attachment:fixed 兜底——手机上 fixed 背景相对视口
+   定位，全屏/输入法/安全区变化时比例错位、且移动端降采样发糊。
+   聊天页本身不滚动（overflow:hidden），默认 scroll 模式下背景即固定，无需 fixed。
+   背景铺满逻辑由 JS applySettings 设置（cover + center）。 */

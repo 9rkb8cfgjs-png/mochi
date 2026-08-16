@@ -13,6 +13,9 @@
 ## 记录
 
 ### 2026-08-16
+- [AI-A] 完成（OPPO 雨见浏览器「来信有提示，信箱却空白」修复，已构建 + CDP 复现脚本 2 阶段 PASS + verify 10/10，**已提交推送**）：根因——v3.5.120「信箱权威加载防护」的 `mailDbReady=false` 暂存窗口未闭环：来信/回信写入只进内存 `mailPending`，而 `load()`/`render()`/`updateBadge()` 仍只读持久层 → 来信弹窗照常提示「给你寄来了一封信」，信箱列表空白；IDB 打开/读取挂起（OPPO 雨见浏览器后台挂起/存储异常，CDP 注入 indexedDB.open('mochi-db') 永不返回成功复现）时 `mailDbReady` 永远为 false，刷新后暂存信件永久丢失。修复 `src/js/mail.js` 三处：① `load()` 合并 mailPending（按 id 覆盖 + tm 保序），弹窗提示过的信件即时可见/可回/清角标；② IDB 权威读回合并基准扩展——IDB 有值用 IDB（备份导入语义），IDB 空保留本地旧信，暂存按 id 覆盖合并落盘，保险丝后迟到返回取并集不覆盖；③ 15s 权威读取保险丝（与 idbRestore 12s 同理）强制就绪并落盘暂存信件。CDP 复现验证：挂起态来信→信箱 1 封、15s 保险丝落盘、刷新后信件仍在（修复前信箱空白+刷新丢失）；`npm run verify` 10/10。另：本轮构建同时包含 AI-B 已保存的 chat-main.css/chat-settings.js 移除聊天壁纸 background-attachment:fixed 改动（无 WORKLOG 记录，已一并构建提交，请 AI-B 知悉）。
+
+### 2026-08-16
 - [AI-B] 完成（iOS 默认浏览器「聊天点击输入栏，键盘上方出现灰色栏把所有页面遮盖，关掉键盘才恢复」修复，已构建 verify 10/10 + CDP 模拟 3/3，**未提交**）：根因——iOS Safari 键盘是 overlay 模式，`mobile-adapt.js` 的 `syncIosKb` 已把 `.phone` 按 visualViewport 收缩到键盘上沿（高度 844→约 500）；但 **iOS 键盘弹出时会自动把页面滚动到聚焦的输入框**（聊天输入栏在 `.phone` 底部），而 `.phone` 是普通文档流元素（flex 顶对齐，非 fixed），window 滚动后它整体上移，**下方露出 body 灰色背景（#e9e9e9）**——表现就是「键盘上方一条横贯全屏的灰色栏，把所有页面都遮盖」。修复：`src/js/mobile-adapt.js` `syncIosKb` 增加 `pinScrollTop()`——键盘弹出瞬间、收缩持续期间、收起恢复时都把页面滚动钉在顶部（window/html/body 三级归零，只在有滚动偏移时执行，避免无谓 reflow）。收缩态下页面内容全部在 `.phone` 内，任何滚动都只会露出灰底，归零无副作用。CDP 模拟验证 3/3：键盘弹出 phone 收缩 500、模拟 iOS 滚动 150 后被钉回 0（phoneTop=0 不露出灰底）、键盘收起后高度/顶对齐/滚动全部恢复。**未提交**，等待统一提交/部署。另：工作区有对方遗留未跟踪文件 `_test_backup.json`/`inject-hook.mjs`，请确认后清理。
 
 ### 2026-08-16
