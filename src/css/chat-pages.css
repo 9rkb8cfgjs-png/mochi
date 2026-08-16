@@ -1475,3 +1475,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
   0%, 100% { background:transparent; }
   50% { background:rgba(255,229,143,.55); }
 }
+
+/* 设置页危险操作行（如聊天设置-删除全部聊天记录）：红字红图标 */
+.set-row.danger .txt { color:#d64545; }
+.set-row.danger .ico svg { stroke:#d64545; }

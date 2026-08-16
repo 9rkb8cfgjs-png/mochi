@@ -34,15 +34,14 @@
   let pendingLocal = null; // 权威就绪前暂存的内存消息（绝不落盘，防止污染读取/覆盖 IDB）
   // v3.5.127：防抖——TA 连发多条（间隔 1-3s）时把多次全量序列化合并成一次
   //（历史上千条带图消息时每次 stringify 是几十 MB，逐条写会明显卡顿）
-  // v3.6.x：防抖回调里只写 localStorage——IndexedDB 双写由 store.set 内部统一执行
-  //（idb.js 的 set 总会调 idbSet），这里再写一次是同键全量重复写入
-  //（几十 MB 结构化克隆，低端机/iPhone 卡顿源头之一）；权威落盘仍有 store.set 的
-  // IDB 双写 + saveMsgsNow 显式路径保证
+  // v3.6.x：聊天记录改为只写 IndexedDB——store.set 会同步写 localStorage
+  //（<200KB 时），几千条带图记录下同步 setItem 会卡主线程；IDB 写入是异步的。
+  // 读取路径（loadMsgs）同步改为 IDB 权威，localStorage 不再承担聊天记录快照。
   let saveTimer = null;
   function saveMsgs() {
     const data = JSON.stringify(msgs);
     // 权威未就绪：只暂存内存。既不能写 localStorage（会让 loadMsgs 第一步读到
-    // 不完整的 [1条] 而忽略 IDB 权威），更不能写 IndexedDB（会覆盖 779 条历史）
+    // 不完整的 [1条] 而忽略 IDB 权威），更不能写 IndexedDB（会覆盖历史）
     if (!chatDbReady) {
       try { pendingLocal = msgs.slice(); } catch (e) {}
       return;
@@ -50,7 +49,7 @@
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       saveTimer = null;
-      try { store.set('chat-msgs', data); } catch (e) {}
+      try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', data); } catch (e) {}
     }, 400);
   }
   // v3.5.128：页面离开（刷新/关闭/切后台被回收）前强制落盘防抖窗口内的消息
@@ -61,7 +60,7 @@
     if (saveTimer) {
       clearTimeout(saveTimer);
       saveTimer = null;
-      try { store.set('chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+      try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
     }
   }
   // v3.5.134：暴露给导出/清除等外部流程（导出前强制落盘，防止备份缺最后几条消息）
@@ -96,10 +95,11 @@
     return false;
   }
   function loadMsgs() {
-    // v3.5.128：防抖窗口内（saveTimer 未触发，有待落盘的新消息）→ 内存 msgs 比
-    // localStorage 快照新，跳过 LS 重读——否则会把未落盘消息覆盖掉
-    // （连续推送时 chatAddIn→loadMsgs 会把刚 push 的消息冲掉，导致静默丢消息）
-    if (!saveTimer) {
+    // v3.6.x：聊天记录已改为只写 IndexedDB，这里不再优先读 localStorage 快照。
+    // 仅当内存为空（首次启动/刷新）且 IDB 尚未读回时，用 localStorage 兜底渲染一次
+    //（老版本数据/IDB 读取慢时的即时展示），IDB 权威合并后会覆盖它；
+    // 后续读到 IDB 权威后会把 localStorage 残留清掉（见下）。
+    if (!saveTimer && !msgs.length && !chatDbReady) {
       try { msgs = JSON.parse(store.get('chat-msgs') || '[]'); } catch (e) { msgs = []; }
       if (!Array.isArray(msgs)) msgs = [];
     }
@@ -111,7 +111,21 @@
     try {
       if (window.idbGet) {
         window.idbGet(uid + ':chat-msgs').then(v => {
-          if (v === undefined || v === null) { chatDbReady = true; return; }
+          if (v === undefined || v === null) {
+            // IDB 无权威数据：若 localStorage 还有老版本数据，迁入 IDB 并清掉 LS 残留
+            chatDbReady = true;
+            const lsRaw = store.get('chat-msgs');
+            if (lsRaw) {
+              try {
+                const lsArr = JSON.parse(lsRaw);
+                if (Array.isArray(lsArr) && lsArr.length) {
+                  if (window.idbSet) window.idbSet(uid + ':chat-msgs', lsRaw);
+                  try { store.remove('chat-msgs'); } catch (e) {}
+                }
+              } catch (e) {}
+            }
+            return;
+          }
           try {
             const idbArr = typeof v === 'string' ? JSON.parse(v) : v;
             if (!Array.isArray(idbArr)) { chatDbReady = true; return; }
@@ -157,24 +171,17 @@
             migrateLegacyMediaMsgs();
             pendingLocal = null;
             chatDbReady = true;
+            // v3.6.x：IDB 权威已读到，清理老版本 localStorage 残留（老用户升级后
+            // 聊天记录不再占 5MB 配额；读取路径已不再依赖它）
+            try { store.remove('chat-msgs'); } catch (e) {}
             // v3.5.127：无变化（localNew 空且长度相同）时跳过重复写盘 + 全量重渲染
-            // v3.6.x：写回只在 IDB 合并结果比 localStorage 快照新时执行——否则每次
-            // loadMsgs 都全量重写 localStorage（几十 MB 序列化）；重渲染只在聊天页
-            // 可见且贴近底部时执行（用户翻旧消息时不打断阅读）
+            // v3.6.x：IDB 合并产生新数据才写回（避免每次 loadMsgs 全量重写）
             if (changed) {
-              const mergedJson = JSON.stringify(msgs);
-              if ((store.get('chat-msgs') || '') !== mergedJson) {
-                store.set('chat-msgs', mergedJson);
-              }
-              // 聊天页当前可见且贴近底部 → 重新渲染，让恢复出的历史立即显示
+              try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+              // 聊天页当前可见且贴近底部 → 重新渲染窗口，让恢复出的历史立即显示
+              // v3.6.x：改用分页渲染（原全量 forEach 渲染几千条会卡顿）
               if (chatVisible() && chatNearBottom()) {
-                body.innerHTML = '';
-                batchRendering = true;
-                msgs.forEach((rec, i) => {
-                  const m = renderMsg(rec);
-                  m.dataset.idx = i;
-                });
-                batchRendering = false;
+                renderWindow(false, true);
                 scrollChatBottom();
               }
             }
@@ -233,17 +240,12 @@
   // 导入/配额异常恢复后聊天记录已在内存，聊天页可见时重新渲染一遍
   // v3.6.x：加贴底判断——数据恢复期间用户可能已在翻旧消息，全量重渲染
   // 会把滚动位置重置到底部（之前每条恢复消息也强制滚动到底）
+  // v3.6.x：改用分页渲染（renderWindow）
   try {
     document.addEventListener('mochi-restore-done', function () {
       try {
         if (chatVisible() && chatNearBottom() && body && msgs.length) {
-          body.innerHTML = '';
-          batchRendering = true;
-          msgs.forEach(function (rec, i) {
-            const m = renderMsg(rec);
-            m.dataset.idx = i;
-          });
-          batchRendering = false;
+          renderWindow(false, true);
           scrollChatBottom();
         }
         fillAvatar('chat-user-av', 'avatar-user');
@@ -540,6 +542,51 @@
   // 每条渲染后的强制滚动（scrollTop=scrollHeight）会触发同步布局，手机上
   // 大量消息时进入聊天页卡顿数秒；批量期间跳过滚动，结束后统一滚到底一次
   let batchRendering = false;
+
+  // v3.6.x：聊天记录分页渲染——首屏只渲染最近 RENDER_MAX 条，向上滚动加载更早。
+  // 数据不变（msgs 全量在内存，getChatMsgs/统计/搜索遍历不受影响），只分 DOM 渲染层：
+  // 几千条历史不再一次性建几千个消息节点，进入聊天页与历史恢复大幅提速。
+  const RENDER_MAX = 200;   // 渲染窗口条数上限
+  const LOAD_STEP = 100;    // 向上滚动每次加载的条数
+  const TOP_THRESHOLD = 150;// scrollTop 小于此值触发向上加载（px）
+  const JUMP_VIEW = 30;     // 搜索跳转时目标索引上方预留的余量
+  let renderStart = 0;      // 渲染窗口起点（msgs 下标）；0 = 全量
+  let suppressScrollUntil = 0; // 程序化滚动后短暂忽略 scroll 事件（防渲染本身触发向上加载）
+  // 渲染 [renderStart, msgs.length) 窗口。
+  // keepScroll=true：保持视觉位置（向上加载时新内容补在顶部，scrollTop 需下移对应高度）
+  // clampTop=true：窗口超出 RENDER_MAX 时收紧到最近 RENDER_MAX 条（进入聊天/新消息/恢复）
+  function renderWindow(keepScroll, clampTop) {
+    const len = msgs.length;
+    const prevTop = keepScroll ? body.scrollTop : 0;
+    const prevHeight = keepScroll ? body.scrollHeight : 0;
+    if (clampTop) renderStart = Math.max(0, len - RENDER_MAX);
+    const start = Math.min(renderStart, len);
+    body.innerHTML = '';
+    batchRendering = true;
+    for (let i = start; i < len; i++) {
+      const m = renderMsg(msgs[i]);
+      m.dataset.idx = i; // 覆盖 renderMsg 内的 msgs.length-1（批量渲染时必须为真实下标）
+    }
+    batchRendering = false;
+    if (keepScroll && prevHeight > 0) {
+      body.scrollTop = prevTop + (body.scrollHeight - prevHeight);
+    }
+    suppressScrollUntil = Date.now() + 200; // 本轮渲染/滚动结束后 200ms 内不响应 scroll
+  }
+  // 向上滚动接近顶部 → 加载更早消息（节流 100ms，程序化滚动 200ms 内忽略）
+  let bodyScrollTimer = null;
+  body.addEventListener('scroll', function () {
+    if (Date.now() < suppressScrollUntil) return;
+    if (bodyScrollTimer) return;
+    bodyScrollTimer = setTimeout(function () {
+      bodyScrollTimer = null;
+      if (renderStart <= 0 || !chatVisible()) return;
+      if (body.scrollTop < TOP_THRESHOLD) {
+        renderStart = Math.max(0, renderStart - LOAD_STEP);
+        renderWindow(true, false);
+      }
+    }, 100);
+  }, { passive: true });
   function renderMsg(rec) {
     const m = document.createElement('div');
     // 邀请TA：居中完整卡片（问题 + TA 的回应），等待中显示等待状态
@@ -841,6 +888,22 @@
     badge.textContent = n > 99 ? '99+' : String(n);
   }
 
+  // v3.6.x：删除全部聊天记录——聊天设置页调用，不刷新页面原地清空：
+  // 内存 msgs + 未落盘暂存 + 防抖定时器 + localStorage + IndexedDB（store.remove 双写）
+  // 全部清掉，同时清空已渲染的消息 DOM 与未读角标；回聊天页即为空。
+  // 顺带置 chatDbReady=true，清空后新消息直接走正常落盘路径。
+  window.clearChatHistory = function () {
+    msgs = [];
+    pendingLocal = null;
+    sessionChangedIdx.clear();
+    chatDbReady = true;
+    renderStart = 0; // v3.6.x：分页窗口起点复位（消息已清空）
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+    try { store.remove('chat-msgs'); } catch (e) {}
+    if (body) body.innerHTML = '';
+    clearChatUnread();
+  };
+
   // v3.5.102：桌面新消息横幅——TA 的普通消息进来且当前不在聊天页时，
   // 在桌面/任意页面顶部弹出横幅（头像 + 昵称 + 内容），点击直接进聊天
   const deskMsgEl = document.getElementById('desk-msg');
@@ -985,6 +1048,13 @@
       // v3.5.102：非聊天页时桌面弹出新消息横幅（点击进聊天）
       showDeskMsg(rec.text, rec.type);
     }
+    // v3.6.x：分页渲染下窗口已满（新增后超出 RENDER_MAX）→ 重渲染窗口并贴底，
+    // 避免窗口无限膨胀；否则走增量追加（renderMsg 尾部 append）
+    if (renderStart > 0 && msgs.length - renderStart > RENDER_MAX) {
+      renderWindow(false, true);
+      scrollChatBottom();
+      return body.lastElementChild;
+    }
     return renderMsg(rec);
   }
   function addIn(text, opts) {
@@ -1019,10 +1089,9 @@
   // chatChooseReply 等函数开头的 loadMsgs() 是异步读 IDB，其合并回调会在
   // 同步代码执行完后才跑，若此时 IDB 里还是旧的「未作答」数据，会触发
   // 全量重渲染把刚更新为 answered 的卡片刷回未作答（就地作答/弹窗提交都受影响）。
-  // 这里立即把最新 msgs 写进 localStorage + IndexedDB，让异步合并读到已作答状态。
+  // 这里立即把最新 msgs 写进 IndexedDB，让异步合并读到已作答状态。
   function saveMsgsNow() {
     const data = JSON.stringify(msgs);
-    try { store.set('chat-msgs', data); } catch (e) {}
     try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', data); } catch (e) {}
   }
 
@@ -1513,13 +1582,8 @@ function partialRetractMsg(msgEl, side) {
     clearChatUnread();
     // 恢复历史消息（不打断 TA 正在输入的状态，返回时自动恢复显示）
     loadMsgs();
-    body.innerHTML = '';
-    batchRendering = true;
-    msgs.forEach((rec, i) => {
-      const m = renderMsg(rec);
-      m.dataset.idx = i;
-    });
-    batchRendering = false;
+    // v3.6.x：分页渲染——首屏最近 RENDER_MAX 条（原全量渲染几千条卡顿数秒）
+    renderWindow(false, true);
     // 定位到最新消息：立即滚 + 下一帧各补一次，
     // 避免图片/头像异步解码改变布局高度导致停在中间
     // v3.6.x：去重——原实现 rAF(→rAF) 与 setTimeout(80/400) 四重滚动效果相同，
@@ -2022,7 +2086,13 @@ function partialRetractMsg(msgEl, side) {
       el.addEventListener('click', () => {
         const idx = Number(el.dataset.sidx);
         closeChatSearch();
-        const target = body.querySelector('.msg[data-idx="' + idx + '"]');
+        let target = body.querySelector('.msg[data-idx="' + idx + '"]');
+        // v3.6.x：分页渲染下目标可能落在未渲染的旧消息区 → 扩窗后跳转
+        if (!target && idx < renderStart) {
+          renderStart = Math.max(0, idx - JUMP_VIEW);
+          renderWindow(true, false);
+          target = body.querySelector('.msg[data-idx="' + idx + '"]');
+        }
         if (target) {
           try { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { target.scrollIntoView(); }
           target.classList.add('highlight');

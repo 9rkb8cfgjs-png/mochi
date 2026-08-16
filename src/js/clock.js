@@ -66,3 +66,36 @@
   // 20 秒保险丝：极端异常下自动进入（idbRestore 自身 12 秒必置就绪，正常不触发）
   setTimeout(hide, 20000);
 })();
+
+// ===== 开屏公告远程化：notice.json 在线覆盖公告文案 =====
+// 用法：改 src/pwa/notice.json 内容 → 构建部署，开屏公告即更新（无需改代码）。
+// 字段：title / sub / list（数组）；list 为空数组或 hide:true 时隐藏整个公告区。
+// 失败（离线/无网络）静默保留 template.html 写死的默认文案兜底。
+(function () {
+  const notice = document.getElementById('splash-notice');
+  if (!notice) return;
+  fetch('./notice.json?v=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { if (!r.ok) throw new Error('notice fetch ' + r.status); return r.json(); })
+    .then(function (data) {
+      if (!data || typeof data !== 'object') return;
+      const title = notice.querySelector('.splash-notice-title');
+      const sub = notice.querySelector('.splash-notice-sub');
+      const list = notice.querySelector('.splash-notice-list');
+      if (data.title !== undefined && title) title.textContent = String(data.title);
+      if (data.sub !== undefined && sub) sub.textContent = String(data.sub);
+      if (Array.isArray(data.list)) {
+        if (!data.list.length || data.hide) { notice.style.display = 'none'; return; }
+        if (list) {
+          list.innerHTML = '';
+          data.list.forEach(function (t) {
+            const p = document.createElement('p');
+            p.textContent = String(t);
+            list.appendChild(p);
+          });
+        }
+      } else if (data.hide) {
+        notice.style.display = 'none';
+      }
+    })
+    .catch(function () { /* 失败：保留模板默认公告 */ });
+})();

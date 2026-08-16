@@ -354,6 +354,18 @@
   }
   applyCss();
 
+  // ================= 删除全部聊天记录（危险操作，二次确认） =================
+  const csClear = row('cs-clear-msgs');
+  if (csClear) {
+    csClear.addEventListener('click', () => {
+      if (!window.openModal) return;
+      window.openModal('确认删除全部聊天记录？（双方所有消息将被清空，且不可恢复）', '', () => {
+        if (window.clearChatHistory) window.clearChatHistory();
+        toast('聊天记录已清空');
+      }, { noInput: true });
+    });
+  }
+
   // v3.5.93：聊天壁纸/上传字体等大键可能只存在 IndexedDB（导入兜底写入/大键只进 IDB）——
   // 启动时从 IDB 补读后重新应用
   try {

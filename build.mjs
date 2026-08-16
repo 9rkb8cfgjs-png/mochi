@@ -22,12 +22,40 @@ const APP_VERSION = 'v3.5.139';
 const cssFiles = ['base.css', 'home.css', 'chat-main.css', 'chat-pages.css', 'setting.css', 'tabbar.css'];
 const jsFiles = ['idb.js', 'clock.js', 'tabs.js', 'desktop-slider.js', 'quote-cards.js', 'personalize.js', 'chat.js', 'chatcard.js', 'chat-settings.js', 'reply-settings.js', 'default-cards-data.js', 'default-cards.js', 'mood-followup-data.js', 'mood-reply-cards.js', 'music-player.js', 'calendar.js', 'divination.js', 'avatar-lib.js', 'ta-ask.js', 'bg-keep.js', 'records.js', 'call.js', 'mail.js', 'feed.js', 'p2-features.js', 'decision.js', 'sfx.js', 'fullscreen.js', 'data-backup.js', 'pwa.js', 'mobile-adapt.js'];
 
+// ===== 零依赖保守压缩 =====
+// 只删注释/空行/缩进，不改任何代码语义（无依赖、无解析器）。
+// 已核查全项目：无模板字符串插值（${}）、无 eval、无跨行反引号/字符串续行——
+// 逐行处理 JS 安全；CSS 块注释可跨行、字符串内不含 /* ，整文件非贪婪匹配安全。
+// 超长单行（如 default-cards-data.js 6.5 万字符的数据 JSON 行）整行保留不动。
+const MINIFY_KEEP_LINE = 8000;
+function minifyJs(code) {
+  const lines = code.split('\n');
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    if (raw.length > MINIFY_KEEP_LINE) { out.push(raw); continue; } // 数据行原样保留
+    const t = raw.trim();
+    if (!t) continue;                   // 空行
+    if (t.startsWith('//')) continue;   // 整行 // 注释（行内尾注释不动，字符串/URL 里可能有 //）
+    out.push(t);                        // 去行首缩进 + 行尾空白
+  }
+  return out.join('\n');
+}
+function minifyCss(code) {
+  return code
+    .replace(/\/\*[\s\S]*?\*\/\s*/g, '') // 块注释（含跨行）
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .join('\n');
+}
+
 let html = read('template.html');
-const styles = cssFiles.map(f => read(join('css', f))).join('\n');
+const styles = cssFiles.map(f => minifyCss(read(join('css', f)))).join('\n');
 // 每个 JS 文件独立 try/catch 包裹：单文件运行时报错不再连坐后续所有功能
 // （如某个文件在特定设备抛错，之前会导致之后文件的绑定全部失效）
 const scripts = jsFiles.map(f => {
-  const code = read(join('js', f));
+  const code = minifyJs(read(join('js', f)));
   return '(function () { try {\n' + code + '\n} catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();';
 }).join('\n');
 
@@ -51,7 +79,7 @@ console.log('已生成 version.json（' + versionJson + '）');
 
 // ===== 复制 PWA 文件到根目录（随 GitHub Pages 部署） =====
 // sw.js 缓存名改为每次构建的 buildStamp → 新版本部署后老缓存自动失效，强制更新
-const pwaFiles = ['manifest.json', 'sw.js', 'icon-192.png', 'icon-512.png', 'icon-180.png', 'icon-maskable-512.png'];
+const pwaFiles = ['manifest.json', 'sw.js', 'icon-192.png', 'icon-512.png', 'icon-180.png', 'icon-maskable-512.png', 'notice.json'];
 pwaFiles.forEach(f => copyFileSync(join(root, 'src', 'pwa', f), join(root, f)));
 const swPath = join(root, 'sw.js');
 let sw = readFileSync(swPath, 'utf8');

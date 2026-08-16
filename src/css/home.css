@@ -169,13 +169,19 @@
 }
 .page-slide::-webkit-scrollbar { display:none; }
 
-/* 分页指示器 */
-.dots { display:flex; justify-content:center; gap:8px; padding:12px 0 0; flex-shrink:0; }
+/* 分页指示器（v3.6.x：不再占一整行——悬浮在桌面底部中央，不挤占/遮挡功能图标） */
+#page-phone { position:relative; }
+.dots {
+  position:absolute; left:0; right:0; bottom:6px;
+  display:flex; justify-content:center; gap:8px; padding:0;
+}
 .dot {
-  width:7px; height:7px; border-radius:99px; background:#c9c9c9; cursor:pointer;
+  width:7px; height:7px; border-radius:99px; background:rgba(0,0,0,.18); cursor:pointer;
   transition:width .25s ease, background .25s ease;
 }
 .dot.active { width:20px; background:var(--ink); }
+/* 桌面内容底部留白：滚动到底时最后一项不被悬浮圆点盖住 */
+.page-slide { padding-bottom:18px; }
 
 /* ---- 音乐播放器小组件（第二页） ---- */
 .music-widget {

@@ -1195,6 +1195,74 @@
   }
 
   // ================= 星音设置 =================
+  // v3.6.x：音乐本地缓存统计与清理——音频文件本体存 IndexedDB（music-file:<id>），
+  // 这里按 IDB 键名统计占用、提供一键清理（删本地音频 + 移出歌单，外链/种子歌保留）
+  const MUSIC_FILE_PREFIX = uid + ':music-file:';
+  // 统计本地音频缓存字节数（分批读，读完即弃，内存峰值=单批；失败返回 -1）
+  function calcStorageBytes() {
+    if (!window.idbGetAllKeys) return Promise.resolve(-1);
+    return window.idbGetAllKeys().then(keys => {
+      const fileKeys = keys.filter(k => k.indexOf(MUSIC_FILE_PREFIX) === 0);
+      if (!fileKeys.length) return 0;
+      const BATCH = 20;
+      function readBatch(i) {
+        if (i >= fileKeys.length) return Promise.resolve(0);
+        return window.idbGetMany(fileKeys.slice(i, i + BATCH)).then(map => {
+          let total = 0;
+          fileKeys.slice(i, i + BATCH).forEach(k => {
+            const v = map[k];
+            if (typeof v === 'string') total += v.length;
+          });
+          return readBatch(i + BATCH).then(sub => total + sub);
+        });
+      }
+      return readBatch(0);
+    }).catch(() => -1);
+  }
+  function fmtStorageMB(bytes) {
+    if (bytes < 0) return '计算失败';
+    if (!bytes) return '0 MB';
+    // dataURL 是 base64，实际字节 = 字符数 × 0.75
+    const mb = bytes * 0.75 / 1048576;
+    return (mb < 0.01 ? '0.01' : mb.toFixed(1)) + ' MB';
+  }
+  function refreshStorageUse() {
+    const el = document.getElementById('sm-storage-use');
+    if (!el) return;
+    el.textContent = '计算中…';
+    calcStorageBytes().then(b => { const e = document.getElementById('sm-storage-use'); if (e) e.textContent = fmtStorageMB(b); });
+  }
+  // 一键清理：删 music-file:<id> 音频文件；非种子歌曲从歌单移除（外链/种子歌保留）
+  function clearLocalAudioCache() {
+    if (!window.idbGetAllKeys || !window.idbDelete) { toast('当前环境不支持清理'); return; }
+    window.idbGetAllKeys().then(keys => {
+      const fileKeys = keys.filter(k => k.indexOf(MUSIC_FILE_PREFIX) === 0);
+      if (!fileKeys.length) { toast('没有本地音频缓存'); refreshStorageUse(); return; }
+      const delIds = [];       // 要移除的歌曲 id（非种子，音频删了歌也播不了）
+      const cacheOnly = [];    // 种子歌的本地旋律缓存键（可再生成，只删缓存不动歌）
+      fileKeys.forEach(k => {
+        const id = k.slice(MUSIC_FILE_PREFIX.length);
+        const m = library.find(x => x.id === id);
+        if (m && seedIdxOf(m) >= 0) cacheOnly.push(k);
+        else delIds.push(id);
+      });
+      window.openModal('将删除 ' + fileKeys.length + ' 个本地音频文件，并从歌单移除 ' + delIds.length + ' 首本地歌曲（外链歌曲不受影响）。确定清理？', '', () => {
+        let p = Promise.resolve(true);
+        fileKeys.forEach(k => { p = p.then(() => window.idbDelete(k)); });
+        p.then(() => {
+          if (delIds.length) {
+            library = library.filter(m => !delIds.includes(m.id));
+            if (currentId && delIds.includes(currentId)) { teardownAudio(); currentId = null; }
+            saveLibrary();
+          }
+          if (audio) updatePlayerBar();
+          renderFloat();
+          refreshStorageUse();
+          toast('已清理本地音频缓存');
+        });
+      }, { noInput: true });
+    });
+  }
   function openSettings() {
     if (!window.openTCPanel) return;
     const cooldownOpts = [
@@ -1207,8 +1275,12 @@
       '<div class="gs-row"><span>音乐请求触发概率</span><div class="stepper" id="sm-set-prob" data-min="0" data-max="30" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="sm-set-prob-val" readonly><button class="stp-max">+</button></div></div>' +
       '<div class="gs-row"><span>请求冷却时间</span><select class="tc-input" id="sm-set-cool" style="width:110px">' + cooldownOpts + '</select></div>' +
       '<div class="sm-set-hint">聊天过程中 TA 会按概率请求和你一起听歌；播放时右上角出现可拖动的悬浮小框</div>' +
-      '<div class="mail-actions"><button class="cc-tool" id="sm-set-close">关闭</button></div>');
+      '<div class="sm-set-row"><span>本地音频缓存</span><span id="sm-storage-use" style="color:var(--muted);font-size:12px">计算中…</span></div>' +
+      '<div class="mail-actions"><button class="cc-tool" id="sm-clear-cache">清理本地音频缓存</button><button class="cc-tool" id="sm-set-close">关闭</button></div>');
     document.getElementById('sm-set-close').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
+    const clearBtn = document.getElementById('sm-clear-cache');
+    if (clearBtn) clearBtn.addEventListener('click', clearLocalAudioCache);
+    refreshStorageUse();
     const probVal = document.getElementById('sm-set-prob-val');
     if (probVal) probVal.value = settings.reqProb;
     const st = document.getElementById('sm-set-prob');

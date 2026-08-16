@@ -201,7 +201,11 @@
       if (!keys || !keys.length) { finish(); return; }
       const need = (keys || []).filter(k =>
         k.indexOf(uidPrefix) === 0 &&
-        k.indexOf(uidPrefix + 'music-file:') !== 0);
+        k.indexOf(uidPrefix + 'music-file:') !== 0 &&
+        // v3.6.x：聊天记录不回填 localStorage——chat.js 已改为只写 IndexedDB，
+        // 恢复到这里会重新占满 5MB 配额（几千条带图记录是几十 MB），且读取
+        // 路径已不依赖 LS 快照（loadMsgs 直接 IDB 权威读）
+        k.indexOf(uidPrefix + 'chat-msgs') !== 0);
       if (!need.length) { finish(); return; }
       // v3.5.122：分批恢复（每批 8 个键，批间让出主线程）——v3.5.117 的单事务
       //   idbGetMany 会把几百个键（含几十 MB 大图）一次性读进内存，低端手机

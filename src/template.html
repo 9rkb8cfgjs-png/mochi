@@ -27,7 +27,8 @@
       </div>
       <div class="splash-title">mochi 摸鱼字卡</div>
       <!-- v3.5.112：开屏公告（发布说明） -->
-      <div class="splash-notice">
+      <!-- v3.6.x：公告内容可由 notice.json 远程覆盖（clock.js 拉取），此处写死内容为离线兜底 -->
+      <div class="splash-notice" id="splash-notice">
         <div class="splash-notice-title">关于 Mochi 字卡</div>
         <div class="splash-notice-sub">【8.15 发布，还在修，暂时不建议开始二传二改】</div>
         <div class="splash-notice-list">
@@ -2045,6 +2046,13 @@
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg></div>
           <div class="txt">气泡 CSS</div>
           <div class="val" id="cs-css-val">默认</div>
+        </div>
+      </div>
+      <div class="gs-title">数据</div>
+      <div class="set-group glass">
+        <div class="set-row danger" id="cs-clear-msgs">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></div>
+          <div class="txt">删除全部聊天记录</div>
         </div>
       </div>
     </div>
