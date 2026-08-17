@@ -2,8 +2,8 @@
 // 每日生成：今日心情（分类/描述）+ TA 正在做什么 + TA 留言（从字卡池随机拼）
 // 每次首次打开日历触发 TA 留言弹窗；美化毛玻璃、无 emoji、矢量图标
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
   const page = document.getElementById('page-calendar');
   if (!page) return;
 
@@ -97,11 +97,17 @@
       };
       store.set(key, JSON.stringify(entry));
       // 手机端 localStorage 写入失败（空间满/隐私模式）时仍写入 IndexedDB 兜底
-      try { if (window.idbSet) window.idbSet(uid + ':' + key, JSON.stringify(entry)); } catch (e) {}
+      try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + key, JSON.stringify(entry)); } catch (e) {}
     }
     calCache = entry;
     return entry;
   }
+
+  // v3.6.x：多桌面——切换联系人后清掉本会话缓存（calCache 只按日期缓存、不区分
+  // 桌面，残留会导致新桌面显示旧桌面的「今日数据」）；viewY/viewM 同步复位到当前月
+  document.addEventListener('contact-switched', function () {
+    try { calCache = null; viewY = 0; viewM = -1; } catch (e) {}
+  });
 
   // 渲染月历（可切换月份）
   let viewY = 0, viewM = -1; // 0=当前月
@@ -259,7 +265,7 @@
     function doGreet() {
       greeted = true;
       store.set(key, '1');
-      try { if (window.idbSet) window.idbSet(uid + ':' + key, '1'); } catch (e) {}
+      try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + key, '1'); } catch (e) {}
       // 等开屏关闭后再展示：数据加载 + 用户点「点击进入」通常 1-3s，过早弹出会被开屏
       // 盖住，8 秒自动收起多半已过期，用户根本看不到。轮询到开屏隐藏后 1s 再显示。
       const splashEl = document.getElementById('splash');
@@ -286,7 +292,7 @@
       if (store.get(key)) { greeted = true; return; }
       // localStorage 无标记：查 IndexedDB（防止 localStorage 写失败/被清导致每天重复弹）
       if (window.idbGet) {
-        window.idbGet(uid + ':' + key).then(v => {
+        window.idbGet(window.activePrefix() + ':' + key).then(v => {
           if (v) { greeted = true; store.set(key, '1'); return; }
           if (greeted) return;
           doGreet();

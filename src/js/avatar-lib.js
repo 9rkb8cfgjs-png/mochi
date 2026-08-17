@@ -3,8 +3,8 @@
 // 定时随机更换联系人聊天头像（1-8 小时）；更换时聊天显示"昵称 更换了头像"
 // 上传/清空有成功/失败提示（toast）
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
   const page = document.getElementById('page-chat-settings');
   if (!page) return;
 
@@ -308,7 +308,7 @@
   // localStorage 读不到 → 启动时从 IDB 补读进内存缓存；半框是打开时才渲染的，届时自然读到
   try {
     if (window.idbGet) {
-      window.idbGet(uid + ':avatar-lib').then(v => {
+      window.idbGet(window.activePrefix() + ':avatar-lib').then(v => {
         if (v && typeof v === 'string' && v.length > 2) {
           store.set('avatar-lib', v);
         }

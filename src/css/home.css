@@ -1,7 +1,9 @@
 /* ===== 手机桌面（情侣空间） ===== */
-/* 小组件背景色：CSS 变量控制，由「手机桌面美化 → 小组件颜色」设置 */
+/* 小组件背景色 / 边框色 / 按钮色：CSS 变量控制，由「手机桌面美化」设置 */
 :root {
   --widget-bg:#ffffff;
+  --widget-border:rgba(0,0,0,.1);
+  --widget-btn:#111111;
 }
 /* 纪念日卡片（纯装饰：头像 + 爱心 + 纪念日；已禁止上传背景图）
    纯白纸底 + 虚线描边 + 上下装饰点，细节更精致 */
@@ -9,7 +11,7 @@
   position:relative; height:190px; border-radius:26px;
   margin-top:14px; margin-bottom:14px; flex-shrink:0;
   background:var(--widget-bg);
-  border:1px solid rgba(0,0,0,.1);
+  border:1px solid var(--widget-border);
   box-shadow:0 4px 14px rgba(0,0,0,.05);
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   padding:14px 16px 12px;
@@ -82,7 +84,7 @@
 }
 .ck-btn {
   font-size:12px; font-weight:700; color:#fff; cursor:pointer;
-  background:var(--ink); padding:9px 16px; border-radius:99px;
+  background:var(--widget-btn); padding:9px 16px; border-radius:99px;
   box-shadow:0 3px 8px rgba(0,0,0,.12);
   display:inline-flex; align-items:center; min-height:38px; border:none;
   font-family:inherit; -webkit-tap-highlight-color:transparent;
@@ -116,7 +118,7 @@
 .we-btn {
   flex-shrink:0; align-self:flex-start; margin-top:2px;
   border:none; cursor:pointer; font-family:inherit;
-  background:var(--ink); color:#fff; font-size:12px; font-weight:700;
+  background:var(--widget-btn); color:#fff; font-size:12px; font-weight:700;
   padding:6px 11px; border-radius:99px; box-shadow:0 3px 8px rgba(0,0,0,.25);
   display:flex; align-items:center; gap:3px;
 }
@@ -190,6 +192,52 @@
 .dot.active { width:20px; background:var(--ink); }
 /* 桌面内容底部留白：滚动到底时最后一项不被悬浮圆点盖住 */
 .page-slide { padding-bottom:18px; }
+
+/* v3.6.x：新增空白主页——透明底（可上传整页背景图），装修模式下显示「+ 添加卡片」 */
+.page-slide.desk-page {
+  display:flex; flex-direction:column;
+}
+.desk-page-hint {
+  margin:auto; text-align:center; color:var(--muted);
+  font-size:12px; letter-spacing:1px; padding:40px 20px;
+}
+.desk-page-add {
+  margin:16px auto; padding:10px 22px; border-radius:99px;
+  border:1px dashed rgba(0,0,0,.2); background:rgba(255,255,255,.6);
+  color:var(--ink); font-size:13px; font-weight:600; cursor:pointer;
+  display:none; align-items:center; gap:6px;
+}
+.page-slide.desk-page .desk-page-add { display:inline-flex; }
+
+/* v3.6.x：卡片摆放操作已收进点卡片设置菜单（上移/下移/移出），不再使用悬浮操作条 */
+.desk-widget, [data-desk-widget] {
+  position:relative;
+}
+
+/* v3.6.x：组件库面板（新增页点「添加卡片」弹出） */
+.desk-lib {
+  position:fixed; inset:0; z-index:99;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.4);
+}
+.desk-lib-box {
+  width:min(88vw,380px); max-height:78vh; overflow:auto;
+  background:#fff; border-radius:16px; padding:16px;
+  box-shadow:0 8px 30px rgba(0,0,0,.2);
+}
+.desk-lib-title { font-size:15px; font-weight:700; margin-bottom:4px; }
+.desk-lib-sub { font-size:11px; color:#888; margin-bottom:12px; }
+.desk-lib-item {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; border:1px solid #eee; border-radius:10px; margin-bottom:8px;
+  font-size:13px;
+}
+.desk-lib-item .dl-where { font-size:11px; color:#999; }
+.desk-lib-item .dl-btn {
+  font-size:12px; padding:4px 12px; border:none; border-radius:99px;
+  background:#111; color:#fff; cursor:pointer; font-family:inherit;
+}
+.desk-lib-item .dl-btn:disabled { background:#ddd; color:#999; }
 
 /* ---- 音乐播放器小组件（第二页） ---- */
 .music-widget {

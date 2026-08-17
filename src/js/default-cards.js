@@ -7,8 +7,8 @@
   const enabledEl = document.getElementById('dc-enabled');
   if (!list || !tabsWrap || !enabledEl) return;
 
-  const uid = 'xy-home-v2';
-  const ls = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const ls = window.activeStore();
   // 默认值（对应星言 defaultCommonOverallProb=30, probs 各30）
   function getEnabled() { const v = ls.get('dc-enabled'); return v === null ? true : v === '1'; }
   function getOverall() { const v = ls.get('dc-overall'); return v === null ? 30 : Number(v); }
@@ -109,8 +109,16 @@
     });
   }
 
-  renderGroupsBar2();
-  render();
+  // v3.6.x：懒渲染——4621+ 张系统字卡在启动时全部构建 DOM（每个都带开关 toggle），
+  // 低端机（尤其 iOS Safari）启动同步构建数百毫秒级 DOM，改为首次打开「系统字卡」
+  // 页才构建；聊天抽取（defaultCardCfg）走数据不依赖 DOM，功能不受影响
+  let renderedOnce = false;
+  function ensureRendered() {
+    if (renderedOnce) return;
+    renderedOnce = true;
+    renderGroupsBar2();
+    render();
+  }
 
   // 入口/返回
   const li = document.getElementById('li-default-cards');
@@ -119,6 +127,7 @@
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       const page = document.getElementById('page-default-cards');
       if (page) page.hidden = false;
+      ensureRendered();
     });
   }
   const back = document.getElementById('dc-back');

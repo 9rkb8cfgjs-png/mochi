@@ -697,6 +697,14 @@
   cursor:pointer; font-family:inherit;
 }
 .decor-done:active { opacity:.8; }
+/* v3.6.x：装修模式「+ 添加卡片」按钮（找回被移出的桌面组件） */
+.decor-add {
+  border:1px solid rgba(255,255,255,.35); border-radius:10px;
+  padding:6px 10px; margin-left:auto; margin-right:8px;
+  background:transparent; color:#fff; font-size:12px; font-weight:600;
+  cursor:pointer; font-family:inherit; white-space:nowrap;
+}
+.decor-add:active { background:rgba(255,255,255,.15); }
 
 /* 头像库页 */
 .avlib-toggle {

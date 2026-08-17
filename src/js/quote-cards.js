@@ -2,8 +2,8 @@
 // 字卡库入口 → 管理页：批量添加 / 删除 情话字卡
 // 桌面「今日情话」每天从库中随机一句（自定义优先，未添加用默认库）
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
   const KEY = 'quote-cards';
   // v3.6.x：是否使用系统预设情话（默认开启；关闭后桌面今日情话只从用户添加的情话里抽取）
   const DEF_KEY = 'quote-cards-default';

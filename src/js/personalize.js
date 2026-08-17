@@ -1,8 +1,8 @@
 // ===== 功能：情侣空间个性化 =====
 // 头像上传、签名、纪念日照片、手机背景、自定义图标、恋爱纪念日、每日打卡（localStorage 持久化）
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
 
   // 图片压缩后再存储：大幅缩小体积，本地存储容量更宽松（头像/图标 256px，背景/照片 1000px）
   // v3.6.x：失败/超大图不再回退存原图——iOS Safari 对超大 dataURL（48MP/ProRAW 级别）
@@ -48,6 +48,23 @@
     const h = (window.screen && window.screen.height) || 1920;
     return Math.min(2880, Math.max(2160, Math.round(h * dpr)));
   }
+
+  // v3.6.x：存量大图渲染防护——旧版本压缩失败时回退存过原图（48MP/ProRAW 级别
+  // dataURL 十几 MB），渲染成 backgroundImage 会让 iOS Safari 解码占用数百 MB 位图
+  // 内存、渲染进程卡死（表现：打开页面卡顿、什么也点不了，刷新重开依旧）。
+  // 渲染前发现异常大值即清除（LS+IDB 双清）回默认，保证存量坏数据刷新后自动恢复。
+  // 阈值：壁纸类正常压缩产物 ≤5MB（2880px JPEG 0.85），>6MB 判定为旧版回退原图；
+  // 小图类（头像/卡片背景等 1000px 内压缩 <200KB）沿用 500KB（与 applyAvatar 一致）
+  const BG_SAFE_LIMIT = 6 * 1024 * 1024;
+  const IMG_SAFE_LIMIT = 500 * 1024;
+  const sanitizeBg = (key, limit) => {
+    const v = store.get(key);
+    if (v && typeof v === 'string' && v.length > limit) {
+      try { store.remove(key); } catch (e) {}
+      return null;
+    }
+    return v;
+  };
 
   // 头像（位于桌面纪念日卡片内，点击不触发卡片背景上传）
   function applyAvatar(id, key) {
@@ -264,6 +281,12 @@
     function close() { mask.hidden = true; cb = null; }
     function fire() {
       if (!cb) return;
+      // 色板/自定义取色优先于 pills（v3.6.x：widget 颜色等弹窗同时带 pills 和色板时，
+      // 点色板确定被 pills 分支拦截传 null → 设置不生效）
+      if (swatches && !swatches.hidden && (picked === -2 || picked >= 0)) {
+        if (picked === -2 && customVal) { cb(customVal); return; }
+        if (picked >= 0) { cb(picked); return; }
+      }
       if (pillsEl && !pillsEl.hidden) {
         if (pillsOnOk) pillsOnOk(pillVal);
         cb(pillVal);
@@ -386,7 +409,7 @@
     syncBgUI();
   };
   if (bgRow) {
-    const savedBg = store.get('phone-bg');
+    const savedBg = sanitizeBg('phone-bg', BG_SAFE_LIMIT);
     if (savedBg) applyPhoneBg(savedBg);
     syncBgUI();
     bgRow.addEventListener('click', () => {
@@ -419,7 +442,7 @@
   }
 
   // 壁纸只在桌面显示：桌面时铺满全屏，切到字卡库/设置/聊天时隐藏（数据保留）
-  const bgData = () => store.get('phone-bg');
+  const bgData = () => sanitizeBg('phone-bg', BG_SAFE_LIMIT);
   const applyBgVisibility = () => {
     if (!phoneEl) return;
     const home = document.getElementById('page-phone');
@@ -450,7 +473,7 @@
   // 启动时从 IDB 补读后重新应用
   try {
     if (window.idbGet) {
-      window.idbGet(uid + ':phone-bg').then(v => {
+      window.idbGet(window.activePrefix() + ':phone-bg').then(v => {
         if (v && typeof v === 'string' && v.length > 2 && !store.get('phone-bg')) {
           store.set('phone-bg', v);
           applyBgVisibility();
@@ -491,16 +514,38 @@
     });
   };
   restoreAppIcons();
+  // v3.6.x：恢复图标网格内自定义顺序（app-icon-order-<grid.app> 存 data-app 数组）
+  const restoreAppIconOrder = () => {
+    grids.forEach(grid => {
+      const gid = grid.dataset.app;
+      if (!gid) return;
+      let order = null;
+      try { const v = store.get('app-icon-order-' + gid); if (v) order = JSON.parse(v); } catch (e) {}
+      if (!Array.isArray(order) || !order.length) return;
+      const apps = Array.prototype.slice.call(grid.querySelectorAll('.app'));
+      const byKey = {};
+      apps.forEach(a => { byKey[a.dataset.app] = a; });
+      order.forEach((k, i) => {
+        const node = byKey[k];
+        if (node && node.parentNode === grid) {
+          // 插入到当前第 i 个位置前（移动节点不重建，事件绑定保留）
+          const ref = grid.children[i];
+          if (ref && ref !== node) grid.insertBefore(node, ref);
+        }
+      });
+    });
+  };
+  restoreAppIconOrder();
   // v3.5.95：自定义图标大键可能只存在 IndexedDB（压缩失败兜底会存原始大图）→ 补读后重新恢复图标
   try {
     if (window.idbGetAllKeys) {
       window.idbGetAllKeys().then(keys => {
-        const iconKeys = (keys || []).filter(k => k.indexOf(uid + ':app-icon-') === 0);
+        const iconKeys = (keys || []).filter(k => k.indexOf(window.activePrefix() + ':app-icon-') === 0);
         if (!iconKeys.length) return;
         let p = Promise.resolve();
         iconKeys.forEach(k => {
           p = p.then(() => window.idbGet(k)).then(v => {
-            if (v && typeof v === 'string' && v.length > 2) store.set(k.slice(uid.length + 1), v);
+            if (v && typeof v === 'string' && v.length > 2) store.set(k.slice(window.activePrefix().length + 1), v);
           });
         });
         p.then(() => restoreAppIcons());
@@ -544,16 +589,33 @@
         };
         input.click();
       };
-      // 已有自定义图 → 可更换或清除；无自定义图 → 直接选文件
-      if (hasCustom && window.openModal) {
-        window.openModal('图标已自定义', '', (v) => {
+      // v3.6.x：图标位置调整（网格内上移/下移，顺序持久化 app-icon-order-<gridIdx>）
+      const moveApp = (dir) => {
+        const apps = Array.prototype.slice.call(grid.querySelectorAll('.app'));
+        const idx = apps.indexOf(app);
+        if (dir === 'up' && idx > 0) grid.insertBefore(app, apps[idx - 1]);
+        else if (dir === 'down' && idx < apps.length - 1) grid.insertBefore(apps[idx + 1], app);
+        // 持久化顺序
+        const order = Array.prototype.slice.call(grid.querySelectorAll('.app')).map(a => a.dataset.app);
+        store.set('app-icon-order-' + grid.dataset.app, JSON.stringify(order));
+        toast(dir === 'up' ? '已上移' : '已下移');
+      };
+      // 组装菜单：更换/清除（有自定义图时）+ 上移/下移
+      const pills = [];
+      pills.push({ label: hasCustom ? '更换图片' : '上传图片', value: '1' });
+      if (hasCustom) pills.push({ label: '清除图片', value: '2' });
+      pills.push({ label: '上移', value: 'up' });
+      pills.push({ label: '下移', value: 'down' });
+      if (window.openModal) {
+        window.openModal('图标设置', '', (v) => {
           if (v === '1') pickFile();
-          if (v === '2') {
+          else if (v === '2' && hasCustom) {
             store.remove('app-icon-' + key);
             if (ico && ico.dataset.orig) ico.innerHTML = ico.dataset.orig;
             toast('已恢复默认图标');
-          }
-        }, { noInput: true, pills: [{ label: '更换图片', value: '1' }, { label: '清除图片', value: '2' }] });
+          } else if (v === 'up') moveApp('up');
+          else if (v === 'down') moveApp('down');
+        }, { noInput: true, pills: pills });
       } else {
         pickFile();
       }
@@ -561,19 +623,26 @@
   });
 
   const iconRow = document.getElementById('row-custom-icon');
+  // v3.6.x：进入装修模式的公共逻辑（自定义桌面图标 / 卡片背景两个入口共用）：
+  // 切到桌面 + 图标网格进入 editing（点图标换图）+ 开启 decor-on（点卡片设背景）+ 显示装饰条
+  const enterDecor = () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    const phoneTab = document.querySelector('.tab[data-page="page-phone"]');
+    if (phoneTab) phoneTab.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.hidden = true);
+    const phonePage = document.getElementById('page-phone');
+    if (phonePage) phonePage.hidden = false;
+    grids.forEach(g => g.classList.add('editing'));
+    const phone = document.getElementById('page-phone');
+    if (phone) phone.classList.add('decor-on');
+    const bar = document.getElementById('decor-bar');
+    if (bar) bar.hidden = false;
+  };
   if (iconRow) {
-    iconRow.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      const phoneTab = document.querySelector('.tab[data-page="page-phone"]');
-      if (phoneTab) phoneTab.classList.add('active');
-      document.querySelectorAll('.page').forEach(p => p.hidden = true);
-      const phonePage = document.getElementById('page-phone');
-      if (phonePage) phonePage.hidden = false;
-      grids.forEach(g => g.classList.add('editing'));
-      const bar = document.getElementById('decor-bar');
-      if (bar) bar.hidden = false;
-    });
+    iconRow.addEventListener('click', enterDecor);
   }
+  // v3.6.x：装修模式设置卡片背景入口的绑定在 CARD_BG_TYPES 定义之后（见卡片背景段末尾）——
+  // 该入口引用了 CARD_BG_TYPES 统计已设置数量，需等其声明后再绑定。
 
   // 小组件颜色：点击色板选择，CSS 变量 --widget-bg 实时生效
   const widgetColorRow = document.getElementById('row-widget-color');
@@ -593,31 +662,626 @@
     widgetColorRow.addEventListener('click', () => {
       if (!window.openModal) return;
       const current = store.get('widget-bg-color') || '#ffffff';
+      const swatchList = [
+        { color: '#ffffff', label: '默认白' },
+        { color: '#f5f0eb', label: '暖米白' },
+        { color: '#fff0f0', label: '樱花粉' },
+        { color: '#f0f4ff', label: '雾霭蓝' },
+        { color: '#f0fff0', label: '薄荷绿' },
+        { color: '#fff5e6', label: '奶油黄' },
+        { color: '#f5e6ff', label: '淡紫' },
+        { color: '#fff0e0', label: '暖橘' },
+      ];
       window.openModal('小组件颜色', '', (v) => {
-        if (!v) return;
-        store.set('widget-bg-color', v);
-        applyWidgetColor(v);
+        // v 可能是色板下标（number）或自定义色值（#hex 字符串）
+        const color = (typeof v === 'number' && swatchList[v]) ? swatchList[v].color : v;
+        if (!color) return;
+        if (color === '__reset__') {
+          store.remove('widget-bg-color');
+          applyWidgetColor('#ffffff');
+          syncWidgetColorUI();
+          return;
+        }
+        store.set('widget-bg-color', color);
+        applyWidgetColor(color);
         syncWidgetColorUI();
       }, {
         colorPicker: true,
+        noInput: true,
         color: current,
-        swatches: [
-          { color: '#ffffff', label: '默认白' },
-          { color: '#f5f0eb', label: '暖米白' },
-          { color: '#fff0f0', label: '樱花粉' },
-          { color: '#f0f4ff', label: '雾霭蓝' },
-          { color: '#f0fff0', label: '薄荷绿' },
-          { color: '#fff5e6', label: '奶油黄' },
-          { color: '#f5e6ff', label: '淡紫' },
-          { color: '#fff0e0', label: '暖橘' },
-        ],
+        swatches: swatchList,
+        pills: [{ label: '恢复默认', value: '__reset__' }],
       });
     });
   }
 
+  // 小组件边框颜色：CSS 变量 --widget-border 实时生效
+  const widgetBorderRow = document.getElementById('row-widget-border');
+  const widgetBorderVal = document.getElementById('widget-border-val');
+  const applyWidgetBorder = (color) => {
+    document.documentElement.style.setProperty('--widget-border', color);
+    if (widgetBorderVal) widgetBorderVal.textContent = color === 'rgba(0,0,0,.1)' ? '默认' : '';
+  };
+  const savedWidgetBorder = store.get('widget-border-color');
+  if (savedWidgetBorder) applyWidgetBorder(savedWidgetBorder);
+  if (widgetBorderRow) {
+    const syncWidgetBorderUI = () => {
+      const c = store.get('widget-border-color') || 'rgba(0,0,0,.1)';
+      if (widgetBorderVal) widgetBorderVal.textContent = c === 'rgba(0,0,0,.1)' ? '默认' : '';
+    };
+    syncWidgetBorderUI();
+    widgetBorderRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const current = store.get('widget-border-color') || 'rgba(0,0,0,.1)';
+      window.openModal('小组件边框颜色', '', (v) => {
+        if (!v) return;
+        if (v === '__reset__') {
+          store.remove('widget-border-color');
+          applyWidgetBorder('rgba(0,0,0,.1)');
+          syncWidgetBorderUI();
+          return;
+        }
+        store.set('widget-border-color', v);
+        applyWidgetBorder(v);
+        syncWidgetBorderUI();
+      }, {
+        colorPicker: true,
+        noInput: true,
+        color: current,
+        swatches: [
+          { color: 'rgba(0,0,0,.1)', label: '默认' },
+          { color: 'rgba(0,0,0,.15)', label: '浅灰' },
+          { color: 'rgba(0,0,0,.25)', label: '中灰' },
+          { color: 'rgba(0,0,0,.4)', label: '深灰' },
+          { color: '#111111', label: '纯黑' },
+          { color: '#e05555', label: '樱花粉' },
+          { color: '#5555cc', label: '雾霭蓝' },
+          { color: '#55aa55', label: '薄荷绿' },
+        ],
+        pills: [{ label: '恢复默认', value: '__reset__' }],
+      });
+    });
+  }
+
+  // 按钮颜色：CSS 变量 --widget-btn 实时生效
+  const widgetBtnRow = document.getElementById('row-widget-btn');
+  const widgetBtnVal = document.getElementById('widget-btn-val');
+  const applyWidgetBtn = (color) => {
+    document.documentElement.style.setProperty('--widget-btn', color);
+    if (widgetBtnVal) widgetBtnVal.textContent = color === '#111111' ? '默认黑' : '';
+  };
+  const savedWidgetBtn = store.get('widget-btn-color');
+  if (savedWidgetBtn) applyWidgetBtn(savedWidgetBtn);
+  if (widgetBtnRow) {
+    const syncWidgetBtnUI = () => {
+      const c = store.get('widget-btn-color') || '#111111';
+      if (widgetBtnVal) widgetBtnVal.textContent = c === '#111111' ? '默认黑' : '';
+    };
+    syncWidgetBtnUI();
+    widgetBtnRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const current = store.get('widget-btn-color') || '#111111';
+      window.openModal('按钮颜色', '', (v) => {
+        if (!v) return;
+        if (v === '__reset__') {
+          store.remove('widget-btn-color');
+          applyWidgetBtn('#111111');
+          syncWidgetBtnUI();
+          return;
+        }
+        store.set('widget-btn-color', v);
+        noInput: true,
+        applyWidgetBtn(v);
+        syncWidgetBtnUI();
+      }, {
+        colorPicker: true,
+        color: current,
+        swatches: [
+          { color: '#111111', label: '默认黑' },
+          { color: '#e05555', label: '樱花粉' },
+          { color: '#5555cc', label: '雾霭蓝' },
+          { color: '#55aa55', label: '薄荷绿' },
+          { color: '#d4a017', label: '暖橘黄' },
+          { color: '#888888', label: '中灰' },
+          { color: '#cc55cc', label: '淡紫' },
+          { color: '#cc6622', label: '暖橘' },
+        ],
+        pills: [{ label: '恢复默认', value: '__reset__' }],
+      });
+    });
+  }
+
+  // ===== v3.6.x：卡片背景图片（每类卡片独立上传，遮罩/原图可切换） =====
+  // 存储：card-bg-<type>（图片 dataURL）+ card-bg-mask-<type>（'on'=白色遮罩 / 'off'=原图直出）
+  // 卡片类型 → 目标元素：统一用 [data-card-bg] 属性选择（v3.6.x：卡片可被移到新增页，
+  // 不能依赖 .page-slide.second 等固定位置选择器，否则挪页后背景设置失效）
+  const CARD_BG_TYPES = [
+    { type: 'deco', name: '纪念日卡', sel: '[data-card-bg="deco"]' },
+    { type: 'quote', name: '今日情话卡', sel: '[data-card-bg="quote"]' },
+    { type: 'fish', name: '已摸鱼卡', sel: '[data-card-bg="fish"]' },
+    { type: 'checkin', name: '打卡横幅', sel: '[data-card-bg="checkin"]' },
+    { type: 'music', name: '音乐播放器', sel: '[data-card-bg="music"]' },
+    { type: 'memo', name: '今日备忘卡', sel: '[data-card-bg="memo"]' },
+    { type: 'mood', name: '今天的心情卡', sel: '[data-card-bg="mood"]' },
+    { type: 'week', name: '本周日常卡', sel: '[data-card-bg="week"]' },
+    { type: 'weekend', name: '周末倒计时卡', sel: '[data-card-bg="weekend"]' },
+  ];
+  const cardBgSel = (type) => {
+    const def = CARD_BG_TYPES.find(c => c.type === type);
+    return def ? def.sel : '';
+  };
+  // 应用单个卡片的背景：遮罩用多层背景（白色半透明叠加在图片上）
+  // v3.6.x：遮罩浓度可调——card-bg-mask 存 'off'（原图直出）/ 'light'（0.3）/
+  // 'mid'（0.5）/ 'strong'（0.72）；旧值 'on' 视作 mid。默认 mid（原 0.78 太浓
+  // 图几乎看不见，0.5 图清晰可见、深色文字仍可读）
+  const MASK_ALPHA = { light: 0.3, mid: 0.5, strong: 0.72 };
+  const maskAlphaOf = (type) => {
+    const v = store.get('card-bg-mask-' + type);
+    if (v === 'off') return 0;
+    if (MASK_ALPHA[v]) return MASK_ALPHA[v];
+    return MASK_ALPHA.mid; // undefined / 'on' / 其他 → mid
+  };
+  const applyCardBg = (type) => {
+    const sel = cardBgSel(type);
+    if (!sel) return;
+    const els = document.querySelectorAll(sel);
+    const img = sanitizeBg('card-bg-' + type, IMG_SAFE_LIMIT);
+    const a = maskAlphaOf(type);
+    els.forEach(el => {
+      if (!el) return;
+      if (img && typeof img === 'string' && img.length > 2) {
+        // background-image 只放 url（与可选遮罩渐变层）；size/position 单独设置
+        el.style.backgroundImage = a > 0
+          ? 'linear-gradient(rgba(255,255,255,' + a + '), rgba(255,255,255,' + a + ')), url("' + img + '")'
+          : 'url("' + img + '")';
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+        el.style.backgroundRepeat = 'no-repeat';
+      } else {
+        // 无图：恢复默认（清内联，回落到 --widget-bg 变量）
+        el.style.backgroundImage = '';
+        el.style.backgroundSize = '';
+        el.style.backgroundPosition = '';
+        el.style.backgroundRepeat = '';
+      }
+    });
+  };
+  const applyAllCardBgs = () => CARD_BG_TYPES.forEach(c => applyCardBg(c.type));
+  // 初始化 + 多桌面切换后重应用
+  applyAllCardBgs();
+  document.addEventListener('contact-switched', applyAllCardBgs);
+  // 卡片背景设置公共逻辑（设置页行点击 / 装修模式点卡片共用）：
+  // 上传 / 清除 / 遮罩开关。type 为卡片类型，name 为显示名。
+  // v3.6.x：装修模式点卡片时额外传入 anchorEl（点击的卡片元素）→ 菜单追加
+  // 「上移/下移/移出此页」摆放操作（替代原悬浮操作条按钮：操作条挂在 app-grid 上
+  // 会遮挡图标导致无法恢复默认，且用户反馈按钮多余，改为收进点卡片菜单）。
+  const openCardBgMenu = (type, name, anchorEl) => {
+    const img = store.get('card-bg-' + type);
+    const maskVal = store.get('card-bg-mask-' + type) || 'mid';
+    const widgetEl = anchorEl ? anchorEl.closest('[data-desk-widget]') : null;
+    const pickFile = () => {
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = 'image/*';
+      input.onchange = () => {
+        const f = input.files && input.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          compressImage(reader.result, 1000).then(data => {
+            if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
+            store.set('card-bg-' + type, data);
+            applyCardBg(type);
+            syncCardBgUIs();
+            toast(name + '背景已设置');
+          });
+        };
+        reader.readAsDataURL(f);
+      };
+      input.click();
+    };
+    const moveWidget = (dir) => {
+      if (!widgetEl || !widgetEl.parentNode) return;
+      if (dir === 'up') {
+        const prev = widgetEl.previousElementSibling;
+        if (prev) widgetEl.parentNode.insertBefore(widgetEl, prev);
+      } else if (dir === 'down') {
+        const next = widgetEl.nextElementSibling;
+        if (next) widgetEl.parentNode.insertBefore(next, widgetEl);
+      }
+      saveDeskLayout();
+      toast(dir === 'up' ? '已上移' : '已下移');
+    };
+    // 组装菜单选项：背景操作 + （装修模式点卡片时）摆放操作
+    // v3.6.x：遮罩浓度三档（淡0.3/中0.5/浓0.72）+ 原图直出（off）
+    const pills = [];
+    pills.push({ label: img ? '更换图片' : '上传图片', value: '1' });
+    if (img) pills.push({ label: '清除图片', value: '2' });
+    if (img) {
+      pills.push({ label: maskVal === 'off' ? '原图直出 ✓' : '原图直出', value: 'off' });
+      pills.push({ label: maskVal === 'light' ? '遮罩 · 淡 ✓' : '遮罩 · 淡', value: 'light' });
+      pills.push({ label: (maskVal === 'mid' || maskVal === 'on') ? '遮罩 · 中 ✓' : '遮罩 · 中', value: 'mid' });
+      pills.push({ label: maskVal === 'strong' ? '遮罩 · 浓 ✓' : '遮罩 · 浓', value: 'strong' });
+    }
+    if (widgetEl) {
+      pills.push({ label: '上移', value: 'up' });
+      pills.push({ label: '下移', value: 'down' });
+      pills.push({ label: '移出此页', value: 'out' });
+    }
+    // 无背景且不在装修模式点卡片（设置页行）：直接选文件（原快捷行为）
+    if (!img && !widgetEl) { pickFile(); return; }
+    if (!window.openModal) return;
+    window.openModal(name + '设置', '', (v) => {
+      if (v === '1') pickFile();
+      else if (v === '2') {
+        store.remove('card-bg-' + type);
+        applyCardBg(type);
+        syncCardBgUIs();
+        toast('已恢复默认');
+      } else if (v === 'off' || v === 'light' || v === 'mid' || v === 'strong') {
+        store.set('card-bg-mask-' + type, v);
+        applyCardBg(type);
+        syncCardBgUIs();
+        toast(v === 'off' ? '已切换为原图直出' : (v === 'light' ? '已切换为淡遮罩' : (v === 'mid' ? '已切换为中遮罩' : '已切换为浓遮罩')));
+      } else if (v === 'up') moveWidget('up');
+      else if (v === 'down') moveWidget('down');
+      else if (v === 'out') {
+        ensureWidgetPool().appendChild(widgetEl);
+        saveDeskLayout();
+        toast('已移出此页（可在其他页「添加卡片」找回）');
+      }
+    }, {
+      noInput: true,
+      pills: pills,
+    });
+  };
+  // 刷新所有设置行右侧状态文本
+  const syncCardBgUIs = () => {
+    CARD_BG_TYPES.forEach(c => {
+      const val = document.getElementById('card-bg-val-' + c.type);
+      if (!val) return;
+      const img = store.get('card-bg-' + c.type);
+      const mv = store.get('card-bg-mask-' + c.type) || 'mid';
+      const maskTxt = mv === 'off' ? '原图' : (mv === 'light' ? '淡遮罩' : (mv === 'strong' ? '浓遮罩' : '遮罩'));
+      val.textContent = img ? '已设置 · ' + maskTxt : '';
+    });
+  };
+  // 绑定每类卡片的设置行
+  CARD_BG_TYPES.forEach(c => {
+    const row = document.getElementById('row-card-bg-' + c.type);
+    if (!row) return;
+    syncCardBgUIs();
+    row.addEventListener('click', () => openCardBgMenu(c.type, c.name));
+  });
+  // v3.6.x：装修模式下点击卡片直接上传背景（与自定义图标同交互）。
+  // 用事件委托绑定在 #page-phone 上：仅 decor-on 装修模式生效，点击 [data-card-bg] 卡片弹设置菜单。
+  // 注意 stopPropagation——装修模式下点击卡片不触发卡片自身功能（备忘/心情/打卡/音乐等），
+  // 与「装修模式点击图标换图、不打开功能」的既有行为一致。
+  const phonePageEl = document.getElementById('page-phone');
+  if (phonePageEl) {
+    phonePageEl.addEventListener('click', (e) => {
+      if (!phonePageEl.classList.contains('decor-on')) return;
+      // 组件库面板 / 装饰完成条 / 新增页「+ 添加卡片」点击不拦截
+      if (e.target.closest('.desk-lib') || e.target.closest('.decor-bar') || e.target.closest('.desk-page-add')) return;
+      const card = e.target.closest('[data-card-bg]');
+      if (!card) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const type = card.getAttribute('data-card-bg');
+      const def = CARD_BG_TYPES.find(c => c.type === type);
+      // 传入 card 作为 anchorEl：菜单额外包含 上移/下移/移出此页
+      openCardBgMenu(type, def ? def.name : type, card);
+    }, true);
+  }
+
+  // ===== v3.6.x：桌面页面管理（新增空白主页 / 删除 / 每页独立背景图） =====
+  // 页数存储：desk-page-count（默认 2，上限 5）；每页背景图：page-bg-<idx>（dataURL）
+  const pagesBox = document.getElementById('desktop-pages');
+  const pagesVal = document.getElementById('desk-pages-val');
+  const delPageRow = document.getElementById('row-desk-del-page');
+  const pageBgsBox = document.getElementById('desk-page-bgs');
+  const DESK_PAGE_MAX = 5;
+  // 前两页是核心页（情侣空间 + 音乐播放器），只可增删第 3 页及以后的空白页
+  const DESK_PAGE_MIN = 2;
+  const deskPageCount = () => {
+    const v = parseInt(store.get('desk-page-count'), 10);
+    return isNaN(v) || v < DESK_PAGE_MIN ? DESK_PAGE_MIN : Math.min(v, DESK_PAGE_MAX);
+  };
+  // 重建桌面页结构：保证页数 = desk-page-count，新增页为空 page-slide
+  const buildDeskPages = () => {
+    if (!pagesBox) return;
+    const target = deskPageCount();
+    const slides = Array.prototype.slice.call(pagesBox.querySelectorAll('.page-slide'));
+    while (slides.length > target) {
+      const s = slides.pop();
+      if (s && s.parentNode) {
+        // 该页上的组件移回隐藏池（不随页面删除丢失）
+        const pool = ensureWidgetPool();
+        s.querySelectorAll('[data-desk-widget]').forEach(node => pool.appendChild(node));
+        s.parentNode.removeChild(s);
+      }
+    }
+    for (let i = slides.length; i < target; i++) {
+      const s = document.createElement('div');
+      s.className = 'page-slide desk-page';
+      s.dataset.desk = String(i);
+      // 空白页装修提示 + 「+ 添加卡片」（仅新增页，第 0/1 页是核心页）
+      const hint = document.createElement('div');
+      hint.className = 'desk-page-hint';
+      hint.textContent = '空白主页 · 可上传整页背景图';
+      const addBtn = document.createElement('div');
+      addBtn.className = 'desk-page-add';
+      addBtn.textContent = '+ 添加卡片';
+      addBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const curIdx = Array.prototype.indexOf.call(pagesBox.querySelectorAll('.page-slide'), s);
+        openDeskLib(s, curIdx);
+      });
+      s.appendChild(hint);
+      s.appendChild(addBtn);
+      pagesBox.appendChild(s);
+      slides.push(s);
+    }
+    // 应用每页背景图
+    for (let i = 0; i < target; i++) {
+      const s = pagesBox.querySelectorAll('.page-slide')[i];
+      const bg = sanitizeBg('page-bg-' + i, BG_SAFE_LIMIT);
+      if (s) {
+        if (bg && typeof bg === 'string' && bg.length > 2) {
+          s.style.backgroundImage = 'url("' + bg + '")';
+          s.style.backgroundSize = 'cover';
+          s.style.backgroundPosition = 'center';
+        } else {
+          s.style.backgroundImage = '';
+          s.style.backgroundSize = '';
+          s.style.backgroundPosition = '';
+        }
+      }
+    }
+    if (window.deskRebuild) window.deskRebuild();
+    syncPagesUI();
+  };
+  // 同步页面管理 UI（页数显示 + 每页背景行列表 + 删除按钮显隐）
+  const syncPagesUI = () => {
+    const n = deskPageCount();
+    if (pagesVal) pagesVal.textContent = '共 ' + n + ' 页';
+    if (delPageRow) delPageRow.hidden = n <= 1;
+    if (!pageBgsBox) return;
+    pageBgsBox.innerHTML = '';
+    for (let i = 0; i < n; i++) {
+      const row = document.createElement('div');
+      row.className = 'set-row' + (i >= 2 ? '' : '');
+      const ico = document.createElement('div');
+      ico.className = 'ico';
+      ico.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>';
+      const txt = document.createElement('div');
+      txt.className = 'txt';
+      txt.textContent = (i === 0 ? '首页' : '第 ' + (i + 1) + ' 页') + '背景图';
+      const val = document.createElement('div');
+      val.className = 'val';
+      val.id = 'page-bg-val-' + i;
+      const syncRowUI = () => {
+        const bg = store.get('page-bg-' + i);
+        val.textContent = bg ? '已设置' : '';
+      };
+      syncRowUI();
+      row.appendChild(ico); row.appendChild(txt); row.appendChild(val);
+      row.addEventListener('click', () => {
+        const bg = store.get('page-bg-' + i);
+        const pickPageBg = () => {
+          const input = document.createElement('input');
+          input.type = 'file'; input.accept = 'image/*';
+          input.onchange = () => {
+            const f = input.files && input.files[0];
+            if (!f) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              compressImage(reader.result, phoneBgMaxSide()).then(data => {
+                if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
+                store.set('page-bg-' + i, data);
+                buildDeskPages();
+                syncRowUI();
+                toast((i === 0 ? '首页' : '第 ' + (i + 1) + ' 页') + '背景已设置');
+              });
+            };
+            reader.readAsDataURL(f);
+          };
+          input.click();
+        };
+        if (bg && window.openModal) {
+          window.openModal((i === 0 ? '首页' : '第 ' + (i + 1) + ' 页') + '背景图', '', (v) => {
+            if (v === '1') pickPageBg();
+            else if (v === '2') {
+              store.remove('page-bg-' + i);
+              buildDeskPages();
+              syncRowUI();
+              toast('已恢复默认');
+            }
+          }, { noInput: true, pills: [{ label: '更换图片', value: '1' }, { label: '清除图片', value: '2' }] });
+        } else {
+          pickPageBg();
+        }
+      });
+      pageBgsBox.appendChild(row);
+    }
+  };
+  const addPageRow = document.getElementById('row-desk-add-page');
+  if (addPageRow) {
+    addPageRow.addEventListener('click', () => {
+      const n = deskPageCount();
+      if (n >= DESK_PAGE_MAX) { toast('最多 ' + DESK_PAGE_MAX + ' 页'); return; }
+      store.set('desk-page-count', String(n + 1));
+      buildDeskPages();
+      toast('已新增第 ' + (n + 1) + ' 页');
+    });
+  }
+  if (delPageRow) {
+    delPageRow.addEventListener('click', () => {
+      const n = deskPageCount();
+      if (n <= DESK_PAGE_MIN) { toast('核心页不可删除'); return; }
+      if (window.openModal) {
+        window.openModal('删除最后一页？', '', (v) => {
+          if (v === 'ok') {
+            store.remove('page-bg-' + (n - 1));
+            store.set('desk-page-count', String(n - 1));
+            buildDeskPages();
+            toast('已删除');
+          }
+        }, { noInput: true, staticText: '第 ' + n + ' 页上的卡片会移回隐藏池，可随时在其他页「添加卡片」找回' });
+      } else {
+        store.remove('page-bg-' + (n - 1));
+        store.set('desk-page-count', String(n - 1));
+        buildDeskPages();
+      }
+    });
+  }
+  buildDeskPages();
+  document.addEventListener('contact-switched', buildDeskPages);
+
+  // ===== v3.6.x：卡片自由摆放（装修模式：上移/下移/移除；新增页可添加卡片） =====
+  // 组件 id 列表（对应 template.html 中 [data-desk-widget]）；组件节点唯一，
+  // 「添加」= 把节点移动到目标页（节点移动不重建，内部事件绑定保留）
+  const WIDGET_IDS = ['deco', 'quote-row', 'checkin', 'apps', 'music', 'p2apps', 'memo-row', 'week', 'weekend'];
+  const WIDGET_NAMES = {
+    deco: '纪念日卡', 'quote-row': '今日情话 / 已摸鱼', checkin: '打卡横幅', apps: '功能图标',
+    music: '音乐播放器', p2apps: '第二页功能图标', 'memo-row': '今日备忘 / 心情', week: '本周日常', weekend: '周末倒计时',
+  };
+  // 隐藏池：被移除的组件暂存（display:none），可从组件库重新添加
+  function ensureWidgetPool() {
+    let pool = document.getElementById('desk-widget-pool');
+    if (!pool) {
+      pool = document.createElement('div');
+      pool.id = 'desk-widget-pool';
+      pool.style.display = 'none';
+      document.body.appendChild(pool);
+    }
+    return pool;
+  }
+  // 读布局：desk-layout = JSON 数组（每页一个 widget id 数组）；无 → null（保持 DOM 原状）
+  const deskLayout = () => {
+    try {
+      const v = store.get('desk-layout');
+      if (v) { const a = JSON.parse(v); if (Array.isArray(a)) return a; }
+    } catch (e) {}
+    return null;
+  };
+  // 保存布局（按当前 DOM 状态，含隐藏池外的所有页）
+  const saveDeskLayout = () => {
+    const slides = Array.prototype.slice.call(pagesBox.querySelectorAll('.page-slide'));
+    const lay = slides.map(s => Array.prototype.slice.call(s.querySelectorAll('[data-desk-widget]')).map(n => n.getAttribute('data-desk-widget')));
+    store.set('desk-layout', JSON.stringify(lay));
+    return lay;
+  };
+  // 按布局重建：把组件节点移动到对应页（默认布局保持 DOM 原状，不写布局）
+  const applyDeskLayout = () => {
+    const lay = deskLayout();
+    if (!lay) return;
+    const slides = Array.prototype.slice.call(pagesBox.querySelectorAll('.page-slide'));
+    lay.forEach((pageWidgets, pi) => {
+      const slide = slides[pi];
+      if (!slide) return;
+      (pageWidgets || []).forEach(wid => {
+        const node = document.querySelector('[data-desk-widget="' + wid + '"]');
+        if (node && node.parentNode !== slide) {
+          // 插入到「+ 添加卡片」按钮之前；隐藏空白页提示
+          const addBtn = slide.querySelector('.desk-page-add');
+          if (addBtn) slide.insertBefore(node, addBtn);
+          else slide.appendChild(node);
+          const hint = slide.querySelector('.desk-page-hint');
+          if (hint) hint.style.display = 'none';
+        }
+      });
+    });
+    // 布局外的组件 → 隐藏池
+    const pool = ensureWidgetPool();
+    WIDGET_IDS.forEach(wid => {
+      const node = document.querySelector('[data-desk-widget="' + wid + '"]');
+      const inLay = lay.some(page => (page || []).indexOf(wid) >= 0);
+      if (node && !inLay && node.parentNode !== pool) pool.appendChild(node);
+    });
+    if (window.deskRebuild) window.deskRebuild();
+  };
+  applyDeskLayout();
+  document.addEventListener('contact-switched', applyDeskLayout);
+
+  // 组件库面板：列出所有组件 + 当前位置，点击「添加到此页」
+  function openDeskLib(pageSlide, pageIdx) {
+    const lib = document.createElement('div');
+    lib.className = 'desk-lib';
+    lib.addEventListener('click', (e) => { if (e.target === lib) lib.remove(); });
+    const box = document.createElement('div');
+    box.className = 'desk-lib-box';
+    const title = document.createElement('div');
+    title.className = 'desk-lib-title';
+    title.textContent = '添加卡片到' + (pageIdx + 1 <= 2 ? (pageIdx === 0 ? '首页' : '第 ' + (pageIdx + 1) + ' 页') : '第 ' + (pageIdx + 1) + ' 页');
+    const sub = document.createElement('div');
+    sub.className = 'desk-lib-sub';
+    sub.textContent = '组件全局唯一：选择后会从原位置移动过来';
+    box.appendChild(title); box.appendChild(sub);
+    WIDGET_IDS.forEach(wid => {
+      const item = document.createElement('div');
+      item.className = 'desk-lib-item';
+      const name = document.createElement('div');
+      name.textContent = WIDGET_NAMES[wid] || wid;
+      const node = document.querySelector('[data-desk-widget="' + wid + '"]');
+      const curPage = node && node.closest('.page-slide') ? Array.prototype.indexOf.call(pagesBox.querySelectorAll('.page-slide'), node.closest('.page-slide')) : -1;
+      const where = document.createElement('div');
+      where.className = 'dl-where';
+      where.textContent = curPage < 0 ? '已隐藏' : (curPage === pageIdx ? '已在本页' : (curPage === 0 ? '首页' : '第 ' + (curPage + 1) + ' 页'));
+      const btn = document.createElement('button');
+      btn.className = 'dl-btn';
+      btn.textContent = curPage === pageIdx ? '已在' : '添加到此页';
+      btn.disabled = curPage === pageIdx;
+      btn.addEventListener('click', () => {
+        if (!node) return;
+        // 插入到「+ 添加卡片」按钮之前；隐藏空白页提示
+        const addBtn = pageSlide.querySelector('.desk-page-add');
+        if (addBtn) pageSlide.insertBefore(node, addBtn);
+        else pageSlide.appendChild(node);
+        const hint = pageSlide.querySelector('.desk-page-hint');
+        if (hint) hint.style.display = 'none';
+        saveDeskLayout();
+        if (window.deskRebuild) window.deskRebuild();
+        lib.remove();
+        toast('已添加到本页');
+      });
+      item.appendChild(name); item.appendChild(where); item.appendChild(btn);
+      box.appendChild(item);
+    });
+    const close = document.createElement('button');
+    close.textContent = '关闭';
+    close.style.cssText = 'width:100%;margin-top:8px;padding:10px;border:1px solid #eee;border-radius:10px;background:#fafafa;font-size:13px;cursor:pointer;font-family:inherit';
+    close.addEventListener('click', () => lib.remove());
+    box.appendChild(close);
+    lib.appendChild(box);
+    document.body.appendChild(lib);
+  }
+
+  // v3.6.x：装修模式装饰条「+ 添加卡片」——找回被移出的桌面组件，加到当前页
+  const decorAddBtn = document.getElementById('decor-add-widget');
+  if (decorAddBtn) {
+    decorAddBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!pagesBox) return;
+      // 当前页 = 滚动位置对应的 page-slide
+      const slides = Array.prototype.slice.call(pagesBox.querySelectorAll('.page-slide'));
+      if (!slides.length) return;
+      let curIdx = 0;
+      if (pagesBox.clientWidth) {
+        curIdx = Math.max(0, Math.min(slides.length - 1, Math.round(pagesBox.scrollLeft / pagesBox.clientWidth)));
+      }
+      openDeskLib(slides[curIdx], curIdx);
+    });
+  }
+
+  // 卡片摆放操作已收进点卡片的设置菜单（openCardBgMenu 的 上移/下移/移出此页），
+  // 不再注入悬浮操作条——原操作条挂在 [data-desk-widget]（含 app-grid 图标网格）上，
+  // 会遮挡图标导致装修模式下点图标弹不出「更换/清除」菜单（无法恢复默认图标）。
+
   // 退出装修模式（含桌面顶部"完成"按钮）
   function exitDecor() {
     grids.forEach(g => g.classList.remove('editing'));
+    const phone = document.getElementById('page-phone');
+    if (phone) phone.classList.remove('decor-on');
     const bar = document.getElementById('decor-bar');
     if (bar) bar.hidden = true;
   }
@@ -633,6 +1297,8 @@
   if (tabbar && grids.length) {
     tabbar.addEventListener('click', () => {
       grids.forEach(g => g.classList.remove('editing'));
+      const phone = document.getElementById('page-phone');
+      if (phone) phone.classList.remove('decor-on');
       const bar = document.getElementById('decor-bar');
       if (bar) bar.hidden = true;
     });
@@ -937,7 +1603,7 @@
           const BARE_KEYS = ['divine-history'];
           try {
             Object.keys(localStorage)
-              .filter(k => k.indexOf(uid + ':') === 0 || BARE_KEYS.indexOf(k) >= 0)
+              .filter(k => k.indexOf(window.activePrefix() + ':') === 0 || BARE_KEYS.indexOf(k) >= 0)
               .forEach(k => localStorage.removeItem(k));
           } catch (e) {}
           // 清会话级迁移标记（大键迁移标记，随会话残留无实际数据，一并清掉）
@@ -1262,4 +1928,32 @@
       if (csPage) csPage.hidden = false;
     });
   }
+
+  // v3.6.x：多桌面——切换联系人后刷新桌面外观（壁纸/自定义图标/打卡/摸鱼展示）。
+  // store 是动态绑定当前联系人的，restoreAppIcons/applyBgVisibility 会读新桌面的值；
+  // 打卡按钮状态按新桌面的 checkin 键重新判断。
+  document.addEventListener('contact-switched', function () {
+    try { applyBgVisibility(); } catch (e) {}
+    try { restoreAppIcons(); } catch (e) {}
+    // v3.6.x：小组件三色（背景/边框/按钮）按桌面独立——切换后重新应用新桌面的值
+    try { applyWidgetColor(store.get('widget-bg-color') || '#ffffff'); } catch (e) {}
+    try { applyWidgetBorder(store.get('widget-border-color') || 'rgba(0,0,0,.1)'); } catch (e) {}
+    try { applyWidgetBtn(store.get('widget-btn-color') || '#111111'); } catch (e) {}
+    try {
+      const btn = document.querySelector('.checkin .ck-btn');
+      if (btn) {
+        if (store.get('checkin') === fishToday()) {
+          btn.textContent = '✓ 已打卡';
+          btn.classList.add('done');
+        } else {
+          btn.textContent = '打卡';
+          btn.classList.remove('done');
+        }
+      }
+    } catch (e) {}
+    try {
+      const cnt = document.getElementById('weekend-count');
+      if (cnt) cnt.textContent = String(dayVal('fish-total'));
+    } catch (e) {}
+  });
 })();

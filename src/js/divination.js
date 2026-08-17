@@ -7,7 +7,7 @@
 
   let mode = 'tarot';
   let count = 3;
-  const store = window.xyStore('xy-home-v2');
+  const store = window.activeStore();
 
   // ---- 塔罗 22 张大阿卡纳（矢量图标 + 牌名 + 正逆位寓意 + 详细解读）----
   const TAROT = [

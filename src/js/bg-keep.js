@@ -4,8 +4,8 @@
 //           首次交互时恢复 AudioContext（浏览器自动播放策略要求）。
 // 后台通知：开启后，页面不在前台时收到 TA 的新消息会弹出浏览器通知。
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
   function toast(msg) {
     let t = document.getElementById('cc-toast');
     if (!t) {

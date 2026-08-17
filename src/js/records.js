@@ -1,8 +1,8 @@
 // ===== 功能：主页（最近动态：换头像记录 + 通话记录） =====
 // 桌面「主页」按钮进入；换头像/通话事件自动写入，完整展示
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
   function fmtDT(ts) {
     const d = new Date(ts);
     const p = (n) => (n < 10 ? '0' + n : '' + n);
@@ -188,11 +188,19 @@
   // v3.5.94：换头像记录含图片，可能只存在 IndexedDB → 启动补读（主页打开时才渲染，届时读到）
   try {
     if (window.idbGet) {
-      window.idbGet(uid + ':records-avatar').then(v => {
+      window.idbGet(window.activePrefix() + ':records-avatar').then(v => {
         if (v && typeof v === 'string' && v.length > 2) store.set('records-avatar', v);
       });
     }
   } catch (e) {}
 
   // 联系人主动来电已由 call.js 统一管理（弹窗/接听/小框/概率），此处仅保留记录存储
+
+  // v3.6.x：多桌面——切换联系人后若记录页可见则重渲染（读新桌面数据）
+  document.addEventListener('contact-switched', function () {
+    try {
+      const hp = document.getElementById('page-home');
+      if (hp && !hp.hidden) render();
+    } catch (e) {}
+  });
 })();

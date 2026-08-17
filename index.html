@@ -366,12 +366,14 @@ overflow-wrap: anywhere;
 }
 :root {
 --widget-bg:#ffffff;
+--widget-border:rgba(0,0,0,.1);
+--widget-btn:#111111;
 }
 .deco-widget {
 position:relative; height:190px; border-radius:26px;
 margin-top:14px; margin-bottom:14px; flex-shrink:0;
 background:var(--widget-bg);
-border:1px solid rgba(0,0,0,.1);
+border:1px solid var(--widget-border);
 box-shadow:0 4px 14px rgba(0,0,0,.05);
 display:flex; flex-direction:column; align-items:center; justify-content:center;
 padding:14px 16px 12px;
@@ -436,7 +438,7 @@ white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .ck-btn {
 font-size:12px; font-weight:700; color:#fff; cursor:pointer;
-background:var(--ink); padding:9px 16px; border-radius:99px;
+background:var(--widget-btn); padding:9px 16px; border-radius:99px;
 box-shadow:0 3px 8px rgba(0,0,0,.12);
 display:inline-flex; align-items:center; min-height:38px; border:none;
 font-family:inherit; -webkit-tap-highlight-color:transparent;
@@ -466,7 +468,7 @@ margin:0 10px; font-size:10px;
 .we-btn {
 flex-shrink:0; align-self:flex-start; margin-top:2px;
 border:none; cursor:pointer; font-family:inherit;
-background:var(--ink); color:#fff; font-size:12px; font-weight:700;
+background:var(--widget-btn); color:#fff; font-size:12px; font-weight:700;
 padding:6px 11px; border-radius:99px; box-shadow:0 3px 8px rgba(0,0,0,.25);
 display:flex; align-items:center; gap:3px;
 }
@@ -525,6 +527,46 @@ transition:width .25s ease, background .25s ease;
 }
 .dot.active { width:20px; background:var(--ink); }
 .page-slide { padding-bottom:18px; }
+.page-slide.desk-page {
+display:flex; flex-direction:column;
+}
+.desk-page-hint {
+margin:auto; text-align:center; color:var(--muted);
+font-size:12px; letter-spacing:1px; padding:40px 20px;
+}
+.desk-page-add {
+margin:16px auto; padding:10px 22px; border-radius:99px;
+border:1px dashed rgba(0,0,0,.2); background:rgba(255,255,255,.6);
+color:var(--ink); font-size:13px; font-weight:600; cursor:pointer;
+display:none; align-items:center; gap:6px;
+}
+.page-slide.desk-page .desk-page-add { display:inline-flex; }
+.desk-widget, [data-desk-widget] {
+position:relative;
+}
+.desk-lib {
+position:fixed; inset:0; z-index:99;
+display:flex; align-items:center; justify-content:center;
+background:rgba(0,0,0,.4);
+}
+.desk-lib-box {
+width:min(88vw,380px); max-height:78vh; overflow:auto;
+background:#fff; border-radius:16px; padding:16px;
+box-shadow:0 8px 30px rgba(0,0,0,.2);
+}
+.desk-lib-title { font-size:15px; font-weight:700; margin-bottom:4px; }
+.desk-lib-sub { font-size:11px; color:#888; margin-bottom:12px; }
+.desk-lib-item {
+display:flex; align-items:center; justify-content:space-between;
+padding:10px 12px; border:1px solid #eee; border-radius:10px; margin-bottom:8px;
+font-size:13px;
+}
+.desk-lib-item .dl-where { font-size:11px; color:#999; }
+.desk-lib-item .dl-btn {
+font-size:12px; padding:4px 12px; border:none; border-radius:99px;
+background:#111; color:#fff; cursor:pointer; font-family:inherit;
+}
+.desk-lib-item .dl-btn:disabled { background:#ddd; color:#999; }
 .music-widget {
 border-radius:22px; padding:13px; margin-top:14px; margin-bottom:14px;
 box-shadow:0 8px 20px rgba(0,0,0,.07);
@@ -1975,6 +2017,13 @@ background:#fff; color:#111; font-size:12px; font-weight:700;
 cursor:pointer; font-family:inherit;
 }
 .decor-done:active { opacity:.8; }
+.decor-add {
+border:1px solid rgba(255,255,255,.35); border-radius:10px;
+padding:6px 10px; margin-left:auto; margin-right:8px;
+background:transparent; color:#fff; font-size:12px; font-weight:600;
+cursor:pointer; font-family:inherit; white-space:nowrap;
+}
+.decor-add:active { background:rgba(255,255,255,.15); }
 .avlib-toggle {
 display:flex; align-items:center; justify-content:space-between; gap:10px;
 }
@@ -2724,14 +2773,12 @@ border-radius:12px;
 .set-title { font-size:22px; font-weight:700; padding:4px 2px 16px; letter-spacing:1px; }
 .set-group { border-radius:20px; overflow:hidden; margin-bottom:12px; }
 .set-group, .gs-title, .set-title { flex-shrink:0; }
-.set-row {
-display:flex; align-items:center; gap:12px; padding:15px 16px;
-border-bottom:1px solid rgba(0,0,0,.05); cursor:pointer;
-}
+.set-row { display:flex; align-items:center; gap:12px; padding:15px 16px; border-bottom:1px solid rgba(0,0,0,.05); cursor:pointer; }
 .set-row:last-child { border-bottom:none; }
 .set-row .ico { width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .set-row .ico svg { width:20px; height:20px; stroke:var(--ink); }
-.set-row .txt { flex:1; font-size:14px; }
+.set-row .txt { flex:1; font-size:14px; line-height:1.45; }
+.set-row .txt .sub { display:block; font-size:11.5px; color:var(--muted); font-weight:400; margin-top:2px; letter-spacing:.2px; }
 .set-row .val { font-size:12px; color:var(--muted); }
 .set-row .date-val {
 font-size:12px; color:var(--muted); background:transparent;
@@ -2854,7 +2901,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.41 · 部署于 2026-08-17 17:05</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.42 · 部署于 2026-08-17 21:06</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -2885,12 +2932,13 @@ transition:color .18s ease, background .18s ease;
     <!-- 手机桌面（两页：情侣空间 + 音乐播放器） -->
     <div class="page" id="page-phone">
       <div class="decor-bar" id="decor-bar" hidden>
-        <span>装修模式 · 点击图标更换 / 清除</span>
+        <span>装修模式 · 点图标换图 · 点卡片设背景</span>
+        <button class="decor-add" id="decor-add-widget">+ 添加卡片</button>
         <button class="decor-done" id="decor-done">完成</button>
       </div>
       <div class="desktop-pages" id="desktop-pages">
       <div class="page-slide">
-      <div class="deco-widget" id="deco-widget">
+      <div class="deco-widget" id="deco-widget" data-desk-widget="deco" data-card-bg="deco">
         <div class="deco-avatars">
           <div class="deco-avatar" id="avatar-partner" title="设置「TA」的头像">
             <div class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></div>
@@ -2905,25 +2953,25 @@ transition:color .18s ease, background .18s ease;
         <div class="deco-love"><span id="love-days"></span><span id="love-date"></span></div>
       </div>
 
-      <div class="mini-row">
-            <div class="mini-card glass">
+      <div class="mini-row" data-desk-widget="quote-row">
+            <div class="mini-card glass" data-card-bg="quote">
               <div class="mc-top">今日情话</div>
               <div class="mc-b" id="love-quote"></div>
             </div>
-            <div class="mini-card glass">
+            <div class="mini-card glass" data-card-bg="fish">
               <div class="mc-top">已摸鱼</div>
               <div class="mc-b"><b id="fish-days">0</b> 天</div>
             </div>
           </div>
 
-          <div class="checkin glass">
+          <div class="checkin glass" data-desk-widget="checkin" data-card-bg="checkin">
             <span class="ck-heart">♥</span>
             <span class="ck-txt">和 TA 一起摸鱼 · 今天也要甜甜的</span>
             <span class="ck-btn">打卡</span>
           </div>
 
       <!-- 桌面功能（直接显示） -->
-      <div class="app-grid">
+      <div class="app-grid" data-app="main">
         <div class="app" data-app="chat">
           <div class="app-badge-box"><div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><span class="app-badge" id="chat-badge" hidden></span></div>
           <div class="app-name">聊天</div>
@@ -2961,7 +3009,7 @@ transition:color .18s ease, background .18s ease;
 
       <!-- 第二页：音乐播放器 -->
       <div class="page-slide second">
-        <div class="music-widget glass" id="music-widget">
+        <div class="music-widget glass" id="music-widget" data-desk-widget="music" data-card-bg="music">
           <audio id="m-audio" preload="metadata"></audio>
           <div class="mw-head">
             <span class="mw-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>正在播放</span>
@@ -3000,7 +3048,7 @@ transition:color .18s ease, background .18s ease;
         </div>
 
 <!-- 第二页功能：音乐 / 聊天统计 / 小互动 -->
-<div class="app-grid p2-grid">
+<div class="app-grid p2-grid" data-app="p2">
 <div class="app" data-app="music">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
 <div class="app-name">音乐</div>
@@ -3020,22 +3068,22 @@ transition:color .18s ease, background .18s ease;
 </div>
 
 <!-- 第二页补充：今日备忘 + 每周日程（填空白区） -->
-<div class="mini-row">
-<div class="mini-card glass memo-card">
+<div class="mini-row" data-desk-widget="memo-row">
+<div class="mini-card glass memo-card" data-card-bg="memo">
 <div class="mc-top">今日备忘</div>
 <div class="mc-b" id="memo-text" title="点击记录">点这里记一句话</div>
 </div>
-<div class="mini-card glass mood-card">
+<div class="mini-card glass mood-card" data-card-bg="mood">
 <div class="mc-top">今天的心情</div>
 <div class="mc-b" id="today-mood-text">点一下选心情</div>
 </div>
 </div>
-<div class="week-card glass">
+<div class="week-card glass" data-desk-widget="week" data-card-bg="week">
 <div class="mc-top">本周日常</div>
 <div class="week-days" id="week-days"></div>
 </div>
 <!-- 离周末还有几天（点击摸鱼 +1，可累计） -->
-<div class="weekend-box glass" id="weekend-box">
+<div class="weekend-box glass" id="weekend-box" data-desk-widget="weekend" data-card-bg="weekend">
 <div class="we-left">
 <span class="we-days" id="weekend-days">离周末还有 0 天</span>
 <span class="we-sub">距离周末 · 摸鱼倒计时</span>
@@ -3438,6 +3486,14 @@ transition:color .18s ease, background .18s ease;
     <div class="page" id="page-setting" hidden>
       <div class="set-title">设置</div>
       <div class="set-group glass">
+        <div class="set-row" id="row-contacts">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/></svg></div>
+          <div class="txt">联系人 / 桌面</div>
+          <div class="val" id="contacts-val"></div>
+          <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+        </div>
+      </div>
+      <div class="set-group glass">
         <div class="set-row" id="row-appearance">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18"/></svg></div>
           <div class="txt">手机桌面美化</div>
@@ -3496,7 +3552,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.41</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.42</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -3522,7 +3578,7 @@ transition:color .18s ease, background .18s ease;
       <div class="set-group glass">
         <div class="set-row" id="row-custom-icon">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
-          <div class="txt">自定义手机桌面图标</div>
+          <div class="txt">自定义手机桌面图标<span class="sub">自定义图标图片 · 桌面组件卡片位置 · 卡片背景图片</span></div>
         </div>
       </div>
       <div class="set-group glass">
@@ -3807,6 +3863,13 @@ transition:color .18s ease, background .18s ease;
             <div class="gs-row"><span>使用 emoji 概率</span><div class="stepper" data-k="fd-post-emoji" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="fd-post-emoji-val" readonly><button class="stp-max">+</button></div></div>
             <div class="gs-row"><span>使用表情包概率</span><div class="stepper" data-k="fd-post-sticker" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="fd-post-sticker-val" readonly><button class="stp-max">+</button></div></div>
             <div class="gs-row"><span>使用图片概率</span><div class="stepper" data-k="fd-post-image" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="fd-post-image-val" readonly><button class="stp-max">+</button></div></div>
+          </div>
+          <div class="gs-title">数据</div>
+          <div class="set-group glass">
+            <div class="set-row danger" id="feed-clear-all">
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></div>
+              <div class="txt">清除所有朋友圈数据</div>
+            </div>
           </div>
         </div>
         <!-- v3.6.x：保存设置按钮——点击把当前所有概率/开关写入本地并提示 -->
@@ -5205,6 +5268,291 @@ if (moved > 0) { try { sessionStorage.setItem('xy-ls-big-migrated', '1'); } catc
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
+const G = 'xy-home-v2';
+const EXCLUDE = ['contacts', 'active-contact', 'feed-posts', 'migrated-v1', 'js-errors'];
+function isExcluded(k) {
+const r = k.slice(G.length + 1);
+if (EXCLUDE.indexOf(r) >= 0) return true;
+if (r.indexOf('music-file:') === 0) return true;
+const m = r.match(/^([^:]+):/);
+if (m) {
+const head = m[1];
+if (head === 'default' || /^c[0-9a-z]{5,}$/.test(head)) return true;
+const bizPrefix = ['dc-off', 'rc-off', 'mc-off', 'ck-off', 'quote-off', 'day-fish', 'greeted', 'cal'];
+if (bizPrefix.some(p => head.indexOf(p) === 0)) return false;
+return true;
+}
+return false;
+}
+let _cid = 'default';
+try { const a = localStorage.getItem(G + ':active-contact'); if (a) _cid = a; } catch (e) {}
+window.__activeCid = _cid;
+window.activePrefix = function () { return G + ':' + (window.__activeCid || 'default'); };
+function defaultStore() {
+const ns = G + ':default';
+return {
+get(k) {
+let v = null;
+try { v = window.xyStore(ns).get(k); } catch (e) {}
+if (v !== null) return v;
+try { v = window.xyStore(G).get(k); } catch (e) {}
+return v;
+},
+set(k, v) {
+window.xyStore(ns).set(k, v);
+try { localStorage.removeItem(G + ':' + k); } catch (e) {}
+if (window.idbDelete) window.idbDelete(G + ':' + k);
+},
+remove(k) {
+window.xyStore(ns).remove(k);
+try { localStorage.removeItem(G + ':' + k); } catch (e) {}
+if (window.idbDelete) window.idbDelete(G + ':' + k);
+}
+};
+}
+window.activeStore = function () {
+const dyn = function () {
+const cid = window.__activeCid || 'default';
+return cid === 'default' ? defaultStore() : window.xyStore(G + ':' + cid);
+};
+return {
+get: (k) => dyn().get(k),
+set: (k, v) => dyn().set(k, v),
+remove: (k) => dyn().remove(k)
+};
+};
+window.storeFor = function (cid) { return window.xyStore(G + ':' + cid); };
+function regStore() { return window.xyStore(G); }
+function getContacts() {
+try {
+const v = regStore().get('contacts');
+if (v) { const a = JSON.parse(v); if (Array.isArray(a) && a.length) return a; }
+} catch (e) {}
+return [{ id: 'default', name: '默认' }];
+}
+window.getContacts = getContacts;
+window.getActiveContact = function () { return window.__activeCid || 'default'; };
+window.createContact = function (name) {
+const list = getContacts();
+const id = 'c' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+list.push({ id: id, name: name || ('联系人' + (list.length)) });
+regStore().set('contacts', JSON.stringify(list));
+return id;
+};
+window.renameContact = function (id, name) {
+const list = getContacts(); const c = list.find(x => x.id === id);
+if (c) { c.name = name || c.name; regStore().set('contacts', JSON.stringify(list)); }
+};
+window.deleteContact = function (id) {
+if (id === 'default') return false;
+const list = getContacts().filter(x => x.id !== id);
+regStore().set('contacts', JSON.stringify(list));
+const prefix = G + ':' + id + ':';
+for (let i = 0; i < localStorage.length; i++) {
+const k = localStorage.key(i);
+if (k && k.indexOf(prefix) === 0) { try { localStorage.removeItem(k); } catch (e) {} }
+}
+if (window.idbGetAllKeys) {
+window.idbGetAllKeys().then(keys => {
+(keys || []).forEach(k => { if (typeof k === 'string' && k.indexOf(prefix) === 0 && window.idbDelete) window.idbDelete(k); });
+}).catch(() => {});
+}
+if (window.__activeCid === id) window.setActiveContact('default');
+return true;
+};
+window.setActiveContact = function (id) {
+if (id === (window.__activeCid || 'default')) return;
+try { if (window.chatFlushSave) window.chatFlushSave(); } catch (e) {}
+window.__activeCid = id;
+try { localStorage.setItem(G + ':active-contact', id); } catch (e) {}
+try { if (window.idbSet) window.idbSet(G + ':active-contact', id); } catch (e) {}
+if (window.refreshActiveContactUI) window.refreshActiveContactUI();
+try { document.dispatchEvent(new Event('contact-switched')); } catch (e) {}
+try {
+document.querySelectorAll('.page').forEach(p => p.hidden = true);
+const home = document.getElementById('page-phone'); if (home) home.hidden = false;
+} catch (e) {}
+};
+window.switchContact = window.setActiveContact;
+window.refreshActiveContactUI = function () {
+const s = window.activeStore();
+const meAv = s.get('avatar-user') || '';
+const taAv = s.get('avatar-partner') || '';
+['avatar-user', 'avatar-partner'].forEach(id => {
+const el = document.getElementById(id);
+if (!el) return;
+const av = id === 'avatar-user' ? meAv : taAv;
+el.style.backgroundImage = av ? 'url(' + av + ')' : '';
+});
+try { if (window.renderChatHeader) window.renderChatHeader(); } catch (e) {}
+};
+function migrateLegacy() {
+const old = [];
+const garbage = [];
+for (let i = 0; i < localStorage.length; i++) {
+const k = localStorage.key(i);
+if (!k) continue;
+if (k.indexOf(G + ':default:default:') === 0) garbage.push(k);
+}
+garbage.forEach(k => {
+try { localStorage.removeItem(k); } catch (e) {}
+if (window.idbDelete) try { window.idbDelete(k); } catch (e) {}
+});
+for (let i = 0; i < localStorage.length; i++) {
+const k = localStorage.key(i);
+if (k && k.indexOf(G + ':') === 0 && !isExcluded(k)) old.push(k);
+}
+const finish = function () {
+try {
+if (!regStore().get('contacts')) {
+let name = '默认';
+try { const n = localStorage.getItem(G + ':default:lbl-partner'); if (n) name = n; } catch (e) {}
+regStore().set('contacts', JSON.stringify([{ id: 'default', name: name }]));
+}
+if (!localStorage.getItem(G + ':active-contact')) regStore().set('active-contact', 'default');
+localStorage.setItem(G + ':migrated-v1', '1');
+} catch (e) {}
+window.__contactsMigrated = true;
+window.__activeCid = window.__activeCid || 'default';
+};
+if (!old.length) { finish(); return; }
+const step = function (i) {
+if (i >= old.length) { finish(); return; }
+const k = old[i];
+const rest = k.slice(G.length + 1);
+const next = function () { step(i + 1); };
+let v = null; try { v = localStorage.getItem(k); } catch (e) {}
+if (v !== null) {
+try { if (!window.xyStore(G + ':default').get(rest)) window.xyStore(G + ':default').set(rest, v); } catch (e) {}
+try { localStorage.removeItem(k); } catch (e) {}
+next();
+} else if (window.idbGet) {
+window.idbGet(k).then(r => {
+if (r !== undefined && r !== null) {
+try { if (!window.xyStore(G + ':default').get(rest)) window.xyStore(G + ':default').set(rest, r); } catch (e) {}
+}
+try { localStorage.removeItem(k); } catch (e) {}
+next();
+}).catch(next);
+} else next();
+};
+if (window.idbGetAllKeys) {
+window.idbGetAllKeys().then(keys => {
+(keys || []).forEach(k => {
+if (typeof k === 'string' && k.indexOf(G + ':') === 0 && !isExcluded(k) && old.indexOf(k) < 0) old.push(k);
+});
+step(0);
+}).catch(() => step(0));
+} else step(0);
+}
+function runMigrateWhenReady() {
+if (window.__mochiDataReady) { migrateLegacy(); return; }
+try {
+document.addEventListener('mochi-restore-done', function h() {
+document.removeEventListener('mochi-restore-done', h);
+migrateLegacy();
+});
+} catch (e) { migrateLegacy(); }
+}
+runMigrateWhenReady();
+function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+function showContactModal(m) { m.style.display = 'flex'; m.hidden = false; }
+function hideContactModal(m) { m.style.display = 'none'; m.hidden = true; }
+function ensureModal() {
+let m = document.getElementById('contact-manager');
+if (!m) {
+m = el('div'); m.id = 'contact-manager'; m.hidden = true;
+m.style.cssText = 'position:fixed;inset:0;z-index:89;align-items:center;justify-content:center;background:rgba(0,0,0,.4)';
+document.body.appendChild(m);
+m.addEventListener('click', (e) => { if (e.target === m) hideContactModal(m); });
+}
+return m;
+}
+window.openContactManager = function () {
+const m = ensureModal();
+m.innerHTML = '';
+const box = el('div');
+box.style.cssText = 'width:min(92vw,420px);max-height:80vh;overflow:auto;background:#fff;border-radius:16px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.2)';
+box.appendChild(el('div', '', '<div style="font-size:16px;font-weight:600;margin-bottom:4px">联系人 / 桌面</div><div style="font-size:12px;color:#888;margin-bottom:12px">每个联系人数据独立；仅朋友圈互通</div>'));
+const list = el('div'); list.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:12px';
+getContacts().forEach(c => {
+const row = el('div');
+row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #eee;border-radius:10px';
+const dot = el('div');
+dot.style.cssText = 'width:10px;height:10px;border-radius:50%;background:' + (c.id === window.__activeCid ? '#111' : '#ccc');
+const nm = el('div', '', '<div style="font-size:14px;font-weight:500">' + (c.name || c.id) + '</div><div style="font-size:11px;color:#999">' + (c.id === window.__activeCid ? '当前桌面' : '点击切换') + '</div>');
+nm.style.flex = '1';
+row.appendChild(dot); row.appendChild(nm);
+if (c.id !== window.__activeCid) {
+row.style.cursor = 'pointer';
+row.addEventListener('click', () => { window.setActiveContact(c.id); hideContactModal(m); });
+}
+const acts = el('div'); acts.style.cssText = 'display:flex;gap:6px';
+const ren = el('button', '', '改名');
+ren.style.cssText = 'font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:8px;background:#fafafa';
+ren.addEventListener('click', (e) => {
+e.stopPropagation();
+if (window.openModal) window.openModal('改名', c.name || '', (v) => { if (v && v.trim()) { window.renameContact(c.id, v.trim()); window.openContactManager(); } });
+});
+acts.appendChild(ren);
+if (c.id !== 'default') {
+const del = el('button', '', '删除');
+del.style.cssText = 'font-size:12px;padding:4px 8px;border:1px solid #f3c0c0;border-radius:8px;background:#fff5f5;color:#a32';
+del.addEventListener('click', (e) => { e.stopPropagation(); confirmDelete(c, m); });
+acts.appendChild(del);
+}
+row.appendChild(acts);
+list.appendChild(row);
+});
+box.appendChild(list);
+const add = el('button', '', '+ 添加联系人 / 桌面');
+add.style.cssText = 'width:100%;padding:12px;border:none;border-radius:10px;background:#111;color:#fff;font-size:14px;font-weight:600';
+add.addEventListener('click', () => {
+if (window.openModal) window.openModal('新建联系人', '', (v) => {
+const name = (v || '').trim(); if (!name) return;
+const id = window.createContact(name); window.setActiveContact(id); hideContactModal(m);
+});
+});
+box.appendChild(add);
+const close = el('button', '', '关闭');
+close.style.cssText = 'width:100%;margin-top:8px;padding:10px;border:1px solid #eee;border-radius:10px;background:#fafafa';
+close.addEventListener('click', () => { hideContactModal(m); });
+box.appendChild(close);
+m.appendChild(box);
+showContactModal(m);
+};
+function confirmDelete(c, m) {
+const m2 = ensureModal();
+m2.innerHTML = '';
+const box = el('div');
+box.style.cssText = 'width:min(88vw,340px);background:#fff;border-radius:16px;padding:18px;text-align:center';
+box.appendChild(el('div', '', '<div style="font-size:15px;font-weight:600;margin-bottom:6px">删除「' + (c.name || c.id) + '」？</div><div style="font-size:12px;color:#a32;margin-bottom:14px">该联系人的全部数据将清空，且不可恢复</div>'));
+const row = el('div'); row.style.cssText = 'display:flex;gap:10px';
+const ok = el('button', '', '删除');
+ok.style.cssText = 'flex:1;padding:10px;border:none;border-radius:10px;background:#a32d2d;color:#fff;font-weight:600';
+ok.addEventListener('click', () => { window.deleteContact(c.id); hideContactModal(m2); hideContactModal(m); window.openContactManager(); });
+const no = el('button', '', '取消');
+no.style.cssText = 'flex:1;padding:10px;border:1px solid #eee;border-radius:10px;background:#fafafa';
+no.addEventListener('click', () => { hideContactModal(m2); });
+row.appendChild(ok); row.appendChild(no); box.appendChild(row);
+m2.appendChild(box); showContactModal(m2);
+}
+const row = document.getElementById('row-contacts');
+if (row) {
+row.addEventListener('click', () => window.openContactManager());
+function refreshContactsVal() {
+const val = document.getElementById('contacts-val');
+if (!val) return;
+const c = getContacts().find(x => x.id === (window.__activeCid || 'default'));
+val.textContent = c ? (c.name || c.id) : '';
+}
+refreshContactsVal();
+document.addEventListener('contact-switched', refreshContactsVal);
+}
+})();
+} catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
+(function () { try {
+(function () {
 const el = document.getElementById('clock');
 if (!el) return;
 const pad = (n) => (n < 10 ? '0' + n : '' + n);
@@ -5389,15 +5737,15 @@ history.pushState({ page: target }, '');
 (function () {
 const pages = document.getElementById('desktop-pages');
 if (!pages) return;
-const slides = pages.querySelectorAll('.page-slide');
-const dots = Array.prototype.slice.call(document.querySelectorAll('#desktop-dots .dot'));
-if (slides.length < 2) return;
+function getSlides() { return Array.prototype.slice.call(pages.querySelectorAll('.page-slide')); }
+function getDots() { return Array.prototype.slice.call(document.querySelectorAll('#desktop-dots .dot')); }
 let idx = 0;
 function go(i) {
+const slides = getSlides();
 idx = Math.max(0, Math.min(slides.length - 1, i));
 if (!pages.clientWidth) return;
 pages.scrollLeft = idx * pages.clientWidth;
-dots.forEach((d, k) => d.classList.toggle('active', k === idx));
+getDots().forEach((d, k) => d.classList.toggle('active', k === idx));
 }
 function sync() {
 if (!pages.clientWidth) return;
@@ -5405,7 +5753,7 @@ const pos = pages.scrollLeft / pages.clientWidth;
 const cur = Math.round(pos);
 if (cur !== idx) {
 idx = cur;
-dots.forEach((d, k) => d.classList.toggle('active', k === idx));
+getDots().forEach((d, k) => d.classList.toggle('active', k === idx));
 }
 }
 let scrollTimer = null;
@@ -5413,7 +5761,11 @@ pages.addEventListener('scroll', () => {
 clearTimeout(scrollTimer);
 scrollTimer = setTimeout(sync, 120);
 }, { passive: true });
-dots.forEach((d, i) => d.addEventListener('click', () => go(i)));
+document.getElementById('desktop-dots').addEventListener('click', (e) => {
+const dot = e.target.closest('.dot');
+if (!dot) return;
+go(getDots().indexOf(dot));
+});
 window.addEventListener('resize', () => {
 if (pages.clientWidth) pages.scrollLeft = idx * pages.clientWidth;
 });
@@ -5427,13 +5779,30 @@ sync();
 });
 mo.observe(phonePage, { attributes: true, attributeFilter: ['hidden'] });
 }
+window.deskRebuild = function () {
+const slides = getSlides();
+idx = Math.max(0, Math.min(slides.length - 1, idx));
+const dotsBox = document.getElementById('desktop-dots');
+if (dotsBox) {
+dotsBox.innerHTML = '';
+for (let i = 0; i < slides.length; i++) {
+const d = document.createElement('span');
+d.className = 'dot' + (i === idx ? ' active' : '');
+dotsBox.appendChild(d);
+}
+}
+if (pages.clientWidth) {
+pages.scrollLeft = idx * pages.clientWidth;
+sync();
+}
+};
 sync();
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 const KEY = 'quote-cards';
 const DEF_KEY = 'quote-cards-default';
 function getUseDefault() {
@@ -5591,8 +5960,8 @@ renderList();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 function compressImage(dataUrl, maxSide) {
 return new Promise((resolve) => {
 if (typeof dataUrl === 'string' && dataUrl.length > 8 * 1024 * 1024) {
@@ -5623,6 +5992,16 @@ const dpr = Math.max(1, window.devicePixelRatio || 1);
 const h = (window.screen && window.screen.height) || 1920;
 return Math.min(2880, Math.max(2160, Math.round(h * dpr)));
 }
+const BG_SAFE_LIMIT = 6 * 1024 * 1024;
+const IMG_SAFE_LIMIT = 500 * 1024;
+const sanitizeBg = (key, limit) => {
+const v = store.get(key);
+if (v && typeof v === 'string' && v.length > limit) {
+try { store.remove(key); } catch (e) {}
+return null;
+}
+return v;
+};
 function applyAvatar(id, key) {
 const box = document.getElementById(id);
 if (!box) return;
@@ -5812,6 +6191,10 @@ picked = -2;
 function close() { mask.hidden = true; cb = null; }
 function fire() {
 if (!cb) return;
+if (swatches && !swatches.hidden && (picked === -2 || picked >= 0)) {
+if (picked === -2 && customVal) { cb(customVal); return; }
+if (picked >= 0) { cb(picked); return; }
+}
 if (pillsEl && !pillsEl.hidden) {
 if (pillsOnOk) pillsOnOk(pillVal);
 cb(pillVal);
@@ -5920,7 +6303,7 @@ store.remove('phone-bg');
 syncBgUI();
 };
 if (bgRow) {
-const savedBg = store.get('phone-bg');
+const savedBg = sanitizeBg('phone-bg', BG_SAFE_LIMIT);
 if (savedBg) applyPhoneBg(savedBg);
 syncBgUI();
 bgRow.addEventListener('click', () => {
@@ -5948,7 +6331,7 @@ input.click();
 if (bgRemove) {
 bgRemove.addEventListener('click', () => clearPhoneBg());
 }
-const bgData = () => store.get('phone-bg');
+const bgData = () => sanitizeBg('phone-bg', BG_SAFE_LIMIT);
 const applyBgVisibility = () => {
 if (!phoneEl) return;
 const home = document.getElementById('page-phone');
@@ -5975,7 +6358,7 @@ mo.observe(homePage, { attributes: true, attributeFilter: ['hidden'] });
 applyBgVisibility();
 try {
 if (window.idbGet) {
-window.idbGet(uid + ':phone-bg').then(v => {
+window.idbGet(window.activePrefix() + ':phone-bg').then(v => {
 if (v && typeof v === 'string' && v.length > 2 && !store.get('phone-bg')) {
 store.set('phone-bg', v);
 applyBgVisibility();
@@ -6009,15 +6392,35 @@ ico.innerHTML = ico.dataset.orig;
 });
 };
 restoreAppIcons();
+const restoreAppIconOrder = () => {
+grids.forEach(grid => {
+const gid = grid.dataset.app;
+if (!gid) return;
+let order = null;
+try { const v = store.get('app-icon-order-' + gid); if (v) order = JSON.parse(v); } catch (e) {}
+if (!Array.isArray(order) || !order.length) return;
+const apps = Array.prototype.slice.call(grid.querySelectorAll('.app'));
+const byKey = {};
+apps.forEach(a => { byKey[a.dataset.app] = a; });
+order.forEach((k, i) => {
+const node = byKey[k];
+if (node && node.parentNode === grid) {
+const ref = grid.children[i];
+if (ref && ref !== node) grid.insertBefore(node, ref);
+}
+});
+});
+};
+restoreAppIconOrder();
 try {
 if (window.idbGetAllKeys) {
 window.idbGetAllKeys().then(keys => {
-const iconKeys = (keys || []).filter(k => k.indexOf(uid + ':app-icon-') === 0);
+const iconKeys = (keys || []).filter(k => k.indexOf(window.activePrefix() + ':app-icon-') === 0);
 if (!iconKeys.length) return;
 let p = Promise.resolve();
 iconKeys.forEach(k => {
 p = p.then(() => window.idbGet(k)).then(v => {
-if (v && typeof v === 'string' && v.length > 2) store.set(k.slice(uid.length + 1), v);
+if (v && typeof v === 'string' && v.length > 2) store.set(k.slice(window.activePrefix().length + 1), v);
 });
 });
 p.then(() => restoreAppIcons());
@@ -6057,23 +6460,37 @@ reader.readAsDataURL(f);
 };
 input.click();
 };
-if (hasCustom && window.openModal) {
-window.openModal('图标已自定义', '', (v) => {
+const moveApp = (dir) => {
+const apps = Array.prototype.slice.call(grid.querySelectorAll('.app'));
+const idx = apps.indexOf(app);
+if (dir === 'up' && idx > 0) grid.insertBefore(app, apps[idx - 1]);
+else if (dir === 'down' && idx < apps.length - 1) grid.insertBefore(apps[idx + 1], app);
+const order = Array.prototype.slice.call(grid.querySelectorAll('.app')).map(a => a.dataset.app);
+store.set('app-icon-order-' + grid.dataset.app, JSON.stringify(order));
+toast(dir === 'up' ? '已上移' : '已下移');
+};
+const pills = [];
+pills.push({ label: hasCustom ? '更换图片' : '上传图片', value: '1' });
+if (hasCustom) pills.push({ label: '清除图片', value: '2' });
+pills.push({ label: '上移', value: 'up' });
+pills.push({ label: '下移', value: 'down' });
+if (window.openModal) {
+window.openModal('图标设置', '', (v) => {
 if (v === '1') pickFile();
-if (v === '2') {
+else if (v === '2' && hasCustom) {
 store.remove('app-icon-' + key);
 if (ico && ico.dataset.orig) ico.innerHTML = ico.dataset.orig;
 toast('已恢复默认图标');
-}
-}, { noInput: true, pills: [{ label: '更换图片', value: '1' }, { label: '清除图片', value: '2' }] });
+} else if (v === 'up') moveApp('up');
+else if (v === 'down') moveApp('down');
+}, { noInput: true, pills: pills });
 } else {
 pickFile();
 }
 });
 });
 const iconRow = document.getElementById('row-custom-icon');
-if (iconRow) {
-iconRow.addEventListener('click', () => {
+const enterDecor = () => {
 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
 const phoneTab = document.querySelector('.tab[data-page="page-phone"]');
 if (phoneTab) phoneTab.classList.add('active');
@@ -6081,9 +6498,13 @@ document.querySelectorAll('.page').forEach(p => p.hidden = true);
 const phonePage = document.getElementById('page-phone');
 if (phonePage) phonePage.hidden = false;
 grids.forEach(g => g.classList.add('editing'));
+const phone = document.getElementById('page-phone');
+if (phone) phone.classList.add('decor-on');
 const bar = document.getElementById('decor-bar');
 if (bar) bar.hidden = false;
-});
+};
+if (iconRow) {
+iconRow.addEventListener('click', enterDecor);
 }
 const widgetColorRow = document.getElementById('row-widget-color');
 const widgetColorVal = document.getElementById('widget-color-val');
@@ -6102,15 +6523,7 @@ syncWidgetColorUI();
 widgetColorRow.addEventListener('click', () => {
 if (!window.openModal) return;
 const current = store.get('widget-bg-color') || '#ffffff';
-window.openModal('小组件颜色', '', (v) => {
-if (!v) return;
-store.set('widget-bg-color', v);
-applyWidgetColor(v);
-syncWidgetColorUI();
-}, {
-colorPicker: true,
-color: current,
-swatches: [
+const swatchList = [
 { color: '#ffffff', label: '默认白' },
 { color: '#f5f0eb', label: '暖米白' },
 { color: '#fff0f0', label: '樱花粉' },
@@ -6119,12 +6532,553 @@ swatches: [
 { color: '#fff5e6', label: '奶油黄' },
 { color: '#f5e6ff', label: '淡紫' },
 { color: '#fff0e0', label: '暖橘' },
-],
+];
+window.openModal('小组件颜色', '', (v) => {
+const color = (typeof v === 'number' && swatchList[v]) ? swatchList[v].color : v;
+if (!color) return;
+if (color === '__reset__') {
+store.remove('widget-bg-color');
+applyWidgetColor('#ffffff');
+syncWidgetColorUI();
+return;
+}
+store.set('widget-bg-color', color);
+applyWidgetColor(color);
+syncWidgetColorUI();
+}, {
+colorPicker: true,
+noInput: true,
+color: current,
+swatches: swatchList,
+pills: [{ label: '恢复默认', value: '__reset__' }],
 });
+});
+}
+const widgetBorderRow = document.getElementById('row-widget-border');
+const widgetBorderVal = document.getElementById('widget-border-val');
+const applyWidgetBorder = (color) => {
+document.documentElement.style.setProperty('--widget-border', color);
+if (widgetBorderVal) widgetBorderVal.textContent = color === 'rgba(0,0,0,.1)' ? '默认' : '';
+};
+const savedWidgetBorder = store.get('widget-border-color');
+if (savedWidgetBorder) applyWidgetBorder(savedWidgetBorder);
+if (widgetBorderRow) {
+const syncWidgetBorderUI = () => {
+const c = store.get('widget-border-color') || 'rgba(0,0,0,.1)';
+if (widgetBorderVal) widgetBorderVal.textContent = c === 'rgba(0,0,0,.1)' ? '默认' : '';
+};
+syncWidgetBorderUI();
+widgetBorderRow.addEventListener('click', () => {
+if (!window.openModal) return;
+const current = store.get('widget-border-color') || 'rgba(0,0,0,.1)';
+window.openModal('小组件边框颜色', '', (v) => {
+if (!v) return;
+if (v === '__reset__') {
+store.remove('widget-border-color');
+applyWidgetBorder('rgba(0,0,0,.1)');
+syncWidgetBorderUI();
+return;
+}
+store.set('widget-border-color', v);
+applyWidgetBorder(v);
+syncWidgetBorderUI();
+}, {
+colorPicker: true,
+noInput: true,
+color: current,
+swatches: [
+{ color: 'rgba(0,0,0,.1)', label: '默认' },
+{ color: 'rgba(0,0,0,.15)', label: '浅灰' },
+{ color: 'rgba(0,0,0,.25)', label: '中灰' },
+{ color: 'rgba(0,0,0,.4)', label: '深灰' },
+{ color: '#111111', label: '纯黑' },
+{ color: '#e05555', label: '樱花粉' },
+{ color: '#5555cc', label: '雾霭蓝' },
+{ color: '#55aa55', label: '薄荷绿' },
+],
+pills: [{ label: '恢复默认', value: '__reset__' }],
+});
+});
+}
+const widgetBtnRow = document.getElementById('row-widget-btn');
+const widgetBtnVal = document.getElementById('widget-btn-val');
+const applyWidgetBtn = (color) => {
+document.documentElement.style.setProperty('--widget-btn', color);
+if (widgetBtnVal) widgetBtnVal.textContent = color === '#111111' ? '默认黑' : '';
+};
+const savedWidgetBtn = store.get('widget-btn-color');
+if (savedWidgetBtn) applyWidgetBtn(savedWidgetBtn);
+if (widgetBtnRow) {
+const syncWidgetBtnUI = () => {
+const c = store.get('widget-btn-color') || '#111111';
+if (widgetBtnVal) widgetBtnVal.textContent = c === '#111111' ? '默认黑' : '';
+};
+syncWidgetBtnUI();
+widgetBtnRow.addEventListener('click', () => {
+if (!window.openModal) return;
+const current = store.get('widget-btn-color') || '#111111';
+window.openModal('按钮颜色', '', (v) => {
+if (!v) return;
+if (v === '__reset__') {
+store.remove('widget-btn-color');
+applyWidgetBtn('#111111');
+syncWidgetBtnUI();
+return;
+}
+store.set('widget-btn-color', v);
+noInput: true,
+applyWidgetBtn(v);
+syncWidgetBtnUI();
+}, {
+colorPicker: true,
+color: current,
+swatches: [
+{ color: '#111111', label: '默认黑' },
+{ color: '#e05555', label: '樱花粉' },
+{ color: '#5555cc', label: '雾霭蓝' },
+{ color: '#55aa55', label: '薄荷绿' },
+{ color: '#d4a017', label: '暖橘黄' },
+{ color: '#888888', label: '中灰' },
+{ color: '#cc55cc', label: '淡紫' },
+{ color: '#cc6622', label: '暖橘' },
+],
+pills: [{ label: '恢复默认', value: '__reset__' }],
+});
+});
+}
+const CARD_BG_TYPES = [
+{ type: 'deco', name: '纪念日卡', sel: '[data-card-bg="deco"]' },
+{ type: 'quote', name: '今日情话卡', sel: '[data-card-bg="quote"]' },
+{ type: 'fish', name: '已摸鱼卡', sel: '[data-card-bg="fish"]' },
+{ type: 'checkin', name: '打卡横幅', sel: '[data-card-bg="checkin"]' },
+{ type: 'music', name: '音乐播放器', sel: '[data-card-bg="music"]' },
+{ type: 'memo', name: '今日备忘卡', sel: '[data-card-bg="memo"]' },
+{ type: 'mood', name: '今天的心情卡', sel: '[data-card-bg="mood"]' },
+{ type: 'week', name: '本周日常卡', sel: '[data-card-bg="week"]' },
+{ type: 'weekend', name: '周末倒计时卡', sel: '[data-card-bg="weekend"]' },
+];
+const cardBgSel = (type) => {
+const def = CARD_BG_TYPES.find(c => c.type === type);
+return def ? def.sel : '';
+};
+const MASK_ALPHA = { light: 0.3, mid: 0.5, strong: 0.72 };
+const maskAlphaOf = (type) => {
+const v = store.get('card-bg-mask-' + type);
+if (v === 'off') return 0;
+if (MASK_ALPHA[v]) return MASK_ALPHA[v];
+return MASK_ALPHA.mid; // undefined / 'on' / 其他 → mid
+};
+const applyCardBg = (type) => {
+const sel = cardBgSel(type);
+if (!sel) return;
+const els = document.querySelectorAll(sel);
+const img = sanitizeBg('card-bg-' + type, IMG_SAFE_LIMIT);
+const a = maskAlphaOf(type);
+els.forEach(el => {
+if (!el) return;
+if (img && typeof img === 'string' && img.length > 2) {
+el.style.backgroundImage = a > 0
+? 'linear-gradient(rgba(255,255,255,' + a + '), rgba(255,255,255,' + a + ')), url("' + img + '")'
+: 'url("' + img + '")';
+el.style.backgroundSize = 'cover';
+el.style.backgroundPosition = 'center';
+el.style.backgroundRepeat = 'no-repeat';
+} else {
+el.style.backgroundImage = '';
+el.style.backgroundSize = '';
+el.style.backgroundPosition = '';
+el.style.backgroundRepeat = '';
+}
+});
+};
+const applyAllCardBgs = () => CARD_BG_TYPES.forEach(c => applyCardBg(c.type));
+applyAllCardBgs();
+document.addEventListener('contact-switched', applyAllCardBgs);
+const openCardBgMenu = (type, name, anchorEl) => {
+const img = store.get('card-bg-' + type);
+const maskVal = store.get('card-bg-mask-' + type) || 'mid';
+const widgetEl = anchorEl ? anchorEl.closest('[data-desk-widget]') : null;
+const pickFile = () => {
+const input = document.createElement('input');
+input.type = 'file'; input.accept = 'image/*';
+input.onchange = () => {
+const f = input.files && input.files[0];
+if (!f) return;
+const reader = new FileReader();
+reader.onload = () => {
+compressImage(reader.result, 1000).then(data => {
+if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
+store.set('card-bg-' + type, data);
+applyCardBg(type);
+syncCardBgUIs();
+toast(name + '背景已设置');
+});
+};
+reader.readAsDataURL(f);
+};
+input.click();
+};
+const moveWidget = (dir) => {
+if (!widgetEl || !widgetEl.parentNode) return;
+if (dir === 'up') {
+const prev = widgetEl.previousElementSibling;
+if (prev) widgetEl.parentNode.insertBefore(widgetEl, prev);
+} else if (dir === 'down') {
+const next = widgetEl.nextElementSibling;
+if (next) widgetEl.parentNode.insertBefore(next, widgetEl);
+}
+saveDeskLayout();
+toast(dir === 'up' ? '已上移' : '已下移');
+};
+const pills = [];
+pills.push({ label: img ? '更换图片' : '上传图片', value: '1' });
+if (img) pills.push({ label: '清除图片', value: '2' });
+if (img) {
+pills.push({ label: maskVal === 'off' ? '原图直出 ✓' : '原图直出', value: 'off' });
+pills.push({ label: maskVal === 'light' ? '遮罩 · 淡 ✓' : '遮罩 · 淡', value: 'light' });
+pills.push({ label: (maskVal === 'mid' || maskVal === 'on') ? '遮罩 · 中 ✓' : '遮罩 · 中', value: 'mid' });
+pills.push({ label: maskVal === 'strong' ? '遮罩 · 浓 ✓' : '遮罩 · 浓', value: 'strong' });
+}
+if (widgetEl) {
+pills.push({ label: '上移', value: 'up' });
+pills.push({ label: '下移', value: 'down' });
+pills.push({ label: '移出此页', value: 'out' });
+}
+if (!img && !widgetEl) { pickFile(); return; }
+if (!window.openModal) return;
+window.openModal(name + '设置', '', (v) => {
+if (v === '1') pickFile();
+else if (v === '2') {
+store.remove('card-bg-' + type);
+applyCardBg(type);
+syncCardBgUIs();
+toast('已恢复默认');
+} else if (v === 'off' || v === 'light' || v === 'mid' || v === 'strong') {
+store.set('card-bg-mask-' + type, v);
+applyCardBg(type);
+syncCardBgUIs();
+toast(v === 'off' ? '已切换为原图直出' : (v === 'light' ? '已切换为淡遮罩' : (v === 'mid' ? '已切换为中遮罩' : '已切换为浓遮罩')));
+} else if (v === 'up') moveWidget('up');
+else if (v === 'down') moveWidget('down');
+else if (v === 'out') {
+ensureWidgetPool().appendChild(widgetEl);
+saveDeskLayout();
+toast('已移出此页（可在其他页「添加卡片」找回）');
+}
+}, {
+noInput: true,
+pills: pills,
+});
+};
+const syncCardBgUIs = () => {
+CARD_BG_TYPES.forEach(c => {
+const val = document.getElementById('card-bg-val-' + c.type);
+if (!val) return;
+const img = store.get('card-bg-' + c.type);
+const mv = store.get('card-bg-mask-' + c.type) || 'mid';
+const maskTxt = mv === 'off' ? '原图' : (mv === 'light' ? '淡遮罩' : (mv === 'strong' ? '浓遮罩' : '遮罩'));
+val.textContent = img ? '已设置 · ' + maskTxt : '';
+});
+};
+CARD_BG_TYPES.forEach(c => {
+const row = document.getElementById('row-card-bg-' + c.type);
+if (!row) return;
+syncCardBgUIs();
+row.addEventListener('click', () => openCardBgMenu(c.type, c.name));
+});
+const phonePageEl = document.getElementById('page-phone');
+if (phonePageEl) {
+phonePageEl.addEventListener('click', (e) => {
+if (!phonePageEl.classList.contains('decor-on')) return;
+if (e.target.closest('.desk-lib') || e.target.closest('.decor-bar') || e.target.closest('.desk-page-add')) return;
+const card = e.target.closest('[data-card-bg]');
+if (!card) return;
+e.preventDefault();
+e.stopPropagation();
+const type = card.getAttribute('data-card-bg');
+const def = CARD_BG_TYPES.find(c => c.type === type);
+openCardBgMenu(type, def ? def.name : type, card);
+}, true);
+}
+const pagesBox = document.getElementById('desktop-pages');
+const pagesVal = document.getElementById('desk-pages-val');
+const delPageRow = document.getElementById('row-desk-del-page');
+const pageBgsBox = document.getElementById('desk-page-bgs');
+const DESK_PAGE_MAX = 5;
+const DESK_PAGE_MIN = 2;
+const deskPageCount = () => {
+const v = parseInt(store.get('desk-page-count'), 10);
+return isNaN(v) || v < DESK_PAGE_MIN ? DESK_PAGE_MIN : Math.min(v, DESK_PAGE_MAX);
+};
+const buildDeskPages = () => {
+if (!pagesBox) return;
+const target = deskPageCount();
+const slides = Array.prototype.slice.call(pagesBox.querySelectorAll('.page-slide'));
+while (slides.length > target) {
+const s = slides.pop();
+if (s && s.parentNode) {
+const pool = ensureWidgetPool();
+s.querySelectorAll('[data-desk-widget]').forEach(node => pool.appendChild(node));
+s.parentNode.removeChild(s);
+}
+}
+for (let i = slides.length; i < target; i++) {
+const s = document.createElement('div');
+s.className = 'page-slide desk-page';
+s.dataset.desk = String(i);
+const hint = document.createElement('div');
+hint.className = 'desk-page-hint';
+hint.textContent = '空白主页 · 可上传整页背景图';
+const addBtn = document.createElement('div');
+addBtn.className = 'desk-page-add';
+addBtn.textContent = '+ 添加卡片';
+addBtn.addEventListener('click', (e) => {
+e.stopPropagation();
+const curIdx = Array.prototype.indexOf.call(pagesBox.querySelectorAll('.page-slide'), s);
+openDeskLib(s, curIdx);
+});
+s.appendChild(hint);
+s.appendChild(addBtn);
+pagesBox.appendChild(s);
+slides.push(s);
+}
+for (let i = 0; i < target; i++) {
+const s = pagesBox.querySelectorAll('.page-slide')[i];
+const bg = sanitizeBg('page-bg-' + i, BG_SAFE_LIMIT);
+if (s) {
+if (bg && typeof bg === 'string' && bg.length > 2) {
+s.style.backgroundImage = 'url("' + bg + '")';
+s.style.backgroundSize = 'cover';
+s.style.backgroundPosition = 'center';
+} else {
+s.style.backgroundImage = '';
+s.style.backgroundSize = '';
+s.style.backgroundPosition = '';
+}
+}
+}
+if (window.deskRebuild) window.deskRebuild();
+syncPagesUI();
+};
+const syncPagesUI = () => {
+const n = deskPageCount();
+if (pagesVal) pagesVal.textContent = '共 ' + n + ' 页';
+if (delPageRow) delPageRow.hidden = n <= 1;
+if (!pageBgsBox) return;
+pageBgsBox.innerHTML = '';
+for (let i = 0; i < n; i++) {
+const row = document.createElement('div');
+row.className = 'set-row' + (i >= 2 ? '' : '');
+const ico = document.createElement('div');
+ico.className = 'ico';
+ico.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>';
+const txt = document.createElement('div');
+txt.className = 'txt';
+txt.textContent = (i === 0 ? '首页' : '第 ' + (i + 1) + ' 页') + '背景图';
+const val = document.createElement('div');
+val.className = 'val';
+val.id = 'page-bg-val-' + i;
+const syncRowUI = () => {
+const bg = store.get('page-bg-' + i);
+val.textContent = bg ? '已设置' : '';
+};
+syncRowUI();
+row.appendChild(ico); row.appendChild(txt); row.appendChild(val);
+row.addEventListener('click', () => {
+const bg = store.get('page-bg-' + i);
+const pickPageBg = () => {
+const input = document.createElement('input');
+input.type = 'file'; input.accept = 'image/*';
+input.onchange = () => {
+const f = input.files && input.files[0];
+if (!f) return;
+const reader = new FileReader();
+reader.onload = () => {
+compressImage(reader.result, phoneBgMaxSide()).then(data => {
+if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
+store.set('page-bg-' + i, data);
+buildDeskPages();
+syncRowUI();
+toast((i === 0 ? '首页' : '第 ' + (i + 1) + ' 页') + '背景已设置');
+});
+};
+reader.readAsDataURL(f);
+};
+input.click();
+};
+if (bg && window.openModal) {
+window.openModal((i === 0 ? '首页' : '第 ' + (i + 1) + ' 页') + '背景图', '', (v) => {
+if (v === '1') pickPageBg();
+else if (v === '2') {
+store.remove('page-bg-' + i);
+buildDeskPages();
+syncRowUI();
+toast('已恢复默认');
+}
+}, { noInput: true, pills: [{ label: '更换图片', value: '1' }, { label: '清除图片', value: '2' }] });
+} else {
+pickPageBg();
+}
+});
+pageBgsBox.appendChild(row);
+}
+};
+const addPageRow = document.getElementById('row-desk-add-page');
+if (addPageRow) {
+addPageRow.addEventListener('click', () => {
+const n = deskPageCount();
+if (n >= DESK_PAGE_MAX) { toast('最多 ' + DESK_PAGE_MAX + ' 页'); return; }
+store.set('desk-page-count', String(n + 1));
+buildDeskPages();
+toast('已新增第 ' + (n + 1) + ' 页');
+});
+}
+if (delPageRow) {
+delPageRow.addEventListener('click', () => {
+const n = deskPageCount();
+if (n <= DESK_PAGE_MIN) { toast('核心页不可删除'); return; }
+if (window.openModal) {
+window.openModal('删除最后一页？', '', (v) => {
+if (v === 'ok') {
+store.remove('page-bg-' + (n - 1));
+store.set('desk-page-count', String(n - 1));
+buildDeskPages();
+toast('已删除');
+}
+}, { noInput: true, staticText: '第 ' + n + ' 页上的卡片会移回隐藏池，可随时在其他页「添加卡片」找回' });
+} else {
+store.remove('page-bg-' + (n - 1));
+store.set('desk-page-count', String(n - 1));
+buildDeskPages();
+}
+});
+}
+buildDeskPages();
+document.addEventListener('contact-switched', buildDeskPages);
+const WIDGET_IDS = ['deco', 'quote-row', 'checkin', 'apps', 'music', 'p2apps', 'memo-row', 'week', 'weekend'];
+const WIDGET_NAMES = {
+deco: '纪念日卡', 'quote-row': '今日情话 / 已摸鱼', checkin: '打卡横幅', apps: '功能图标',
+music: '音乐播放器', p2apps: '第二页功能图标', 'memo-row': '今日备忘 / 心情', week: '本周日常', weekend: '周末倒计时',
+};
+function ensureWidgetPool() {
+let pool = document.getElementById('desk-widget-pool');
+if (!pool) {
+pool = document.createElement('div');
+pool.id = 'desk-widget-pool';
+pool.style.display = 'none';
+document.body.appendChild(pool);
+}
+return pool;
+}
+const deskLayout = () => {
+try {
+const v = store.get('desk-layout');
+if (v) { const a = JSON.parse(v); if (Array.isArray(a)) return a; }
+} catch (e) {}
+return null;
+};
+const saveDeskLayout = () => {
+const slides = Array.prototype.slice.call(pagesBox.querySelectorAll('.page-slide'));
+const lay = slides.map(s => Array.prototype.slice.call(s.querySelectorAll('[data-desk-widget]')).map(n => n.getAttribute('data-desk-widget')));
+store.set('desk-layout', JSON.stringify(lay));
+return lay;
+};
+const applyDeskLayout = () => {
+const lay = deskLayout();
+if (!lay) return;
+const slides = Array.prototype.slice.call(pagesBox.querySelectorAll('.page-slide'));
+lay.forEach((pageWidgets, pi) => {
+const slide = slides[pi];
+if (!slide) return;
+(pageWidgets || []).forEach(wid => {
+const node = document.querySelector('[data-desk-widget="' + wid + '"]');
+if (node && node.parentNode !== slide) {
+const addBtn = slide.querySelector('.desk-page-add');
+if (addBtn) slide.insertBefore(node, addBtn);
+else slide.appendChild(node);
+const hint = slide.querySelector('.desk-page-hint');
+if (hint) hint.style.display = 'none';
+}
+});
+});
+const pool = ensureWidgetPool();
+WIDGET_IDS.forEach(wid => {
+const node = document.querySelector('[data-desk-widget="' + wid + '"]');
+const inLay = lay.some(page => (page || []).indexOf(wid) >= 0);
+if (node && !inLay && node.parentNode !== pool) pool.appendChild(node);
+});
+if (window.deskRebuild) window.deskRebuild();
+};
+applyDeskLayout();
+document.addEventListener('contact-switched', applyDeskLayout);
+function openDeskLib(pageSlide, pageIdx) {
+const lib = document.createElement('div');
+lib.className = 'desk-lib';
+lib.addEventListener('click', (e) => { if (e.target === lib) lib.remove(); });
+const box = document.createElement('div');
+box.className = 'desk-lib-box';
+const title = document.createElement('div');
+title.className = 'desk-lib-title';
+title.textContent = '添加卡片到' + (pageIdx + 1 <= 2 ? (pageIdx === 0 ? '首页' : '第 ' + (pageIdx + 1) + ' 页') : '第 ' + (pageIdx + 1) + ' 页');
+const sub = document.createElement('div');
+sub.className = 'desk-lib-sub';
+sub.textContent = '组件全局唯一：选择后会从原位置移动过来';
+box.appendChild(title); box.appendChild(sub);
+WIDGET_IDS.forEach(wid => {
+const item = document.createElement('div');
+item.className = 'desk-lib-item';
+const name = document.createElement('div');
+name.textContent = WIDGET_NAMES[wid] || wid;
+const node = document.querySelector('[data-desk-widget="' + wid + '"]');
+const curPage = node && node.closest('.page-slide') ? Array.prototype.indexOf.call(pagesBox.querySelectorAll('.page-slide'), node.closest('.page-slide')) : -1;
+const where = document.createElement('div');
+where.className = 'dl-where';
+where.textContent = curPage < 0 ? '已隐藏' : (curPage === pageIdx ? '已在本页' : (curPage === 0 ? '首页' : '第 ' + (curPage + 1) + ' 页'));
+const btn = document.createElement('button');
+btn.className = 'dl-btn';
+btn.textContent = curPage === pageIdx ? '已在' : '添加到此页';
+btn.disabled = curPage === pageIdx;
+btn.addEventListener('click', () => {
+if (!node) return;
+const addBtn = pageSlide.querySelector('.desk-page-add');
+if (addBtn) pageSlide.insertBefore(node, addBtn);
+else pageSlide.appendChild(node);
+const hint = pageSlide.querySelector('.desk-page-hint');
+if (hint) hint.style.display = 'none';
+saveDeskLayout();
+if (window.deskRebuild) window.deskRebuild();
+lib.remove();
+toast('已添加到本页');
+});
+item.appendChild(name); item.appendChild(where); item.appendChild(btn);
+box.appendChild(item);
+});
+const close = document.createElement('button');
+close.textContent = '关闭';
+close.style.cssText = 'width:100%;margin-top:8px;padding:10px;border:1px solid #eee;border-radius:10px;background:#fafafa;font-size:13px;cursor:pointer;font-family:inherit';
+close.addEventListener('click', () => lib.remove());
+box.appendChild(close);
+lib.appendChild(box);
+document.body.appendChild(lib);
+}
+const decorAddBtn = document.getElementById('decor-add-widget');
+if (decorAddBtn) {
+decorAddBtn.addEventListener('click', (e) => {
+e.stopPropagation();
+if (!pagesBox) return;
+const slides = Array.prototype.slice.call(pagesBox.querySelectorAll('.page-slide'));
+if (!slides.length) return;
+let curIdx = 0;
+if (pagesBox.clientWidth) {
+curIdx = Math.max(0, Math.min(slides.length - 1, Math.round(pagesBox.scrollLeft / pagesBox.clientWidth)));
+}
+openDeskLib(slides[curIdx], curIdx);
 });
 }
 function exitDecor() {
 grids.forEach(g => g.classList.remove('editing'));
+const phone = document.getElementById('page-phone');
+if (phone) phone.classList.remove('decor-on');
 const bar = document.getElementById('decor-bar');
 if (bar) bar.hidden = true;
 }
@@ -6137,6 +7091,8 @@ const tabbar = document.querySelector('.tabbar');
 if (tabbar && grids.length) {
 tabbar.addEventListener('click', () => {
 grids.forEach(g => g.classList.remove('editing'));
+const phone = document.getElementById('page-phone');
+if (phone) phone.classList.remove('decor-on');
 const bar = document.getElementById('decor-bar');
 if (bar) bar.hidden = true;
 });
@@ -6404,7 +7360,7 @@ try { window.__resetting = true; } catch (e) {}
 const BARE_KEYS = ['divine-history'];
 try {
 Object.keys(localStorage)
-.filter(k => k.indexOf(uid + ':') === 0 || BARE_KEYS.indexOf(k) >= 0)
+.filter(k => k.indexOf(window.activePrefix() + ':') === 0 || BARE_KEYS.indexOf(k) >= 0)
 .forEach(k => localStorage.removeItem(k));
 } catch (e) {}
 try { sessionStorage.removeItem('xy-ls-big-migrated'); } catch (e) {}
@@ -6675,14 +7631,37 @@ const csPage = document.getElementById('page-call-settings');
 if (csPage) csPage.hidden = false;
 });
 }
+document.addEventListener('contact-switched', function () {
+try { applyBgVisibility(); } catch (e) {}
+try { restoreAppIcons(); } catch (e) {}
+try { applyWidgetColor(store.get('widget-bg-color') || '#ffffff'); } catch (e) {}
+try { applyWidgetBorder(store.get('widget-border-color') || 'rgba(0,0,0,.1)'); } catch (e) {}
+try { applyWidgetBtn(store.get('widget-btn-color') || '#111111'); } catch (e) {}
+try {
+const btn = document.querySelector('.checkin .ck-btn');
+if (btn) {
+if (store.get('checkin') === fishToday()) {
+btn.textContent = '✓ 已打卡';
+btn.classList.add('done');
+} else {
+btn.textContent = '打卡';
+btn.classList.remove('done');
+}
+}
+} catch (e) {}
+try {
+const cnt = document.getElementById('weekend-count');
+if (cnt) cnt.textContent = String(dayVal('fish-total'));
+} catch (e) {}
+});
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
 const body = document.getElementById('chat-body');
 if (!body) return;
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 function closeIme() {
 try {
 const ae = document.activeElement;
@@ -6694,6 +7673,15 @@ const sessionChangedIdx = new Set();
 let chatDbReady = false;
 let pendingLocal = null; // 权威就绪前暂存的内存消息（绝不落盘，防止污染读取/覆盖 IDB）
 let saveTimer = null;
+document.addEventListener('contact-switched', function () {
+try {
+if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+msgs = [];
+pendingLocal = null;
+chatDbReady = false;
+sessionChangedIdx.clear();
+} catch (e) {}
+});
 function saveMsgs() {
 const data = JSON.stringify(msgs);
 if (!chatDbReady) {
@@ -6703,7 +7691,7 @@ return;
 if (saveTimer) clearTimeout(saveTimer);
 saveTimer = setTimeout(() => {
 saveTimer = null;
-try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', data); } catch (e) {}
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
 }, 400);
 }
 function flushSave() {
@@ -6711,7 +7699,7 @@ if (window.__resetting) return;
 if (saveTimer) {
 clearTimeout(saveTimer);
 saveTimer = null;
-try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
 }
 }
 window.chatFlushSave = flushSave;
@@ -6747,7 +7735,7 @@ if (!Array.isArray(msgs)) msgs = [];
 migrateLegacyMediaMsgs();
 try {
 if (window.idbGet) {
-window.idbGet(uid + ':chat-msgs').then(v => {
+window.idbGet(window.activePrefix() + ':chat-msgs').then(v => {
 if (v === undefined || v === null) {
 chatDbReady = true;
 const lsRaw = store.get('chat-msgs');
@@ -6755,7 +7743,7 @@ if (lsRaw) {
 try {
 const lsArr = JSON.parse(lsRaw);
 if (Array.isArray(lsArr) && lsArr.length) {
-if (window.idbSet) window.idbSet(uid + ':chat-msgs', lsRaw);
+if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', lsRaw);
 try { store.remove('chat-msgs'); } catch (e) {}
 }
 } catch (e) {}
@@ -6795,7 +7783,7 @@ pendingLocal = null;
 chatDbReady = true;
 try { store.remove('chat-msgs'); } catch (e) {}
 if (changed) {
-try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
 if (chatVisible() && chatNearBottom()) {
 renderWindow(false, true);
 scrollChatBottom();
@@ -6948,6 +7936,10 @@ return out;
 }
 function getPool() {
 const cards = (window.getCustomCards && window.getCustomCards()) || [];
+const pokeSet = (function () {
+const pk = (window.getPokeCards && window.getPokeCards()) || [];
+return pk.length ? new Set(pk) : null;
+})();
 const text = [], kaomoji = [], emoji = [], sticker = [], image = [], voice = [], poke = [];
 const mediaSticker = (window.getMediaCards && window.getMediaCards('sticker')) || [];
 const mediaImage = (window.getMediaCards && window.getMediaCards('image')) || [];
@@ -6956,6 +7948,7 @@ sticker.push.apply(sticker, mediaSticker);
 image.push.apply(image, mediaImage);
 voice.push.apply(voice, mediaVoice);
 cards.forEach(c => {
+if (pokeSet && pokeSet.has(c)) return; // 拍一拍字卡不进普通回复池
 if (typeof c === 'string' && c.indexOf('data:') === 0) return; // dataURL 已按媒体分类
 if (typeof c === 'string' && c.indexOf('|||') >= 0) return;
 if (/[\uD800-\uDBFF]/.test(c) || /^[😀-🙏🌀-🫿]/u.test(c)) emoji.push(c);
@@ -7500,7 +8493,7 @@ chatDbReady = true;
 renderStart = 0;
 if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
 try { store.remove('chat-msgs'); } catch (e) {}
-try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
 if (body) body.innerHTML = '';
 clearChatUnread();
 if (chatVisible() && msgs.length) {
@@ -7706,7 +8699,7 @@ return addIn(text);
 };
 function saveMsgsNow() {
 const data = JSON.stringify(msgs);
-try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', data); } catch (e) {}
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
 }
 window.chatChooseReply = function (msgIdx, answer, reply, match) {
 const rec = msgs[msgIdx];
@@ -9029,7 +10022,7 @@ let myBatchMode = false;     // 批量管理模式
 let myGroups = [];           // 我的表情包 [[分组名, [dataURL...]], ...]
 let mySel = new Set();       // 批量勾选：分组名\u0001索引
 let emojiInsertCb = null;    // v3.6.x：写信/回信「插入模式」回调（点击表情插入信纸）
-const MYE_KEY = uid + ':my-emoji-groups';
+function MYE_KEY() { return window.activePrefix() + ':my-emoji-groups'; }
 function saveEmojiGroupPref() {
 store.set('emoji-last', JSON.stringify({ ta: emojiCurGroup, mine: myCurGroup }));
 }
@@ -9053,7 +10046,7 @@ return true;
 }
 (function () {
 if (!window.idbGet) return;
-window.idbGet(MYE_KEY).then(v => {
+window.idbGet(MYE_KEY()).then(v => {
 if (!v) return;
 try {
 const data = typeof v === 'string' ? JSON.parse(v) : v;
@@ -9583,7 +10576,7 @@ loadMsgs();
 window.chatSendMsg = (text) => { if (typeof text === 'string' && text.trim()) addMsg(text.trim()); };
 try {
 if (window.idbGet) {
-window.idbGet(uid + ':fav-msgs').then(v => {
+window.idbGet(window.activePrefix() + ':fav-msgs').then(v => {
 if (v && typeof v === 'string' && v.length > 2) store.set('fav-msgs', v);
 });
 }
@@ -9597,8 +10590,8 @@ const list = document.getElementById('cc-list');
 const tabsWrap = document.getElementById('cc-tabs');
 const groupsBar = document.getElementById('cc-groups-bar');
 if (!list || !tabsWrap) return;
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 const BUILTIN = {
 text: [
 ['日常回应', ['哈哈哈哈哈', '好的好的，收到', '嗯嗯，我在听', '笑死我了', '我支持你', '今天也要开心呀', '没事的，别担心', '想你了']],
@@ -9661,7 +10654,7 @@ return { text: [], kaomoji: [], emoji: [], sticker: [], image: [], poke: [], voi
 }
 (function () {
 if (window.idbGet) {
-window.idbGet(uid + ':cc-groups').then(v => {
+window.idbGet(window.activePrefix() + ':cc-groups').then(v => {
 if (v === undefined || v === null) return;
 try {
 const data = typeof v === 'string' ? JSON.parse(v) : v;
@@ -10477,6 +11470,37 @@ window.getMediaGroups = function (type) {
 const g = groups;
 return (g[type] || []).map(([name, arr]) => [name, arr.filter(c => typeof c === 'string' && c.indexOf('data:image') === 0)]);
 };
+function buildGroupsFrom(raw) {
+try {
+const g = JSON.parse(raw || 'null');
+if (g && g.text) return g;
+} catch (e) {}
+return { text: [], kaomoji: [], emoji: [], sticker: [], image: [], poke: [], voice: [] };
+}
+document.addEventListener('contact-switched', function () {
+groups = loadGroups();
+try { renderGroupsBar(); render(); } catch (e) {}
+});
+window.getCustomCardsFor = function (cid) {
+const raw = (window.storeFor && window.storeFor(cid) || window.xyStore('xy-home-v2:' + cid)).get('cc-groups');
+const g = buildGroupsFrom(raw);
+const out = [];
+Object.keys(g).forEach(t => (g[t] || []).forEach(([name, arr]) => (arr || []).forEach(c => out.push(c))));
+return out;
+};
+window.getMediaCardsFor = function (cid, type) {
+const raw = (window.storeFor && window.storeFor(cid) || window.xyStore('xy-home-v2:' + cid)).get('cc-groups');
+const g = buildGroupsFrom(raw);
+const out = [];
+(g[type] || []).forEach(([name, arr]) => (arr || []).forEach(c => {
+if (type === 'voice') {
+if (typeof c === 'string' && c.indexOf('|||') > 0) out.push(c);
+} else if (typeof c === 'string' && c.indexOf('data:image') === 0) {
+out.push(c);
+}
+}));
+return out;
+};
 const li = document.getElementById('li-custom-cards');
 if (li) {
 li.addEventListener('click', () => {
@@ -10497,8 +11521,8 @@ if (home) home.hidden = false;
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 const root = document.documentElement;
 const body = document.getElementById('chat-body');
 if (!body) return;
@@ -10544,10 +11568,18 @@ const sendBg = store.get('cs-send-bg') || '#111111';
 root.style.setProperty('--send-bg', sendBg);
 const sendInk = store.get('cs-send-ink') || '#ffffff';
 root.style.setProperty('--send-ink', sendInk);
+set('cs-out-bg-val', outBg === '#111111' ? '默认 #111111' : outBg);
+set('cs-out-ink-val', outInk === '#ffffff' ? '默认 #ffffff' : outInk);
+set('cs-in-bg-val', inBg === '#ffffff' ? '默认 #ffffff' : inBg);
+set('cs-in-ink-val', inInk === '#111111' ? '默认 #111111' : inInk);
 const avShape = store.get('cs-av-shape') || 'circle';
 root.style.setProperty('--msg-av-radius', avShape === 'square' ? '10px' : '50%');
 set('cs-av-shape-val', avShape === 'square' ? '方形' : '圆形');
-const bg = store.get('cs-bg');
+let bg = store.get('cs-bg');
+if (bg && typeof bg === 'string' && bg.length > 6 * 1024 * 1024) {
+try { store.remove('cs-bg'); } catch (e) {}
+bg = null;
+}
 if (bg && chatPage) {
 if (chatPage.style.backgroundImage !== 'url("' + bg + '")') {
 chatPage.style.backgroundImage = 'url("' + bg + '")';
@@ -10621,6 +11653,52 @@ noInput: true
 });
 });
 }
+const BUBBLE_BG_COLORS = [
+{ color: '#111111', label: '默认黑' },
+{ color: '#ffffff', label: '白色' },
+{ color: '#3a3a3a', label: '炭灰' },
+{ color: '#ffd6e0', label: '樱花粉' },
+{ color: '#d6e4ff', label: '雾霭蓝' },
+{ color: '#d8f5e0', label: '薄荷绿' },
+{ color: '#fff3d6', label: '奶油黄' },
+{ color: '#e8dcff', label: '淡紫' },
+{ color: '#ffdcc0', label: '暖橘' }
+];
+const BUBBLE_INK_COLORS = [
+{ color: '#111111', label: '默认黑' },
+{ color: '#ffffff', label: '白色' },
+{ color: '#444444', label: '深灰' },
+{ color: '#d6336c', label: '玫红' },
+{ color: '#1a56db', label: '蓝' },
+{ color: '#1e8e5a', label: '绿' },
+{ color: '#9a6b00', label: '黄褐' },
+{ color: '#7048e8', label: '紫' },
+{ color: '#b3540a', label: '橘' }
+];
+function bindBubbleColorRow(rowId, key, def, title, swatches) {
+const el = row(rowId);
+if (!el) return;
+el.addEventListener('click', () => {
+if (!window.openModal) return;
+const cur = store.get(key) || def;
+window.openModal(title, '', (v) => {
+const color = (typeof v === 'number' && swatches[v]) ? swatches[v].color : v;
+if (!color) return;
+store.set(key, color);
+applySettings();
+const val = document.getElementById(rowId + '-val');
+if (val) val.textContent = color === def ? '默认 ' + color : color;
+}, {
+colorPicker: true,
+color: cur,
+swatches: swatches
+});
+});
+}
+bindBubbleColorRow('cs-out-bg', 'cs-out-bg', '#111111', '我的气泡颜色', BUBBLE_BG_COLORS);
+bindBubbleColorRow('cs-out-ink', 'cs-out-ink', '#ffffff', '我的消息文字颜色', BUBBLE_INK_COLORS);
+bindBubbleColorRow('cs-in-bg', 'cs-in-bg', '#ffffff', '联系人气泡颜色', BUBBLE_BG_COLORS);
+bindBubbleColorRow('cs-in-ink', 'cs-in-ink', '#111111', '联系人消息文字颜色', BUBBLE_INK_COLORS);
 const csFont = row('cs-font-size');
 if (csFont) {
 csFont.addEventListener('click', () => {
@@ -10886,13 +11964,13 @@ toast('聊天记录已清空');
 }
 try {
 if (window.idbGet) {
-window.idbGet(uid + ':cs-bg').then(v => {
+window.idbGet(window.activePrefix() + ':cs-bg').then(v => {
 if (v && typeof v === 'string' && v.length > 2 && !store.get('cs-bg')) {
 store.set('cs-bg', v);
 applySettings();
 }
 });
-window.idbGet(uid + ':' + FONT_KEY).then(v => {
+window.idbGet(window.activePrefix() + ':' + FONT_KEY).then(v => {
 if (v && typeof v === 'string' && v.length > 2 && !store.get(FONT_KEY)) {
 store.set(FONT_KEY, v);
 applyFont();
@@ -10900,12 +11978,15 @@ applyFont();
 });
 }
 } catch (e) {}
+document.addEventListener('contact-switched', function () {
+try { applySettings(); } catch (e) {}
+});
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const ls = window.xyStore(uid);
+const uid = window.activePrefix();
+const ls = window.activeStore();
 const DEFAULTS = {
 'rs-min': 1, 'rs-max': 40,
 'reply-min': 1, 'reply-max': 2,
@@ -11131,8 +12212,8 @@ const list = document.getElementById('dc-list');
 const tabsWrap = document.getElementById('dc-tabs');
 const enabledEl = document.getElementById('dc-enabled');
 if (!list || !tabsWrap || !enabledEl) return;
-const uid = 'xy-home-v2';
-const ls = window.xyStore(uid);
+const uid = window.activePrefix();
+const ls = window.activeStore();
 function getEnabled() { const v = ls.get('dc-enabled'); return v === null ? true : v === '1'; }
 function getOverall() { const v = ls.get('dc-overall'); return v === null ? 30 : Number(v); }
 function getProb(k) { const v = ls.get('dc-prob-' + k); return v === null ? 30 : Number(v); }
@@ -11215,14 +12296,20 @@ searchInput.addEventListener('keydown', (e) => {
 if (e.key === 'Escape') { searchInput.value = ''; q = ''; render(); searchInput.blur(); }
 });
 }
+let renderedOnce = false;
+function ensureRendered() {
+if (renderedOnce) return;
+renderedOnce = true;
 renderGroupsBar2();
 render();
+}
 const li = document.getElementById('li-default-cards');
 if (li) {
 li.addEventListener('click', () => {
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 const page = document.getElementById('page-default-cards');
 if (page) page.hidden = false;
+ensureRendered();
 });
 }
 const back = document.getElementById('dc-back');
@@ -11265,8 +12352,8 @@ window.MOOD_FOLLOWUP_DATA = {"mood":[{"group":"喜悦与正向","weight":30,"car
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const ls = window.xyStore(uid);
+const uid = window.activePrefix();
+const ls = window.activeStore();
 const DATA = (window.MOOD_FOLLOWUP_DATA) || {};
 const W = DATA.weights || {};
 let emotionStreak = 0;
@@ -11594,8 +12681,8 @@ return pool[Math.floor(Math.random() * pool.length)];
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 function toast(msg) {
 let t = document.getElementById('cc-toast');
 if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
@@ -11682,7 +12769,7 @@ if (m.url !== target) {
 m.url = target;
 m.source = 'url';
 saveLibrary();
-try { if (window.idbDelete) window.idbDelete(uid + ':music-file:' + m.id); } catch (e) {}
+try { if (window.idbDelete) window.idbDelete(window.activePrefix() + ':music-file:' + m.id); } catch (e) {}
 }
 });
 {
@@ -11907,7 +12994,7 @@ tmp.src = tmpUrl;
 tmp.src = payload;
 }
 if (window.idbSet) {
-window.idbSet(uid + ':music-file:' + id, payload).then(() => { saveLibrary(); renderPage(); }).catch(() => {});
+window.idbSet(window.activePrefix() + ':music-file:' + id, payload).then(() => { saveLibrary(); renderPage(); }).catch(() => {});
 } else {
 saveLibrary();
 }
@@ -12172,7 +13259,7 @@ window.openModal('删除选中的 ' + batchSel.size + ' 首音乐？', '', () =>
 library = library.filter(m => !batchSel.has(m.id));
 if (window.idbGetAllKeys) {
 window.idbGetAllKeys().then(keys => {
-keys.filter(k => { for (const id of batchSel) if (k === uid + ':music-file:' + id) return true; return false; })
+keys.filter(k => { for (const id of batchSel) if (k === window.activePrefix() + ':music-file:' + id) return true; return false; })
 .forEach(k => { if (window.idbDelete) window.idbDelete(k); });
 });
 }
@@ -12296,7 +13383,7 @@ let demoFallbackBusy = false; // 防止外链失败 → demo 失败 → 再走 d
 function playDemoFor(m, seedIdx) {
 genDemoAudio(seedIdx).then(d => {
 if (!d) { toast('播放失败：网络链接可能已失效'); demoFallbackBusy = false; return; }
-try { window.idbSet(uid + ':music-file:' + m.id, d); } catch (e) {}
+try { window.idbSet(window.activePrefix() + ':music-file:' + m.id, d); } catch (e) {}
 demoFallbackBusy = false;
 if (currentId !== m.id) return;
 teardownAudio();
@@ -12353,7 +13440,7 @@ currentId = id;
 teardownAudio();
 if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
 if (m.source === 'local' || (!m.url && m.source !== 'url')) {
-const key = uid + ':music-file:' + m.id;
+const key = window.activePrefix() + ':music-file:' + m.id;
 const loadLocal = (v) => {
 if (currentId !== m.id) return;
 if (!v) {
@@ -12704,7 +13791,7 @@ window.openModal('删除这首音乐？', '', () => {
 library = library.filter(x => x.id !== id);
 if (window.idbGetAllKeys) {
 window.idbGetAllKeys().then(keys => {
-keys.filter(k => k === uid + ':music-file:' + id).forEach(k => {
+keys.filter(k => k === window.activePrefix() + ':music-file:' + id).forEach(k => {
 if (window.idbDelete) window.idbDelete(k);
 });
 });
@@ -12800,11 +13887,11 @@ if (window.chatAddSystem) window.chatAddSystem(name + ' 把播放模式换成了
 addModeRecord(modeLabel);
 return false;
 }
-const MUSIC_FILE_PREFIX = uid + ':music-file:';
+function MUSIC_FILE_PREFIX() { return window.activePrefix() + ':music-file:'; }
 function calcStorageBytes() {
 if (!window.idbGetAllKeys) return Promise.resolve(-1);
 return window.idbGetAllKeys().then(keys => {
-const fileKeys = keys.filter(k => k.indexOf(MUSIC_FILE_PREFIX) === 0);
+const fileKeys = keys.filter(k => k.indexOf(MUSIC_FILE_PREFIX()) === 0);
 if (!fileKeys.length) return 0;
 const BATCH = 20;
 function readBatch(i) {
@@ -12837,12 +13924,12 @@ calcStorageBytes().then(b => { const e = document.getElementById('sm-storage-use
 function clearLocalAudioCache() {
 if (!window.idbGetAllKeys || !window.idbDelete) { toast('当前环境不支持清理'); return; }
 window.idbGetAllKeys().then(keys => {
-const fileKeys = keys.filter(k => k.indexOf(MUSIC_FILE_PREFIX) === 0);
+const fileKeys = keys.filter(k => k.indexOf(MUSIC_FILE_PREFIX()) === 0);
 if (!fileKeys.length) { toast('没有本地音频缓存'); refreshStorageUse(); return; }
 const delIds = [];       // 要移除的歌曲 id（非种子，音频删了歌也播不了）
 const cacheOnly = [];    // 种子歌的本地旋律缓存键（可再生成，只删缓存不动歌）
 fileKeys.forEach(k => {
-const id = k.slice(MUSIC_FILE_PREFIX.length);
+const id = k.slice(MUSIC_FILE_PREFIX().length);
 const m = library.find(x => x.id === id);
 if (m && seedIdxOf(m) >= 0) cacheOnly.push(k);
 else delIds.push(id);
@@ -13062,12 +14149,21 @@ renderPage();
 setupFloatDrag();
 bindWidget();
 renderPage();
+document.addEventListener('contact-switched', function () {
+try {
+if (audio) { try { audio.pause(); } catch (e) {} audio = null; }
+currentId = null;
+loadAll();
+try { renderPage(); } catch (e) {}
+try { renderFloat(); } catch (e) {}
+} catch (e) {}
+});
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 const page = document.getElementById('page-calendar');
 if (!page) return;
 const MOODS = [
@@ -13149,11 +14245,14 @@ message: genMessage(),
 date: todayStr()
 };
 store.set(key, JSON.stringify(entry));
-try { if (window.idbSet) window.idbSet(uid + ':' + key, JSON.stringify(entry)); } catch (e) {}
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + key, JSON.stringify(entry)); } catch (e) {}
 }
 calCache = entry;
 return entry;
 }
+document.addEventListener('contact-switched', function () {
+try { calCache = null; viewY = 0; viewM = -1; } catch (e) {}
+});
 let viewY = 0, viewM = -1; // 0=当前月
 function renderGrid() {
 const grid = document.getElementById('cal-grid');
@@ -13292,7 +14391,7 @@ el._timer = setTimeout(hideGreetBanner, 8000);
 function doGreet() {
 greeted = true;
 store.set(key, '1');
-try { if (window.idbSet) window.idbSet(uid + ':' + key, '1'); } catch (e) {}
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + key, '1'); } catch (e) {}
 const splashEl = document.getElementById('splash');
 const iv = setInterval(() => {
 if (!splashEl || splashEl.classList.contains('hide')) {
@@ -13315,7 +14414,7 @@ function maybeGreet() {
 if (greeted) return;
 if (store.get(key)) { greeted = true; return; }
 if (window.idbGet) {
-window.idbGet(uid + ':' + key).then(v => {
+window.idbGet(window.activePrefix() + ':' + key).then(v => {
 if (v) { greeted = true; store.set(key, '1'); return; }
 if (greeted) return;
 doGreet();
@@ -13334,7 +14433,7 @@ const page = document.getElementById('page-divine');
 if (!page) return;
 let mode = 'tarot';
 let count = 3;
-const store = window.xyStore('xy-home-v2');
+const store = window.activeStore();
 const TAROT = [
 { name: '愚人', icon: 'sun', pos: '新的开始，勇敢出发。', neg: '鲁莽行事，需三思。', detail: '天真无畏的开端。此刻最适合跟随直觉迈出第一步，别怕未知，路上自有风景与贵人。' },
 { name: '魔术师', icon: 'wand', pos: '掌握资源，心想事成。', neg: '空想多于行动。', detail: '你手中早已握有需要的资源与能力。把想法落到行动上，主动出击，一切皆可成。' },
@@ -13709,8 +14808,8 @@ if (phonePage) phonePage.hidden = false;
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 const page = document.getElementById('page-chat-settings');
 if (!page) return;
 function toast(msg) {
@@ -13957,7 +15056,7 @@ checkAvatarLibRefresh();
 syncVal();
 try {
 if (window.idbGet) {
-window.idbGet(uid + ':avatar-lib').then(v => {
+window.idbGet(window.activePrefix() + ':avatar-lib').then(v => {
 if (v && typeof v === 'string' && v.length > 2) {
 store.set('avatar-lib', v);
 }
@@ -13968,8 +15067,8 @@ store.set('avatar-lib', v);
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 const KEY = 'ta-ask';
 const DEFAULT_QUESTIONS = [
 { id: 'q_d1', text: '你吃饭了吗？', cat: 'daily', enabled: true },
@@ -15629,7 +16728,7 @@ mo.observe(ccPageEl, { attributes: true, attributeFilter: ['hidden'] });
 window.refreshTaCardCounts();
 function attachIdbRestore(key, loadFn, mergeFn) {
 if (!window.idbGet) return;
-window.idbGet(uid + ':' + key).then(function (v) {
+window.idbGet(window.activePrefix() + ':' + key).then(function (v) {
 if (v === undefined || v === null) return;
 try {
 const idbData = typeof v === 'string' ? JSON.parse(v) : v;
@@ -15654,8 +16753,8 @@ attachIdbRestore(KEY4, trLoad, trMerge);
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 function toast(msg) {
 let t = document.getElementById('cc-toast');
 if (!t) {
@@ -16015,8 +17114,8 @@ showSysNotification(name, opts);
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 function fmtDT(ts) {
 const d = new Date(ts);
 const p = (n) => (n < 10 ? '0' + n : '' + n);
@@ -16183,17 +17282,23 @@ if (phone) phone.hidden = false;
 render();
 try {
 if (window.idbGet) {
-window.idbGet(uid + ':records-avatar').then(v => {
+window.idbGet(window.activePrefix() + ':records-avatar').then(v => {
 if (v && typeof v === 'string' && v.length > 2) store.set('records-avatar', v);
 });
 }
 } catch (e) {}
+document.addEventListener('contact-switched', function () {
+try {
+const hp = document.getElementById('page-home');
+if (hp && !hp.hidden) render();
+} catch (e) {}
+});
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 const CALL = { incoming: 15, pickup: 70, busy: 15, reject: 15, hangup: 2 };
 function callCfg() {
 const c = (window.replyCfg && window.replyCfg()) || {};
@@ -16273,7 +17378,7 @@ toast('已恢复默认通话背景');
 }
 try {
 if (window.idbGet) {
-window.idbGet(uid + ':' + CALL_BG_KEY).then(v => {
+window.idbGet(window.activePrefix() + ':' + CALL_BG_KEY).then(v => {
 if (v && typeof v === 'string' && v.length > 2 && !store.get(CALL_BG_KEY)) {
 store.set(CALL_BG_KEY, v);
 applyCallBg();
@@ -16593,8 +17698,8 @@ maybeIncoming();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 const KEY = 'mail-letters';
 const TITLES = ['好久不见', '最近还好吗', '想你了', '给你写了封信', '深夜随想', '一些想说的话'];
 let mtab = 'in';
@@ -17236,7 +18341,7 @@ if (merged.length) store.set(KEY, JSON.stringify(merged));
 }
 try {
 if (window.idbGet) {
-window.idbGet(uid + ':' + KEY).then(v => {
+window.idbGet(window.activePrefix() + ':' + KEY).then(v => {
 mailMergeFromIdb(v);
 mailDbReady = true;
 render();
@@ -17256,6 +18361,24 @@ mailDbReady = true;
 render();
 updateBadge();
 }, 15000);
+document.addEventListener('contact-switched', function () {
+try {
+mailDbReady = false;
+mailPending = null;
+if (window.idbGet) {
+window.idbGet(window.activePrefix() + ':' + KEY).then(v => {
+mailMergeFromIdb(v);
+mailDbReady = true;
+render();
+updateBadge();
+}).catch(() => { mailDbReady = true; render(); updateBadge(); });
+} else {
+mailDbReady = true;
+render();
+updateBadge();
+}
+} catch (e) { mailDbReady = true; }
+});
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
@@ -17267,6 +18390,14 @@ function partnerName() { return store.get('lbl-partner') || 'TA'; }
 function partnerAv() { return store.get('avatar-partner') || ''; }
 function myName() { return store.get('lbl-user') || '我'; }
 function myAv() { return store.get('avatar-user') || ''; }
+function activeMe() {
+const s = window.activeStore();
+return { role: 'me', owner: window.__activeCid || 'default', authorName: s.get('lbl-user') || '我', authorAv: s.get('avatar-user') || '' };
+}
+function taAuthorOf(p) {
+return { role: 'ta', owner: p.owner || 'default', authorName: p.taName || partnerName(), authorAv: p.taAv || partnerAv() };
+}
+function stampAuthor(obj, a) { obj.role = a.role; obj.owner = a.owner; obj.authorName = a.authorName; obj.authorAv = a.authorAv; return obj; }
 function toast(msg) {
 let t = document.getElementById('cc-toast');
 if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
@@ -17280,7 +18411,8 @@ const d = new Date(ts);
 const p = (n) => (n < 10 ? '0' + n : '' + n);
 return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
-function load() { try { return JSON.parse(store.get(KEY) || '[]'); } catch (e) { return []; } }
+function normPost(p) { if (p.by && !p.role) { p.role = p.by; if (!p.owner) p.owner = 'default'; } return p; }
+function load() { try { const a = JSON.parse(store.get(KEY) || '[]'); return (Array.isArray(a) ? a : []).map(normPost); } catch (e) { return []; } }
 function save(list) { store.set(KEY, JSON.stringify(list)); }
 function avHtml(data, cls) {
 const c = cls || 'feed-av';
@@ -17289,11 +18421,11 @@ return data
 : '<div class="' + c + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></div>';
 }
 const TA_COMMENT_POOL = ['收到啦~', '我看到了！', '这条动态好可爱', '记住啦', '我也是这么想的', '嗯嗯，说得对'];
-function cardPool() {
-const cards = (window.getCustomCards && window.getCustomCards()) || [];
+function cardPool(cid) {
+const cards = cid ? (window.getCustomCardsFor ? window.getCustomCardsFor(cid) : []) : ((window.getCustomCards && window.getCustomCards()) || []);
 const text = [], kaomoji = [], emoji = [];
-const mediaSticker = (window.getMediaCards && window.getMediaCards('sticker')) || [];
-const mediaImage = (window.getMediaCards && window.getMediaCards('image')) || [];
+const mediaSticker = cid ? (window.getMediaCardsFor ? window.getMediaCardsFor(cid, 'sticker') : []) : ((window.getMediaCards && window.getMediaCards('sticker')) || []);
+const mediaImage = cid ? (window.getMediaCardsFor ? window.getMediaCardsFor(cid, 'image') : []) : ((window.getMediaCards && window.getMediaCards('image')) || []);
 cards.forEach(c => {
 if (typeof c === 'string' && c.indexOf('data:') === 0) return; // dataURL 已按媒体分类
 if (typeof c === 'string' && c.indexOf('|||') >= 0) return;
@@ -17319,9 +18451,9 @@ last = m.index + m[0].length;
 html += str.slice(last).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 return html;
 }
-function genMixedCards(cfg, minN, maxN, opts) {
+function genMixedCards(cfg, minN, maxN, opts, cid) {
 const o = opts || {};
-const pool = cardPool();
+const pool = cardPool(cid);
 const fb = TA_COMMENT_POOL.concat(TA_REPLY_POOL);
 const n = minN + Math.floor(Math.random() * Math.max(1, maxN - minN + 1));
 const parts = [];
@@ -17337,8 +18469,8 @@ if (!pushed) parts.push(pool.text.length ? rand(pool.text) : rand(fb));
 }
 return parts.join(' ');
 }
-function genPostContent(cfg) {
-const pool = cardPool();
+function genPostContent(cfg, cid) {
+const pool = cardPool(cid);
 const fb = TA_COMMENT_POOL.concat(TA_REPLY_POOL);
 const n = cfg.minCardsPost + Math.floor(Math.random() * Math.max(1, cfg.maxCardsPost - cfg.minCardsPost + 1));
 const textParts = [];
@@ -17366,12 +18498,12 @@ return html;
 function commentsHtmlFor(p, name) {
 if (!p.comments || !p.comments.length) return '';
 return '<div class="feed-comments">' + p.comments.map((c, ci) => {
-const cName = esc(c.by === 'me' ? myName() : name);
+const cName = esc(c.authorName || ((c.role || c.by) === 'me' ? myName() : (name || taFeedName())));
 const cBody = inlineBody(c.content);
 let repliesHtml = '';
 if (c.replies && c.replies.length) {
 repliesHtml = '<div class="feed-replies">' + c.replies.map(r => {
-const rName = esc(r.by === 'me' ? myName() : name);
+const rName = esc(r.authorName || ((r.role || r.by) === 'me' ? myName() : (name || taFeedName())));
 const rBody = inlineBody(r.content);
 return '<div class="feed-reply"><b>' + rName + '</b> 回复 <b>' + cName + '</b>：' + rBody + '</div>';
 }).join('') + '</div>';
@@ -17381,20 +18513,36 @@ return '<div class="feed-comment" data-c="' + p.id + '" data-ci="' + ci + '">' +
 repliesHtml + '</div>';
 }).join('') + '</div>';
 }
-function pickReplyContent(cfg) {
+function pickReplyContent(cfg, cid) {
 const c = cfg || feedCfg();
 const maxN = Math.random() * 100 < c.cardProb ? Math.max(1, c.maxCards) : 1;
-return genMixedCards(c, 1, maxN, { imgP: c.imageProb, kaoP: 15, emoP: 15 });
+return genMixedCards(c, 1, maxN, { imgP: c.imageProb, kaoP: 15, emoP: 15 }, cid);
 }
 const TA_REPLY_POOL = ['哈哈，好呀', '那你呢？', '嗯嗯，说得对', '我记住啦', '跟你分享过的', '被你发现了', '那很好呀', '我也这么觉得'];
+function safeBg(v, key, s) {
+if (v && typeof v === 'string' && v.length > 500 * 1024) {
+try { s.remove(key); } catch (e) {}
+return '';
+}
+return v || '';
+}
+function coverBg() {
+const s = window.activeStore();
+const v = s.get('feed-cover-bg');
+if (v) return safeBg(v, 'feed-cover-bg', s);
+return safeBg(store.get('feed-cover-bg'), 'feed-cover-bg', store);
+}
 function renderCover() {
+const as = window.activeStore();
 const myAvEl = document.getElementById('feed-my-av');
 const myNameEl = document.getElementById('feed-my-name');
-if (myAvEl) myAvEl.innerHTML = myAv() ? '<img src="' + attrEsc(myAv()) + '" alt="">' : '';
-if (myNameEl) myNameEl.textContent = myName();
+const myAvStr = as.get('avatar-user') || '';
+const myNameStr = as.get('lbl-user') || '我';
+if (myAvEl) myAvEl.innerHTML = myAvStr ? '<img src="' + attrEsc(myAvStr) + '" alt="">' : '';
+if (myNameEl) myNameEl.textContent = myNameStr;
 const cover = document.getElementById('feed-cover');
 if (cover) {
-const bg = store.get('feed-cover-bg');
+const bg = coverBg();
 if (bg) {
 cover.style.backgroundImage = 'url("' + bg + '")';
 cover.classList.add('has-bg');
@@ -17425,9 +18573,14 @@ img.src = ev.target.result;
 };
 reader.readAsDataURL(file);
 }
-function taFeedName() { return store.get('feed-ta-name') || partnerName(); }
-function taFeedAv() { return store.get('feed-ta-avatar') || partnerAv(); }
-function taFeedCover() { return store.get('feed-ta-cover') || ''; }
+function taFeedName() { return window.activeStore().get('feed-ta-name') || store.get('feed-ta-name') || partnerName(); }
+function taFeedAv() { return window.activeStore().get('feed-ta-avatar') || store.get('feed-ta-avatar') || partnerAv(); }
+function taFeedCover() {
+const s = window.activeStore();
+const v = s.get('feed-ta-cover');
+if (v) return safeBg(v, 'feed-ta-cover', s);
+return safeBg(store.get('feed-ta-cover'), 'feed-ta-cover', store);
+}
 function render() {
 renderCover();
 const listEl = document.getElementById('feed-list');
@@ -17436,17 +18589,17 @@ const posts = load().slice().sort((a, b) => b.ts - a.ts);
 const name = partnerName();
 listEl.innerHTML = posts.length
 ? posts.map(p => {
-const isMine = p.by === 'me';
-const author = isMine ? myName() : taFeedName();
-const av = isMine ? myAv() : taFeedAv();
-const avWrap = '<div class="feed-head-av" data-owner="' + (isMine ? 'me' : 'ta') + '" title="查看' + esc(author) + '的全部朋友圈">' + avHtml(av) + '</div>';
+const isMine = (p.role || p.by) === 'me';
+const author = p.authorName || (isMine ? myName() : taFeedName());
+const av = p.authorAv || (isMine ? myAv() : taFeedAv());
+const avWrap = '<div class="feed-head-av" data-owner="' + esc(p.owner || '') + '" title="查看' + esc(author) + '的全部朋友圈">' + avHtml(av) + '</div>';
 const likes = p.likes && p.likes.length
 ? '<div class="feed-likes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;vertical-align:-2px;margin-right:5px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>' + esc(p.likes.join('、')) + ' 觉得很赞</div>'
 : '';
 const liked = p.likes && p.likes.some(l => l === myName());
 return '<div class="feed-post" id="feed-post-' + p.id + '"><div class="feed-head">' + avWrap +
 '<div class="feed-who"><div class="feed-name">' + esc(author) + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div>' +
-(isMine ? '<button class="feed-del" data-id="' + p.id + '" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg></button>' : '') + '</div>' +
+'<button class="feed-del" data-id="' + p.id + '" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg></button>' + '</div>' +
 '<div class="feed-content">' + contentHtmlFor(p) + '</div>' +
 '<div class="feed-actions">' +
 '<button class="feed-act' + (liked ? ' liked' : '') + '" data-like="' + p.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:4px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>赞</button>' +
@@ -17462,6 +18615,15 @@ e.stopPropagation();
 if (window.viewChatImage) window.viewChatImage(img.src);
 }));
 }
+function deletePostConfirm(pid) {
+if (!window.openModal) return;
+window.openModal('删除这条动态？', '', () => {
+save(load().filter(x => x.id !== pid));
+if (comPid === pid) hideCommentBar();
+const fa = document.getElementById('page-feed-all');
+if (fa && !fa.hidden) openFeedAll(feedAllCid); else render();
+}, { noInput: true });
+}
 function bindEvents(listEl) {
 listEl.querySelectorAll('.feed-head-av').forEach(av => av.addEventListener('click', (e) => {
 e.stopPropagation();
@@ -17470,13 +18632,7 @@ openFeedAll(av.dataset.owner);
 bindFeedImageClicks(listEl);
 listEl.querySelectorAll('.feed-del').forEach(b => b.addEventListener('click', (e) => {
 e.stopPropagation();
-if (window.openModal) {
-window.openModal('删除这条动态？', '', () => {
-save(load().filter(x => x.id !== b.dataset.id));
-if (comPid === b.dataset.id) hideCommentBar();
-render();
-}, { noInput: true });
-}
+deletePostConfirm(b.dataset.id);
 }));
 listEl.querySelectorAll('.feed-act[data-like]').forEach(b => b.addEventListener('click', () => {
 const list = load();
@@ -17489,17 +18645,17 @@ const wasMe = i >= 0;
 if (wasMe) p.likes.splice(i, 1); else p.likes.push(nm);
 save(list);
 render();
-if (!wasMe && p.by === 'me' && Math.random() * 100 < feedCfg().likeback) {
+if (!wasMe && (p.role || p.by) === 'me' && Math.random() * 100 < feedCfg().likeback) {
 const cfg = feedCfg();
 setTimeout(() => {
 const list2 = load();
 const p2 = list2.find(x => x.id === p.id);
 if (!p2) return;
 p2.likes = p2.likes || [];
-if (p2.likes.indexOf(partnerName()) < 0) p2.likes.push(partnerName());
+if (p2.likes.indexOf(p2.taName || partnerName()) < 0) p2.likes.push(p2.taName || partnerName());
 save(list2);
 render();
-addNotice('like', p2.id, partnerName() + ' 赞了你的动态');
+addNotice('like', p2.id, (p2.taName || partnerName()) + ' 赞了你的动态');
 }, (cfg.likeSpeedMin + Math.random() * Math.max(1, cfg.likeSpeedMax - cfg.likeSpeedMin)) * 1000);
 }
 }));
@@ -17511,7 +18667,7 @@ const pid = c.dataset.c;
 const ci = Number(c.dataset.ci);
 const list = load();
 const p = list.find(x => x.id === pid);
-if (!p || !p.comments || !p.comments[ci] || p.comments[ci].by === 'me') return;
+if (!p || !p.comments || !p.comments[ci] || (p.comments[ci].role || p.comments[ci].by) === 'me') return;
 showCommentBar(pid, { pid: pid, ci: ci });
 }));
 }
@@ -17750,7 +18906,7 @@ if (!p) return;
 if (comReplyTarget && p.comments && p.comments[comReplyTarget.ci]) {
 const tc = p.comments[comReplyTarget.ci];
 tc.replies = tc.replies || [];
-tc.replies.push({ by: 'me', content: content, ts: Date.now() });
+tc.replies.push(stampAuthor({ content: content, ts: Date.now() }, activeMe()));
 save(list);
 const replyCi = comReplyTarget.ci;
 hideCommentBar();
@@ -17762,18 +18918,18 @@ const list2 = load();
 const p2 = list2.find(x => x.id === pid);
 if (!p2 || !p2.comments || !p2.comments[replyCi]) return;
 p2.comments[replyCi].replies = p2.comments[replyCi].replies || [];
-const replyText = pickReplyContent(cfg);
-p2.comments[replyCi].replies.push({ by: 'ta', content: replyText, ts: Date.now() });
+const replyText = pickReplyContent(cfg, p2.owner || 'default');
+p2.comments[replyCi].replies.push(stampAuthor({ content: replyText, ts: Date.now() }, taAuthorOf(p2)));
 save(list2);
 render();
-addNotice('comment', p2.id, partnerName() + ' 回复了你：' + noticeTextClean(replyText));
+addNotice('comment', p2.id, (p2.taName || partnerName()) + ' 回复了你：' + noticeTextClean(replyText));
 }, (cfg.replySpeedMin + Math.random() * Math.max(1, cfg.replySpeedMax - cfg.replySpeedMin)) * 1000);
 }
 return;
 }
 p.comments = p.comments || [];
-const commentText = pickReplyContent(feedCfg());
-p.comments.push({ by: 'me', content: content, ts: Date.now(), replies: [] });
+const commentText = pickReplyContent(feedCfg(), p.owner || 'default');
+p.comments.push(stampAuthor({ content: content, ts: Date.now(), replies: [] }, activeMe()));
 save(list);
 hideCommentBar();
 render();
@@ -17784,10 +18940,10 @@ const list2 = load();
 const p2 = list2.find(x => x.id === pid);
 if (!p2) return;
 p2.comments = p2.comments || [];
-p2.comments.push({ by: 'ta', content: pickReplyContent(cfg), ts: Date.now(), replies: [] });
+p2.comments.push(stampAuthor({ content: pickReplyContent(cfg, p2.owner || 'default'), ts: Date.now(), replies: [] }, taAuthorOf(p2)));
 save(list2);
 render();
-if (p2.by === 'me') addNotice('comment', p2.id, partnerName() + ' 评论了你的动态');
+if ((p2.role || p2.by) === 'me') addNotice('comment', p2.id, (p2.taName || partnerName()) + ' 评论了你的动态');
 }, (cfg.commentSpeedMin + Math.random() * Math.max(1, cfg.commentSpeedMax - cfg.commentSpeedMin)) * 1000);
 }
 }
@@ -17925,11 +19081,11 @@ if (coverEl && coverFile) {
 coverEl.addEventListener('click', (e) => {
 if (e.target === coverAvEl || coverAvEl && coverAvEl.contains(e.target)) return;
 if (e.target === coverNameEl || coverNameEl && coverNameEl.contains(e.target)) return;
-if (store.get('feed-cover-bg')) {
+if (coverBg()) {
 if (window.openModal) {
 window.openModal('已设置朋友圈背景', '', (v) => {
 if (v === '1') coverFile.click();
-if (v === '2') { store.set('feed-cover-bg', ''); renderCover(); toast('已恢复默认背景'); }
+if (v === '2') { window.activeStore().set('feed-cover-bg', ''); renderCover(); toast('已恢复默认背景'); }
 }, { noInput: true, pills: [{ label: '更换背景', value: '1' }, { label: '恢复默认', value: '2' }] });
 }
 } else {
@@ -17940,7 +19096,7 @@ coverFile.addEventListener('change', () => {
 const f = coverFile.files && coverFile.files[0];
 if (!f) return;
 compressImage(f, (dataUrl) => {
-store.set('feed-cover-bg', dataUrl);
+window.activeStore().set('feed-cover-bg', dataUrl);
 renderCover();
 toast('朋友圈背景已更新');
 });
@@ -17965,7 +19121,7 @@ const c = document.createElement('canvas');
 c.width = Math.max(1, Math.round(img.width * scale));
 c.height = Math.max(1, Math.round(img.height * scale));
 c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-store.set('avatar-user', c.toDataURL('image/jpeg', 0.85));
+window.activeStore().set('avatar-user', c.toDataURL('image/jpeg', 0.85));
 renderCover();
 toast('头像已更新');
 } catch (err) { toast('图片处理失败'); }
@@ -17982,10 +19138,10 @@ if (coverNameEl) {
 coverNameEl.addEventListener('click', (e) => {
 e.stopPropagation();
 if (window.openModal) {
-window.openModal('修改昵称', store.get('lbl-user') || '我', (v) => {
+window.openModal('修改昵称', window.activeStore().get('lbl-user') || '我', (v) => {
 const val = (v || '').trim();
 if (val) {
-store.set('lbl-user', val);
+window.activeStore().set('lbl-user', val);
 renderCover();
 toast('昵称已更新');
 }
@@ -17999,7 +19155,12 @@ const content = input ? input.value.trim() : '';
 if (!content && !pickedImgs.length) { toast('写点什么再发布吧'); return; }
 const list = load();
 const id = 'f_' + Date.now();
-list.unshift({ id: id, by: 'me', content: content, imgs: pickedImgs.slice(), ts: Date.now(), likes: [], comments: [] });
+const me = activeMe();
+const cs = window.activeStore();
+const taName = cs.get('lbl-partner') || 'TA';
+const taAv = cs.get('avatar-partner') || '';
+const post = { id: id, role: 'me', owner: me.owner, authorName: me.authorName, authorAv: me.authorAv, taName: taName, taAv: taAv, content: content, imgs: pickedImgs.slice(), ts: Date.now(), likes: [], comments: [] };
+list.unshift(post);
 save(list);
 pickedImgs = [];
 renderPreview();
@@ -18015,10 +19176,10 @@ const list2 = load();
 const p2 = list2.find(x => x.id === id);
 if (!p2) return;
 p2.likes = p2.likes || [];
-p2.likes.push(partnerName());
+p2.likes.push(p2.taName || partnerName());
 save(list2);
 render();
-addNotice('like', p2.id, partnerName() + ' 赞了你的动态');
+addNotice('like', p2.id, (p2.taName || partnerName()) + ' 赞了你的动态');
 }, (cfg.likeSpeedMin + Math.random() * Math.max(1, cfg.likeSpeedMax - cfg.likeSpeedMin)) * 1000);
 }
 if (Math.random() * 100 < feedCfg().commentProb) {
@@ -18028,10 +19189,10 @@ const list2 = load();
 const p2 = list2.find(x => x.id === id);
 if (!p2) return;
 p2.comments = p2.comments || [];
-p2.comments.push({ by: 'ta', content: pickReplyContent(cfg), ts: Date.now(), replies: [] });
+p2.comments.push(stampAuthor({ content: pickReplyContent(cfg, p2.owner || 'default'), ts: Date.now(), replies: [] }, taAuthorOf(p2)));
 save(list2);
 render();
-addNotice('comment', p2.id, partnerName() + ' 评论了你的动态');
+addNotice('comment', p2.id, (p2.taName || partnerName()) + ' 评论了你的动态');
 }, (cfg.commentSpeedMin + Math.random() * Math.max(1, cfg.commentSpeedMax - cfg.commentSpeedMin)) * 1000);
 }
 }
@@ -18060,73 +19221,101 @@ function feedToday() {
 const d = new Date();
 return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
 }
-function maybeAutoPost() {
+function maybeAutoPostFor(cid) {
 try {
+const cs = window.storeFor(cid);
 const now = Date.now();
 const cfg = feedCfg();
-let last = feedLast(), next = feedNext();
-if (last > now || last < 0 || isNaN(last)) { last = 0; next = 0; }
+let last = parseInt(cs.get('feed-last'), 10); if (isNaN(last)) last = 0;
+let next = parseFloat(cs.get('feed-next')); if (isNaN(next)) next = 0;
+if (last > now || last < 0) { last = 0; next = 0; }
 if ((now - last) / 60000 < next) return;
-let dayCount = feedDayCount();
+let dayCount = (function () { try { return JSON.parse(cs.get('feed-day-count') || '0'); } catch (e) { return 0; } })();
 const today = feedToday();
 if (dayCount.t !== today) dayCount = { t: today, n: 0 };
-if (dayCount.n >= cfg.dailyMax) { store.set('feed-next', String(cfg.postCool)); return; }
+if (dayCount.n >= cfg.dailyMax) { cs.set('feed-next', String(cfg.postCool)); return; }
 if (Math.random() * 100 >= cfg.postProb) {
-store.set('feed-next', String(cfg.minInterval + Math.random() * Math.max(1, cfg.maxInterval - cfg.minInterval)));
+cs.set('feed-next', String(cfg.minInterval + Math.random() * Math.max(1, cfg.maxInterval - cfg.minInterval)));
 return;
 }
-const g = genPostContent(cfg);
+const g = genPostContent(cfg, cid);
+const taName = cs.get('lbl-partner') || 'TA';
+const taAv = cs.get('avatar-partner') || '';
 const list = load();
-const post = { id: 'f_' + Date.now(), by: 'ta', content: g.content, imgs: g.imgs, ts: Date.now(), likes: [], comments: [] };
+const post = { id: 'f_' + Date.now() + '_' + cid, role: 'ta', owner: cid, authorName: taName, authorAv: taAv, taName: taName, taAv: taAv, content: g.content, imgs: g.imgs, ts: Date.now(), likes: [], comments: [] };
 list.unshift(post);
 save(list);
-store.set('feed-last', String(now));
-store.set('feed-next', String(cfg.minInterval + Math.random() * Math.max(1, cfg.maxInterval - cfg.minInterval)));
-store.set('feed-day-count', JSON.stringify({ t: today, n: dayCount.n + 1 }));
-if (window.chatAddSystem) window.chatAddSystem(partnerName() + ' 发布了一条朋友圈动态');
-addNotice('post', post.id, partnerName() + ' 发布了一条新动态');
+cs.set('feed-last', String(now));
+cs.set('feed-next', String(cfg.minInterval + Math.random() * Math.max(1, cfg.maxInterval - cfg.minInterval)));
+cs.set('feed-day-count', JSON.stringify({ t: today, n: dayCount.n + 1 }));
+if (window.chatAddSystem) window.chatAddSystem(taName + ' 发布了一条朋友圈动态');
+addNotice('post', post.id, taName + ' 发布了一条新动态');
 render();
 } catch (e) {}
+}
+function maybeAutoPost() {
+const list = (window.getContacts && window.getContacts()) || [{ id: 'default' }];
+list.forEach(c => maybeAutoPostFor(c.id));
 }
 setTimeout(() => {
 setInterval(maybeAutoPost, 60000);
 maybeAutoPost();
 }, (120 + Math.random() * 180) * 1000);
-let feedAllOwner = 'me'; // 'me' | 'ta'
+let feedAllCid = 'default';
+function feedAllStore() { return window.storeFor(feedAllCid); }
+function feedAllBg() {
+const s = feedAllStore();
+const me = s.get('feed-cover-bg');
+if (me) return safeBg(me, 'feed-cover-bg', s);
+const ta = s.get('feed-ta-cover');
+if (ta) return safeBg(ta, 'feed-ta-cover', s);
+return safeBg(store.get('feed-cover-bg'), 'feed-cover-bg', store);
+}
 function renderFeedAllCover() {
 const cover = document.getElementById('feed-all-cover');
 const avEl = document.getElementById('feed-all-av');
 const nameEl = document.getElementById('feed-all-name');
 if (!cover) return;
-const bg = feedAllOwner === 'me' ? (store.get('feed-cover-bg') || '') : taFeedCover();
+const c = (window.getContacts && window.getContacts().find(x => x.id === feedAllCid)) || { name: feedAllCid };
+const bg = feedAllBg();
 if (bg) { cover.style.backgroundImage = 'url("' + bg + '")'; cover.classList.add('has-bg'); }
 else { cover.style.backgroundImage = ''; cover.classList.remove('has-bg'); }
 if (avEl) {
-const av = feedAllOwner === 'me' ? myAv() : taFeedAv();
+const s = feedAllStore();
+let av = s.get('feed-ta-avatar');
+if (av) { av = safeBg(av, 'feed-ta-avatar', s); }
+if (!av) { av = store.get('feed-ta-avatar'); av = safeBg(av, 'feed-ta-avatar', store); }
+if (!av) av = s.get('avatar-partner') || '';
 avEl.innerHTML = av ? '<img src="' + attrEsc(av) + '" alt="">' : '';
 }
-if (nameEl) nameEl.textContent = feedAllOwner === 'me' ? myName() : taFeedName();
+if (nameEl) nameEl.textContent = c.name || feedAllCid;
 }
-function openFeedAll(owner) {
+function openFeedAll(cid) {
 hideCommentBar();
-feedAllOwner = owner === 'ta' ? 'ta' : 'me';
+feedAllCid = cid || window.__activeCid || 'default';
+const c = (window.getContacts && window.getContacts().find(x => x.id === feedAllCid)) || { name: feedAllCid };
 const title = document.getElementById('feed-all-title');
-if (title) title.textContent = (feedAllOwner === 'me' ? myName() : taFeedName()) + ' 的全部朋友圈';
+if (title) title.textContent = (c.name || feedAllCid) + ' 的全部朋友圈';
 const listEl = document.getElementById('feed-all-list');
-const posts = load().filter(p => (feedAllOwner === 'me' ? p.by === 'me' : p.by === 'ta')).sort((a, b) => b.ts - a.ts);
+const posts = load().filter(p => (p.owner || 'default') === feedAllCid).sort((a, b) => b.ts - a.ts);
 listEl.innerHTML = posts.length
 ? posts.map(p => {
-const author = feedAllOwner === 'me' ? myName() : taFeedName();
-const av = feedAllOwner === 'me' ? myAv() : taFeedAv();
+const author = p.authorName || ((p.role || p.by) === 'me' ? myName() : taFeedName());
+const av = p.authorAv || ((p.role || p.by) === 'me' ? myAv() : taFeedAv());
 const likes = p.likes && p.likes.length
 ? '<div class="feed-likes" style="font-size:11px;color:var(--muted);padding:6px 2px">' + esc(p.likes.join('、')) + ' 觉得很赞</div>'
 : '';
 return '<div class="feed-post"><div class="feed-head">' + avHtml(av) +
-'<div class="feed-who"><div class="feed-name">' + esc(author) + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div></div>' +
+'<div class="feed-who"><div class="feed-name">' + esc(author) + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div>' +
+'<button class="feed-del" data-id="' + p.id + '" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg></button></div>' +
 '<div class="feed-content">' + contentHtmlFor(p) + '</div>' + likes +
 commentsHtmlFor(p, author) + '</div>';
 }).join('')
 : '<div class="ta-empty">还没有动态</div>';
+listEl.querySelectorAll('.feed-del').forEach(b => b.addEventListener('click', (e) => {
+e.stopPropagation();
+deletePostConfirm(b.dataset.id);
+}));
 bindFeedImageClicks(listEl);
 renderFeedAllCover();
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
@@ -18148,12 +19337,12 @@ if (feedAllCover) {
 feedAllCover.addEventListener('click', (e) => {
 if (feedAllAv && (e.target === feedAllAv || feedAllAv.contains(e.target))) return;
 if (feedAllName && (e.target === feedAllName || feedAllName.contains(e.target))) return;
-const key = feedAllOwner === 'me' ? 'feed-cover-bg' : 'feed-ta-cover';
-if (store.get(key)) {
+const key = 'feed-ta-cover';
+if (feedAllStore().get(key) || store.get(key)) {
 if (window.openModal) {
 window.openModal('已设置朋友圈背景', '', (v) => {
 if (v === '1') pickCoverFile();
-if (v === '2') { store.set(key, ''); renderFeedAllCover(); toast('已恢复默认背景'); }
+if (v === '2') { feedAllStore().set(key, ''); renderFeedAllCover(); toast('已恢复默认背景'); }
 }, { noInput: true, pills: [{ label: '更换背景', value: '1' }, { label: '恢复默认', value: '2' }] });
 }
 } else {
@@ -18166,7 +19355,7 @@ input.onchange = () => {
 const f = input.files && input.files[0];
 if (!f) return;
 compressImage(f, (dataUrl) => {
-store.set(key, dataUrl);
+feedAllStore().set(key, dataUrl);
 renderFeedAllCover();
 toast('朋友圈背景已更新');
 });
@@ -18178,7 +19367,7 @@ input.click();
 if (feedAllAv) {
 feedAllAv.addEventListener('click', (e) => {
 e.stopPropagation();
-const key = feedAllOwner === 'me' ? 'avatar-user' : 'feed-ta-avatar';
+const key = 'feed-ta-avatar';
 const input = document.createElement('input');
 input.type = 'file'; input.accept = 'image/*';
 input.onchange = () => {
@@ -18194,9 +19383,8 @@ const c = document.createElement('canvas');
 c.width = Math.max(1, Math.round(img.width * scale));
 c.height = Math.max(1, Math.round(img.height * scale));
 c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-store.set(key, c.toDataURL('image/jpeg', 0.85));
+feedAllStore().set(key, c.toDataURL('image/jpeg', 0.85));
 renderFeedAllCover();
-if (feedAllOwner === 'me') { renderCover(); render(); }
 toast('头像已更新');
 } catch (err) { toast('图片处理失败'); }
 };
@@ -18211,15 +19399,14 @@ input.click();
 if (feedAllName) {
 feedAllName.addEventListener('click', (e) => {
 e.stopPropagation();
-const key = feedAllOwner === 'me' ? 'lbl-user' : 'feed-ta-name';
-const cur = feedAllOwner === 'me' ? (store.get('lbl-user') || '我') : taFeedName();
+const key = 'feed-ta-name';
+const cur = feedAllStore().get(key) || store.get(key) || (feedAllStore().get('lbl-partner') || 'TA');
 if (window.openModal) {
 window.openModal('修改昵称', cur, (v) => {
 const val = (v || '').trim();
 if (val) {
-store.set(key, val);
+feedAllStore().set(key, val);
 renderFeedAllCover();
-if (feedAllOwner === 'me') { renderCover(); render(); }
 toast('昵称已更新');
 }
 }, { maxlength: 12 });
@@ -18281,6 +19468,23 @@ feedPubCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 const pubBtn = document.getElementById('feed-publish');
 if (pubBtn) pubBtn.addEventListener('click', publish);
+const feedClearAll = document.getElementById('feed-clear-all');
+if (feedClearAll) {
+feedClearAll.addEventListener('click', () => {
+if (!window.openModal) return;
+window.openModal('清除所有朋友圈数据？', '', () => {
+save([]);
+saveNotices([]);
+try { store.set('feed-app-unread', '0'); } catch (e) {}
+hideCommentBar();
+renderNoticeBadge();
+render();
+const np = document.getElementById('feed-notice-panel');
+if (np && !np.hidden) renderNotices();
+toast('朋友圈数据已全部清除');
+}, { noInput: true, staticText: '将删除全部动态（我的与 TA 的）、评论、点赞和通知提醒，且无法恢复。确定继续吗？' });
+});
+}
 render();
 try {
 if (window.idbGet) {
@@ -18290,53 +19494,57 @@ store.set(KEY, v);
 render();
 }
 });
-window.idbGet(uid + ':feed-ta-cover').then(v => {
-if (v && typeof v === 'string' && v.length > 2 && !store.get('feed-ta-cover')) {
-store.set('feed-ta-cover', v);
+window.idbGet(window.activePrefix() + ':feed-ta-cover').then(v => {
+if (v && typeof v === 'string' && v.length > 2 && !window.activeStore().get('feed-ta-cover')) {
+window.activeStore().set('feed-ta-cover', v);
 renderCover();
 renderFeedAllCover();
 }
 });
-window.idbGet(uid + ':feed-cover-bg').then(v => {
-if (v && typeof v === 'string' && v.length > 2 && !store.get('feed-cover-bg')) {
-store.set('feed-cover-bg', v);
+window.idbGet(window.activePrefix() + ':feed-cover-bg').then(v => {
+if (v && typeof v === 'string' && v.length > 2 && !window.activeStore().get('feed-cover-bg')) {
+window.activeStore().set('feed-cover-bg', v);
 renderCover();
 }
 });
-window.idbGet(uid + ':avatar-user').then(v => {
-if (v && typeof v === 'string' && v.length > 2 && !store.get('avatar-user')) {
-store.set('avatar-user', v);
+window.idbGet(window.activePrefix() + ':avatar-user').then(v => {
+if (v && typeof v === 'string' && v.length > 2 && !window.activeStore().get('avatar-user')) {
+window.activeStore().set('avatar-user', v);
 renderCover();
 }
 });
-window.idbGet(uid + ':feed-ta-avatar').then(v => {
-if (v && typeof v === 'string' && v.length > 2 && !store.get('feed-ta-avatar')) {
-store.set('feed-ta-avatar', v);
+window.idbGet(window.activePrefix() + ':feed-ta-avatar').then(v => {
+if (v && typeof v === 'string' && v.length > 2 && !window.activeStore().get('feed-ta-avatar')) {
+window.activeStore().set('feed-ta-avatar', v);
 renderCover();
 }
 });
 }
 } catch (e) {}
+document.addEventListener('contact-switched', function () {
+try { renderCover(); } catch (e) {}
+try { renderFeedAllCover(); } catch (e) {}
+});
 renderNoticeBadge();
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 function pushHist(key, text) {
 try {
 const list = JSON.parse(store.get(key) || '[]');
 list.unshift({ text: text, ts: Date.now() });
 if (list.length > 200) list.length = 200;
 store.set(key, JSON.stringify(list));
-try { if (window.idbSet) window.idbSet(uid + ':' + key, JSON.stringify(list)); } catch (e) {}
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + key, JSON.stringify(list)); } catch (e) {}
 } catch (e) {}
 }
 function restoreHist(key) {
 try {
 if (window.idbGet && !store.get(key)) {
-window.idbGet(uid + ':' + key).then(v => {
+window.idbGet(window.activePrefix() + ':' + key).then(v => {
 if (!v) return;
 try { store.set(key, typeof v === 'string' ? v : JSON.stringify(v)); } catch (e) {}
 });
@@ -18605,7 +19813,7 @@ return '<div class="ck-location"><div class="ck-value" style="font-size:13px">' 
 }
 (function () {
 if (window.idbGet) {
-window.idbGet(uid + ':checkin-history').then(v => {
+window.idbGet(window.activePrefix() + ':checkin-history').then(v => {
 if (!v) return;
 try {
 const data = typeof v === 'string' ? JSON.parse(v) : v;
@@ -18637,7 +19845,7 @@ try {
 const h = JSON.parse(store.get('checkin-history') || '[]');
 h.push(entry);
 store.set('checkin-history', JSON.stringify(h));
-if (window.idbSet) window.idbSet(uid + ':checkin-history', JSON.stringify(h));
+if (window.idbSet) window.idbSet(window.activePrefix() + ':checkin-history', JSON.stringify(h));
 } catch (e) {}
 renderCheckinHistory();
 }
@@ -18876,7 +20084,7 @@ window.openModal('今日备忘', memoEl.textContent === '点这里记一句话' 
 const val = (v || '').trim();
 if (val) {
 memoEl.textContent = val; store.set('memo', val); pushHist('memo-history', val);
-try { if (window.idbSet) window.idbSet(uid + ':memo', val); } catch (e) {}
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':memo', val); } catch (e) {}
 }
 });
 }
@@ -18893,7 +20101,7 @@ window.openModal('今天的心情', '', (v) => {
 const val = (v || '').trim();
 if (val) {
 moodEl.textContent = val; store.set('today-mood', val); pushHist('mood-history', val);
-try { if (window.idbSet) window.idbSet(uid + ':today-mood', val); } catch (e) {}
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':today-mood', val); } catch (e) {}
 }
 }, { pills: moods.map(m => ({ label: m, value: m })), pill: store.get('today-mood') || '' });
 }
@@ -18912,12 +20120,26 @@ d.setDate(weekStart.getDate() + i);
 return '<div class="week-day' + (i === todayIdx ? ' today' : '') + '"><b>' + (i === todayIdx ? '今' : n) + '</b>' + d.getDate() + '</div>';
 }).join('');
 }
+document.addEventListener('contact-switched', function () {
+try {
+const memoEl2 = document.getElementById('memo-text');
+if (memoEl2) {
+const v = store.get('memo');
+memoEl2.textContent = v || '点这里记一句话';
+}
+const moodEl2 = document.getElementById('today-mood-text');
+if (moodEl2) {
+const v = store.get('today-mood');
+moodEl2.textContent = v || '';
+}
+} catch (e) {}
+});
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 const HISTORY_KEY = 'decision-history';
 const SETTINGS_KEY = 'decision-settings';
 function toast(msg) {
@@ -18960,7 +20182,7 @@ pending.forEach(x => { if (x && x.ts !== undefined && !have[x.ts]) { base.push(x
 finish(base);
 };
 if (window.idbGet) {
-window.idbGet(uid + ':' + HISTORY_KEY).then(v => {
+window.idbGet(window.activePrefix() + ':' + HISTORY_KEY).then(v => {
 let base = [];
 try { const p = typeof v === 'string' ? JSON.parse(v) : v; if (Array.isArray(p)) base = p; } catch (e) {}
 merge(base);
@@ -18975,6 +20197,9 @@ histReady = true;
 flushPendingHist();
 });
 } catch (e) {}
+document.addEventListener('contact-switched', function () {
+try { histReady = true; histPending = null; } catch (e) {}
+});
 function loadSettings() {
 const d = { replyToChat: true, thinkA: 3, maxA: 1, thinkB: 3, maxB: 1 };
 try { return Object.assign(d, JSON.parse(store.get(SETTINGS_KEY) || '{}')); } catch (e) { return d; }
@@ -19161,8 +20386,8 @@ window.openDecision = openPanel;
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
-const store = window.xyStore(uid);
+const uid = window.activePrefix();
+const store = window.activeStore();
 function toast(msg) {
 let t = document.getElementById('cc-toast');
 if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
@@ -19283,7 +20508,7 @@ bindClear('out', 'sfx-out-clear');
 try {
 if (window.idbGet) {
 ['sfx-ring', 'sfx-in', 'sfx-out'].forEach(key => {
-window.idbGet(uid + ':' + key).then(v => {
+window.idbGet(window.activePrefix() + ':' + key).then(v => {
 if (v && typeof v === 'string' && v.length > 2 && !store.get(key)) {
 store.set(key, v);
 }
@@ -19311,10 +20536,10 @@ if (sp) sp.hidden = false;
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
+const uid = window.activePrefix();
 const store = {
-get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
+get(k){ try { return localStorage.getItem(window.activePrefix() + ':' + k); } catch(e){ return null; } },
+set(k, v){ try { localStorage.setItem(window.activePrefix() + ':' + k, v); } catch(e){} }
 };
 const FS_KEY = 'fullscreen-enabled';
 const FB_KEY = 'fullscreen-fallback';
@@ -19671,7 +20896,7 @@ if (el0) { obs.observe(el0, { attributes: true, attributeFilter: ['checked'] });
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = 'xy-home-v2';
+const uid = window.activePrefix();
 const LS_HEADROOM = 512 * 1024;
 function toast(msg) {
 let t = document.getElementById('cc-toast');
@@ -19741,7 +20966,7 @@ else data.ls[k] = v;
 try {
 for (let i = 0; i < localStorage.length; i++) {
 const k = localStorage.key(i);
-if (!k || k.indexOf(uid + ':') !== 0) continue;
+if (!k || k.indexOf('xy-home-v2:') !== 0) continue;
 add(k, localStorage.getItem(k));
 }
 } catch (e) {}
@@ -19749,7 +20974,7 @@ if (window.idbGetAllKeys) {
 try {
 const keys = await window.idbGetAllKeys();
 for (const k of keys || []) {
-if (k.indexOf(uid + ':') !== 0) continue;
+if (k.indexOf('xy-home-v2:') !== 0) continue;
 if (k in data.ls || k in data.idb) continue; // 已在上面收录
 const v = await window.idbGet(k);
 if (v !== undefined && v !== null) {
@@ -19788,13 +21013,22 @@ Object.keys(data.ls || {}).forEach(k => { lsB += bytesOf(data.ls[k]); });
 Object.keys(data.idb || {}).forEach(k => { idbB += bytesOf(data.idb[k]); });
 let chatN = '无';
 try {
-const chatRaw = (data.idb && data.idb[uid + ':chat-msgs']) || (data.ls && data.ls[uid + ':chat-msgs']);
-const arr = typeof chatRaw === 'string' ? JSON.parse(chatRaw) : chatRaw;
-if (Array.isArray(arr)) chatN = arr.length + ' 条';
+const all = Object.keys(data.idb || {}).concat(Object.keys(data.ls || {}));
+const chats = all.filter(k => /:chat-msgs$/.test(k));
+let n = 0;
+chats.forEach(k => {
+const raw = (data.idb && data.idb[k]) || (data.ls && data.ls[k]);
+const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+if (Array.isArray(arr)) n += arr.length;
+});
+if (n) chatN = n + ' 条';
 } catch (e) {}
-const avMe = !!(data.ls && data.ls[uid + ':avatar-user']) || !!(data.idb && data.idb[uid + ':avatar-user']);
-const avTa = !!(data.ls && data.ls[uid + ':avatar-partner']) || !!(data.idb && data.idb[uid + ':avatar-partner']);
-const fish = (data.ls && data.ls[uid + ':fish-total']) !== undefined ? data.ls[uid + ':fish-total'] : null;
+const allKeys = Object.keys(data.ls || {}).concat(Object.keys(data.idb || {}));
+const avMe = !!allKeys.find(k => /:avatar-user$/.test(k));
+const avTa = !!allKeys.find(k => /:avatar-partner$/.test(k));
+let fish = null;
+const fishK = allKeys.find(k => /:fish-total$/.test(k));
+if (fishK) fish = (data.ls && data.ls[fishK]) !== undefined ? data.ls[fishK] : (data.idb && data.idb[fishK]);
 const lines = [];
 lines.push('备份内容（请确认是对的文件）：');
 lines.push('· 导出时间：' + (data.exportTime ? String(data.exportTime).slice(0, 16).replace('T', ' ') : '未知'));
@@ -19826,8 +21060,8 @@ toast('不是 mochi 导出的数据文件');
 return;
 }
 const hasMochiKeys =
-Object.keys(data.ls).some(k => k.indexOf(uid + ':') === 0) ||
-!!(data.idb && typeof data.idb === 'object' && Object.keys(data.idb).some(k => k.indexOf(uid + ':') === 0));
+Object.keys(data.ls).some(k => k.indexOf('xy-home-v2:') === 0) ||
+!!(data.idb && typeof data.idb === 'object' && Object.keys(data.idb).some(k => k.indexOf('xy-home-v2:') === 0));
 if (!hasMochiKeys) {
 toast('备份文件里没有 mochi 数据（键前缀不匹配）');
 return;
@@ -19845,12 +21079,12 @@ try {
 backup = {};
 for (let i = 0; i < localStorage.length; i++) {
 const k = localStorage.key(i);
-if (k && k.indexOf(uid + ':') === 0) backup[k] = localStorage.getItem(k);
+if (k && k.indexOf('xy-home-v2:') === 0) backup[k] = localStorage.getItem(k);
 }
 } catch (e) { backup = null; }
 const idbRestored = new Promise((resolve) => {
 if (!data.idb || typeof data.idb !== 'object') { resolve(true); return; }
-const idbKeys = Object.keys(data.idb).filter(k => k.indexOf(uid + ':') === 0);
+const idbKeys = Object.keys(data.idb).filter(k => k.indexOf('xy-home-v2:') === 0);
 if (!idbKeys.length) { resolve(true); return; }
 if (window.idbReplaceAll) {
 impShow('正在导入…', '正在原子写入大文件（字卡/聊天/音乐等）…', 8);
@@ -19884,7 +21118,7 @@ p.then(() => resolve(failed === 0)).catch(() => resolve(false));
 function clearLs() {
 try {
 Object.keys(localStorage)
-.filter(k => k.indexOf(uid + ':') === 0)
+.filter(k => k.indexOf('xy-home-v2:') === 0)
 .forEach(k => localStorage.removeItem(k));
 } catch (e) {}
 }
@@ -19903,20 +21137,20 @@ toast('导入失败：大文件写入未成功，原有数据已保留，请重�
 return;
 }
 impShow('正在导入…', '正在写入设置与聊天记录', 62);
-const lsKeys = Object.keys(data.ls).filter(k => k.indexOf(uid + ':') === 0);
+const lsKeys = Object.keys(data.ls).filter(k => k.indexOf('xy-home-v2:') === 0);
 let entries = lsKeys.map(k => ({ k: k, len: byteLen(data.ls[k]) + byteLen(k) }));
 let chatMoved = false;
-if (idbOk && data.idb && typeof data.idb === 'object' && (uid + ':chat-msgs') in data.idb) {
+if (idbOk && data.idb && typeof data.idb === 'object') {
 const before = entries.length;
-entries = entries.filter(e => e.k !== uid + ':chat-msgs');
+entries = entries.filter(e => !/:chat-msgs$/.test(e.k));
 chatMoved = entries.length < before;
 }
 const total = entries.reduce((s, e) => s + e.len, 0);
 let quota = 5 * 1024 * 1024;
 try {
 const probe = 'x'.repeat(1024 * 1024);
-localStorage.setItem(uid + ':__quota_probe__', probe);
-localStorage.removeItem(uid + ':__quota_probe__');
+localStorage.setItem(window.activePrefix() + ':__quota_probe__', probe);
+localStorage.removeItem(window.activePrefix() + ':__quota_probe__');
 quota = 10 * 1024 * 1024;
 } catch (e) {}
 let budget = total;
@@ -19924,7 +21158,7 @@ let dropped = [];
 const sorted = entries.slice().sort((a, b) => b.len - a.len);
 for (const e of sorted) {
 if (budget + LS_HEADROOM <= quota) break;
-if (e.k === uid + ':chat-msgs') continue;
+if (/:chat-msgs$/.test(e.k)) continue;
 budget -= e.len;
 dropped.push(e);
 }
@@ -19966,13 +21200,26 @@ parts.push('大文件 ' + idbFalls.length + ' 项（约 ' + mb + ' MB）已存�
 if (!parts.length) parts.push('导入成功');
 let ok = [];
 try {
-const chatV = window.idbGet ? await window.idbGet(uid + ':chat-msgs') : null;
+let chatN = 0;
+if (window.idbGetAllKeys) {
 try {
-const a = typeof chatV === 'string' ? JSON.parse(chatV) : chatV;
-if (Array.isArray(a)) ok.push('聊天' + a.length + '条');
+const keys = (await window.idbGetAllKeys()) || [];
+for (const k of keys) {
+if (/:chat-msgs$/.test(k)) {
+const cv = await window.idbGet(k);
+const a = typeof cv === 'string' ? JSON.parse(cv) : cv;
+if (Array.isArray(a)) chatN += a.length;
+}
+}
 } catch (e) {}
-if (localStorage.getItem(uid + ':avatar-user')) ok.push('我的头像✓');
-if (localStorage.getItem(uid + ':fish-total') !== null) ok.push('摸鱼累计 ' + localStorage.getItem(uid + ':fish-total'));
+}
+if (chatN) ok.push('聊天' + chatN + '条');
+const lsKeys = [];
+for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k) lsKeys.push(k); }
+if (lsKeys.some(k => /:avatar-user$/.test(k))) ok.push('我的头像✓');
+const fishK = lsKeys.find(k => /:fish-total$/.test(k));
+if (fishK !== undefined) ok.push('摸鱼累计 ' + localStorage.getItem(fishK));
+if (localStorage.getItem('xy-home-v2:contacts')) ok.push('联系人✓');
 } catch (e) {}
 const msg = parts.join('；') + (ok.length ? '；已核对：' + ok.join('、') : '') + '，正在刷新…';
 if (!ok.length) {

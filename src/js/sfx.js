@@ -5,8 +5,8 @@
 //  - 我发送消息音效（sfx-out）
 // 未设置的音效不播放；设置后对应事件自动播放
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
   function toast(msg) {
     let t = document.getElementById('cc-toast');
     if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
@@ -152,7 +152,7 @@
   try {
     if (window.idbGet) {
       ['sfx-ring', 'sfx-in', 'sfx-out'].forEach(key => {
-        window.idbGet(uid + ':' + key).then(v => {
+        window.idbGet(window.activePrefix() + ':' + key).then(v => {
           if (v && typeof v === 'string' && v.length > 2 && !store.get(key)) {
             store.set(key, v);
           }

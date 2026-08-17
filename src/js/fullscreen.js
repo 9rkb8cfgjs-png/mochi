@@ -14,10 +14,10 @@
 //      退出后主动持续锁回竖屏（浏览器退出全屏后不一定自动回竖屏），
 //      锁不回来就提示用户开启自动旋转 / 竖着拿手机 / 用浏览器自带全屏。
 (function () {
-  const uid = 'xy-home-v2';
+  const uid = window.activePrefix();
   const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
+    get(k){ try { return localStorage.getItem(window.activePrefix() + ':' + k); } catch(e){ return null; } },
+    set(k, v){ try { localStorage.setItem(window.activePrefix() + ':' + k, v); } catch(e){} }
   };
   const FS_KEY = 'fullscreen-enabled';
   // v3.6.x：CSS 兜底全屏持久化 key——上次走兜底（浏览器转横屏）则恢复时不再请求原生全屏

@@ -2,8 +2,8 @@
 // 仿星言简约版【星音陪伴】：本地音频上传、网易云链接添加、批量导入、
 // 歌单、听歌记录、TA 按概率请求一起听歌、歌曲结束 TA 可能接动作、悬浮小框可拖动
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
   function toast(msg) {
     let t = document.getElementById('cc-toast');
     if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
@@ -109,7 +109,7 @@
         m.source = 'url';
         saveLibrary();
         // 清理可能残留的本地合成旋律数据
-        try { if (window.idbDelete) window.idbDelete(uid + ':music-file:' + m.id); } catch (e) {}
+        try { if (window.idbDelete) window.idbDelete(window.activePrefix() + ':music-file:' + m.id); } catch (e) {}
       }
     });
     // v3.6.x：种子歌自愈——若 2 首内置示例歌在本地丢失（清除数据/备份恢复后
@@ -362,7 +362,7 @@
           tmp.src = payload;
         }
         if (window.idbSet) {
-          window.idbSet(uid + ':music-file:' + id, payload).then(() => { saveLibrary(); renderPage(); }).catch(() => {});
+          window.idbSet(window.activePrefix() + ':music-file:' + id, payload).then(() => { saveLibrary(); renderPage(); }).catch(() => {});
         } else {
           saveLibrary();
         }
@@ -644,7 +644,7 @@
             if (window.idbGetAllKeys) {
               window.idbGetAllKeys().then(keys => {
                 // v3.5.123：全等匹配（前缀匹配在 id 互为前缀时会误删）
-                keys.filter(k => { for (const id of batchSel) if (k === uid + ':music-file:' + id) return true; return false; })
+                keys.filter(k => { for (const id of batchSel) if (k === window.activePrefix() + ':music-file:' + id) return true; return false; })
                   .forEach(k => { if (window.idbDelete) window.idbDelete(k); });
               });
             }
@@ -779,7 +779,7 @@
   function playDemoFor(m, seedIdx) {
     genDemoAudio(seedIdx).then(d => {
       if (!d) { toast('播放失败：网络链接可能已失效'); demoFallbackBusy = false; return; }
-      try { window.idbSet(uid + ':music-file:' + m.id, d); } catch (e) {}
+      try { window.idbSet(window.activePrefix() + ':music-file:' + m.id, d); } catch (e) {}
       demoFallbackBusy = false;
       if (currentId !== m.id) return;
       teardownAudio();
@@ -844,7 +844,7 @@
     if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
     if (m.source === 'local' || (!m.url && m.source !== 'url')) {
       // 本地文件：从 IndexedDB 读取 Blob（新版）或 dataURL 字符串（旧版数据）
-      const key = uid + ':music-file:' + m.id;
+      const key = window.activePrefix() + ':music-file:' + m.id;
       const loadLocal = (v) => {
         // v3.5.129：守卫——异步加载期间用户已切到别的歌（currentId 变了）→ 丢弃本次结果，
         // 否则旧歌的 audio 会继续创建播放，出现两首歌同时响
@@ -1227,7 +1227,7 @@
           if (window.idbGetAllKeys) {
             window.idbGetAllKeys().then(keys => {
               // v3.5.123：全等匹配（前缀匹配在 id 互为前缀时会误删）
-              keys.filter(k => k === uid + ':music-file:' + id).forEach(k => {
+              keys.filter(k => k === window.activePrefix() + ':music-file:' + id).forEach(k => {
                 if (window.idbDelete) window.idbDelete(k);
               });
             });
@@ -1337,12 +1337,12 @@
   // ================= 星音设置 =================
   // v3.6.x：音乐本地缓存统计与清理——音频文件本体存 IndexedDB（music-file:<id>），
   // 这里按 IDB 键名统计占用、提供一键清理（删本地音频 + 移出歌单，外链/种子歌保留）
-  const MUSIC_FILE_PREFIX = uid + ':music-file:';
+  function MUSIC_FILE_PREFIX() { return window.activePrefix() + ':music-file:'; }
   // 统计本地音频缓存字节数（分批读，读完即弃，内存峰值=单批；失败返回 -1）
   function calcStorageBytes() {
     if (!window.idbGetAllKeys) return Promise.resolve(-1);
     return window.idbGetAllKeys().then(keys => {
-      const fileKeys = keys.filter(k => k.indexOf(MUSIC_FILE_PREFIX) === 0);
+      const fileKeys = keys.filter(k => k.indexOf(MUSIC_FILE_PREFIX()) === 0);
       if (!fileKeys.length) return 0;
       const BATCH = 20;
       function readBatch(i) {
@@ -1378,12 +1378,12 @@
   function clearLocalAudioCache() {
     if (!window.idbGetAllKeys || !window.idbDelete) { toast('当前环境不支持清理'); return; }
     window.idbGetAllKeys().then(keys => {
-      const fileKeys = keys.filter(k => k.indexOf(MUSIC_FILE_PREFIX) === 0);
+      const fileKeys = keys.filter(k => k.indexOf(MUSIC_FILE_PREFIX()) === 0);
       if (!fileKeys.length) { toast('没有本地音频缓存'); refreshStorageUse(); return; }
       const delIds = [];       // 要移除的歌曲 id（非种子，音频删了歌也播不了）
       const cacheOnly = [];    // 种子歌的本地旋律缓存键（可再生成，只删缓存不动歌）
       fileKeys.forEach(k => {
-        const id = k.slice(MUSIC_FILE_PREFIX.length);
+        const id = k.slice(MUSIC_FILE_PREFIX().length);
         const m = library.find(x => x.id === id);
         if (m && seedIdxOf(m) >= 0) cacheOnly.push(k);
         else delIds.push(id);
@@ -1620,4 +1620,16 @@
   setupFloatDrag();
   bindWidget();
   renderPage();
+
+  // v3.6.x：多桌面——切换联系人后重新加载歌单/播放列表/历史（store 动态绑定，
+  // loadAll 会读新桌面的 music-* 键），并停止正在播放的旧桌面歌曲（防止串桌面继续放）
+  document.addEventListener('contact-switched', function () {
+    try {
+      if (audio) { try { audio.pause(); } catch (e) {} audio = null; }
+      currentId = null;
+      loadAll();
+      try { renderPage(); } catch (e) {}
+      try { renderFloat(); } catch (e) {}
+    } catch (e) {}
+  });
 })();

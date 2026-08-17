@@ -6,8 +6,8 @@
 // 意图卡：40% 显示率 → 心意→意图映射加权 → 稀有度加权抽卡
 // 聊天回应：连接词 8 类，按回复特征选类
 (function () {
-  const uid = 'xy-home-v2';
-  const ls = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const ls = window.activeStore();
   const DATA = (window.MOOD_FOLLOWUP_DATA) || {};
   const W = DATA.weights || {};
 

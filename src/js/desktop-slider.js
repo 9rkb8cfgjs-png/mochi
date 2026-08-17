@@ -1,21 +1,25 @@
 // ===== 功能：桌面左右滑动翻页（scroll-snap 原生滚动） =====
 // 支持触摸/鼠标横向拖动（原生滚动），指示器圆点点击切换
+// v3.6.x：支持动态页数——新增/删除桌面页后由 personalize.js 调用 deskRebuild()
+// 重建圆点与索引，无需刷新页面
 (function () {
   const pages = document.getElementById('desktop-pages');
   if (!pages) return;
-  const slides = pages.querySelectorAll('.page-slide');
-  const dots = Array.prototype.slice.call(document.querySelectorAll('#desktop-dots .dot'));
-  if (slides.length < 2) return;
+
+  // 动态查询（新增/删除页后结构变化，不能缓存 NodeList）
+  function getSlides() { return Array.prototype.slice.call(pages.querySelectorAll('.page-slide')); }
+  function getDots() { return Array.prototype.slice.call(document.querySelectorAll('#desktop-dots .dot')); }
 
   let idx = 0;
 
   function go(i) {
+    const slides = getSlides();
     idx = Math.max(0, Math.min(slides.length - 1, i));
     // v3.5.132：页面隐藏（display:none）时 clientWidth=0，直接赋值会产生 Infinity 下标
     if (!pages.clientWidth) return;
     // 直接赋值 scrollLeft 立即切换（scroll-snap 会自动吸附），避免 smooth 滚动被 snap 打断
     pages.scrollLeft = idx * pages.clientWidth;
-    dots.forEach((d, k) => d.classList.toggle('active', k === idx));
+    getDots().forEach((d, k) => d.classList.toggle('active', k === idx));
   }
 
   function sync() {
@@ -25,7 +29,7 @@
     const cur = Math.round(pos);
     if (cur !== idx) {
       idx = cur;
-      dots.forEach((d, k) => d.classList.toggle('active', k === idx));
+      getDots().forEach((d, k) => d.classList.toggle('active', k === idx));
     }
   }
 
@@ -36,7 +40,12 @@
     scrollTimer = setTimeout(sync, 120);
   }, { passive: true });
 
-  dots.forEach((d, i) => d.addEventListener('click', () => go(i)));
+  // 圆点点击切换：事件委托（v3.6.x：圆点是动态重建的，不能直接绑每颗）
+  document.getElementById('desktop-dots').addEventListener('click', (e) => {
+    const dot = e.target.closest('.dot');
+    if (!dot) return;
+    go(getDots().indexOf(dot));
+  });
 
   // v3.5.132：旋转后按新宽度重设 scrollLeft（否则停在 1.x 页位置，圆点与内容不符）
   window.addEventListener('resize', () => {
@@ -55,6 +64,26 @@
     });
     mo.observe(phonePage, { attributes: true, attributeFilter: ['hidden'] });
   }
+
+  // v3.6.x：外部（新增/删除桌面页后）调用，重建圆点数量 + 校正当前索引
+  window.deskRebuild = function () {
+    const slides = getSlides();
+    idx = Math.max(0, Math.min(slides.length - 1, idx));
+    // 重建圆点
+    const dotsBox = document.getElementById('desktop-dots');
+    if (dotsBox) {
+      dotsBox.innerHTML = '';
+      for (let i = 0; i < slides.length; i++) {
+        const d = document.createElement('span');
+        d.className = 'dot' + (i === idx ? ' active' : '');
+        dotsBox.appendChild(d);
+      }
+    }
+    if (pages.clientWidth) {
+      pages.scrollLeft = idx * pages.clientWidth;
+      sync();
+    }
+  };
 
   sync();
 })();

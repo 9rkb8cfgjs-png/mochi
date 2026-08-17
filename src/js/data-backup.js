@@ -8,7 +8,7 @@
 //  - IndexedDB 改为逐条顺序写入（不再用 Promise.all 一拥而上，手机内存压力大时容易失败）
 //  - 兼容旧 iOS 的 <input type=file> 读取（File.text() 老版本不支持时改用 FileReader）
 (function () {
-  const uid = 'xy-home-v2';
+  const uid = window.activePrefix();
   // 容量余量：给正在运行的其他功能留一点（手机 localStorage 约 5MB，桌面 10MB）
   const LS_HEADROOM = 512 * 1024;
 
@@ -92,7 +92,7 @@
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (!k || k.indexOf(uid + ':') !== 0) continue;
+        if (!k || k.indexOf('xy-home-v2:') !== 0) continue;
         add(k, localStorage.getItem(k));
       }
     } catch (e) {}
@@ -101,7 +101,7 @@
       try {
         const keys = await window.idbGetAllKeys();
         for (const k of keys || []) {
-          if (k.indexOf(uid + ':') !== 0) continue;
+          if (k.indexOf('xy-home-v2:') !== 0) continue;
           if (k in data.ls || k in data.idb) continue; // 已在上面收录
           const v = await window.idbGet(k);
           if (v !== undefined && v !== null) {
@@ -145,13 +145,24 @@
     Object.keys(data.idb || {}).forEach(k => { idbB += bytesOf(data.idb[k]); });
     let chatN = '无';
     try {
-      const chatRaw = (data.idb && data.idb[uid + ':chat-msgs']) || (data.ls && data.ls[uid + ':chat-msgs']);
-      const arr = typeof chatRaw === 'string' ? JSON.parse(chatRaw) : chatRaw;
-      if (Array.isArray(arr)) chatN = arr.length + ' 条';
+      // v3.6.x：多桌面——备份里可能有多个联系人的 chat-msgs，全部统计
+      const all = Object.keys(data.idb || {}).concat(Object.keys(data.ls || {}));
+      const chats = all.filter(k => /:chat-msgs$/.test(k));
+      let n = 0;
+      chats.forEach(k => {
+        const raw = (data.idb && data.idb[k]) || (data.ls && data.ls[k]);
+        const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (Array.isArray(arr)) n += arr.length;
+      });
+      if (n) chatN = n + ' 条';
     } catch (e) {}
-    const avMe = !!(data.ls && data.ls[uid + ':avatar-user']) || !!(data.idb && data.idb[uid + ':avatar-user']);
-    const avTa = !!(data.ls && data.ls[uid + ':avatar-partner']) || !!(data.idb && data.idb[uid + ':avatar-partner']);
-    const fish = (data.ls && data.ls[uid + ':fish-total']) !== undefined ? data.ls[uid + ':fish-total'] : null;
+    // v3.6.x：多桌面——头像/摸鱼值任一桌面存在即显示"有"
+    const allKeys = Object.keys(data.ls || {}).concat(Object.keys(data.idb || {}));
+    const avMe = !!allKeys.find(k => /:avatar-user$/.test(k));
+    const avTa = !!allKeys.find(k => /:avatar-partner$/.test(k));
+    let fish = null;
+    const fishK = allKeys.find(k => /:fish-total$/.test(k));
+    if (fishK) fish = (data.ls && data.ls[fishK]) !== undefined ? data.ls[fishK] : (data.idb && data.idb[fishK]);
     const lines = [];
     lines.push('备份内容（请确认是对的文件）：');
     lines.push('· 导出时间：' + (data.exportTime ? String(data.exportTime).slice(0, 16).replace('T', ' ') : '未知'));
@@ -189,8 +200,8 @@
       return;
     }
     const hasMochiKeys =
-      Object.keys(data.ls).some(k => k.indexOf(uid + ':') === 0) ||
-      !!(data.idb && typeof data.idb === 'object' && Object.keys(data.idb).some(k => k.indexOf(uid + ':') === 0));
+      Object.keys(data.ls).some(k => k.indexOf('xy-home-v2:') === 0) ||
+      !!(data.idb && typeof data.idb === 'object' && Object.keys(data.idb).some(k => k.indexOf('xy-home-v2:') === 0));
     if (!hasMochiKeys) {
       toast('备份文件里没有 mochi 数据（键前缀不匹配）');
       return;
@@ -213,7 +224,7 @@
       backup = {};
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k && k.indexOf(uid + ':') === 0) backup[k] = localStorage.getItem(k);
+        if (k && k.indexOf('xy-home-v2:') === 0) backup[k] = localStorage.getItem(k);
       }
     } catch (e) { backup = null; }
 
@@ -224,7 +235,7 @@
     // 导入真正变成「要么全部替换、要么原样不动」。
     const idbRestored = new Promise((resolve) => {
       if (!data.idb || typeof data.idb !== 'object') { resolve(true); return; }
-      const idbKeys = Object.keys(data.idb).filter(k => k.indexOf(uid + ':') === 0);
+      const idbKeys = Object.keys(data.idb).filter(k => k.indexOf('xy-home-v2:') === 0);
       if (!idbKeys.length) { resolve(true); return; }
       if (window.idbReplaceAll) {
         impShow('正在导入…', '正在原子写入大文件（字卡/聊天/音乐等）…', 8);
@@ -261,7 +272,7 @@
     function clearLs() {
       try {
         Object.keys(localStorage)
-          .filter(k => k.indexOf(uid + ':') === 0)
+          .filter(k => k.indexOf('xy-home-v2:') === 0)
           .forEach(k => localStorage.removeItem(k));
       } catch (e) {}
     }
@@ -288,12 +299,13 @@
       // 聊天记录双写（localStorage + IndexedDB）：导入时 IndexedDB 已恢复完整权威版
       // （含图片 dataURL），localStorage 无需再写超大聊天记录——启动时 loadMsgs 会
       // 自动从 IndexedDB 恢复。这样导入不再因聊天记录占几十 MB 而整体取消。
-      const lsKeys = Object.keys(data.ls).filter(k => k.indexOf(uid + ':') === 0);
+      const lsKeys = Object.keys(data.ls).filter(k => k.indexOf('xy-home-v2:') === 0);
       let entries = lsKeys.map(k => ({ k: k, len: byteLen(data.ls[k]) + byteLen(k) }));
       let chatMoved = false;
-      if (idbOk && data.idb && typeof data.idb === 'object' && (uid + ':chat-msgs') in data.idb) {
+      if (idbOk && data.idb && typeof data.idb === 'object') {
+        // v3.6.x：多桌面——所有联系人的 chat-msgs 都已在 IDB 权威恢复，LS 不再写
         const before = entries.length;
-        entries = entries.filter(e => e.k !== uid + ':chat-msgs');
+        entries = entries.filter(e => !/:chat-msgs$/.test(e.k));
         chatMoved = entries.length < before;
       }
       const total = entries.reduce((s, e) => s + e.len, 0);
@@ -301,8 +313,8 @@
       let quota = 5 * 1024 * 1024;
       try {
         const probe = 'x'.repeat(1024 * 1024);
-        localStorage.setItem(uid + ':__quota_probe__', probe);
-        localStorage.removeItem(uid + ':__quota_probe__');
+        localStorage.setItem(window.activePrefix() + ':__quota_probe__', probe);
+        localStorage.removeItem(window.activePrefix() + ':__quota_probe__');
         quota = 10 * 1024 * 1024;
       } catch (e) {}
       let budget = total;
@@ -311,7 +323,7 @@
       for (const e of sorted) {
         if (budget + LS_HEADROOM <= quota) break;
         // 聊天记录绝不丢（v3.5.90：IDB 无 chat-msgs 时 localStorage 兜底）
-        if (e.k === uid + ':chat-msgs') continue;
+        if (/:chat-msgs$/.test(e.k)) continue;
         budget -= e.len;
         dropped.push(e);
       }
@@ -362,13 +374,27 @@
         // v3.5.101：导入后核对关键数据是否真的恢复（避免"提示成功但数据缺失"）
         let ok = [];
         try {
-          const chatV = window.idbGet ? await window.idbGet(uid + ':chat-msgs') : null;
-          try {
-            const a = typeof chatV === 'string' ? JSON.parse(chatV) : chatV;
-            if (Array.isArray(a)) ok.push('聊天' + a.length + '条');
-          } catch (e) {}
-          if (localStorage.getItem(uid + ':avatar-user')) ok.push('我的头像✓');
-          if (localStorage.getItem(uid + ':fish-total') !== null) ok.push('摸鱼累计 ' + localStorage.getItem(uid + ':fish-total'));
+          // v3.6.x：多桌面——核对任一桌面的聊天/头像/摸鱼 + 联系人注册表
+          let chatN = 0;
+          if (window.idbGetAllKeys) {
+            try {
+              const keys = (await window.idbGetAllKeys()) || [];
+              for (const k of keys) {
+                if (/:chat-msgs$/.test(k)) {
+                  const cv = await window.idbGet(k);
+                  const a = typeof cv === 'string' ? JSON.parse(cv) : cv;
+                  if (Array.isArray(a)) chatN += a.length;
+                }
+              }
+            } catch (e) {}
+          }
+          if (chatN) ok.push('聊天' + chatN + '条');
+          const lsKeys = [];
+          for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k) lsKeys.push(k); }
+          if (lsKeys.some(k => /:avatar-user$/.test(k))) ok.push('我的头像✓');
+          const fishK = lsKeys.find(k => /:fish-total$/.test(k));
+          if (fishK !== undefined) ok.push('摸鱼累计 ' + localStorage.getItem(fishK));
+          if (localStorage.getItem('xy-home-v2:contacts')) ok.push('联系人✓');
         } catch (e) {}
         const msg = parts.join('；') + (ok.length ? '；已核对：' + ok.join('、') : '') + '，正在刷新…';
         // v3.5.114：核对失败时明确红字警告（数据确实没恢复时不要静默跳过）

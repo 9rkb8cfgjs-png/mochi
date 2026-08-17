@@ -3,14 +3,13 @@
 .set-group { border-radius:20px; overflow:hidden; margin-bottom:12px; }
 /* 页面是 flex 纵向滚动容器：设置块禁止被 flex 压缩，内容超高时应滚动而非裁切/重叠 */
 .set-group, .gs-title, .set-title { flex-shrink:0; }
-.set-row {
-  display:flex; align-items:center; gap:12px; padding:15px 16px;
-  border-bottom:1px solid rgba(0,0,0,.05); cursor:pointer;
-}
+.set-row { display:flex; align-items:center; gap:12px; padding:15px 16px; border-bottom:1px solid rgba(0,0,0,.05); cursor:pointer; }
 .set-row:last-child { border-bottom:none; }
 .set-row .ico { width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .set-row .ico svg { width:20px; height:20px; stroke:var(--ink); }
-.set-row .txt { flex:1; font-size:14px; }
+.set-row .txt { flex:1; font-size:14px; line-height:1.45; }
+/* v3.6.x：设置行主标题下的灰色小字说明 */
+.set-row .txt .sub { display:block; font-size:11.5px; color:var(--muted); font-weight:400; margin-top:2px; letter-spacing:.2px; }
 .set-row .val { font-size:12px; color:var(--muted); }
 .set-row .date-val {
   font-size:12px; color:var(--muted); background:transparent;

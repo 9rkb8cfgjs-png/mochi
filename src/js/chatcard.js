@@ -8,8 +8,8 @@
   const groupsBar = document.getElementById('cc-groups-bar');
   if (!list || !tabsWrap) return;
 
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
 
   // 内置分组数据（key: 类型 -> [分组名, 字卡数组]）
   // v3.6.x：不再向用户提供系统内置预设字卡——这里仅作为「清理旧数据」的依据：
@@ -90,7 +90,7 @@
   // （不采用"不一致即覆盖"：若 idbSet 偶尔失败而 localStorage 已写入最新，覆盖会反向丢数据）
   (function () {
     if (window.idbGet) {
-      window.idbGet(uid + ':cc-groups').then(v => {
+      window.idbGet(window.activePrefix() + ':cc-groups').then(v => {
         if (v === undefined || v === null) return;
         try {
           const data = typeof v === 'string' ? JSON.parse(v) : v;
@@ -1023,6 +1023,40 @@
   window.getMediaGroups = function (type) {
     const g = groups;
     return (g[type] || []).map(([name, arr]) => [name, arr.filter(c => typeof c === 'string' && c.indexOf('data:image') === 0)]);
+  };
+
+  // ---- 多桌面：按指定联系人(cid)读取字卡（供朋友圈 TA 取各自桌面字卡）----
+  function buildGroupsFrom(raw) {
+    try {
+      const g = JSON.parse(raw || 'null');
+      if (g && g.text) return g;
+    } catch (e) {}
+    return { text: [], kaomoji: [], emoji: [], sticker: [], image: [], poke: [], voice: [] };
+  }
+  // 切换联系人后重载字卡库（好友圈 TA 取各自桌面字卡、当前桌面字卡库也要刷新）
+  document.addEventListener('contact-switched', function () {
+    groups = loadGroups();
+    try { renderGroupsBar(); render(); } catch (e) {}
+  });
+  window.getCustomCardsFor = function (cid) {
+    const raw = (window.storeFor && window.storeFor(cid) || window.xyStore('xy-home-v2:' + cid)).get('cc-groups');
+    const g = buildGroupsFrom(raw);
+    const out = [];
+    Object.keys(g).forEach(t => (g[t] || []).forEach(([name, arr]) => (arr || []).forEach(c => out.push(c))));
+    return out;
+  };
+  window.getMediaCardsFor = function (cid, type) {
+    const raw = (window.storeFor && window.storeFor(cid) || window.xyStore('xy-home-v2:' + cid)).get('cc-groups');
+    const g = buildGroupsFrom(raw);
+    const out = [];
+    (g[type] || []).forEach(([name, arr]) => (arr || []).forEach(c => {
+      if (type === 'voice') {
+        if (typeof c === 'string' && c.indexOf('|||') > 0) out.push(c);
+      } else if (typeof c === 'string' && c.indexOf('data:image') === 0) {
+        out.push(c);
+      }
+    }));
+    return out;
   };
 
   // 入口：字卡库列表页点「自定义聊天字卡」进入本页

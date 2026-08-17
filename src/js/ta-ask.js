@@ -5,8 +5,8 @@
 // 回答后显示"我的回答" + "收到你的回答。"，并记入历史（最多 50 条）；
 // 管理页可"让TA现在问一次"（无视冷却/概率），并可清空问答历史
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
   const KEY = 'ta-ask';
 
   // 默认题库（4 分类，与星言一致 + 两个世界）
@@ -1860,7 +1860,7 @@ window.openTCPanel = openTCPanel;
   // 反向场景 idbSet 偶尔失败而本地已最新时，IDB 数量更少 → 不覆盖，不会丢数据）。
   function attachIdbRestore(key, loadFn, mergeFn) {
     if (!window.idbGet) return;
-    window.idbGet(uid + ':' + key).then(function (v) {
+    window.idbGet(window.activePrefix() + ':' + key).then(function (v) {
       if (v === undefined || v === null) return;
       try {
         const idbData = typeof v === 'string' ? JSON.parse(v) : v;

@@ -4,5 +4,8 @@
 # ZCode 工具目录
 .zcode/
 
+# AI 助手工作目录
+.workbuddy/
+
 # 本地编辑器/调试工具配置
 .arts/

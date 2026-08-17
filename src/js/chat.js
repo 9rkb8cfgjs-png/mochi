@@ -6,8 +6,8 @@
   const body = document.getElementById('chat-body');
   if (!body) return;
 
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
 
   // v3.5.116：收起输入法（手机端打开底部面板时先 blur，键盘不再挤压/遮挡面板）
   // v3.5.127：contenteditable 输入框（聊天输入栏 div 版）同样需 blur 收起输入法
@@ -38,6 +38,20 @@
   //（<200KB 时），几千条带图记录下同步 setItem 会卡主线程；IDB 写入是异步的。
   // 读取路径（loadMsgs）同步改为 IDB 权威，localStorage 不再承担聊天记录快照。
   let saveTimer = null;
+  // v3.6.x：多桌面——切换联系人后清空聊天内存状态。
+  // loadMsgs 会把「内存 msgs + IDB 权威」合并，若不重置，旧桌面的消息会
+  // 被并入新桌面的聊天记录（串桌面）；重置后下次 enterChat → loadMsgs 从
+  // 新桌面的 IDB 命名空间重新加载。chatDbReady 归 false 使保存暂存内存，
+  // 避免新桌面的历史被误覆盖。
+  document.addEventListener('contact-switched', function () {
+    try {
+      if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+      msgs = [];
+      pendingLocal = null;
+      chatDbReady = false;
+      sessionChangedIdx.clear();
+    } catch (e) {}
+  });
   function saveMsgs() {
     const data = JSON.stringify(msgs);
     // 权威未就绪：只暂存内存。既不能写 localStorage（会让 loadMsgs 第一步读到
@@ -49,7 +63,7 @@
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       saveTimer = null;
-      try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', data); } catch (e) {}
+      try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
     }, 400);
   }
   // v3.5.128：页面离开（刷新/关闭/切后台被回收）前强制落盘防抖窗口内的消息
@@ -60,7 +74,7 @@
     if (saveTimer) {
       clearTimeout(saveTimer);
       saveTimer = null;
-      try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+      try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
     }
   }
   // v3.5.134：暴露给导出/清除等外部流程（导出前强制落盘，防止备份缺最后几条消息）
@@ -110,7 +124,7 @@
     // 且合并规则是「IDB 完整历史 + 本地更新的消息」，绝不覆盖 IDB 权威数据。
     try {
       if (window.idbGet) {
-        window.idbGet(uid + ':chat-msgs').then(v => {
+        window.idbGet(window.activePrefix() + ':chat-msgs').then(v => {
           if (v === undefined || v === null) {
             // IDB 无权威数据：若 localStorage 还有老版本数据，迁入 IDB 并清掉 LS 残留
             chatDbReady = true;
@@ -119,7 +133,7 @@
               try {
                 const lsArr = JSON.parse(lsRaw);
                 if (Array.isArray(lsArr) && lsArr.length) {
-                  if (window.idbSet) window.idbSet(uid + ':chat-msgs', lsRaw);
+                  if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', lsRaw);
                   try { store.remove('chat-msgs'); } catch (e) {}
                 }
               } catch (e) {}
@@ -181,7 +195,7 @@
             // v3.5.127：无变化（localNew 空且长度相同）时跳过重复写盘 + 全量重渲染
             // v3.6.x：IDB 合并产生新数据才写回（避免每次 loadMsgs 全量重写）
             if (changed) {
-              try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+              try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
               // 聊天页当前可见且贴近底部 → 重新渲染窗口，让恢复出的历史立即显示
               // v3.6.x：改用分页渲染（原全量 forEach 渲染几千条会卡顿）
               if (chatVisible() && chatNearBottom()) {
@@ -383,6 +397,12 @@
   // ---- 字卡池（按分类） ----
   function getPool() {
     const cards = (window.getCustomCards && window.getCustomCards()) || [];
+    // v3.6.x：拍一拍字卡只走拍一拍模式（performPoke → getPokeCards），不进普通回复池——
+    //   否则【拍一拍】分组里的字卡会被当普通聊天字卡发出去（不触发拍一拍模式）
+    const pokeSet = (function () {
+      const pk = (window.getPokeCards && window.getPokeCards()) || [];
+      return pk.length ? new Set(pk) : null;
+    })();
     const text = [], kaomoji = [], emoji = [], sticker = [], image = [], voice = [], poke = [];
     // 媒体字卡（图片 dataURL）
     const mediaSticker = (window.getMediaCards && window.getMediaCards('sticker')) || [];
@@ -392,6 +412,7 @@
     image.push.apply(image, mediaImage);
     voice.push.apply(voice, mediaVoice);
     cards.forEach(c => {
+      if (pokeSet && pokeSet.has(c)) return; // 拍一拍字卡不进普通回复池
       if (typeof c === 'string' && c.indexOf('data:') === 0) return; // dataURL 已按媒体分类
       // v3.6.x：语音字卡（文件名|||audio;base64）不以 data: 开头，需单独丢弃——
       //   否则整段音频 base64 会被当文字发进聊天
@@ -1029,7 +1050,7 @@
     renderStart = 0;
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
     try { store.remove('chat-msgs'); } catch (e) {}
-    try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+    try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
     if (body) body.innerHTML = '';
     clearChatUnread();
     if (chatVisible() && msgs.length) {
@@ -1320,7 +1341,7 @@
   // 这里立即把最新 msgs 写进 IndexedDB，让异步合并读到已作答状态。
   function saveMsgsNow() {
     const data = JSON.stringify(msgs);
-    try { if (window.idbSet) window.idbSet(uid + ':chat-msgs', data); } catch (e) {}
+    try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
   }
 
   // 回答 TA 的小问题（选择题）：更新记录 + 插入"我的选择"和 TA 回应
@@ -2836,7 +2857,7 @@ function partialRetractMsg(msgEl, side) {
   let myGroups = [];           // 我的表情包 [[分组名, [dataURL...]], ...]
   let mySel = new Set();       // 批量勾选：分组名\u0001索引
   let emojiInsertCb = null;    // v3.6.x：写信/回信「插入模式」回调（点击表情插入信纸）
-  const MYE_KEY = uid + ':my-emoji-groups';
+  function MYE_KEY() { return window.activePrefix() + ':my-emoji-groups'; }
 
   // 记住最后打开的表情包分类（localStorage 持久化，刷新后仍在）
   function saveEmojiGroupPref() {
@@ -2866,7 +2887,7 @@ function partialRetractMsg(msgEl, side) {
   // 启动恢复：IDB 内容更多优先（与字卡库一致，防配额丢数据）
   (function () {
     if (!window.idbGet) return;
-    window.idbGet(MYE_KEY).then(v => {
+    window.idbGet(MYE_KEY()).then(v => {
       if (!v) return;
       try {
         const data = typeof v === 'string' ? JSON.parse(v) : v;
@@ -3463,7 +3484,7 @@ function partialRetractMsg(msgEl, side) {
   // v3.5.94：收藏消息含图片，可能只存在 IndexedDB → 启动补读（收藏页打开时才渲染，届时读到）
   try {
     if (window.idbGet) {
-      window.idbGet(uid + ':fav-msgs').then(v => {
+      window.idbGet(window.activePrefix() + ':fav-msgs').then(v => {
         if (v && typeof v === 'string' && v.length > 2) store.set('fav-msgs', v);
       });
     }

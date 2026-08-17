@@ -1,8 +1,8 @@
 // ===== 功能：聊天设置 =====
 // 聊天壁纸、双方气泡颜色/文字颜色、字体大小、气泡框大小（localStorage 持久化）
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
   const root = document.documentElement;
   const body = document.getElementById('chat-body');
   if (!body) return;
@@ -56,6 +56,11 @@
     // 发送按钮文字颜色（默认白）
     const sendInk = store.get('cs-send-ink') || '#ffffff';
     root.style.setProperty('--send-ink', sendInk);
+    // 双方气泡颜色/文字颜色当前值回显（默认值显示「默认 #色值」，让用户知道默认颜色）
+    set('cs-out-bg-val', outBg === '#111111' ? '默认 #111111' : outBg);
+    set('cs-out-ink-val', outInk === '#ffffff' ? '默认 #ffffff' : outInk);
+    set('cs-in-bg-val', inBg === '#ffffff' ? '默认 #ffffff' : inBg);
+    set('cs-in-ink-val', inInk === '#111111' ? '默认 #111111' : inInk);
     // 聊天头像形状（circle 圆形 / square 方形）
     const avShape = store.get('cs-av-shape') || 'circle';
     root.style.setProperty('--msg-av-radius', avShape === 'square' ? '10px' : '50%');
@@ -68,7 +73,14 @@
     // 对 fixed 背景降采样 → 发糊。聊天页本身 overflow:hidden 不滚动（只有
     // .chat-body 内部滚动），默认 scroll 模式下背景相对 page 本来就是固定的，
     // fixed 纯属多余并引入视口耦合。
-    const bg = store.get('cs-bg');
+    // v3.6.x：存量大图渲染防护——旧版本聊天壁纸压缩失败时回退存过原图（48MP/ProRAW
+    // 级别十几 MB），渲染 backgroundImage 会让 iOS Safari 解码卡死（打开页面卡顿点不动）。
+    // 正常压缩产物（2160-4096px JPEG 0.85）≤6MB，>6MB 判定为异常存量，清除回默认
+    let bg = store.get('cs-bg');
+    if (bg && typeof bg === 'string' && bg.length > 6 * 1024 * 1024) {
+      try { store.remove('cs-bg'); } catch (e) {}
+      bg = null;
+    }
     if (bg && chatPage) {
       if (chatPage.style.backgroundImage !== 'url("' + bg + '")') {
         chatPage.style.backgroundImage = 'url("' + bg + '")';
@@ -147,6 +159,58 @@
       });
     });
   }
+  // ================= 双方气泡颜色 / 文字颜色 =================
+  // 色板：气泡底色与文字色（v3.6.x：新增颜色设置入口，走 openModal 色板）
+  const BUBBLE_BG_COLORS = [
+    { color: '#111111', label: '默认黑' },
+    { color: '#ffffff', label: '白色' },
+    { color: '#3a3a3a', label: '炭灰' },
+    { color: '#ffd6e0', label: '樱花粉' },
+    { color: '#d6e4ff', label: '雾霭蓝' },
+    { color: '#d8f5e0', label: '薄荷绿' },
+    { color: '#fff3d6', label: '奶油黄' },
+    { color: '#e8dcff', label: '淡紫' },
+    { color: '#ffdcc0', label: '暖橘' }
+  ];
+  const BUBBLE_INK_COLORS = [
+    { color: '#111111', label: '默认黑' },
+    { color: '#ffffff', label: '白色' },
+    { color: '#444444', label: '深灰' },
+    { color: '#d6336c', label: '玫红' },
+    { color: '#1a56db', label: '蓝' },
+    { color: '#1e8e5a', label: '绿' },
+    { color: '#9a6b00', label: '黄褐' },
+    { color: '#7048e8', label: '紫' },
+    { color: '#b3540a', label: '橘' }
+  ];
+  // 气泡颜色行统一处理：openModal 色板 → 存 cs-* 键 → applySettings 生效
+  function bindBubbleColorRow(rowId, key, def, title, swatches) {
+    const el = row(rowId);
+    if (!el) return;
+    el.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const cur = store.get(key) || def;
+      window.openModal(title, '', (v) => {
+        // v 可能是色板下标（number）或自定义色值（#hex 字符串）
+        const color = (typeof v === 'number' && swatches[v]) ? swatches[v].color : v;
+        if (!color) return;
+        store.set(key, color);
+        applySettings();
+        const val = document.getElementById(rowId + '-val');
+        if (val) val.textContent = color === def ? '默认 ' + color : color;
+      }, {
+        colorPicker: true,
+        color: cur,
+        swatches: swatches
+      });
+    });
+  }
+  // 我的气泡（out 深色系）/ 联系人气泡（in 浅色系）与各自文字色
+  bindBubbleColorRow('cs-out-bg', 'cs-out-bg', '#111111', '我的气泡颜色', BUBBLE_BG_COLORS);
+  bindBubbleColorRow('cs-out-ink', 'cs-out-ink', '#ffffff', '我的消息文字颜色', BUBBLE_INK_COLORS);
+  bindBubbleColorRow('cs-in-bg', 'cs-in-bg', '#ffffff', '联系人气泡颜色', BUBBLE_BG_COLORS);
+  bindBubbleColorRow('cs-in-ink', 'cs-in-ink', '#111111', '联系人消息文字颜色', BUBBLE_INK_COLORS);
+
   const csFont = row('cs-font-size');
   if (csFont) {
     csFont.addEventListener('click', () => {
@@ -438,13 +502,13 @@
   // 启动时从 IDB 补读后重新应用
   try {
     if (window.idbGet) {
-      window.idbGet(uid + ':cs-bg').then(v => {
+      window.idbGet(window.activePrefix() + ':cs-bg').then(v => {
         if (v && typeof v === 'string' && v.length > 2 && !store.get('cs-bg')) {
           store.set('cs-bg', v);
           applySettings();
         }
       });
-      window.idbGet(uid + ':' + FONT_KEY).then(v => {
+      window.idbGet(window.activePrefix() + ':' + FONT_KEY).then(v => {
         if (v && typeof v === 'string' && v.length > 2 && !store.get(FONT_KEY)) {
           store.set(FONT_KEY, v);
           applyFont();
@@ -452,4 +516,8 @@
       });
     }
   } catch (e) {}
+  // v3.6.x：多桌面——切换联系人后重新应用聊天美化（壁纸/气泡颜色/字号/形状按新桌面）
+  document.addEventListener('contact-switched', function () {
+    try { applySettings(); } catch (e) {}
+  });
 })();

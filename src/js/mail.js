@@ -1,8 +1,8 @@
 // ===== 功能：信箱（仿星言简约版【星言信箱】，矢量图简约风格） =====
 // 收信（TA 主动来信）/ 寄信 / 回信；信纸样式展示；聊天里插入写信/回信/来信提示
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
   const KEY = 'mail-letters';
   const TITLES = ['好久不见', '最近还好吗', '想你了', '给你写了封信', '深夜随想', '一些想说的话'];
   let mtab = 'in';
@@ -753,7 +753,7 @@
   }
   try {
     if (window.idbGet) {
-      window.idbGet(uid + ':' + KEY).then(v => {
+      window.idbGet(window.activePrefix() + ':' + KEY).then(v => {
         mailMergeFromIdb(v);
         mailDbReady = true;
         render();
@@ -778,4 +778,27 @@
     render();
     updateBadge();
   }, 15000);
+
+  // v3.6.x：多桌面——切换联系人后重置信箱状态并重新从新桌面的 IDB 权威加载。
+  // 若不重置，mailDbReady/mailPending 仍属旧桌面：load() 读的是新桌面持久层，
+  // 但暂存信件（mailPending）会按 id 合并进来（串桌面）；权威已就绪标志也会
+  // 让 save() 直接把新桌面数据写进 store（正确），但旧桌面暂存仍残留。
+  document.addEventListener('contact-switched', function () {
+    try {
+      mailDbReady = false;
+      mailPending = null;
+      if (window.idbGet) {
+        window.idbGet(window.activePrefix() + ':' + KEY).then(v => {
+          mailMergeFromIdb(v);
+          mailDbReady = true;
+          render();
+          updateBadge();
+        }).catch(() => { mailDbReady = true; render(); updateBadge(); });
+      } else {
+        mailDbReady = true;
+        render();
+        updateBadge();
+      }
+    } catch (e) { mailDbReady = true; }
+  });
 })();

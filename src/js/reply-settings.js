@@ -1,8 +1,8 @@
 // ===== 功能：通用设置（聊天触发概率） =====
 // 存储 + 设置页 stepper/开关交互；暴露 window.replyCfg 给聊天回复逻辑使用
 (function () {
-  const uid = 'xy-home-v2';
-  const ls = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const ls = window.activeStore();
 
   // 全部概率/参数项（与星言 speedSettings 对应）
   const DEFAULTS = {

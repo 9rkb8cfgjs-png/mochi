@@ -82,12 +82,13 @@
     <!-- 手机桌面（两页：情侣空间 + 音乐播放器） -->
     <div class="page" id="page-phone">
       <div class="decor-bar" id="decor-bar" hidden>
-        <span>装修模式 · 点击图标更换 / 清除</span>
+        <span>装修模式 · 点图标换图 · 点卡片设背景</span>
+        <button class="decor-add" id="decor-add-widget">+ 添加卡片</button>
         <button class="decor-done" id="decor-done">完成</button>
       </div>
       <div class="desktop-pages" id="desktop-pages">
       <div class="page-slide">
-      <div class="deco-widget" id="deco-widget">
+      <div class="deco-widget" id="deco-widget" data-desk-widget="deco" data-card-bg="deco">
         <div class="deco-avatars">
           <div class="deco-avatar" id="avatar-partner" title="设置「TA」的头像">
             <div class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></div>
@@ -102,25 +103,25 @@
         <div class="deco-love"><span id="love-days"></span><span id="love-date"></span></div>
       </div>
 
-      <div class="mini-row">
-            <div class="mini-card glass">
+      <div class="mini-row" data-desk-widget="quote-row">
+            <div class="mini-card glass" data-card-bg="quote">
               <div class="mc-top">今日情话</div>
               <div class="mc-b" id="love-quote"></div>
             </div>
-            <div class="mini-card glass">
+            <div class="mini-card glass" data-card-bg="fish">
               <div class="mc-top">已摸鱼</div>
               <div class="mc-b"><b id="fish-days">0</b> 天</div>
             </div>
           </div>
 
-          <div class="checkin glass">
+          <div class="checkin glass" data-desk-widget="checkin" data-card-bg="checkin">
             <span class="ck-heart">♥</span>
             <span class="ck-txt">和 TA 一起摸鱼 · 今天也要甜甜的</span>
             <span class="ck-btn">打卡</span>
           </div>
 
       <!-- 桌面功能（直接显示） -->
-      <div class="app-grid">
+      <div class="app-grid" data-app="main">
         <div class="app" data-app="chat">
           <div class="app-badge-box"><div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><span class="app-badge" id="chat-badge" hidden></span></div>
           <div class="app-name">聊天</div>
@@ -158,7 +159,7 @@
 
       <!-- 第二页：音乐播放器 -->
       <div class="page-slide second">
-        <div class="music-widget glass" id="music-widget">
+        <div class="music-widget glass" id="music-widget" data-desk-widget="music" data-card-bg="music">
           <audio id="m-audio" preload="metadata"></audio>
           <div class="mw-head">
             <span class="mw-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>正在播放</span>
@@ -197,7 +198,7 @@
         </div>
 
 <!-- 第二页功能：音乐 / 聊天统计 / 小互动 -->
-<div class="app-grid p2-grid">
+<div class="app-grid p2-grid" data-app="p2">
 <div class="app" data-app="music">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
 <div class="app-name">音乐</div>
@@ -217,22 +218,22 @@
 </div>
 
 <!-- 第二页补充：今日备忘 + 每周日程（填空白区） -->
-<div class="mini-row">
-<div class="mini-card glass memo-card">
+<div class="mini-row" data-desk-widget="memo-row">
+<div class="mini-card glass memo-card" data-card-bg="memo">
 <div class="mc-top">今日备忘</div>
 <div class="mc-b" id="memo-text" title="点击记录">点这里记一句话</div>
 </div>
-<div class="mini-card glass mood-card">
+<div class="mini-card glass mood-card" data-card-bg="mood">
 <div class="mc-top">今天的心情</div>
 <div class="mc-b" id="today-mood-text">点一下选心情</div>
 </div>
 </div>
-<div class="week-card glass">
+<div class="week-card glass" data-desk-widget="week" data-card-bg="week">
 <div class="mc-top">本周日常</div>
 <div class="week-days" id="week-days"></div>
 </div>
 <!-- 离周末还有几天（点击摸鱼 +1，可累计） -->
-<div class="weekend-box glass" id="weekend-box">
+<div class="weekend-box glass" id="weekend-box" data-desk-widget="weekend" data-card-bg="weekend">
 <div class="we-left">
 <span class="we-days" id="weekend-days">离周末还有 0 天</span>
 <span class="we-sub">距离周末 · 摸鱼倒计时</span>
@@ -635,6 +636,14 @@
     <div class="page" id="page-setting" hidden>
       <div class="set-title">设置</div>
       <div class="set-group glass">
+        <div class="set-row" id="row-contacts">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/></svg></div>
+          <div class="txt">联系人 / 桌面</div>
+          <div class="val" id="contacts-val"></div>
+          <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+        </div>
+      </div>
+      <div class="set-group glass">
         <div class="set-row" id="row-appearance">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18"/></svg></div>
           <div class="txt">手机桌面美化</div>
@@ -719,7 +728,7 @@
       <div class="set-group glass">
         <div class="set-row" id="row-custom-icon">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
-          <div class="txt">自定义手机桌面图标</div>
+          <div class="txt">自定义手机桌面图标<span class="sub">自定义图标图片 · 桌面组件卡片位置 · 卡片背景图片</span></div>
         </div>
       </div>
       <div class="set-group glass">
@@ -1004,6 +1013,13 @@
             <div class="gs-row"><span>使用 emoji 概率</span><div class="stepper" data-k="fd-post-emoji" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="fd-post-emoji-val" readonly><button class="stp-max">+</button></div></div>
             <div class="gs-row"><span>使用表情包概率</span><div class="stepper" data-k="fd-post-sticker" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="fd-post-sticker-val" readonly><button class="stp-max">+</button></div></div>
             <div class="gs-row"><span>使用图片概率</span><div class="stepper" data-k="fd-post-image" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="fd-post-image-val" readonly><button class="stp-max">+</button></div></div>
+          </div>
+          <div class="gs-title">数据</div>
+          <div class="set-group glass">
+            <div class="set-row danger" id="feed-clear-all">
+              <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></div>
+              <div class="txt">清除所有朋友圈数据</div>
+            </div>
           </div>
         </div>
         <!-- v3.6.x：保存设置按钮——点击把当前所有概率/开关写入本地并提示 -->

@@ -4,8 +4,8 @@
 // 小互动：拍一拍 TA / 送一句情话
 // v3.5.27：今日备忘/今天的心情历史双写 IndexedDB——导入备份覆盖 localStorage 后记录可从 IDB 回填
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
   // 备忘/心情历史：localStorage + IndexedDB 双写；启动时从 IDB 回填缺失键（导入/清空后不丢记录）
   function pushHist(key, text) {
     try {
@@ -13,13 +13,13 @@
       list.unshift({ text: text, ts: Date.now() });
       if (list.length > 200) list.length = 200;
       store.set(key, JSON.stringify(list));
-      try { if (window.idbSet) window.idbSet(uid + ':' + key, JSON.stringify(list)); } catch (e) {}
+      try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + key, JSON.stringify(list)); } catch (e) {}
     } catch (e) {}
   }
   function restoreHist(key) {
     try {
       if (window.idbGet && !store.get(key)) {
-        window.idbGet(uid + ':' + key).then(v => {
+        window.idbGet(window.activePrefix() + ':' + key).then(v => {
           if (!v) return;
           try { store.set(key, typeof v === 'string' ? v : JSON.stringify(v)); } catch (e) {}
         });
@@ -311,7 +311,7 @@ function renderCheckinHistory() {
   // 初始化：从 IndexedDB 恢复全部查岗记录
   (function () {
     if (window.idbGet) {
-      window.idbGet(uid + ':checkin-history').then(v => {
+      window.idbGet(window.activePrefix() + ':checkin-history').then(v => {
         if (!v) return;
         try {
           const data = typeof v === 'string' ? JSON.parse(v) : v;
@@ -348,7 +348,7 @@ function renderCheckinHistory() {
       const h = JSON.parse(store.get('checkin-history') || '[]');
       h.push(entry);
       store.set('checkin-history', JSON.stringify(h));
-      if (window.idbSet) window.idbSet(uid + ':checkin-history', JSON.stringify(h));
+      if (window.idbSet) window.idbSet(window.activePrefix() + ':checkin-history', JSON.stringify(h));
     } catch (e) {}
     renderCheckinHistory();
   }
@@ -622,7 +622,7 @@ if (ckRefresh) {
           const val = (v || '').trim();
           if (val) {
             memoEl.textContent = val; store.set('memo', val); pushHist('memo-history', val);
-            try { if (window.idbSet) window.idbSet(uid + ':memo', val); } catch (e) {}
+            try { if (window.idbSet) window.idbSet(window.activePrefix() + ':memo', val); } catch (e) {}
           }
         });
       }
@@ -639,7 +639,7 @@ if (ckRefresh) {
           const val = (v || '').trim();
           if (val) {
             moodEl.textContent = val; store.set('today-mood', val); pushHist('mood-history', val);
-            try { if (window.idbSet) window.idbSet(uid + ':today-mood', val); } catch (e) {}
+            try { if (window.idbSet) window.idbSet(window.activePrefix() + ':today-mood', val); } catch (e) {}
           }
         }, { pills: moods.map(m => ({ label: m, value: m })), pill: store.get('today-mood') || '' });
       }
@@ -660,4 +660,21 @@ if (ckRefresh) {
       return '<div class="week-day' + (i === todayIdx ? ' today' : '') + '"><b>' + (i === todayIdx ? '今' : n) + '</b>' + d.getDate() + '</div>';
     }).join('');
   }
+
+  // v3.6.x：多桌面——切换联系人后刷新桌面第二页常驻组件（备忘/心情按新桌面的值回显）。
+  // store 动态绑定当前联系人，直接重读即可。
+  document.addEventListener('contact-switched', function () {
+    try {
+      const memoEl2 = document.getElementById('memo-text');
+      if (memoEl2) {
+        const v = store.get('memo');
+        memoEl2.textContent = v || '点这里记一句话';
+      }
+      const moodEl2 = document.getElementById('today-mood-text');
+      if (moodEl2) {
+        const v = store.get('today-mood');
+        moodEl2.textContent = v || '';
+      }
+    } catch (e) {}
+  });
 })();

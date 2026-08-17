@@ -4,8 +4,8 @@
 // 接通：显示通话时长，2 秒后最小化为通话小框（底部悬浮，可挂断）
 // 概率（与星言一致）：来电 15% / 接通 70% / 忙线 15% / 拒绝 15% / 对方挂断 2%（接通满 3 分钟后每 60 秒检查）
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
   const CALL = { incoming: 15, pickup: 70, busy: 15, reject: 15, hangup: 2 };
   // 从回复设置读取（可自由调整概率，与星言通话设置一致）
   function callCfg() {
@@ -91,7 +91,7 @@
   //   页面加载时从不运行，导致导入数据后通话背景无法从 IndexedDB 恢复；移回模块顶层随加载执行
   try {
     if (window.idbGet) {
-      window.idbGet(uid + ':' + CALL_BG_KEY).then(v => {
+      window.idbGet(window.activePrefix() + ':' + CALL_BG_KEY).then(v => {
         if (v && typeof v === 'string' && v.length > 2 && !store.get(CALL_BG_KEY)) {
           store.set(CALL_BG_KEY, v);
           applyCallBg();

@@ -4,8 +4,8 @@
 // 结果可发送到聊天（联系人回复样式）
 // 功能参考：小红书@FelixFelicis（9416318007）
 (function () {
-  const uid = 'xy-home-v2';
-  const store = window.xyStore(uid);
+  const uid = window.activePrefix();
+  const store = window.activeStore();
   const HISTORY_KEY = 'decision-history';
   const SETTINGS_KEY = 'decision-settings';
 
@@ -53,7 +53,7 @@
       finish(base);
     };
     if (window.idbGet) {
-      window.idbGet(uid + ':' + HISTORY_KEY).then(v => {
+      window.idbGet(window.activePrefix() + ':' + HISTORY_KEY).then(v => {
         let base = [];
         try { const p = typeof v === 'string' ? JSON.parse(v) : v; if (Array.isArray(p)) base = p; } catch (e) {}
         merge(base);
@@ -68,6 +68,10 @@
       flushPendingHist();
     });
   } catch (e) {}
+  // v3.6.x：多桌面——切换联系人后重置历史权威状态（防止旧桌面的 histPending 串入新桌面）
+  document.addEventListener('contact-switched', function () {
+    try { histReady = true; histPending = null; } catch (e) {}
+  });
   // v3.6.x：思考时间 / 最多选几个 也持久化——之前每次打开面板都重置回默认值
   // （关掉面板再打开，「帮我决定时间」又得重新设置）
   function loadSettings() {
