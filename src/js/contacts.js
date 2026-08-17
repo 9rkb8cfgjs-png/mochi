@@ -49,14 +49,14 @@
       },
       set(k, v) {
         window.xyStore(ns).set(k, v);
-        // 写入后清掉旧顶层键，避免回退读到脏数据
-        try { localStorage.removeItem(G + ':' + k); } catch (e) {}
-        if (window.idbDelete) window.idbDelete(G + ':' + k);
+        // 写入后彻底清掉旧顶层键（含内存缓存）——否则 get 回退路径会读到残留旧值
+        try { window.xyStore(G).remove(k); } catch (e) {}
       },
       remove(k) {
         window.xyStore(ns).remove(k);
-        try { localStorage.removeItem(G + ':' + k); } catch (e) {}
-        if (window.idbDelete) window.idbDelete(G + ':' + k);
+        // 旧顶层键同样彻底清（memoryCache + LS + IDB 三处）——
+        // 只删 LS/IDB 会漏 memoryCache，get 回退读到残留旧值（如「恢复默认」后颜色又回来）
+        try { window.xyStore(G).remove(k); } catch (e) {}
       }
     };
   }
@@ -111,13 +111,16 @@
     const list = getContacts().filter(x => x.id !== id);
     regStore().set('contacts', JSON.stringify(list));
     const prefix = G + ':' + id + ':';
+    // v3.6.x：删除走 xyStore(prefix).remove——三处（memoryCache + LS + IDB）彻底清，
+    // 裸 localStorage.removeItem/idbDelete 会漏内存缓存，删除后残留脏数据
+    const del = function (k) { try { window.xyStore(prefix).remove(k.slice(prefix.length)); } catch (e) {} };
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.indexOf(prefix) === 0) { try { localStorage.removeItem(k); } catch (e) {} }
+      if (k && k.indexOf(prefix) === 0) del(k);
     }
     if (window.idbGetAllKeys) {
       window.idbGetAllKeys().then(keys => {
-        (keys || []).forEach(k => { if (typeof k === 'string' && k.indexOf(prefix) === 0 && window.idbDelete) window.idbDelete(k); });
+        (keys || []).forEach(k => { if (typeof k === 'string' && k.indexOf(prefix) === 0) del(k); });
       }).catch(() => {});
     }
     if (window.__activeCid === id) window.setActiveContact('default');
@@ -143,16 +146,10 @@
   window.switchContact = window.setActiveContact;
 
   // 切换后刷新首页头像/昵称（deco-avatar 在 template.html 中）
+  // v3.6.x：头像实际渲染在 .ring 内的 <img> 标签（applyAvatar），仅设 backgroundImage 清不掉——
+  // 必须走 window.applyAvatars()（按当前联系人 store 重读 avatar-user/avatar-partner 重渲染）。
   window.refreshActiveContactUI = function () {
-    const s = window.activeStore();
-    const meAv = s.get('avatar-user') || '';
-    const taAv = s.get('avatar-partner') || '';
-    ['avatar-user', 'avatar-partner'].forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const av = id === 'avatar-user' ? meAv : taAv;
-      el.style.backgroundImage = av ? 'url(' + av + ')' : '';
-    });
+    try { if (window.applyAvatars) window.applyAvatars(); } catch (e) {}
     try { if (window.renderChatHeader) window.renderChatHeader(); } catch (e) {}
   };
 

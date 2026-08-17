@@ -20,6 +20,19 @@
   // ---- 概率工具 ----
   function hit(p) { return Math.random() * 100 < p; }
   function pick(arr) { return arr.length ? arr[Math.floor(Math.random() * arr.length)] : null; }
+  // v3.6.x：轻提示（复用 cc-toast 风格）
+  function toast(msg) {
+    let t = document.getElementById('cc-toast');
+    if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
+  }
+  function toastCard(txt, off) {
+    const s = String(txt == null ? '' : txt);
+    toast((off ? '已关闭：' : '已开启：') + (s.length > 18 ? s.slice(0, 18) + '…' : s));
+  }
   function weightedPick(items) {
     const total = items.reduce((a, it) => a + Math.max(0, it[1]), 0);
     if (total <= 0) return items.length ? items[0] : null;
@@ -233,6 +246,7 @@
             const nowOff = !d.querySelector('input').checked;
             setCardOff('rc-off-' + key, t, nowOff);
             d.classList.toggle('off', nowOff);
+            toastCard(t, nowOff);
           });
         });
       });
@@ -328,6 +342,7 @@
             const nowOff = !d.querySelector('input').checked;
             setCardOff('mc-off-mood', c.content, nowOff);
             d.classList.toggle('off', nowOff);
+            toastCard(c.content, nowOff);
           });
         });
       });

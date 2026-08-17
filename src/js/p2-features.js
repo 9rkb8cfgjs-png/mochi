@@ -532,8 +532,11 @@ if (ckRefresh) {
             lab.className = 'toggle ccard-toggle';
             lab.innerHTML = '<input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span>';
             lab.querySelector('input').addEventListener('change', () => {
-              setCkCardOff(ckTab, x, !lab.querySelector('input').checked);
+              const nowOff = !lab.querySelector('input').checked;
+              setCkCardOff(ckTab, x, nowOff);
               renderCheckinCards();
+              const s = String(x == null ? '' : x);
+              toast((nowOff ? '已关闭：' : '已开启：') + (s.length > 18 ? s.slice(0, 18) + '…' : s));
             });
             row.appendChild(lab);
           } else {

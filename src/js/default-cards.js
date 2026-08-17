@@ -9,6 +9,19 @@
 
   const uid = window.activePrefix();
   const ls = window.activeStore();
+  // v3.6.x：轻提示（复用 cc-toast 风格）
+  function toast(msg) {
+    let t = document.getElementById('cc-toast');
+    if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
+  }
+  function toastCard(txt, off) {
+    const s = String(txt == null ? '' : txt);
+    toast((off ? '已关闭：' : '已开启：') + (s.length > 18 ? s.slice(0, 18) + '…' : s));
+  }
   // 默认值（对应星言 defaultCommonOverallProb=30, probs 各30）
   function getEnabled() { const v = ls.get('dc-enabled'); return v === null ? true : v === '1'; }
   function getOverall() { const v = ls.get('dc-overall'); return v === null ? 30 : Number(v); }
@@ -77,6 +90,7 @@
           const nowOff = !d.querySelector('input').checked;
           setCardOff(cur, c, nowOff);
           d.classList.toggle('off', nowOff);
+          toastCard(c, nowOff);
         });
       });
     });

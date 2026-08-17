@@ -1,9 +1,11 @@
 /* ===== 手机桌面（情侣空间） ===== */
-/* 小组件背景色 / 边框色 / 按钮色：CSS 变量控制，由「手机桌面美化」设置 */
+/* 小组件背景色 / 边框色 / 按钮色 / 透明度：CSS 变量控制，由「手机桌面美化」设置 */
 :root {
   --widget-bg:#ffffff;
   --widget-border:rgba(0,0,0,.1);
   --widget-btn:#111111;
+  --widget-opacity:1;
+  --app-ico-radius:18px;
 }
 /* 纪念日卡片（纯装饰：头像 + 爱心 + 纪念日；已禁止上传背景图）
    纯白纸底 + 虚线描边 + 上下装饰点，细节更精致 */
@@ -15,6 +17,7 @@
   box-shadow:0 4px 14px rgba(0,0,0,.05);
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   padding:14px 16px 12px;
+  opacity:var(--widget-opacity);
 }
 .deco-avatars {
   display:flex; align-items:center; justify-content:center; gap:22px;
@@ -61,7 +64,7 @@
 
 /* 小卡片行：今日情话 / 纪念日倒计时 */
 .mini-row { display:flex; gap:12px; margin-bottom:14px; flex-shrink:0; }
-.mini-card { flex:1; border-radius:20px; padding:14px; box-shadow:0 6px 16px rgba(0,0,0,.06); background:var(--widget-bg); }
+.mini-card { flex:1; border-radius:20px; padding:14px; box-shadow:0 6px 16px rgba(0,0,0,.06); background:var(--widget-bg); opacity:var(--widget-opacity); }
 .mc-top { font-size:11px; color:var(--muted); letter-spacing:1px; }
 .mc-b { font-size:13px; font-weight:600; color:var(--ink); margin-top:6px; line-height:1.45; }
 .mc-b b { font-size:16px; }
@@ -72,6 +75,7 @@
   border-radius:18px; padding:12px 14px; margin:0 2px 16px; flex-shrink:0;
   background:var(--widget-bg);
   box-shadow:0 4px 14px rgba(0,0,0,.05);
+  opacity:var(--widget-opacity);
 }
 .ck-heart {
   width:30px; height:30px; border-radius:50%; flex-shrink:0;
@@ -97,6 +101,7 @@
   border-radius:16px; padding:6px 12px; margin:0 2px 10px; flex-shrink:0;
   background:var(--widget-bg);
   box-shadow:0 4px 14px rgba(0,0,0,.05);
+  opacity:var(--widget-opacity);
 }
 .we-left { display:flex; flex-direction:column; gap:1px; }
 .we-days { font-size:13px; font-weight:700; color:var(--ink); letter-spacing:.5px; }
@@ -130,7 +135,7 @@
 .app { display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; }
 .app .app-ico {
   /* v3.5.133：min(58px, 21vw)——极窄屏（<305px）固定 58px 会撑爆 4 列网格被裁 */
-  width:min(58px, 21vw); height:min(58px, 21vw); border-radius:18px;
+  width:min(58px, 21vw); height:min(58px, 21vw); border-radius:var(--app-ico-radius);
   background: rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
   box-shadow:0 2px 8px rgba(0,0,0,.04);
   display:flex; align-items:center; justify-content:center;
@@ -244,6 +249,7 @@
   border-radius:22px; padding:13px; margin-top:14px; margin-bottom:14px;
   box-shadow:0 8px 20px rgba(0,0,0,.07);
   background:var(--widget-bg);
+  opacity:var(--widget-opacity);
 }
 .mw-head {
   display:flex; align-items:center; justify-content:space-between; margin-bottom:9px;

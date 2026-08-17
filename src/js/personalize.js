@@ -87,6 +87,10 @@
       img.src = saved;
       img.alt = '';
       ring.appendChild(img);
+    } else if (ring) {
+      // v3.6.x：当前联系人未设置头像（或数据异常被清）→ 清掉残留的上一联系人头像，
+      // 否则多桌面切换后旧桌面的头像 img 会一直留在 DOM 里（切到无头像桌面仍显示旧头像）
+      ring.innerHTML = '';
     }
   }
   function bindAvatar(id, key) {
@@ -826,6 +830,91 @@
     });
   }
 
+  // 小组件透明度：CSS 变量 --widget-opacity（0~1），输入 0~100 百分比
+  const widgetOpacityRow = document.getElementById('row-widget-opacity');
+  const widgetOpacityVal = document.getElementById('widget-opacity-val');
+  const applyWidgetOpacity = (pct) => {
+    const op = Math.max(0, Math.min(100, pct)) / 100;
+    document.documentElement.style.setProperty('--widget-opacity', String(op));
+    if (widgetOpacityVal) widgetOpacityVal.textContent = (pct === 100 ? '不透明' : pct + '%');
+  };
+  const savedWidgetOpacity = store.get('widget-opacity');
+  if (savedWidgetOpacity) applyWidgetOpacity(parseInt(savedWidgetOpacity, 10));
+  if (widgetOpacityRow) {
+    const syncWidgetOpacityUI = () => {
+      const v = store.get('widget-opacity');
+      if (widgetOpacityVal) widgetOpacityVal.textContent = (!v || v === '100') ? '不透明' : v + '%';
+    };
+    syncWidgetOpacityUI();
+    widgetOpacityRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const current = store.get('widget-opacity') || '100';
+      window.openModal('小组件透明度（0-100）', current, (v) => {
+        const pct = parseInt(v, 10);
+        if (isNaN(pct) || pct < 0 || pct > 100) { toast('请输入 0-100 的数字'); return; }
+        if (pct === 100) store.remove('widget-opacity');
+        else store.set('widget-opacity', String(pct));
+        applyWidgetOpacity(pct);
+        syncWidgetOpacityUI();
+      }, {
+        maxlength: 3,
+        pills: [
+          { label: '100%', value: '100' },
+          { label: '80%', value: '80' },
+          { label: '60%', value: '60' },
+          { label: '40%', value: '40' },
+          { label: '20%', value: '20' },
+        ],
+      });
+    });
+  }
+
+  // 图标形状：圆形 / 圆角方 / 直角方，CSS 变量 --app-ico-radius
+  const icoShapeRow = document.getElementById('row-ico-shape');
+  const icoShapeVal = document.getElementById('ico-shape-val');
+  const ICO_SHAPES = {
+    'rounded': { radius: '18px', label: '圆角方' },
+    'circle': { radius: '50%', label: '圆形' },
+    'square': { radius: '0px', label: '直角方' },
+  };
+  const applyIcoShape = (shape) => {
+    const s = ICO_SHAPES[shape] || ICO_SHAPES['rounded'];
+    document.documentElement.style.setProperty('--app-ico-radius', s.radius);
+    if (icoShapeVal) icoShapeVal.textContent = s.label;
+  };
+  const savedIcoShape = store.get('ico-shape');
+  if (savedIcoShape) applyIcoShape(savedIcoShape);
+  if (icoShapeRow) {
+    const syncIcoShapeUI = () => {
+      const s = store.get('ico-shape') || 'rounded';
+      if (icoShapeVal) icoShapeVal.textContent = (ICO_SHAPES[s] || ICO_SHAPES['rounded']).label;
+    };
+    syncIcoShapeUI();
+    icoShapeRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const current = store.get('ico-shape') || 'rounded';
+      window.openModal('图标形状', '', (v) => {
+        if (!v) return;
+        if (v === '__reset__') {
+          store.remove('ico-shape');
+          applyIcoShape('rounded');
+          syncIcoShapeUI();
+          return;
+        }
+        store.set('ico-shape', v);
+        applyIcoShape(v);
+        syncIcoShapeUI();
+      }, {
+        noInput: true,
+        pills: [
+          { label: '圆形', value: 'circle' },
+          { label: '圆角方', value: 'rounded' },
+          { label: '直角方', value: 'square' },
+        ],
+      });
+    });
+  }
+
   // ===== v3.6.x：卡片背景图片（每类卡片独立上传，遮罩/原图可切换） =====
   // 存储：card-bg-<type>（图片 dataURL）+ card-bg-mask-<type>（'on'=白色遮罩 / 'off'=原图直出）
   // 卡片类型 → 目标元素：统一用 [data-card-bg] 属性选择（v3.6.x：卡片可被移到新增页，
@@ -1379,7 +1468,8 @@
 
   // 今日情话：每天固定随机一条（按日期种子，当天不变，隔天换新）
   // 字卡库「桌面今日情话」可自定义字卡库；未自定义时用默认库
-  (function () {
+  // v3.6.x：抽成可复用函数——多桌面切换联系人后重读新桌面的字卡库与存档
+  function renderQuoteOfDay() {
     const el = document.getElementById('love-quote');
     if (!el) return;
     const text = (window.getQuoteOfDay && window.getQuoteOfDay()) || '我偏爱你。';
@@ -1393,7 +1483,8 @@
         store.set('quote-history', JSON.stringify(list));
       }
     } catch (e) {}
-  })();
+  }
+  renderQuoteOfDay();
 
   // 恋爱纪念日：已在一起天数（默认不预设日期，设置页选择后显示）
   function updateLove() {
@@ -1974,6 +2065,8 @@
     try { applyWidgetColor(store.get('widget-bg-color') || '#ffffff'); } catch (e) {}
     try { applyWidgetBorder(store.get('widget-border-color') || 'rgba(0,0,0,.1)'); } catch (e) {}
     try { applyWidgetBtn(store.get('widget-btn-color') || '#111111'); } catch (e) {}
+    try { const op = store.get('widget-opacity'); if (op) applyWidgetOpacity(parseInt(op, 10)); } catch (e) {}
+    try { const sh = store.get('ico-shape'); if (sh) applyIcoShape(sh); } catch (e) {}
     try {
       const btn = document.querySelector('.checkin .ck-btn');
       if (btn) {
@@ -1990,5 +2083,11 @@
       const cnt = document.getElementById('weekend-count');
       if (cnt) cnt.textContent = String(dayVal('fish-total'));
     } catch (e) {}
+    // v3.6.x：摸鱼天数 / 恋爱纪念日 / 今日情话 / 其他纪念日列表——初始化只跑一次，
+    // 切换联系人后必须按新桌面的 store 重新渲染（store 动态绑定当前联系人）
+    try { updateFishDays(); } catch (e) {}
+    try { updateLove(); } catch (e) {}
+    try { renderQuoteOfDay(); } catch (e) {}
+    try { renderExtras(); } catch (e) {}
   });
 })();

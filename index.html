@@ -368,6 +368,8 @@ overflow-wrap: anywhere;
 --widget-bg:#ffffff;
 --widget-border:rgba(0,0,0,.1);
 --widget-btn:#111111;
+--widget-opacity:1;
+--app-ico-radius:18px;
 }
 .deco-widget {
 position:relative; height:190px; border-radius:26px;
@@ -377,6 +379,7 @@ border:1px solid var(--widget-border);
 box-shadow:0 4px 14px rgba(0,0,0,.05);
 display:flex; flex-direction:column; align-items:center; justify-content:center;
 padding:14px 16px 12px;
+opacity:var(--widget-opacity);
 }
 .deco-avatars {
 display:flex; align-items:center; justify-content:center; gap:22px;
@@ -417,7 +420,7 @@ font-size:11px; color:var(--muted); letter-spacing:.5px;
 white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
 }
 .mini-row { display:flex; gap:12px; margin-bottom:14px; flex-shrink:0; }
-.mini-card { flex:1; border-radius:20px; padding:14px; box-shadow:0 6px 16px rgba(0,0,0,.06); background:var(--widget-bg); }
+.mini-card { flex:1; border-radius:20px; padding:14px; box-shadow:0 6px 16px rgba(0,0,0,.06); background:var(--widget-bg); opacity:var(--widget-opacity); }
 .mc-top { font-size:11px; color:var(--muted); letter-spacing:1px; }
 .mc-b { font-size:13px; font-weight:600; color:var(--ink); margin-top:6px; line-height:1.45; }
 .mc-b b { font-size:16px; }
@@ -426,6 +429,7 @@ display:flex; align-items:center; gap:10px;
 border-radius:18px; padding:12px 14px; margin:0 2px 16px; flex-shrink:0;
 background:var(--widget-bg);
 box-shadow:0 4px 14px rgba(0,0,0,.05);
+opacity:var(--widget-opacity);
 }
 .ck-heart {
 width:30px; height:30px; border-radius:50%; flex-shrink:0;
@@ -449,6 +453,7 @@ display:flex; align-items:center; justify-content:space-between; gap:8px;
 border-radius:16px; padding:6px 12px; margin:0 2px 10px; flex-shrink:0;
 background:var(--widget-bg);
 box-shadow:0 4px 14px rgba(0,0,0,.05);
+opacity:var(--widget-opacity);
 }
 .we-left { display:flex; flex-direction:column; gap:1px; }
 .we-days { font-size:13px; font-weight:700; color:var(--ink); letter-spacing:.5px; }
@@ -477,7 +482,7 @@ display:flex; align-items:center; gap:3px;
 .app-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:22px 10px; padding:2px 8px 6px; }
 .app { display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; }
 .app .app-ico {
-width:min(58px, 21vw); height:min(58px, 21vw); border-radius:18px;
+width:min(58px, 21vw); height:min(58px, 21vw); border-radius:var(--app-ico-radius);
 background: rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
 box-shadow:0 2px 8px rgba(0,0,0,.04);
 display:flex; align-items:center; justify-content:center;
@@ -571,6 +576,7 @@ background:#111; color:#fff; cursor:pointer; font-family:inherit;
 border-radius:22px; padding:13px; margin-top:14px; margin-bottom:14px;
 box-shadow:0 8px 20px rgba(0,0,0,.07);
 background:var(--widget-bg);
+opacity:var(--widget-opacity);
 }
 .mw-head {
 display:flex; align-items:center; justify-content:space-between; margin-bottom:9px;
@@ -2901,7 +2907,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.45 · 部署于 2026-08-17 21:18</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.46 · 部署于 2026-08-17 21:43</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3552,7 +3558,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.45</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.46</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -3596,6 +3602,16 @@ transition:color .18s ease, background .18s ease;
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 12h6M12 9v6"/></svg></div>
           <div class="txt">按钮颜色</div>
           <div class="val" id="widget-btn-val"></div>
+        </div>
+        <div class="set-row" id="row-widget-opacity">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M3 15h18" stroke-dasharray="2 3"/></svg></div>
+          <div class="txt">小组件透明度</div>
+          <div class="val" id="widget-opacity-val"></div>
+        </div>
+        <div class="set-row" id="row-ico-shape">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></div>
+          <div class="txt">图标形状</div>
+          <div class="val" id="ico-shape-val"></div>
         </div>
       </div>
     </div>
@@ -5310,13 +5326,11 @@ return v;
 },
 set(k, v) {
 window.xyStore(ns).set(k, v);
-try { localStorage.removeItem(G + ':' + k); } catch (e) {}
-if (window.idbDelete) window.idbDelete(G + ':' + k);
+try { window.xyStore(G).remove(k); } catch (e) {}
 },
 remove(k) {
 window.xyStore(ns).remove(k);
-try { localStorage.removeItem(G + ':' + k); } catch (e) {}
-if (window.idbDelete) window.idbDelete(G + ':' + k);
+try { window.xyStore(G).remove(k); } catch (e) {}
 }
 };
 }
@@ -5358,13 +5372,14 @@ if (id === 'default') return false;
 const list = getContacts().filter(x => x.id !== id);
 regStore().set('contacts', JSON.stringify(list));
 const prefix = G + ':' + id + ':';
+const del = function (k) { try { window.xyStore(prefix).remove(k.slice(prefix.length)); } catch (e) {} };
 for (let i = 0; i < localStorage.length; i++) {
 const k = localStorage.key(i);
-if (k && k.indexOf(prefix) === 0) { try { localStorage.removeItem(k); } catch (e) {} }
+if (k && k.indexOf(prefix) === 0) del(k);
 }
 if (window.idbGetAllKeys) {
 window.idbGetAllKeys().then(keys => {
-(keys || []).forEach(k => { if (typeof k === 'string' && k.indexOf(prefix) === 0 && window.idbDelete) window.idbDelete(k); });
+(keys || []).forEach(k => { if (typeof k === 'string' && k.indexOf(prefix) === 0) del(k); });
 }).catch(() => {});
 }
 if (window.__activeCid === id) window.setActiveContact('default');
@@ -5385,15 +5400,7 @@ const home = document.getElementById('page-phone'); if (home) home.hidden = fals
 };
 window.switchContact = window.setActiveContact;
 window.refreshActiveContactUI = function () {
-const s = window.activeStore();
-const meAv = s.get('avatar-user') || '';
-const taAv = s.get('avatar-partner') || '';
-['avatar-user', 'avatar-partner'].forEach(id => {
-const el = document.getElementById(id);
-if (!el) return;
-const av = id === 'avatar-user' ? meAv : taAv;
-el.style.backgroundImage = av ? 'url(' + av + ')' : '';
-});
+try { if (window.applyAvatars) window.applyAvatars(); } catch (e) {}
 try { if (window.renderChatHeader) window.renderChatHeader(); } catch (e) {}
 };
 function migrateLegacy() {
@@ -5899,8 +5906,11 @@ const lab = document.createElement('label');
 lab.className = 'toggle ccard-toggle';
 lab.innerHTML = '<input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span>';
 lab.querySelector('input').addEventListener('change', () => {
-setQuoteOff(q, !lab.querySelector('input').checked);
+const nowOff = !lab.querySelector('input').checked;
+setQuoteOff(q, nowOff);
 renderList();
+const s = String(q == null ? '' : q);
+toast((nowOff ? '已关闭：' : '已开启：') + (s.length > 18 ? s.slice(0, 18) + '…' : s));
 });
 row.appendChild(lab);
 } else {
@@ -6027,6 +6037,8 @@ const img = document.createElement('img');
 img.src = saved;
 img.alt = '';
 ring.appendChild(img);
+} else if (ring) {
+ring.innerHTML = '';
 }
 }
 function bindAvatar(id, key) {
@@ -6688,6 +6700,87 @@ pills: [{ label: '恢复默认', value: '__reset__' }],
 });
 });
 }
+const widgetOpacityRow = document.getElementById('row-widget-opacity');
+const widgetOpacityVal = document.getElementById('widget-opacity-val');
+const applyWidgetOpacity = (pct) => {
+const op = Math.max(0, Math.min(100, pct)) / 100;
+document.documentElement.style.setProperty('--widget-opacity', String(op));
+if (widgetOpacityVal) widgetOpacityVal.textContent = (pct === 100 ? '不透明' : pct + '%');
+};
+const savedWidgetOpacity = store.get('widget-opacity');
+if (savedWidgetOpacity) applyWidgetOpacity(parseInt(savedWidgetOpacity, 10));
+if (widgetOpacityRow) {
+const syncWidgetOpacityUI = () => {
+const v = store.get('widget-opacity');
+if (widgetOpacityVal) widgetOpacityVal.textContent = (!v || v === '100') ? '不透明' : v + '%';
+};
+syncWidgetOpacityUI();
+widgetOpacityRow.addEventListener('click', () => {
+if (!window.openModal) return;
+const current = store.get('widget-opacity') || '100';
+window.openModal('小组件透明度（0-100）', current, (v) => {
+const pct = parseInt(v, 10);
+if (isNaN(pct) || pct < 0 || pct > 100) { toast('请输入 0-100 的数字'); return; }
+if (pct === 100) store.remove('widget-opacity');
+else store.set('widget-opacity', String(pct));
+applyWidgetOpacity(pct);
+syncWidgetOpacityUI();
+}, {
+maxlength: 3,
+pills: [
+{ label: '100%', value: '100' },
+{ label: '80%', value: '80' },
+{ label: '60%', value: '60' },
+{ label: '40%', value: '40' },
+{ label: '20%', value: '20' },
+],
+});
+});
+}
+const icoShapeRow = document.getElementById('row-ico-shape');
+const icoShapeVal = document.getElementById('ico-shape-val');
+const ICO_SHAPES = {
+'rounded': { radius: '18px', label: '圆角方' },
+'circle': { radius: '50%', label: '圆形' },
+'square': { radius: '0px', label: '直角方' },
+};
+const applyIcoShape = (shape) => {
+const s = ICO_SHAPES[shape] || ICO_SHAPES['rounded'];
+document.documentElement.style.setProperty('--app-ico-radius', s.radius);
+if (icoShapeVal) icoShapeVal.textContent = s.label;
+};
+const savedIcoShape = store.get('ico-shape');
+if (savedIcoShape) applyIcoShape(savedIcoShape);
+if (icoShapeRow) {
+const syncIcoShapeUI = () => {
+const s = store.get('ico-shape') || 'rounded';
+if (icoShapeVal) icoShapeVal.textContent = (ICO_SHAPES[s] || ICO_SHAPES['rounded']).label;
+};
+syncIcoShapeUI();
+icoShapeRow.addEventListener('click', () => {
+if (!window.openModal) return;
+const current = store.get('ico-shape') || 'rounded';
+window.openModal('图标形状', '', (v) => {
+if (!v) return;
+if (v === '__reset__') {
+store.remove('ico-shape');
+applyIcoShape('rounded');
+syncIcoShapeUI();
+return;
+}
+store.set('ico-shape', v);
+applyIcoShape(v);
+syncIcoShapeUI();
+}, {
+noInput: true,
+pills: [
+{ label: '圆形', value: 'circle' },
+{ label: '圆角方', value: 'rounded' },
+{ label: '直角方', value: 'square' },
+],
+});
+});
+}
 const CARD_BG_TYPES = [
 { type: 'deco', name: '纪念日卡', sel: '[data-card-bg="deco"]' },
 { type: 'quote', name: '今日情话卡', sel: '[data-card-bg="quote"]' },
@@ -7173,7 +7266,7 @@ updateFishDays();
 }
 }
 })();
-(function () {
+function renderQuoteOfDay() {
 const el = document.getElementById('love-quote');
 if (!el) return;
 const text = (window.getQuoteOfDay && window.getQuoteOfDay()) || '我偏爱你。';
@@ -7186,7 +7279,8 @@ list.unshift({ date: today, text: text, ts: Date.now() });
 store.set('quote-history', JSON.stringify(list));
 }
 } catch (e) {}
-})();
+}
+renderQuoteOfDay();
 function updateLove() {
 const start = store.get('love-start');
 const daysEl = document.getElementById('love-days');
@@ -7679,6 +7773,8 @@ try { restoreAppIcons(); } catch (e) {}
 try { applyWidgetColor(store.get('widget-bg-color') || '#ffffff'); } catch (e) {}
 try { applyWidgetBorder(store.get('widget-border-color') || 'rgba(0,0,0,.1)'); } catch (e) {}
 try { applyWidgetBtn(store.get('widget-btn-color') || '#111111'); } catch (e) {}
+try { const op = store.get('widget-opacity'); if (op) applyWidgetOpacity(parseInt(op, 10)); } catch (e) {}
+try { const sh = store.get('ico-shape'); if (sh) applyIcoShape(sh); } catch (e) {}
 try {
 const btn = document.querySelector('.checkin .ck-btn');
 if (btn) {
@@ -7695,6 +7791,10 @@ try {
 const cnt = document.getElementById('weekend-count');
 if (cnt) cnt.textContent = String(dayVal('fish-total'));
 } catch (e) {}
+try { updateFishDays(); } catch (e) {}
+try { updateLove(); } catch (e) {}
+try { renderQuoteOfDay(); } catch (e) {}
+try { renderExtras(); } catch (e) {}
 });
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
@@ -12256,6 +12356,18 @@ const enabledEl = document.getElementById('dc-enabled');
 if (!list || !tabsWrap || !enabledEl) return;
 const uid = window.activePrefix();
 const ls = window.activeStore();
+function toast(msg) {
+let t = document.getElementById('cc-toast');
+if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
+t.textContent = msg;
+t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
+clearTimeout(t._timer);
+t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
+}
+function toastCard(txt, off) {
+const s = String(txt == null ? '' : txt);
+toast((off ? '已关闭：' : '已开启：') + (s.length > 18 ? s.slice(0, 18) + '…' : s));
+}
 function getEnabled() { const v = ls.get('dc-enabled'); return v === null ? true : v === '1'; }
 function getOverall() { const v = ls.get('dc-overall'); return v === null ? 30 : Number(v); }
 function getProb(k) { const v = ls.get('dc-prob-' + k); return v === null ? 30 : Number(v); }
@@ -12312,6 +12424,7 @@ d.querySelector('input').addEventListener('change', () => {
 const nowOff = !d.querySelector('input').checked;
 setCardOff(cur, c, nowOff);
 d.classList.toggle('off', nowOff);
+toastCard(c, nowOff);
 });
 });
 });
@@ -12404,6 +12517,18 @@ let heartHistory = [];       // 最近触发的具体心意卡
 let specialLastTime = 0;     // 特殊心意上次触发时间（24h 冷却）
 function hit(p) { return Math.random() * 100 < p; }
 function pick(arr) { return arr.length ? arr[Math.floor(Math.random() * arr.length)] : null; }
+function toast(msg) {
+let t = document.getElementById('cc-toast');
+if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
+t.textContent = msg;
+t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
+clearTimeout(t._timer);
+t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
+}
+function toastCard(txt, off) {
+const s = String(txt == null ? '' : txt);
+toast((off ? '已关闭：' : '已开启：') + (s.length > 18 ? s.slice(0, 18) + '…' : s));
+}
 function weightedPick(items) {
 const total = items.reduce((a, it) => a + Math.max(0, it[1]), 0);
 if (total <= 0) return items.length ? items[0] : null;
@@ -12576,6 +12701,7 @@ d.querySelector('input').addEventListener('change', () => {
 const nowOff = !d.querySelector('input').checked;
 setCardOff('rc-off-' + key, t, nowOff);
 d.classList.toggle('off', nowOff);
+toastCard(t, nowOff);
 });
 });
 });
@@ -12661,6 +12787,7 @@ d.querySelector('input').addEventListener('change', () => {
 const nowOff = !d.querySelector('input').checked;
 setCardOff('mc-off-mood', c.content, nowOff);
 d.classList.toggle('off', nowOff);
+toastCard(c.content, nowOff);
 });
 });
 });
@@ -20044,8 +20171,11 @@ const lab = document.createElement('label');
 lab.className = 'toggle ccard-toggle';
 lab.innerHTML = '<input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span>';
 lab.querySelector('input').addEventListener('change', () => {
-setCkCardOff(ckTab, x, !lab.querySelector('input').checked);
+const nowOff = !lab.querySelector('input').checked;
+setCkCardOff(ckTab, x, nowOff);
 renderCheckinCards();
+const s = String(x == null ? '' : x);
+toast((nowOff ? '已关闭：' : '已开启：') + (s.length > 18 ? s.slice(0, 18) + '…' : s));
 });
 row.appendChild(lab);
 } else {
