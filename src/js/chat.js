@@ -706,11 +706,12 @@
       m.className = 'msg-ask';
       m.dataset.idx = msgs.length - 1;
       const answered = rec.askStatus === 'answered';
+      const askIsSingle = rec.askType === 'single';
       m.innerHTML = '<div class="msg-ask-card' + (answered ? ' answered' : '') + '">' +
         '<div class="msg-ask-q">问问TA · ' + escTxt(rec.askQuestion || '') + '</div>' +
         (answered
-          ? '<div class="msg-ask-a">✓ TA：' + escTxt(rec.askAnswer || '回答了你') + '</div>'
-          : '<div class="msg-ask-tip">等待 TA 回答…</div>') +
+          ? '<div class="msg-ask-a">✓ TA：' + escTxt(rec.askAnswer || '回答了你') + '</div>' + (rec.askReply ? '<div class="msg-choose-r">TA：' + escTxt(rec.askReply) + '</div>' : '')
+          : '<div class="msg-ask-tip">' + (askIsSingle ? '等待 TA 选择…' : '等待 TA 回答…') + '</div>') +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -2221,9 +2222,63 @@ function partialRetractMsg(msgEl, side) {
   const chatAskCancel = document.getElementById('chat-ask-cancel');
   const chatAskClose = document.getElementById('chat-ask-close');
   let chatAskMode = 'invite'; // invite / ask
+  let chatAskType = 'text'; // ask 模式回复类型：text 文字回复 / single 单选题
+  // v3.6.x：问问TA 回复类型选择（文字回复/单选题）——注入到半框（不手改 template.html），
+  // 单选时显示选项输入框（每行一个，可写 选项~TA回应）；安卓下由 mobile-adapt 转 ce-box，
+  // 读写/显隐仍走原 textarea（value 代理 + hidden 同步），与 ta-ask 管理页选项框同款处理
+  function ensureChatAskTypeRow() {
+    if (!chatAskPanel || chatAskPanel.querySelector('.chat-ask-type')) return;
+    const askBody = chatAskPanel.querySelector('.chat-ask-body');
+    if (!askBody) return;
+    const typeRow = document.createElement('div');
+    typeRow.className = 'chat-ask-type';
+    typeRow.hidden = true;
+    typeRow.innerHTML =
+      '<button class="chat-ask-type-btn sel" data-atype="text">文字回复</button>' +
+      '<button class="chat-ask-type-btn" data-atype="single">单选题</button>';
+    const opts = document.createElement('textarea');
+    opts.id = 'chat-ask-opts';
+    opts.className = 'chat-ask-opts';
+    opts.rows = 3;
+    opts.placeholder = '单选题选项：每行一个；可写 选项~TA回应，TA会选一个并用该回应回复';
+    opts.hidden = true;
+    const actions = askBody.querySelector('.chat-ask-actions');
+    if (actions) { askBody.insertBefore(typeRow, actions); askBody.insertBefore(opts, actions); }
+    else { askBody.appendChild(typeRow); askBody.appendChild(opts); }
+    const syncOptsHidden = () => {
+      const show = chatAskType === 'single';
+      opts.hidden = !show;
+      // ce-box 转换后显隐跟随（转换器自身 MutationObserver 已同步，这里兜底双写）
+      if (opts.__ceBox) opts.__ceBox.style.display = show ? 'block' : 'none';
+      else if (opts.previousElementSibling && opts.previousElementSibling.classList && opts.previousElementSibling.classList.contains('ce-box')) opts.previousElementSibling.style.display = show ? 'block' : 'none';
+    };
+    typeRow.querySelectorAll('.chat-ask-type-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        chatAskType = btn.dataset.atype === 'single' ? 'single' : 'text';
+        typeRow.querySelectorAll('.chat-ask-type-btn').forEach(b => b.classList.toggle('sel', b === btn));
+        syncOptsHidden();
+      });
+    });
+  }
+  function resetChatAskType() {
+    chatAskType = 'text';
+    const typeRow = chatAskPanel ? chatAskPanel.querySelector('.chat-ask-type') : null;
+    if (typeRow) {
+      typeRow.hidden = chatAskMode !== 'ask';
+      typeRow.querySelectorAll('.chat-ask-type-btn').forEach(b => b.classList.toggle('sel', b.dataset.atype === 'text'));
+    }
+    const opts = document.getElementById('chat-ask-opts');
+    if (opts) {
+      opts.hidden = true;
+      if (opts.__ceBox) opts.__ceBox.style.display = 'none';
+      else if (opts.previousElementSibling && opts.previousElementSibling.classList && opts.previousElementSibling.classList.contains('ce-box')) opts.previousElementSibling.style.display = 'none';
+    }
+  }
   function openChatAskPanel(mode) {
     if (!chatAskPanel) return;
     chatAskMode = mode || 'invite';
+    ensureChatAskTypeRow();
+    resetChatAskType();
     if (chatAskTitle) chatAskTitle.textContent = chatAskMode === 'invite' ? '邀请TA' : '问问TA';
     if (chatAskInput) {
       chatAskInput.placeholder = chatAskMode === 'invite' ? '想邀请TA做什么？' : '你的问题？';
@@ -2246,6 +2301,17 @@ function partialRetractMsg(msgEl, side) {
     if (!chatAskInput) return;
     const content = (chatAskInput.value || '').trim();
     if (!content) { toast('请输入内容'); return; }
+    // v3.6.x：单选题选项在收起半框前读取——安卓 contenteditable 转换（ce-box）下
+    // 面板隐藏后 innerText 读不到换行/内容，会把多行选项并成一行
+    let askOpts = null;
+    if (chatAskMode === 'ask' && chatAskType === 'single') {
+      const optsEl = document.getElementById('chat-ask-opts');
+      askOpts = String(optsEl ? optsEl.value || '' : '').split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(line => {
+        const i = line.indexOf('~');
+        return i >= 0 ? { t: line.slice(0, i).trim(), reply: line.slice(i + 1).trim() } : { t: line, reply: '' };
+      });
+      if (!askOpts.length) { toast('单选题请填写选项，每行一个'); return; }
+    }
     closeChatAskPanel();
     if (chatAskMode === 'invite') {
       // 我的邀请：居中卡片（等待状态）
@@ -2293,24 +2359,36 @@ function partialRetractMsg(msgEl, side) {
       }, 1500 + Math.random() * 2500);
     } else {
       // 问问TA
-      addRec({ side: 'out', text: '问：' + content, special: 'ask', askQuestion: content, askStatus: 'pending' });
+      // v3.6.x：回复类型——单选题选项已在收起半框前解析（askOpts，每行一个，
+      // 可写 选项~TA回应），发送后 TA 随机选一个选项作答，有预设回应则用预设回应回复
+      const isSingle = !!askOpts;
+      addRec({ side: 'out', text: '问：' + content, special: 'ask', askQuestion: content, askType: isSingle ? 'single' : 'text', askOptions: askOpts, askStatus: 'pending' });
       const askIdx = msgs.length - 1;
       if (window.logFish) window.logFish();
       const recTs = Date.now();
       setTimeout(() => {
         const defs = ['嗯嗯', '我想想…', '应该吧', '好呀', '我陪你', '可以的', '那挺好呀', '我觉得可以', '听你的', '当然可以', '我很乐意'];
-        const text = defs[Math.floor(Math.random() * defs.length)];
+        let text, replyText = null;
+        if (isSingle && askOpts && askOpts.length) {
+          const o = askOpts[Math.floor(Math.random() * askOpts.length)];
+          text = o.t;
+          replyText = (o.reply && String(o.reply).trim()) ? String(o.reply).trim()
+            : (window.pickAskCardReply ? window.pickAskCardReply() : '收到你的回答。');
+        } else {
+          text = defs[Math.floor(Math.random() * defs.length)];
+        }
         const rec = msgs[askIdx];
         if (rec && rec.special === 'ask') {
           rec.askStatus = 'answered';
           rec.askAnswer = text;
+          if (replyText) rec.askReply = replyText;
           saveMsgs();
           const el = body.querySelector('.msg-ask[data-idx="' + askIdx + '"]');
           if (el) {
-            el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ TA：' + escTxt(text) + '</div></div>';
+            el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ TA：' + escTxt(text) + '</div>' + (replyText ? '<div class="msg-choose-r">TA：' + escTxt(replyText) + '</div>' : '') + '</div>';
           }
         }
-        addIn(text);
+        addIn(replyText || text);
         try {
           const list = JSON.parse(store.get('invite-ask-history') || '[]');
           list.unshift({ type: 'ask', q: content, a: text, ts: recTs });

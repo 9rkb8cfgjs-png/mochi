@@ -39,6 +39,11 @@
   function setEnabled(k, v) { ls.set('mh-' + k, v ? '1' : '0'); }
   window.moodSystemState = { enabled, setEnabled };
 
+  // v3.6.x：单卡开关——系统预设字卡可逐张开启/关闭使用
+  //   情绪字卡：mc-off-mood:<内容>；回应字卡：rc-off-<分类>:<内容>；关闭为 '1'
+  function isCardOff(k, c) { return ls.get(k + ':' + c) === '1'; }
+  function setCardOff(k, c, off) { ls.set(k + ':' + c, off ? '1' : '0'); }
+
   // ---- 情绪卡（星言 getRandomMoodCard）----
   window.getMoodCard = function () {
     if (!enabled('mood')) return null;
@@ -54,8 +59,10 @@
     else if (emotionStreak >= 2) prob = streakMap['2'] !== undefined ? streakMap['2'] : 45;
     else if (emotionStreak >= 1) prob = streakMap['1'] !== undefined ? streakMap['1'] : 60;
     if (Math.random() * 100 > prob) return null;
-    // 组权重选组
-    const groups = (DATA.mood || []).filter(g => g.cards && g.cards.length);
+    // v3.6.x：单卡开关过滤——只从仍开启的字卡里抽，整组关完则跳过该组
+    const groups = (DATA.mood || [])
+      .map(g => ({ ...g, cards: g.cards.filter(c => !isCardOff('mc-off-mood', c.content)) }))
+      .filter(g => g.cards && g.cards.length);
     const g = weightedPick(groups.map(x => [x, x.weight || 1]));
     if (!g) return null;
     const cards = g.cards;
@@ -79,7 +86,11 @@
     if (chatCount >= 20 && (Date.now() - specialLastTime) > 86400000 && Math.random() * 100 < 5) {
       specialLastTime = Date.now();
       const specials = [];
-      (DATA.specialHeart || []).forEach(g => g.cards.forEach(c => specials.push({ content: c.content, group: g.group, emoji: g.emoji, level: c.level, isSpecial: true })));
+      // v3.6.x：单卡开关过滤——关闭的特殊心意不参与抽取
+      (DATA.specialHeart || []).forEach(g => g.cards.forEach(c => {
+        if (isCardOff('mc-off-mood', c.content)) return;
+        specials.push({ content: c.content, group: g.group, emoji: g.emoji, level: c.level, isSpecial: true });
+      }));
       if (specials.length) {
         const recent5 = heartHistory.slice(-5).map(h => h.content);
         let pool = specials.filter(c => recent5.indexOf(c.content) === -1);
@@ -102,7 +113,9 @@
     // 分类内抽卡：等级加权 + 稀有度加权 + 最近5条不重复
     const grp = (DATA.heart || []).find(g => g.group === selGroup);
     if (!grp || !grp.cards.length) return null;
-    let cards = grp.cards;
+    // v3.6.x：单卡开关过滤——关闭的字卡不参与抽取，整组关完则跳过
+    let cards = grp.cards.filter(c => !isCardOff('mc-off-mood', c.content));
+    if (!cards.length) return null;
     const recent5 = heartHistory.slice(-5).map(h => h.content);
     let cooled = cards.filter(c => recent5.indexOf(c.content) === -1);
     if (!cooled.length) cooled = cards;
@@ -133,9 +146,12 @@
     if (!selGroup) return null;
     const grp = (DATA.intent || []).find(g => g.group === selGroup);
     if (!grp || !grp.cards.length) return null;
+    // v3.6.x：单卡开关过滤——关闭的字卡不参与抽取
+    const cards = grp.cards.filter(c => !isCardOff('mc-off-mood', c.content));
+    if (!cards.length) return null;
     const rarity = weightedPick(Object.keys(W.rarity || { normal: 80, rare: 15, special: 5 }).map(k => [k, W.rarity[k]]));
-    let pool2 = grp.cards.filter(c => c.rarity === rarity);
-    if (!pool2.length) pool2 = grp.cards;
+    let pool2 = cards.filter(c => c.rarity === rarity);
+    if (!pool2.length) pool2 = cards;
     const picked = pick(pool2);
     if (!picked) return null;
     return { content: picked.content, group: grp.group, emoji: grp.emoji, rarity: picked.rarity };
@@ -205,11 +221,19 @@
         h.innerHTML = '<span class="ccg-name">' + name + '</span><span class="ccg-count">' + arr.length + '</span>';
         rcList.appendChild(h);
         arr.forEach(t => {
+          const off = isCardOff('rc-off-' + key, t);
           const d = document.createElement('div');
-          d.className = 'cc-item glass';
-          // v3.6.x：整页为系统预设字卡，统一标【系统】与自定义字卡区分
-          d.innerHTML = '<div class="cc-txt"><div class="t">' + t + ' <span class="tc-known">系统</span></div></div>';
+          d.className = 'cc-item glass' + (off ? ' off' : '');
+          // v3.6.x：整页为系统预设字卡，统一标【系统】与自定义字卡区分；
+          // 右侧单卡开关——逐张开启/关闭该字卡（关闭后回复不再抽取）
+          d.innerHTML = '<div class="cc-txt"><div class="t">' + t + ' <span class="tc-known">系统</span></div></div>' +
+            '<label class="toggle ccard-toggle"><input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span></label>';
           rcList.appendChild(d);
+          d.querySelector('input').addEventListener('change', () => {
+            const nowOff = !d.querySelector('input').checked;
+            setCardOff('rc-off-' + key, t, nowOff);
+            d.classList.toggle('off', nowOff);
+          });
         });
       });
     }
@@ -291,12 +315,20 @@
         h.innerHTML = '<span class="ccg-name">' + g.group + '</span><span class="ccg-count">' + g.cards.length + '</span><span class="ccg-count" style="background:rgba(0,0,0,.03)">权重 ' + g.weight + '</span>';
         mcList.appendChild(h);
         g.cards.forEach(c => {
+          const off = isCardOff('mc-off-mood', c.content);
           const d = document.createElement('div');
-          d.className = 'cc-item glass';
-          // v3.6.x：整页为系统预设字卡，统一标【系统】与自定义字卡区分
+          d.className = 'cc-item glass' + (off ? ' off' : '');
+          // v3.6.x：整页为系统预设字卡，统一标【系统】与自定义字卡区分；
+          // 右侧单卡开关——逐张开启/关闭该字卡（关闭后情绪链不再抽取）
           d.innerHTML = '<div class="cc-txt"><div class="t">' + c.content + ' <span class="tc-known">系统</span></div></div>' +
-            '<span class="cc-type">' + (c.rarity === 'rare' ? '稀有' : c.rarity === 'special' ? '特殊' : '普通') + '</span>';
+            '<span class="cc-type">' + (c.rarity === 'rare' ? '稀有' : c.rarity === 'special' ? '特殊' : '普通') + '</span>' +
+            '<label class="toggle ccard-toggle"><input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span></label>';
           mcList.appendChild(d);
+          d.querySelector('input').addEventListener('change', () => {
+            const nowOff = !d.querySelector('input').checked;
+            setCardOff('mc-off-mood', c.content, nowOff);
+            d.classList.toggle('off', nowOff);
+          });
         });
       });
     }
@@ -340,10 +372,11 @@ window.getReplyCard = function () {
   // 固定 30% 整体出现概率（与默认字卡 defaultCommonOverallProb 一致）
   if (Math.random() * 100 >= 30) return '';
   const followup = DATA.followup || {};
-  const cats = Object.keys(followup).filter(k => followup[k] && followup[k].length);
+  // v3.6.x：单卡开关过滤——只从仍开启的分类里选（整类关完则跳过该类）
+  const cats = Object.keys(followup).filter(k => followup[k] && followup[k].some(t => !isCardOff('rc-off-' + k, t)));
   if (!cats.length) return '';
   const cat = cats[Math.floor(Math.random() * cats.length)];
-  const pool = followup[cat];
+  const pool = followup[cat].filter(t => !isCardOff('rc-off-' + cat, t));
   return pool[Math.floor(Math.random() * pool.length)];
 };
 // ================= 聊天回应（连接词）=================
@@ -356,7 +389,9 @@ window.getReplyCard = function () {
     else if (/[。.]/.test(reply.slice(-1)) && reply.length > 8) cat = Math.random() < 0.5 ? 'bridge' : 'shift';
     else if (reply.length > 10) cat = Math.random() < 0.5 ? 'keep' : 'probe';
     else cat = Math.random() < 0.5 ? 'echo' : 'confirm';
-    const pool = followup[cat] || followup['echo'] || [];
+    // v3.6.x：单卡开关过滤——本类可用字卡抽空时回退到「接话」类的可用字卡
+    let pool = (followup[cat] || []).filter(t => !isCardOff('rc-off-' + cat, t));
+    if (!pool.length && cat !== 'echo') pool = (followup['echo'] || []).filter(t => !isCardOff('rc-off-echo', t));
     if (!pool.length) return '';
     return pool[Math.floor(Math.random() * pool.length)];
   };

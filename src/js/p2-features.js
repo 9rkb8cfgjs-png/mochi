@@ -269,6 +269,9 @@ function ckList(k, def) {
   return def.slice();
 }
 function ckSaveList(k, list) { store.set('checkin-cards-' + k, JSON.stringify(list)); }
+// v3.6.x：查岗系统预设字卡单卡开关——逐张开启/关闭（关闭后查岗不再抽取该条）
+function isCkCardOff(k, x) { return store.get('ck-off-' + k + ':' + x) === '1'; }
+function setCkCardOff(k, x, off) { store.set('ck-off-' + k + ':' + x, off ? '1' : '0'); }
 function genCheckin() {
   const useDefault = getCkDefault();
   const places = ckList('place', DEF_PLACES);
@@ -276,9 +279,10 @@ function genCheckin() {
   const msgs = ckList('msg', DEF_CHECK_MSGS);
   const out = {};
   // 关闭「使用系统预设」时：只从用户添加的字卡里抽；某分类没有用户自定义则跳过该字段
-  let place = useDefault ? places : places.filter(p => DEF_PLACES.indexOf(p) < 0);
-  let action = useDefault ? actions : actions.filter(a => DEF_ACTIONS.indexOf(a) < 0);
-  let msg = useDefault ? msgs : msgs.filter(m => DEF_CHECK_MSGS.indexOf(m) < 0);
+  // v3.6.x：单卡开关过滤——用户关闭的字卡（ck-off-*）不参与抽取
+  let place = useDefault ? places.filter(p => !isCkCardOff('place', p)) : places.filter(p => DEF_PLACES.indexOf(p) < 0 && !isCkCardOff('place', p));
+  let action = useDefault ? actions.filter(a => !isCkCardOff('action', a)) : actions.filter(a => DEF_ACTIONS.indexOf(a) < 0 && !isCkCardOff('action', a));
+  let msg = useDefault ? msgs.filter(m => !isCkCardOff('msg', m)) : msgs.filter(m => DEF_CHECK_MSGS.indexOf(m) < 0 && !isCkCardOff('msg', m));
   // 兜底：关闭预设且完全没有用户自定义时回退使用系统预设（避免查岗空白/undefined）
   if (!place.length && !action.length && !msg.length) {
     place = places; action = actions; msg = msgs;
@@ -512,24 +516,41 @@ if (ckRefresh) {
       const def = { place: DEF_PLACES, action: DEF_ACTIONS, msg: DEF_CHECK_MSGS }[ckTab];
       const list = ckList(ckTab, def);
       const custom = ckHasCustom(ckTab);
-      listEl.innerHTML = list.length
-        ? list.map((x, i) => {
-            // 系统预设 = 无自定义（整库默认）或内容匹配默认项；系统项不可删除
-            const sys = !custom || def.indexOf(x) >= 0;
-            return '<div class="tc-qrow' + (sys && !useDefault ? ' off' : '') + '"><div class="tc-qmain"><div class="tc-qtext">' + String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>' +
-              (custom && !sys ? '<button class="ta-del" data-i="' + i + '">✕</button>' : '') +
-              '</div>';
-          }).join('')
-        : '<div class="ta-empty">暂无，可添加</div>';
-      // 删除
-      listEl.querySelectorAll('.ta-del').forEach(b => {
-        b.onclick = () => {
-          const l = ckList(ckTab, def);
-          l.splice(Number(b.dataset.i), 1);
-          ckSaveList(ckTab, l);
-          renderCheckinCards();
-        };
-      });
+      listEl.innerHTML = '';
+      if (!list.length) { listEl.innerHTML = '<div class="ta-empty">暂无，可添加</div>'; }
+      else {
+        list.forEach((x, i) => {
+          // 系统预设 = 无自定义（整库默认）或内容匹配默认项；系统项不可删除
+          const sys = !custom || def.indexOf(x) >= 0;
+          const off = isCkCardOff(ckTab, x) || (sys && !useDefault);
+          const row = document.createElement('div');
+          row.className = 'tc-qrow' + (off ? ' off' : '');
+          row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>';
+          if (sys) {
+            // v3.6.x：系统预设单卡开关——逐张开启/关闭（关闭后查岗不再抽取）
+            const lab = document.createElement('label');
+            lab.className = 'toggle ccard-toggle';
+            lab.innerHTML = '<input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span>';
+            lab.querySelector('input').addEventListener('change', () => {
+              setCkCardOff(ckTab, x, !lab.querySelector('input').checked);
+              renderCheckinCards();
+            });
+            row.appendChild(lab);
+          } else {
+            const del = document.createElement('button');
+            del.className = 'ta-del';
+            del.textContent = '✕';
+            del.addEventListener('click', () => {
+              const l = ckList(ckTab, def);
+              l.splice(i, 1);
+              ckSaveList(ckTab, l);
+              renderCheckinCards();
+            });
+            row.appendChild(del);
+          }
+          listEl.appendChild(row);
+        });
+      }
     }
     // 数字
     const total = CK_DEFS.reduce((s, [k, def]) => s + ckList(k, def).length, 0);

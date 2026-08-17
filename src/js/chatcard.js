@@ -798,6 +798,47 @@
   }
 
   // 批量导入：文字分类按【分组名】导入；【表情包】【图片】分类直接上传图片
+  // v3.6.x：批量导入弹窗顶部「确定」按钮——安卓下多行输入被转成可自动增高的
+  // ce-box，导入内容多时弹窗变高、底部「确定」滚出视野；在弹窗顶部标题栏右侧
+  // 常驻一个「确定」按钮（复用底部按钮的点击，仅批量导入多行弹窗显示，
+  // 弹窗关闭即还原，不影响其他弹窗）
+  function showImportTopOk() {
+    const mask = document.getElementById('modal-mask');
+    const modal = mask ? mask.querySelector('.modal') : null;
+    const title = document.getElementById('modal-title');
+    if (!mask || !modal || !title) return;
+    // 顶部条：标题 + 确定按钮（标题元素本身不动，仅换父节点，不影响其他逻辑读写它）
+    let bar = document.getElementById('cc-modal-topbar');
+    if (!bar || bar.parentNode !== modal) {
+      bar = document.createElement('div');
+      bar.id = 'cc-modal-topbar';
+      bar.className = 'cc-modal-topbar';
+      const btn = document.createElement('button');
+      btn.id = 'cc-modal-top-ok';
+      btn.className = 'cc-modal-top-ok';
+      btn.textContent = '确定';
+      btn.addEventListener('click', () => {
+        const ok = document.getElementById('modal-ok');
+        if (ok) ok.click();
+      });
+      bar.appendChild(btn);
+      modal.insertBefore(bar, title);
+      bar.insertBefore(title, btn);
+    }
+    // 监听弹窗关闭（确定/取消/遮罩/Enter）：还原标题位置并移除顶部条，
+    // 下次打开其他弹窗不受影响
+    if (mask && !mask.__ccTopOkWatch) {
+      mask.__ccTopOkWatch = true;
+      new MutationObserver(() => {
+        if (!mask.hidden) return;
+        const b = document.getElementById('cc-modal-topbar');
+        if (b && b.parentNode === modal) {
+          modal.insertBefore(title, b);
+          b.remove();
+        }
+      }).observe(mask, { attributes: true, attributeFilter: ['hidden'] });
+    }
+  }
   const impBtn = document.getElementById('cc-import');
   if (impBtn) {
     impBtn.addEventListener('click', () => {
@@ -866,6 +907,8 @@
       }
       // 文字分类：批量导入（一行一个；按【组名】识别分组 / txt 文件）
       if (window.openModal) {
+        // v3.6.x：先注入顶部「确定」按钮，再打开弹窗（内容多时底部按钮滚出视野）
+        showImportTopOk();
         window.openModal('批量导入字卡（一行一个）', '', (raw, targetGroup) => {
           // 一行一个字卡：统一按 \r\n / \r / \n 拆分——部分手机浏览器/剪贴板来源的换行是 \r，
           // 只按 \n 拆会把多行并成一行，全部混进同一个字卡

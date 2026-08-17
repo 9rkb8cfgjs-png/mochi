@@ -197,6 +197,21 @@
   width:100%; box-sizing:border-box;
 }
 .chat-ask-input:focus { border-color:var(--ink); }
+/* 问问TA 回复类型选择（文字回复/单选题，v3.6.x） */
+.chat-ask-type { display:flex; gap:8px; }
+.chat-ask-type[hidden] { display:none; }
+.chat-ask-type-btn {
+  flex:1; border:1px solid rgba(0,0,0,.12); border-radius:10px; padding:8px 0;
+  background:#fff; color:#666; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+  text-align:center; -webkit-tap-highlight-color:transparent;
+}
+.chat-ask-type-btn.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+.chat-ask-opts {
+  width:100%; box-sizing:border-box; border:1px solid rgba(0,0,0,.12); border-radius:12px;
+  padding:11px 14px; font-size:14px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
+  resize:none; line-height:1.5;
+}
+.chat-ask-opts:focus { border-color:var(--ink); }
 .chat-ask-actions { display:flex; gap:8px; }
 .chat-ask-actions .cc-tool { flex:1; }
 

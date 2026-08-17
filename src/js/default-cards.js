@@ -20,6 +20,11 @@
   // 数据（提取自星言 08_default_cards_data.js）
   const DATA = (window.DEFAULT_CARD_DATA) || { main: [], kaomoji: [], emoji: [] };
 
+  // v3.6.x：单卡开关——系统预设字卡可逐张开启/关闭使用
+  //   存 localStorage 键：dc-off-<分类>:<字卡内容>，关闭为 '1'
+  function isCardOff(cat, c) { return ls.get('dc-off-' + cat + ':' + c) === '1'; }
+  function setCardOff(cat, c, off) { ls.set('dc-off-' + cat + ':' + c, off ? '1' : '0'); }
+
   // ---- 页面 UI ----
   let cur = 'main';
   let q = '';
@@ -60,11 +65,19 @@
       h.innerHTML = '<span class="ccg-name">' + gname + '</span><span class="ccg-count">' + arr.length + '</span>';
       list.appendChild(h);
       arr.forEach(c => {
+        const off = isCardOff(cur, c);
         const d = document.createElement('div');
-        d.className = 'cc-item glass';
-        // v3.6.x：整页为系统预设字卡，统一标【系统】与自定义字卡区分
-        d.innerHTML = '<div class="cc-txt"><div class="t">' + c + ' <span class="tc-known">系统</span></div></div>';
+        d.className = 'cc-item glass' + (off ? ' off' : '');
+        // v3.6.x：整页为系统预设字卡，统一标【系统】与自定义字卡区分；
+        // 右侧单卡开关——逐张开启/关闭该字卡（关闭后聊天回复不再抽取）
+        d.innerHTML = '<div class="cc-txt"><div class="t">' + c + ' <span class="tc-known">系统</span></div></div>' +
+          '<label class="toggle ccard-toggle"><input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span></label>';
         list.appendChild(d);
+        d.querySelector('input').addEventListener('change', () => {
+          const nowOff = !d.querySelector('input').checked;
+          setCardOff(cur, c, nowOff);
+          d.classList.toggle('off', nowOff);
+        });
       });
     });
   }
@@ -134,7 +147,10 @@
       roll -= weights[i];
       if (roll < 0) { chosen = keys[i]; break; }
     }
-    const grps = (DATA[chosen] || []).filter(g => g[1].length);
+    // v3.6.x：单卡开关过滤——用户关闭的字卡不参与抽取，整组关完则跳过该组
+    const grps = (DATA[chosen] || [])
+      .map(g => [g[0], g[1].filter(c => !isCardOff(chosen, c))])
+      .filter(g => g[1].length);
     if (!grps.length) return [];
     const g = grps[Math.floor(Math.random() * grps.length)];
     const text = g[1][Math.floor(Math.random() * g[1].length)];

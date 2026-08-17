@@ -104,6 +104,34 @@
   text-align:center; color:#c0c0c0; font-size:13px; padding:40px 0; letter-spacing:1px;
 }
 
+/* 批量导入弹窗顶部「确定」按钮（v3.6.x）——
+   安卓下多行输入被转成可自动增高的 ce-box，导入内容多时弹窗变高、
+   底部「确定」滚出视野；顶部标题栏右侧常驻一个「确定」按钮
+   （仅批量导入多行弹窗由 chatcard.js 注入显示，关闭即还原，不影响其他弹窗） */
+.cc-modal-topbar {
+  position:sticky; top:0; z-index:5;
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  margin:-18px -18px 10px; padding:13px 14px 10px;
+  background:rgba(255,255,255,.97);
+  border-bottom:1px solid rgba(0,0,0,.06);
+  border-radius:18px 18px 0 0;
+}
+.cc-modal-topbar .modal-title { margin-bottom:0; }
+.cc-modal-top-ok {
+  flex-shrink:0; border:none; border-radius:99px; padding:5px 14px;
+  font-size:12px; font-weight:600; font-family:inherit; cursor:pointer;
+  background:#111; color:#fff;
+}
+.cc-modal-top-ok:active { opacity:.85; }
+.cc-modal-top-ok[hidden] { display:none; }
+
+/* 系统预设字卡单卡开关（v3.6.x）：比通用 .toggle 更小巧，嵌在字卡行右侧 */
+.cc-item .ccard-toggle, .tc-qrow .ccard-toggle { width:36px; height:21px; flex-shrink:0; margin-left:auto; }
+.cc-item .ccard-toggle .tk::before, .tc-qrow .ccard-toggle .tk::before { width:15px; height:15px; top:3px; left:3px; }
+.cc-item .ccard-toggle input:checked + .tk::before, .tc-qrow .ccard-toggle input:checked + .tk::before { transform:translateX(15px); }
+/* 关闭的字卡灰化 */
+.cc-item.off { opacity:.5; }
+
 /* 轻提示
    v3.5.110：bottom 加 safe-area，全面屏全屏模式下不撞 Home 条 */
 #cc-toast {

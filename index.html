@@ -794,6 +794,20 @@ font-size:14px; font-family:inherit; outline:none; background:#fff; color:var(--
 width:100%; box-sizing:border-box;
 }
 .chat-ask-input:focus { border-color:var(--ink); }
+.chat-ask-type { display:flex; gap:8px; }
+.chat-ask-type[hidden] { display:none; }
+.chat-ask-type-btn {
+flex:1; border:1px solid rgba(0,0,0,.12); border-radius:10px; padding:8px 0;
+background:#fff; color:#666; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+text-align:center; -webkit-tap-highlight-color:transparent;
+}
+.chat-ask-type-btn.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+.chat-ask-opts {
+width:100%; box-sizing:border-box; border:1px solid rgba(0,0,0,.12); border-radius:12px;
+padding:11px 14px; font-size:14px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
+resize:none; line-height:1.5;
+}
+.chat-ask-opts:focus { border-color:var(--ink); }
 .chat-ask-actions { display:flex; gap:8px; }
 .chat-ask-actions .cc-tool { flex:1; }
 #chat-divine-body .div-modes-wrap,
@@ -1433,6 +1447,26 @@ border:1px solid rgba(0,0,0,.08); padding:2px 8px; border-radius:99px;
 .cc-empty {
 text-align:center; color:#c0c0c0; font-size:13px; padding:40px 0; letter-spacing:1px;
 }
+.cc-modal-topbar {
+position:sticky; top:0; z-index:5;
+display:flex; align-items:center; justify-content:space-between; gap:8px;
+margin:-18px -18px 10px; padding:13px 14px 10px;
+background:rgba(255,255,255,.97);
+border-bottom:1px solid rgba(0,0,0,.06);
+border-radius:18px 18px 0 0;
+}
+.cc-modal-topbar .modal-title { margin-bottom:0; }
+.cc-modal-top-ok {
+flex-shrink:0; border:none; border-radius:99px; padding:5px 14px;
+font-size:12px; font-weight:600; font-family:inherit; cursor:pointer;
+background:#111; color:#fff;
+}
+.cc-modal-top-ok:active { opacity:.85; }
+.cc-modal-top-ok[hidden] { display:none; }
+.cc-item .ccard-toggle, .tc-qrow .ccard-toggle { width:36px; height:21px; flex-shrink:0; margin-left:auto; }
+.cc-item .ccard-toggle .tk::before, .tc-qrow .ccard-toggle .tk::before { width:15px; height:15px; top:3px; left:3px; }
+.cc-item .ccard-toggle input:checked + .tk::before, .tc-qrow .ccard-toggle input:checked + .tk::before { transform:translateX(15px); }
+.cc-item.off { opacity:.5; }
 #cc-toast {
 position:fixed; left:50%; bottom:calc(120px + env(safe-area-inset-bottom, 0px)); transform:translate(-50%, 10px);
 background:rgba(17,17,17,.9); color:#fff; font-size:13px;
@@ -2791,19 +2825,20 @@ transition:color .18s ease, background .18s ease;
         <div class="splash-notice-title">关于 Mochi 字卡</div>
         <div class="splash-notice-sub">【8.15 发布，还在修，暂时不建议开始二传二改】</div>
         <div class="splash-notice-list">
-          <p>1. 不开测试群</p>
-          <p>2. 测试安排：先测试几天，集中修不同设备的 bug；之后会公开发帖放出链接（链接已在 GitHub 仓库，但暂不公开宣传）。</p>
-          <p>3. 关于 bug：如果参与测试的人较多，不同设备差异导致的 bug 我可能无法全部修完——建议等我公开发帖后的版本，自己拿最新版代码让 AI 协助修复。</p>
-          <p>4. 使用授权：支持二传二改和自行部署，禁止商用。</p>
-          <p>5. 在边修边部署网站，有问题可以报修，使用时如果有问题也可以重新刷新用新版试试，修一天我会部署一天</p>
-          <p>6. 网站与我更新修复问题是同步的，可查看开屏最新部署时间。如果浏览器还没进入新版，可以关掉浏览器再打开多试几次流量刷新，或者过一段时间再打开</p>
-          <p>7. Mochi 字卡虽然是以我的另一个字卡「星言」为基础修改的，但字卡基础回复逻辑和灵感来源：小红书 @milk（2777299956）；帮我决定功能参考：小红书@FelixFelicis（9416318007）。</p>
-          <p>8. 新增可导入 milk 字卡库的【主字卡】【emoji】【拍一拍】</p>
+          <p>1. 感谢内测反馈：大家的每条反馈我都有认真看，谢谢参与内测的各位</p>
+          <p>2. 不开测试群</p>
+          <p>3. 测试安排：先测试几天，集中修不同设备的 bug；之后会公开发帖放出链接（链接已在 GitHub 仓库，但暂不公开宣传）。</p>
+          <p>4. 关于 bug：如果参与测试的人较多，不同设备差异导致的 bug 我可能无法全部修完——建议等我公开发帖后的版本，自己拿最新版代码让 AI 协助修复。</p>
+          <p>5. 使用规范：支持二传、二改和自行部署，但要遵守——转载要署名（小红书 @言序（1842523578））、二次修改要注明原作者、禁止商用。</p>
+          <p>6. 在边修边部署网站，有问题可以报修，使用时如果有问题也可以重新刷新用新版试试，修一天我会部署一天</p>
+          <p>7. 网站与我更新修复问题是同步的，可查看开屏最新部署时间。如果浏览器还没进入新版，可以关掉浏览器再打开多试几次流量刷新，或者过一段时间再打开</p>
+          <p>8. Mochi 字卡虽然是以我的另一个字卡「星言」为基础修改的，但字卡基础回复逻辑和灵感来源：小红书 @milk（2777299956）；帮我决定功能参考：小红书@FelixFelicis（9416318007）。</p>
+          <p>9. 新增可导入 milk 字卡库的【主字卡】【emoji】【拍一拍】</p>
         </div>
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.36 · 部署于 2026-08-16 23:40</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.37 · 部署于 2026-08-17 12:39</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3445,7 +3480,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.36</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.37</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5382,6 +5417,8 @@ function getUseDefault() {
 const v = store.get(DEF_KEY);
 return v === null ? true : v === '1';
 }
+function isQuoteOff(q) { return store.get('quote-off:' + q) === '1'; }
+function setQuoteOff(q, off) { store.set('quote-off:' + q, off ? '1' : '0'); }
 const DEFAULT_QUOTES = [
 '我偏爱你。', '我只对你这样。', '过来，让我抱一下。', '别走，再陪我一会儿。',
 '你是我的例外。', '今天也很喜欢你。', '你在，我就安心。', '我舍不得你。',
@@ -5426,8 +5463,8 @@ const v = JSON.parse(store.get(KEY) || 'null');
 if (Array.isArray(v) && v.length) custom = v;
 } catch (e) {}
 let quotes = null;
-if (useDefault) quotes = custom.length ? custom : DEFAULT_QUOTES.slice();
-else quotes = custom.slice(); // 只用自己的
+if (useDefault) quotes = (custom.length ? custom : DEFAULT_QUOTES.filter(q => !isQuoteOff(q))).filter(q => !isQuoteOff(q));
+else quotes = custom.filter(q => !isQuoteOff(q)); // 只用自己的
 if (!quotes.length) return '';
 const d = new Date();
 const today = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
@@ -5447,23 +5484,44 @@ if (defEl) defEl.checked = useDefault;
 if (cnt) cnt.textContent = getQuotes().length + (custom ? '' : '（默认）');
 if (!el) return;
 const quotes = getQuotes();
-el.innerHTML = quotes.length
-? quotes.map((q, i) => {
+if (!quotes.length) { el.innerHTML = '<div class="ta-empty">暂无，可添加</div>'; return; }
+el.innerHTML = '';
+quotes.forEach((q, i) => {
 const sys = isDefaultQuote(q);
-return '<div class="tc-qrow' + (sys && !useDefault ? ' off' : '') + '"><div class="tc-qmain"><div class="tc-qtext">' + esc(q) + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>' +
-(custom && !sys ? '<button class="ta-del" data-i="' + i + '">✕</button>' : '') +
-'</div>';
-}).join('') +
-(custom ? '' : '<div class="ta-empty" style="margin-top:10px">当前使用系统预设情话（共 ' + quotes.length + ' 句，不可单独删除）。添加自定义情话后即可管理。</div>')
-: '<div class="ta-empty">暂无，可添加</div>';
-el.querySelectorAll('.ta-del').forEach(b => {
-b.onclick = () => {
+const off = isQuoteOff(q) || (sys && !useDefault);
+const row = document.createElement('div');
+row.className = 'tc-qrow' + (off ? ' off' : '');
+row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + esc(q) + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>';
+if (sys) {
+const lab = document.createElement('label');
+lab.className = 'toggle ccard-toggle';
+lab.innerHTML = '<input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span>';
+lab.querySelector('input').addEventListener('change', () => {
+setQuoteOff(q, !lab.querySelector('input').checked);
+renderList();
+});
+row.appendChild(lab);
+} else {
+const del = document.createElement('button');
+del.className = 'ta-del';
+del.textContent = '✕';
+del.addEventListener('click', () => {
 const list = getQuotes();
-list.splice(Number(b.dataset.i), 1);
+list.splice(i, 1);
 store.set(KEY, JSON.stringify(list));
 renderList();
-};
 });
+row.appendChild(del);
+}
+el.appendChild(row);
+});
+if (!custom) {
+const empty = document.createElement('div');
+empty.className = 'ta-empty';
+empty.style.marginTop = '10px';
+empty.textContent = '当前使用系统预设情话（共 ' + quotes.length + ' 句，不可删除，可逐句开关）。添加自定义情话后即可管理。';
+el.appendChild(empty);
+}
 }
 const batchAdd = document.getElementById('cq-batch-add');
 if (batchAdd) {
@@ -7107,11 +7165,12 @@ if (rec.special === 'ask') {
 m.className = 'msg-ask';
 m.dataset.idx = msgs.length - 1;
 const answered = rec.askStatus === 'answered';
+const askIsSingle = rec.askType === 'single';
 m.innerHTML = '<div class="msg-ask-card' + (answered ? ' answered' : '') + '">' +
 '<div class="msg-ask-q">问问TA · ' + escTxt(rec.askQuestion || '') + '</div>' +
 (answered
-? '<div class="msg-ask-a">✓ TA：' + escTxt(rec.askAnswer || '回答了你') + '</div>'
-: '<div class="msg-ask-tip">等待 TA 回答…</div>') +
+? '<div class="msg-ask-a">✓ TA：' + escTxt(rec.askAnswer || '回答了你') + '</div>' + (rec.askReply ? '<div class="msg-choose-r">TA：' + escTxt(rec.askReply) + '</div>' : '')
+: '<div class="msg-ask-tip">' + (askIsSingle ? '等待 TA 选择…' : '等待 TA 回答…') + '</div>') +
 '</div>';
 body.appendChild(m);
 maybeScrollChatBottom();
@@ -8361,9 +8420,59 @@ const chatAskOk = document.getElementById('chat-ask-ok');
 const chatAskCancel = document.getElementById('chat-ask-cancel');
 const chatAskClose = document.getElementById('chat-ask-close');
 let chatAskMode = 'invite'; // invite / ask
+let chatAskType = 'text'; // ask 模式回复类型：text 文字回复 / single 单选题
+function ensureChatAskTypeRow() {
+if (!chatAskPanel || chatAskPanel.querySelector('.chat-ask-type')) return;
+const askBody = chatAskPanel.querySelector('.chat-ask-body');
+if (!askBody) return;
+const typeRow = document.createElement('div');
+typeRow.className = 'chat-ask-type';
+typeRow.hidden = true;
+typeRow.innerHTML =
+'<button class="chat-ask-type-btn sel" data-atype="text">文字回复</button>' +
+'<button class="chat-ask-type-btn" data-atype="single">单选题</button>';
+const opts = document.createElement('textarea');
+opts.id = 'chat-ask-opts';
+opts.className = 'chat-ask-opts';
+opts.rows = 3;
+opts.placeholder = '单选题选项：每行一个；可写 选项~TA回应，TA会选一个并用该回应回复';
+opts.hidden = true;
+const actions = askBody.querySelector('.chat-ask-actions');
+if (actions) { askBody.insertBefore(typeRow, actions); askBody.insertBefore(opts, actions); }
+else { askBody.appendChild(typeRow); askBody.appendChild(opts); }
+const syncOptsHidden = () => {
+const show = chatAskType === 'single';
+opts.hidden = !show;
+if (opts.__ceBox) opts.__ceBox.style.display = show ? 'block' : 'none';
+else if (opts.previousElementSibling && opts.previousElementSibling.classList && opts.previousElementSibling.classList.contains('ce-box')) opts.previousElementSibling.style.display = show ? 'block' : 'none';
+};
+typeRow.querySelectorAll('.chat-ask-type-btn').forEach(btn => {
+btn.addEventListener('click', () => {
+chatAskType = btn.dataset.atype === 'single' ? 'single' : 'text';
+typeRow.querySelectorAll('.chat-ask-type-btn').forEach(b => b.classList.toggle('sel', b === btn));
+syncOptsHidden();
+});
+});
+}
+function resetChatAskType() {
+chatAskType = 'text';
+const typeRow = chatAskPanel ? chatAskPanel.querySelector('.chat-ask-type') : null;
+if (typeRow) {
+typeRow.hidden = chatAskMode !== 'ask';
+typeRow.querySelectorAll('.chat-ask-type-btn').forEach(b => b.classList.toggle('sel', b.dataset.atype === 'text'));
+}
+const opts = document.getElementById('chat-ask-opts');
+if (opts) {
+opts.hidden = true;
+if (opts.__ceBox) opts.__ceBox.style.display = 'none';
+else if (opts.previousElementSibling && opts.previousElementSibling.classList && opts.previousElementSibling.classList.contains('ce-box')) opts.previousElementSibling.style.display = 'none';
+}
+}
 function openChatAskPanel(mode) {
 if (!chatAskPanel) return;
 chatAskMode = mode || 'invite';
+ensureChatAskTypeRow();
+resetChatAskType();
 if (chatAskTitle) chatAskTitle.textContent = chatAskMode === 'invite' ? '邀请TA' : '问问TA';
 if (chatAskInput) {
 chatAskInput.placeholder = chatAskMode === 'invite' ? '想邀请TA做什么？' : '你的问题？';
@@ -8385,6 +8494,15 @@ function submitChatAsk() {
 if (!chatAskInput) return;
 const content = (chatAskInput.value || '').trim();
 if (!content) { toast('请输入内容'); return; }
+let askOpts = null;
+if (chatAskMode === 'ask' && chatAskType === 'single') {
+const optsEl = document.getElementById('chat-ask-opts');
+askOpts = String(optsEl ? optsEl.value || '' : '').split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(line => {
+const i = line.indexOf('~');
+return i >= 0 ? { t: line.slice(0, i).trim(), reply: line.slice(i + 1).trim() } : { t: line, reply: '' };
+});
+if (!askOpts.length) { toast('单选题请填写选项，每行一个'); return; }
+}
 closeChatAskPanel();
 if (chatAskMode === 'invite') {
 addRec({ side: 'out', text: '邀请：' + content, special: 'invite', inviteContent: content, inviteStatus: 'pending' });
@@ -8430,24 +8548,34 @@ if (window.renderAskRecords) window.renderAskRecords();
 setTimeout(maybeFollowupAskCard, 1200);
 }, 1500 + Math.random() * 2500);
 } else {
-addRec({ side: 'out', text: '问：' + content, special: 'ask', askQuestion: content, askStatus: 'pending' });
+const isSingle = !!askOpts;
+addRec({ side: 'out', text: '问：' + content, special: 'ask', askQuestion: content, askType: isSingle ? 'single' : 'text', askOptions: askOpts, askStatus: 'pending' });
 const askIdx = msgs.length - 1;
 if (window.logFish) window.logFish();
 const recTs = Date.now();
 setTimeout(() => {
 const defs = ['嗯嗯', '我想想…', '应该吧', '好呀', '我陪你', '可以的', '那挺好呀', '我觉得可以', '听你的', '当然可以', '我很乐意'];
-const text = defs[Math.floor(Math.random() * defs.length)];
+let text, replyText = null;
+if (isSingle && askOpts && askOpts.length) {
+const o = askOpts[Math.floor(Math.random() * askOpts.length)];
+text = o.t;
+replyText = (o.reply && String(o.reply).trim()) ? String(o.reply).trim()
+: (window.pickAskCardReply ? window.pickAskCardReply() : '收到你的回答。');
+} else {
+text = defs[Math.floor(Math.random() * defs.length)];
+}
 const rec = msgs[askIdx];
 if (rec && rec.special === 'ask') {
 rec.askStatus = 'answered';
 rec.askAnswer = text;
+if (replyText) rec.askReply = replyText;
 saveMsgs();
 const el = body.querySelector('.msg-ask[data-idx="' + askIdx + '"]');
 if (el) {
-el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ TA：' + escTxt(text) + '</div></div>';
+el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ TA：' + escTxt(text) + '</div>' + (replyText ? '<div class="msg-choose-r">TA：' + escTxt(replyText) + '</div>' : '') + '</div>';
 }
 }
-addIn(text);
+addIn(replyText || text);
 try {
 const list = JSON.parse(store.get('invite-ask-history') || '[]');
 list.unshift({ type: 'ask', q: content, a: text, ts: recTs });
@@ -10095,6 +10223,40 @@ toast('已清除全部字卡与分组');
 }
 });
 }
+function showImportTopOk() {
+const mask = document.getElementById('modal-mask');
+const modal = mask ? mask.querySelector('.modal') : null;
+const title = document.getElementById('modal-title');
+if (!mask || !modal || !title) return;
+let bar = document.getElementById('cc-modal-topbar');
+if (!bar || bar.parentNode !== modal) {
+bar = document.createElement('div');
+bar.id = 'cc-modal-topbar';
+bar.className = 'cc-modal-topbar';
+const btn = document.createElement('button');
+btn.id = 'cc-modal-top-ok';
+btn.className = 'cc-modal-top-ok';
+btn.textContent = '确定';
+btn.addEventListener('click', () => {
+const ok = document.getElementById('modal-ok');
+if (ok) ok.click();
+});
+bar.appendChild(btn);
+modal.insertBefore(bar, title);
+bar.insertBefore(title, btn);
+}
+if (mask && !mask.__ccTopOkWatch) {
+mask.__ccTopOkWatch = true;
+new MutationObserver(() => {
+if (!mask.hidden) return;
+const b = document.getElementById('cc-modal-topbar');
+if (b && b.parentNode === modal) {
+modal.insertBefore(title, b);
+b.remove();
+}
+}).observe(mask, { attributes: true, attributeFilter: ['hidden'] });
+}
+}
 const impBtn = document.getElementById('cc-import');
 if (impBtn) {
 impBtn.addEventListener('click', () => {
@@ -10154,6 +10316,7 @@ input.click();
 return;
 }
 if (window.openModal) {
+showImportTopOk();
 window.openModal('批量导入字卡（一行一个）', '', (raw, targetGroup) => {
 const lines = String(raw || '').split(/\r\n|\r|\n/).map(l => l.trim()).filter(Boolean);
 if (!lines.length) { toast('没有可导入的内容'); return; }
@@ -10706,7 +10869,7 @@ const DEFAULTS = {
 'fd-min-interval': 1, 'fd-max-interval': 720,
 'fd-min-cards-post': 4, 'fd-max-cards-post': 15,
 'fd-post-kaomoji': 10, 'fd-post-emoji': 10, 'fd-post-sticker': 30, 'fd-post-image': 30,
-'call-incoming': 15, 'call-pickup': 70, 'call-busy': 15, 'call-reject': 15, 'call-hangup': 5
+'call-incoming': 15, 'call-pickup': 70, 'call-busy': 15, 'call-reject': 15, 'call-hangup': 2
 };
 function getCfg() {
 const out = {};
@@ -10916,6 +11079,8 @@ window.defaultCardCfg = function () {
 return { enabled: getEnabled(), overall: getOverall(), probs: { main: getProb('main'), kaomoji: getProb('kaomoji'), emoji: getProb('emoji'), touch: getProb('touch') } };
 };
 const DATA = (window.DEFAULT_CARD_DATA) || { main: [], kaomoji: [], emoji: [] };
+function isCardOff(cat, c) { return ls.get('dc-off-' + cat + ':' + c) === '1'; }
+function setCardOff(cat, c, off) { ls.set('dc-off-' + cat + ':' + c, off ? '1' : '0'); }
 let cur = 'main';
 let q = '';
 enabledEl.checked = getEnabled();
@@ -10953,10 +11118,17 @@ h.className = 'cc-group-header';
 h.innerHTML = '<span class="ccg-name">' + gname + '</span><span class="ccg-count">' + arr.length + '</span>';
 list.appendChild(h);
 arr.forEach(c => {
+const off = isCardOff(cur, c);
 const d = document.createElement('div');
-d.className = 'cc-item glass';
-d.innerHTML = '<div class="cc-txt"><div class="t">' + c + ' <span class="tc-known">系统</span></div></div>';
+d.className = 'cc-item glass' + (off ? ' off' : '');
+d.innerHTML = '<div class="cc-txt"><div class="t">' + c + ' <span class="tc-known">系统</span></div></div>' +
+'<label class="toggle ccard-toggle"><input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span></label>';
 list.appendChild(d);
+d.querySelector('input').addEventListener('change', () => {
+const nowOff = !d.querySelector('input').checked;
+setCardOff(cur, c, nowOff);
+d.classList.toggle('off', nowOff);
+});
 });
 });
 }
@@ -11014,7 +11186,9 @@ for (let i = 0; i < keys.length; i++) {
 roll -= weights[i];
 if (roll < 0) { chosen = keys[i]; break; }
 }
-const grps = (DATA[chosen] || []).filter(g => g[1].length);
+const grps = (DATA[chosen] || [])
+.map(g => [g[0], g[1].filter(c => !isCardOff(chosen, c))])
+.filter(g => g[1].length);
 if (!grps.length) return [];
 const g = grps[Math.floor(Math.random() * grps.length)];
 const text = g[1][Math.floor(Math.random() * g[1].length)];
@@ -11056,6 +11230,8 @@ return v === null ? true : v === '1';
 }
 function setEnabled(k, v) { ls.set('mh-' + k, v ? '1' : '0'); }
 window.moodSystemState = { enabled, setEnabled };
+function isCardOff(k, c) { return ls.get(k + ':' + c) === '1'; }
+function setCardOff(k, c, off) { ls.set(k + ':' + c, off ? '1' : '0'); }
 window.getMoodCard = function () {
 if (!enabled('mood')) return null;
 if (emotionLastTs && Date.now() - emotionLastTs > 10 * 60000) emotionStreak = 0;
@@ -11066,7 +11242,9 @@ else if (emotionStreak >= 3) prob = streakMap['3'] !== undefined ? streakMap['3'
 else if (emotionStreak >= 2) prob = streakMap['2'] !== undefined ? streakMap['2'] : 45;
 else if (emotionStreak >= 1) prob = streakMap['1'] !== undefined ? streakMap['1'] : 60;
 if (Math.random() * 100 > prob) return null;
-const groups = (DATA.mood || []).filter(g => g.cards && g.cards.length);
+const groups = (DATA.mood || [])
+.map(g => ({ ...g, cards: g.cards.filter(c => !isCardOff('mc-off-mood', c.content)) }))
+.filter(g => g.cards && g.cards.length);
 const g = weightedPick(groups.map(x => [x, x.weight || 1]));
 if (!g) return null;
 const cards = g.cards;
@@ -11086,7 +11264,10 @@ const chatCount = Number(ls.get('chat-count') || 0);
 if (chatCount >= 20 && (Date.now() - specialLastTime) > 86400000 && Math.random() * 100 < 5) {
 specialLastTime = Date.now();
 const specials = [];
-(DATA.specialHeart || []).forEach(g => g.cards.forEach(c => specials.push({ content: c.content, group: g.group, emoji: g.emoji, level: c.level, isSpecial: true })));
+(DATA.specialHeart || []).forEach(g => g.cards.forEach(c => {
+if (isCardOff('mc-off-mood', c.content)) return;
+specials.push({ content: c.content, group: g.group, emoji: g.emoji, level: c.level, isSpecial: true });
+}));
 if (specials.length) {
 const recent5 = heartHistory.slice(-5).map(h => h.content);
 let pool = specials.filter(c => recent5.indexOf(c.content) === -1);
@@ -11106,7 +11287,8 @@ const selGroup = weightedPick(adj);
 if (!selGroup) return null;
 const grp = (DATA.heart || []).find(g => g.group === selGroup);
 if (!grp || !grp.cards.length) return null;
-let cards = grp.cards;
+let cards = grp.cards.filter(c => !isCardOff('mc-off-mood', c.content));
+if (!cards.length) return null;
 const recent5 = heartHistory.slice(-5).map(h => h.content);
 let cooled = cards.filter(c => recent5.indexOf(c.content) === -1);
 if (!cooled.length) cooled = cards;
@@ -11133,9 +11315,11 @@ const selGroup = weightedPick(pool.map(p => [p[0], p[1]]));
 if (!selGroup) return null;
 const grp = (DATA.intent || []).find(g => g.group === selGroup);
 if (!grp || !grp.cards.length) return null;
+const cards = grp.cards.filter(c => !isCardOff('mc-off-mood', c.content));
+if (!cards.length) return null;
 const rarity = weightedPick(Object.keys(W.rarity || { normal: 80, rare: 15, special: 5 }).map(k => [k, W.rarity[k]]));
-let pool2 = grp.cards.filter(c => c.rarity === rarity);
-if (!pool2.length) pool2 = grp.cards;
+let pool2 = cards.filter(c => c.rarity === rarity);
+if (!pool2.length) pool2 = cards;
 const picked = pick(pool2);
 if (!picked) return null;
 return { content: picked.content, group: grp.group, emoji: grp.emoji, rarity: picked.rarity };
@@ -11192,10 +11376,17 @@ h.className = 'cc-group-header';
 h.innerHTML = '<span class="ccg-name">' + name + '</span><span class="ccg-count">' + arr.length + '</span>';
 rcList.appendChild(h);
 arr.forEach(t => {
+const off = isCardOff('rc-off-' + key, t);
 const d = document.createElement('div');
-d.className = 'cc-item glass';
-d.innerHTML = '<div class="cc-txt"><div class="t">' + t + ' <span class="tc-known">系统</span></div></div>';
+d.className = 'cc-item glass' + (off ? ' off' : '');
+d.innerHTML = '<div class="cc-txt"><div class="t">' + t + ' <span class="tc-known">系统</span></div></div>' +
+'<label class="toggle ccard-toggle"><input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span></label>';
 rcList.appendChild(d);
+d.querySelector('input').addEventListener('change', () => {
+const nowOff = !d.querySelector('input').checked;
+setCardOff('rc-off-' + key, t, nowOff);
+d.classList.toggle('off', nowOff);
+});
 });
 });
 }
@@ -11269,11 +11460,18 @@ h.className = 'cc-group-header';
 h.innerHTML = '<span class="ccg-name">' + g.group + '</span><span class="ccg-count">' + g.cards.length + '</span><span class="ccg-count" style="background:rgba(0,0,0,.03)">权重 ' + g.weight + '</span>';
 mcList.appendChild(h);
 g.cards.forEach(c => {
+const off = isCardOff('mc-off-mood', c.content);
 const d = document.createElement('div');
-d.className = 'cc-item glass';
+d.className = 'cc-item glass' + (off ? ' off' : '');
 d.innerHTML = '<div class="cc-txt"><div class="t">' + c.content + ' <span class="tc-known">系统</span></div></div>' +
-'<span class="cc-type">' + (c.rarity === 'rare' ? '稀有' : c.rarity === 'special' ? '特殊' : '普通') + '</span>';
+'<span class="cc-type">' + (c.rarity === 'rare' ? '稀有' : c.rarity === 'special' ? '特殊' : '普通') + '</span>' +
+'<label class="toggle ccard-toggle"><input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span></label>';
 mcList.appendChild(d);
+d.querySelector('input').addEventListener('change', () => {
+const nowOff = !d.querySelector('input').checked;
+setCardOff('mc-off-mood', c.content, nowOff);
+d.classList.toggle('off', nowOff);
+});
 });
 });
 }
@@ -11311,10 +11509,10 @@ window.getReplyCard = function () {
 if (ls.get('rc-enabled') !== null && ls.get('rc-enabled') !== '1') return '';
 if (Math.random() * 100 >= 30) return '';
 const followup = DATA.followup || {};
-const cats = Object.keys(followup).filter(k => followup[k] && followup[k].length);
+const cats = Object.keys(followup).filter(k => followup[k] && followup[k].some(t => !isCardOff('rc-off-' + k, t)));
 if (!cats.length) return '';
 const cat = cats[Math.floor(Math.random() * cats.length)];
-const pool = followup[cat];
+const pool = followup[cat].filter(t => !isCardOff('rc-off-' + cat, t));
 return pool[Math.floor(Math.random() * pool.length)];
 };
 window.getFollowupWord = function (reply) {
@@ -11326,7 +11524,8 @@ else if (reply.length <= 4) cat = 'echo';
 else if (/[。.]/.test(reply.slice(-1)) && reply.length > 8) cat = Math.random() < 0.5 ? 'bridge' : 'shift';
 else if (reply.length > 10) cat = Math.random() < 0.5 ? 'keep' : 'probe';
 else cat = Math.random() < 0.5 ? 'echo' : 'confirm';
-const pool = followup[cat] || followup['echo'] || [];
+let pool = (followup[cat] || []).filter(t => !isCardOff('rc-off-' + cat, t));
+if (!pool.length && cat !== 'echo') pool = (followup['echo'] || []).filter(t => !isCardOff('rc-off-echo', t));
 if (!pool.length) return '';
 return pool[Math.floor(Math.random() * pool.length)];
 };
@@ -12948,6 +13147,8 @@ setTimeout(() => {
 const mm = document.getElementById('modal-mask');
 const tc = document.getElementById('tc-mask');
 if ((mm && !mm.hidden) || (tc && !tc.hidden)) return;
+const chatPage = document.getElementById('page-chat');
+if (chatPage && !chatPage.hidden) return;
 const e2 = getToday();
 const name = store.get('lbl-partner') || 'TA';
 if (window.openModal) {
@@ -15845,7 +16046,7 @@ if (v && typeof v === 'string' && v.length > 2) store.set('records-avatar', v);
 (function () {
 const uid = 'xy-home-v2';
 const store = window.xyStore(uid);
-const CALL = { incoming: 15, pickup: 70, busy: 15, reject: 15, hangup: 5 };
+const CALL = { incoming: 15, pickup: 70, busy: 15, reject: 15, hangup: 2 };
 function callCfg() {
 const c = (window.replyCfg && window.replyCfg()) || {};
 return {
@@ -16022,9 +16223,9 @@ let checkCount = 0;
 durationTimer = setInterval(() => {
 updateDur();
 if (currentCall && currentCall.status === 'connected') {
-if (Date.now() - currentCall.connectedTime >= 10000) {
+if (Date.now() - currentCall.connectedTime >= 180000) {
 checkCount++;
-if (checkCount >= 30) {
+if (checkCount >= 60) {
 checkCount = 0;
 if (Math.random() * 100 < callCfg().hangup) {
 endCall('对方挂断了电话');
@@ -18202,15 +18403,17 @@ if (Array.isArray(v) && v.length) return v;
 return def.slice();
 }
 function ckSaveList(k, list) { store.set('checkin-cards-' + k, JSON.stringify(list)); }
+function isCkCardOff(k, x) { return store.get('ck-off-' + k + ':' + x) === '1'; }
+function setCkCardOff(k, x, off) { store.set('ck-off-' + k + ':' + x, off ? '1' : '0'); }
 function genCheckin() {
 const useDefault = getCkDefault();
 const places = ckList('place', DEF_PLACES);
 const actions = ckList('action', DEF_ACTIONS);
 const msgs = ckList('msg', DEF_CHECK_MSGS);
 const out = {};
-let place = useDefault ? places : places.filter(p => DEF_PLACES.indexOf(p) < 0);
-let action = useDefault ? actions : actions.filter(a => DEF_ACTIONS.indexOf(a) < 0);
-let msg = useDefault ? msgs : msgs.filter(m => DEF_CHECK_MSGS.indexOf(m) < 0);
+let place = useDefault ? places.filter(p => !isCkCardOff('place', p)) : places.filter(p => DEF_PLACES.indexOf(p) < 0 && !isCkCardOff('place', p));
+let action = useDefault ? actions.filter(a => !isCkCardOff('action', a)) : actions.filter(a => DEF_ACTIONS.indexOf(a) < 0 && !isCkCardOff('action', a));
+let msg = useDefault ? msgs.filter(m => !isCkCardOff('msg', m)) : msgs.filter(m => DEF_CHECK_MSGS.indexOf(m) < 0 && !isCkCardOff('msg', m));
 if (!place.length && !action.length && !msg.length) {
 place = places; action = actions; msg = msgs;
 }
@@ -18411,22 +18614,39 @@ if (listEl) {
 const def = { place: DEF_PLACES, action: DEF_ACTIONS, msg: DEF_CHECK_MSGS }[ckTab];
 const list = ckList(ckTab, def);
 const custom = ckHasCustom(ckTab);
-listEl.innerHTML = list.length
-? list.map((x, i) => {
+listEl.innerHTML = '';
+if (!list.length) { listEl.innerHTML = '<div class="ta-empty">暂无，可添加</div>'; }
+else {
+list.forEach((x, i) => {
 const sys = !custom || def.indexOf(x) >= 0;
-return '<div class="tc-qrow' + (sys && !useDefault ? ' off' : '') + '"><div class="tc-qmain"><div class="tc-qtext">' + String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>' +
-(custom && !sys ? '<button class="ta-del" data-i="' + i + '">✕</button>' : '') +
-'</div>';
-}).join('')
-: '<div class="ta-empty">暂无，可添加</div>';
-listEl.querySelectorAll('.ta-del').forEach(b => {
-b.onclick = () => {
+const off = isCkCardOff(ckTab, x) || (sys && !useDefault);
+const row = document.createElement('div');
+row.className = 'tc-qrow' + (off ? ' off' : '');
+row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>';
+if (sys) {
+const lab = document.createElement('label');
+lab.className = 'toggle ccard-toggle';
+lab.innerHTML = '<input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span>';
+lab.querySelector('input').addEventListener('change', () => {
+setCkCardOff(ckTab, x, !lab.querySelector('input').checked);
+renderCheckinCards();
+});
+row.appendChild(lab);
+} else {
+const del = document.createElement('button');
+del.className = 'ta-del';
+del.textContent = '✕';
+del.addEventListener('click', () => {
 const l = ckList(ckTab, def);
-l.splice(Number(b.dataset.i), 1);
+l.splice(i, 1);
 ckSaveList(ckTab, l);
 renderCheckinCards();
-};
 });
+row.appendChild(del);
+}
+listEl.appendChild(row);
+});
+}
 }
 const total = CK_DEFS.reduce((s, [k, def]) => s + ckList(k, def).length, 0);
 const cnt = document.getElementById('cc-checkin-count');

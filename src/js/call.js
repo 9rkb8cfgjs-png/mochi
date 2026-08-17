@@ -2,11 +2,11 @@
 // 来电：全屏弹窗（头像/名称/对方来电 + 接听/拒绝 + 30 秒倒计时未接）
 // 去电：拨打 → 忙线/拒绝/接通/未接 概率
 // 接通：显示通话时长，2 秒后最小化为通话小框（底部悬浮，可挂断）
-// 概率（与星言一致）：来电 15% / 接通 70% / 忙线 15% / 拒绝 15% / 对方挂断 5%（每 30 秒检查）
+// 概率（与星言一致）：来电 15% / 接通 70% / 忙线 15% / 拒绝 15% / 对方挂断 2%（接通满 3 分钟后每 60 秒检查）
 (function () {
   const uid = 'xy-home-v2';
   const store = window.xyStore(uid);
-  const CALL = { incoming: 15, pickup: 70, busy: 15, reject: 15, hangup: 5 };
+  const CALL = { incoming: 15, pickup: 70, busy: 15, reject: 15, hangup: 2 };
   // 从回复设置读取（可自由调整概率，与星言通话设置一致）
   function callCfg() {
     const c = (window.replyCfg && window.replyCfg()) || {};
@@ -200,11 +200,14 @@
     let checkCount = 0;
     durationTimer = setInterval(() => {
       updateDur();
-      // 对方挂断概率：接通 10 秒保护期后，每 30 秒检查一次（星言一致）
+      // 对方挂断概率：接通 3 分钟保护期后，每 60 秒检查一次
+      // v3.6.x：放宽——原实现 10 秒保护后每 30 秒掷一次，默认 5% 实际效果远超设置字面值
+      //（约 3 分钟累计 ~23% 被挂断、10 分钟内累计 ~62%），用户反馈「3 分钟左右自动挂断、
+      // 没一通超过 10 分钟」；改 3 分钟保护 + 60 秒周期后，挂断概率才接近设置的字面含义
       if (currentCall && currentCall.status === 'connected') {
-        if (Date.now() - currentCall.connectedTime >= 10000) {
+        if (Date.now() - currentCall.connectedTime >= 180000) {
           checkCount++;
-          if (checkCount >= 30) {
+          if (checkCount >= 60) {
             checkCount = 0;
             if (Math.random() * 100 < callCfg().hangup) {
               endCall('对方挂断了电话');

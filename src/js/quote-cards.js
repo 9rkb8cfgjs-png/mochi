@@ -12,6 +12,10 @@
     return v === null ? true : v === '1';
   }
 
+  // v3.6.x：单卡开关——系统预设情话可逐句开启/关闭使用（关闭后今日情话不再抽取）
+  function isQuoteOff(q) { return store.get('quote-off:' + q) === '1'; }
+  function setQuoteOff(q, off) { store.set('quote-off:' + q, off ? '1' : '0'); }
+
   // 默认情话库（与桌面今日情话一致）
   const DEFAULT_QUOTES = [
     '我偏爱你。', '我只对你这样。', '过来，让我抱一下。', '别走，再陪我一会儿。',
@@ -56,6 +60,7 @@
   }
   // 供桌面「今日情话」使用：当天固定一条（自定义库优先）
   // v3.6.x：关闭「使用系统预设」后只从用户添加的情话里抽；没有用户自定义则返回空（桌面显示默认兜底文案）
+  // v3.6.x：单卡开关过滤——用户关闭的预设句（quote-off:*）不参与抽取
   window.getQuoteOfDay = function () {
     const useDefault = getUseDefault();
     let custom = [];
@@ -64,8 +69,8 @@
       if (Array.isArray(v) && v.length) custom = v;
     } catch (e) {}
     let quotes = null;
-    if (useDefault) quotes = custom.length ? custom : DEFAULT_QUOTES.slice();
-    else quotes = custom.slice(); // 只用自己的
+    if (useDefault) quotes = (custom.length ? custom : DEFAULT_QUOTES.filter(q => !isQuoteOff(q))).filter(q => !isQuoteOff(q));
+    else quotes = custom.filter(q => !isQuoteOff(q)); // 只用自己的
     if (!quotes.length) return '';
     const d = new Date();
     const today = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
@@ -91,23 +96,47 @@
     if (cnt) cnt.textContent = getQuotes().length + (custom ? '' : '（默认）');
     if (!el) return;
     const quotes = getQuotes();
-    el.innerHTML = quotes.length
-      ? quotes.map((q, i) => {
-          const sys = isDefaultQuote(q);
-          return '<div class="tc-qrow' + (sys && !useDefault ? ' off' : '') + '"><div class="tc-qmain"><div class="tc-qtext">' + esc(q) + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>' +
-            (custom && !sys ? '<button class="ta-del" data-i="' + i + '">✕</button>' : '') +
-            '</div>';
-        }).join('') +
-        (custom ? '' : '<div class="ta-empty" style="margin-top:10px">当前使用系统预设情话（共 ' + quotes.length + ' 句，不可单独删除）。添加自定义情话后即可管理。</div>')
-      : '<div class="ta-empty">暂无，可添加</div>';
-    el.querySelectorAll('.ta-del').forEach(b => {
-      b.onclick = () => {
-        const list = getQuotes();
-        list.splice(Number(b.dataset.i), 1);
-        store.set(KEY, JSON.stringify(list));
-        renderList();
-      };
+    if (!quotes.length) { el.innerHTML = '<div class="ta-empty">暂无，可添加</div>'; return; }
+    // v3.6.x：改为 DOM 构建——系统预设句逐句渲染单卡开关（可开启/关闭）；
+    // 用户添加的保留删除按钮
+    el.innerHTML = '';
+    quotes.forEach((q, i) => {
+      const sys = isDefaultQuote(q);
+      const off = isQuoteOff(q) || (sys && !useDefault);
+      const row = document.createElement('div');
+      row.className = 'tc-qrow' + (off ? ' off' : '');
+      row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + esc(q) + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>';
+      if (sys) {
+        // v3.6.x：系统预设单卡开关——逐句开启/关闭（关闭后桌面今日情话不再抽取该句）
+        const lab = document.createElement('label');
+        lab.className = 'toggle ccard-toggle';
+        lab.innerHTML = '<input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span>';
+        lab.querySelector('input').addEventListener('change', () => {
+          setQuoteOff(q, !lab.querySelector('input').checked);
+          renderList();
+        });
+        row.appendChild(lab);
+      } else {
+        const del = document.createElement('button');
+        del.className = 'ta-del';
+        del.textContent = '✕';
+        del.addEventListener('click', () => {
+          const list = getQuotes();
+          list.splice(i, 1);
+          store.set(KEY, JSON.stringify(list));
+          renderList();
+        });
+        row.appendChild(del);
+      }
+      el.appendChild(row);
     });
+    if (!custom) {
+      const empty = document.createElement('div');
+      empty.className = 'ta-empty';
+      empty.style.marginTop = '10px';
+      empty.textContent = '当前使用系统预设情话（共 ' + quotes.length + ' 句，不可删除，可逐句开关）。添加自定义情话后即可管理。';
+      el.appendChild(empty);
+    }
   }
   // 批量添加
   const batchAdd = document.getElementById('cq-batch-add');

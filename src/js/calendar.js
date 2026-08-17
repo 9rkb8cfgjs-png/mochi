@@ -215,6 +215,11 @@
         const mm = document.getElementById('modal-mask');
         const tc = document.getElementById('tc-mask');
         if ((mm && !mm.hidden) || (tc && !tc.hidden)) return;
+        // v3.6.x：聊天页打开时也跳过——今日留言弹窗是居中遮罩弹窗（z-index 90、
+        // 全屏锁滚动），此时弹出会盖住聊天页整页，「什么也点不动」，
+        // 而且用户通常是点桌面【聊天】进聊天页的，根本不看桌面日历信息
+        const chatPage = document.getElementById('page-chat');
+        if (chatPage && !chatPage.hidden) return;
         const e2 = getToday();
         const name = store.get('lbl-partner') || 'TA';
         if (window.openModal) {
