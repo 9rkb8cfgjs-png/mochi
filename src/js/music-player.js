@@ -310,6 +310,8 @@
 
   // ================= 添加歌曲 =================
   // 本地上传（多个文件，存储到 IndexedDB）
+  // v3.6.x：改存 Blob（不再存 base64 dataURL 字符串）——夸克等浏览器对
+  // `<audio src="data:...">`（尤其大段 base64）播放失效，Blob + 对象 URL 是标准播放方案
   function triggerUpload() {
     const inp = document.createElement('input');
     inp.type = 'file';
@@ -329,33 +331,44 @@
       if (file.size > 50 * 1024 * 1024) { toast('「' + file.name + '」超过 50MB，已跳过'); oneDone(); return; }
       const reader = new FileReader();
       reader.onload = function () {
-        const dataUrl = reader.result;
         const id = 'sm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
         const name = file.name.replace(/\.[^.]+$/, '');
         const item = { id: id, name: name, artist: '', url: '', source: 'local', duration: 0, playlistId: 'default', addedAt: Date.now() };
         library.push(item);
+        // 优先 ArrayBuffer → Blob（紧凑、可结构化克隆）；失败回退 dataURL 字符串（播放路径会自动转回）
+        const buf = reader.result;
+        const payload = buf instanceof ArrayBuffer
+          ? new Blob([buf], { type: file.type || 'audio/mpeg' })
+          : buf;
         // 尝试读取时长（读不到也能播放）
         const tmp = document.createElement('audio');
         tmp.preload = 'metadata';
+        let tmpUrl = null;
+        const cleanupTmp = () => {
+          try { if (tmpUrl) URL.revokeObjectURL(tmpUrl); } catch(e) {}
+          try { tmp.src = ''; tmp.load(); } catch(e) {}
+        };
         tmp.onloadedmetadata = function () {
           const m = findTrack(id);
           if (m && tmp.duration) { m.duration = tmp.duration; saveLibrary(); }
-          try { tmp.src = ''; tmp.load(); } catch(e) {}
+          cleanupTmp();
           oneDone();
         };
-        tmp.onerror = function () {
-          try { tmp.src = ''; tmp.load(); } catch(e) {}
-          oneDone();
-        };
-        tmp.src = dataUrl;
+        tmp.onerror = function () { cleanupTmp(); oneDone(); };
+        if (payload instanceof Blob) {
+          tmpUrl = URL.createObjectURL(payload);
+          tmp.src = tmpUrl;
+        } else {
+          tmp.src = payload;
+        }
         if (window.idbSet) {
-          window.idbSet(uid + ':music-file:' + id, dataUrl).then(() => { saveLibrary(); renderPage(); }).catch(() => {});
+          window.idbSet(uid + ':music-file:' + id, payload).then(() => { saveLibrary(); renderPage(); }).catch(() => {});
         } else {
           saveLibrary();
         }
       };
       reader.onerror = oneDone;
-      reader.readAsDataURL(file);
+      reader.readAsArrayBuffer(file);
     });
     toast('正在上传 ' + list.length + ' 首音乐…');
   }
@@ -707,11 +720,51 @@
   }
 
   // ================= 播放器 =================
+  // v3.6.x：本地音频统一用 Blob + 对象 URL（blob:）播放——夸克等浏览器对
+  // `<audio src="data:...">`（尤其大段 base64）播放失效；blob: URL 是标准播放方案。
+  // 存量数据是 dataURL 字符串（旧版上传 / 种子歌本地旋律），播放时自动转成 Blob。
+  let curObjectUrl = null;
+  function revokeObjectUrl() {
+    if (curObjectUrl) { try { URL.revokeObjectURL(curObjectUrl); } catch (e) {} curObjectUrl = null; }
+  }
+  // dataURL 字符串 → Blob：优先 fetch（原生异步解码，不阻塞主线程），失败回退手动 base64 解码
+  function dataUrlToBlob(dataUrl) {
+    const manual = () => new Promise((resolve, reject) => {
+      try {
+        const m = /^data:([^;,]*)(;base64)?,(.*)$/s.exec(dataUrl);
+        if (!m) { reject(new Error('bad data url')); return; }
+        const raw = m[2] ? atob(m[3]) : decodeURIComponent(m[3]);
+        const bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+        resolve(new Blob([bytes], { type: m[1] || 'audio/mpeg' }));
+      } catch (e) { reject(e); }
+    });
+    if (typeof fetch === 'function') {
+      return fetch(dataUrl).then(r => r.blob()).catch(() => manual());
+    }
+    return manual();
+  }
+  // 用本地值（Blob 或 dataURL 字符串）建音频并播放
+  function playLocal(m, v) {
+    const blobP = v instanceof Blob ? Promise.resolve(v) : dataUrlToBlob(v);
+    blobP.then(blob => {
+      if (currentId !== m.id) return; // 转换期间用户已切歌
+      revokeObjectUrl();
+      curObjectUrl = URL.createObjectURL(blob);
+      audio = new Audio();
+      audio.src = curObjectUrl;
+      startPlayback(m);
+    }).catch(() => {
+      if (currentId !== m.id) return;
+      toast('音乐文件加载失败，可能已被清理'); currentId = null; updatePlayerBar(); renderLibrary();
+    });
+  }
   function teardownAudio() {
     if (audio) {
       try { audio.pause(); audio.onended = null; audio.onerror = null; audio.onloadedmetadata = null; audio.onplay = null; audio.onpause = null; audio.removeAttribute('src'); audio.load(); } catch(e) {}
       audio = null;
     }
+    revokeObjectUrl();
     if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
   }
   // v3.5.112：内置种子歌曲判定与本地旋律兜底（共享：外链播放失败 / 本地数据缺失时使用）
@@ -731,9 +784,7 @@
       if (currentId !== m.id) return;
       teardownAudio();
       if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
-      audio = new Audio();
-      audio.src = d;
-      startPlayback(m);
+      playLocal(m, d);
     });
   }
   // 播放启动（audio 已设 src 后调用）
@@ -756,6 +807,7 @@
   }
   function setupHandlers(m) {
     audio.onended = function () {
+      revokeObjectUrl();
       let handled = false;
       try { handled = maybeTAAutoAction(); } catch(e) {}
       if (!handled) next();
@@ -791,7 +843,7 @@
     teardownAudio();
     if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
     if (m.source === 'local' || (!m.url && m.source !== 'url')) {
-      // 本地文件：从 IndexedDB 读取 dataURL
+      // 本地文件：从 IndexedDB 读取 Blob（新版）或 dataURL 字符串（旧版数据）
       const key = uid + ':music-file:' + m.id;
       const loadLocal = (v) => {
         // v3.5.129：守卫——异步加载期间用户已切到别的歌（currentId 变了）→ 丢弃本次结果，
@@ -806,9 +858,8 @@
           }
           toast('音乐文件加载失败，可能已被清理'); currentId = null; updatePlayerBar(); renderLibrary(); return;
         }
-        audio = new Audio();
-        audio.src = v;
-        startPlayback(m);
+        // v3.6.x：统一转 Blob + 对象 URL 播放（兼容旧 dataURL 字符串 / 新 Blob 存储）
+        playLocal(m, v);
       };
       if (window.idbGet) {
         window.idbGet(key).then(v => {
@@ -1300,7 +1351,9 @@
           let total = 0;
           fileKeys.slice(i, i + BATCH).forEach(k => {
             const v = map[k];
-            if (typeof v === 'string') total += v.length;
+            // v3.6.x：新版存 Blob（v.size 即真实字节）；旧版存 base64 字符串（字符数 ×0.75 ≈ 真实字节）
+            if (v instanceof Blob) total += v.size;
+            else if (typeof v === 'string') total += v.length * 0.75;
           });
           return readBatch(i + BATCH).then(sub => total + sub);
         });
@@ -1311,8 +1364,8 @@
   function fmtStorageMB(bytes) {
     if (bytes < 0) return '计算失败';
     if (!bytes) return '0 MB';
-    // dataURL 是 base64，实际字节 = 字符数 × 0.75
-    const mb = bytes * 0.75 / 1048576;
+    // v3.6.x：bytes 已是真实字节（Blob 原大小 / base64 已换算），直接除 1024²
+    const mb = bytes / 1048576;
     return (mb < 0.01 ? '0.01' : mb.toFixed(1)) + ' MB';
   }
   function refreshStorageUse() {

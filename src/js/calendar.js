@@ -203,40 +203,83 @@
   // 打开 mochi 即触发 TA 今日留言（每天一次）
   // v3.5.25 修复"手机端一直触发"：localStorage 写失败（空间满/隐私模式）时旧逻辑每次都弹。
   // 现在：本会话内存标记只弹一次 + 标记双写 IndexedDB（下次加载经 idbRestore 回填，不再重复弹）
+  // v3.6.x：由「居中遮罩弹窗」改为「顶部非阻塞横幅」——遮罩弹窗（modal-mask z-index 90 +
+  // 全屏锁滚动）在开屏数据加载期间就已弹出，用户点「点击进入」后第一眼就是被遮罩盖住的
+  // 桌面：点【聊天】等图标实际点在遮罩上，「什么都点不了」（iPhone Edge 反馈：桌面卡住、
+  // 点聊天无反应；iPad 夸克反馈：全部页面卡住）。横幅不锁滚动、不遮操作，
+  // 仅停留 8 秒自动收起，点击横幅打开日历页查看完整内容。
   (function () {
     const key = 'greeted-' + todayStr();
-    let greeted = false; // 本会话只弹一次
+    let greeted = false; // 本会话只显示一次
+    function openCalPage() {
+      const calApp = document.querySelector('.app[data-app="calendar"]');
+      if (!calApp || !page) return;
+      const editing = Array.from(document.querySelectorAll('.app-grid')).some(g => g.classList.contains('editing'));
+      if (editing) return;
+      document.querySelectorAll('.page').forEach(p => p.hidden = true);
+      page.hidden = false;
+      viewM = -1;
+      render();
+    }
+    function hideGreetBanner() {
+      const el = document.getElementById('daily-greet');
+      if (!el) return;
+      el.hidden = true;
+      clearTimeout(el._timer);
+    }
+    function showGreetBanner(e2, name) {
+      let el = document.getElementById('daily-greet');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'daily-greet';
+        el.style.cssText = 'position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:89;width:min(330px,calc(100% - 24px));box-sizing:border-box;background:rgba(255,255,255,.97);border:1px solid rgba(0,0,0,.1);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.12);padding:12px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;font-family:inherit;text-align:left;';
+        const t = document.createElement('div');
+        t.style.cssText = 'font-size:12px;font-weight:700;color:var(--ink,#111);margin-bottom:6px;';
+        const b = document.createElement('div');
+        b.style.cssText = 'font-size:12px;color:#666;line-height:1.6;white-space:pre-line;word-break:break-word;';
+        el.appendChild(t); el.appendChild(b);
+        el._t = t; el._b = b;
+        el.addEventListener('click', () => { hideGreetBanner(); openCalPage(); });
+        document.body.appendChild(el);
+      }
+      el._t.textContent = name + ' 的今日留言';
+      el._b.textContent = '今日心情：' + e2.mood + '（' + e2.cat + '）\nTA 正在：' + e2.activity + '\n\nTA 留言：\n' + e2.message;
+      el.hidden = false;
+      el.style.transition = 'none';
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(-50%) translateY(-8px)';
+      requestAnimationFrame(() => {
+        el.style.transition = 'opacity .25s ease, transform .25s ease';
+        el.style.opacity = '1';
+        el.style.transform = 'translateX(-50%) translateY(0)';
+      });
+      clearTimeout(el._timer);
+      el._timer = setTimeout(hideGreetBanner, 8000);
+    }
     function doGreet() {
       greeted = true;
       store.set(key, '1');
       try { if (window.idbSet) window.idbSet(uid + ':' + key, '1'); } catch (e) {}
-      setTimeout(() => {
-        // v3.5.130：已有弹窗打开时跳过今日留言（不顶掉用户正在操作的弹窗）
-        const mm = document.getElementById('modal-mask');
-        const tc = document.getElementById('tc-mask');
-        if ((mm && !mm.hidden) || (tc && !tc.hidden)) return;
-        // v3.6.x：聊天页打开时也跳过——今日留言弹窗是居中遮罩弹窗（z-index 90、
-        // 全屏锁滚动），此时弹出会盖住聊天页整页，「什么也点不动」，
-        // 而且用户通常是点桌面【聊天】进聊天页的，根本不看桌面日历信息
-        const chatPage = document.getElementById('page-chat');
-        if (chatPage && !chatPage.hidden) return;
-        const e2 = getToday();
-        const name = store.get('lbl-partner') || 'TA';
-        if (window.openModal) {
-          window.openModal(name + ' 的今日留言', '', () => {}, {
-            noInput: true,
-            staticText: '今日心情：' + e2.mood + '（' + e2.cat + '）\nTA 正在：' + e2.activity + '\n\nTA 留言：\n' + e2.message
-          });
-          // v3.6.x：自动关闭——今日留言是提醒类弹窗，openModal 遮罩会锁全页面滚动，
-          // 不自动关的话用户没注意到弹窗时整个应用表现为「页面卡住、滑动失效」
-          // （iPad 夸克反馈：短暂滑动失效→全部页面卡住→过会儿正常→又卡）。
-          // 8 秒后自动收起；用户仍可点确定/背景/返回键立即关闭。
+      // 等开屏关闭后再展示：数据加载 + 用户点「点击进入」通常 1-3s，过早弹出会被开屏
+      // 盖住，8 秒自动收起多半已过期，用户根本看不到。轮询到开屏隐藏后 1s 再显示。
+      const splashEl = document.getElementById('splash');
+      const iv = setInterval(() => {
+        if (!splashEl || splashEl.classList.contains('hide')) {
+          clearInterval(iv);
           setTimeout(() => {
-            const mask = document.getElementById('modal-mask');
-            if (mask && !mask.hidden) mask.hidden = true;
-          }, 8000);
+            try {
+              // 仅桌面可见时展示；聊天/其他页面或已有弹窗打开时不打扰（横幅随时可再进日历看）
+              const phonePage = document.getElementById('page-phone');
+              if (phonePage && phonePage.hidden) return;
+              const mm = document.getElementById('modal-mask');
+              const tc = document.getElementById('tc-mask');
+              if ((mm && !mm.hidden) || (tc && !tc.hidden)) return;
+            } catch (e) {}
+            showGreetBanner(getToday(), store.get('lbl-partner') || 'TA');
+          }, 1000);
         }
-      }, 800);
+      }, 500);
+      setTimeout(() => { try { clearInterval(iv); } catch (e) {} }, 30000); // 30s 兜底停止轮询
     }
     function maybeGreet() {
       if (greeted) return;

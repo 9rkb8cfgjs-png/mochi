@@ -104,7 +104,22 @@
           if (k.indexOf(uid + ':') !== 0) continue;
           if (k in data.ls || k in data.idb) continue; // 已在上面收录
           const v = await window.idbGet(k);
-          if (v !== undefined && v !== null) add(k, v);
+          if (v !== undefined && v !== null) {
+            // v3.6.x：本地音乐改存 Blob 后，备份导出需转成 dataURL 字符串（JSON 无法存 Blob），
+            // 导入时由 add() 恢复为字符串 → 播放路径自动识别转回 Blob
+            if (v instanceof Blob) {
+              const buf = await v.arrayBuffer();
+              const bytes = new Uint8Array(buf);
+              let bin = '';
+              const chunk = 0x8000;
+              for (let i = 0; i < bytes.length; i += chunk) {
+                bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+              }
+              add(k, 'data:' + (v.type || 'audio/mpeg') + ';base64,' + btoa(bin));
+            } else {
+              add(k, v);
+            }
+          }
         }
       } catch (e) {}
     }

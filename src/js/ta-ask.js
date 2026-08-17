@@ -183,12 +183,14 @@
       if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
       else if (opts && opts.popup === false) popup = false;
     }
-    window.chatAddSystem('TA想问你一个问题。');
+    // v3.5.146：提示语标记 ask-msg（渲染同 poke 但不算 notable）——否则提示语
+    // 单独触发一条弹窗/通知，与下方卡片通知重复成 2 条
+    window.chatAddSystem('TA想问你一个问题。', { special: 'ask-msg' });
     const el = window.chatAddSystem(q.text, { special: 'ask-card', askQuestion: q.text, askOptions: isSingle ? q.options : null, askType: isSingle ? 'single' : 'text' });
     const idx = el ? Number(el.dataset.idx) : -1;
-    // v3.5.141：后台收到互动卡片 → 系统通知提示（bgNotifyCheck 内部按后台通知开关/
-    // 权限/可见性判断，前台调用无副作用）
-    if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'TA的询问' });
+    // v3.5.141：后台收到互动卡片 → 系统通知提示
+    // v3.5.146：通知文本合并提示语 + 具体问题（一条通知显示完整内容，不再两条）
+    if (window.bgNotifyCheck) window.bgNotifyCheck('TA想问你一个问题：' + q.text, Date.now(), { name: 'TA的询问' });
     // v3.5.141：页面弹窗在后台不弹（不可见弹了也没用），只发系统通知
     // v3.6.x：用户正在聊天输入栏打字时不弹（弹窗会抢焦点打断输入法，见 chatInputFocused）
     if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openAskReply && !cardPopupBusy()) window.openAskReply(idx); }, 400);
@@ -649,13 +651,15 @@
     let popup = true;
     if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
     else if (opts && opts.popup === false) popup = false;
-    window.chatAddSystem('TA想让你选一个答案。');
+    // v3.5.146：提示语标记 ask-msg（不算 notable，避免与卡片通知重复成两条）
+    window.chatAddSystem('TA想让你选一个答案。', { special: 'ask-msg' });
     const el = window.chatAddSystem(q.text, {
       special: 'ask-choose', choiceQuestion: q.text, choiceOptions: q.options, choicePref: q.pref, choiceCat: q.cat || ''
     });
     const idx = el ? Number(el.dataset.idx) : -1;
     // v3.5.141：后台收到互动卡片 → 系统通知提示
-    if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'TA的小问题' });
+    // v3.5.146：通知文本合并提示语 + 具体问题
+    if (window.bgNotifyCheck) window.bgNotifyCheck('TA想让你选一个答案：' + q.text, Date.now(), { name: 'TA的小问题' });
     if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openTC && !cardPopupBusy()) window.openTC(idx); }, 400);
   }
   // 自动触发：一次会话最多 1 个；冷却 30 分钟；概率可调（默认 15%）；启动 90 秒后、每 4 分钟轮询
@@ -1109,14 +1113,16 @@ window.openTCPanel = openTCPanel;
     let popup = true;
     if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
     else if (opts && opts.popup === false) popup = false;
-    window.chatAddSystem('TA对你有点好奇。');
+    // v3.5.146：提示语标记 ask-msg（不算 notable，避免与卡片通知重复成两条）
+    window.chatAddSystem('TA对你有点好奇。', { special: 'ask-msg' });
     const el = window.chatAddSystem(q.text, {
       special: 'ask-curious', curiousQuestion: q.text, curiousQuick: q.quick || [], curiousReplies: q.replies || [],
       curiousFollowup: q.followup || '', curiousQid: q.id || '', curiousCat: q.cat || ''
     });
     const idx = el ? Number(el.dataset.idx) : -1;
     // v3.5.141：后台收到互动卡片 → 系统通知提示
-    if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'Ta的好奇' });
+    // v3.5.146：通知文本合并提示语 + 具体问题
+    if (window.bgNotifyCheck) window.bgNotifyCheck('TA对你有点好奇：' + q.text, Date.now(), { name: 'Ta的好奇' });
     // v3.6.x：用户正在聊天输入栏打字时不弹（弹窗会抢焦点打断输入法，见 chatInputFocused）
     if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openCurious && !cardPopupBusy()) window.openCurious(idx); }, 400);
   }
@@ -1498,11 +1504,13 @@ window.openTCPanel = openTCPanel;
     let popup = true;
     if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
     else if (opts && opts.popup === false) popup = false;
-    window.chatAddSystem('TA吐槽了你一句。');
+    // v3.5.146：提示语标记 ask-msg（不算 notable，避免与卡片通知重复成两条）
+    window.chatAddSystem('TA吐槽了你一句。', { special: 'ask-msg' });
     const el = window.chatAddSystem(q.text, { special: 'ask-roast', roastText: q.text, roastCat: q.cat || 'light' });
     const idx = el ? Number(el.dataset.idx) : -1;
     // v3.5.141：后台收到互动卡片 → 系统通知提示
-    if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'Ta的吐槽' });
+    // v3.5.146：通知文本合并提示语 + 具体内容
+    if (window.bgNotifyCheck) window.bgNotifyCheck('TA吐槽了你一句：' + q.text, Date.now(), { name: 'Ta的吐槽' });
     // v3.6.x：用户正在聊天输入栏打字时不弹（弹窗会抢焦点打断输入法，见 chatInputFocused）
     if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openRoast && !cardPopupBusy()) window.openRoast(idx); }, 400);
   }

@@ -725,8 +725,10 @@
       maybeScrollChatBottom();
       return m;
     }
-    // 拍一拍 / 换头像系统提示：居中灰字小卡片，可选附带一张头像图
-    if (rec.special === 'poke') {
+    // 拍一拍 / 换头像 / 互动卡片提示语：居中灰字小卡片，可选附带一张头像图
+    // v3.5.146：'ask-msg' 为互动卡片提示语（TA想问你一个问题 等）——渲染与 poke 相同，
+    // 但不算入 notable（addRec 的弹窗/通知联动），避免提示语与卡片各弹一条通知
+    if (rec.special === 'poke' || rec.special === 'ask-msg') {
       m.className = 'msg-poke';
       m.innerHTML = '<span>' + pokeIconHtml(rec.text) + '</span>' +
         (rec.img ? '<img class="msg-poke-img" src="' + attrEsc(rec.img) + '" alt="新头像">' : '');

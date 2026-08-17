@@ -2843,7 +2843,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.39 · 部署于 2026-08-17 14:37</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.40 · 部署于 2026-08-17 16:15</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3485,7 +3485,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.39</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.40</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -7188,7 +7188,7 @@ body.appendChild(m);
 maybeScrollChatBottom();
 return m;
 }
-if (rec.special === 'poke') {
+if (rec.special === 'poke' || rec.special === 'ask-msg') {
 m.className = 'msg-poke';
 m.innerHTML = '<span>' + pokeIconHtml(rec.text) + '</span>' +
 (rec.img ? '<img class="msg-poke-img" src="' + attrEsc(rec.img) + '" alt="新头像">' : '');
@@ -11822,32 +11822,42 @@ list.forEach(file => {
 if (file.size > 50 * 1024 * 1024) { toast('「' + file.name + '」超过 50MB，已跳过'); oneDone(); return; }
 const reader = new FileReader();
 reader.onload = function () {
-const dataUrl = reader.result;
 const id = 'sm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
 const name = file.name.replace(/\.[^.]+$/, '');
 const item = { id: id, name: name, artist: '', url: '', source: 'local', duration: 0, playlistId: 'default', addedAt: Date.now() };
 library.push(item);
+const buf = reader.result;
+const payload = buf instanceof ArrayBuffer
+? new Blob([buf], { type: file.type || 'audio/mpeg' })
+: buf;
 const tmp = document.createElement('audio');
 tmp.preload = 'metadata';
+let tmpUrl = null;
+const cleanupTmp = () => {
+try { if (tmpUrl) URL.revokeObjectURL(tmpUrl); } catch(e) {}
+try { tmp.src = ''; tmp.load(); } catch(e) {}
+};
 tmp.onloadedmetadata = function () {
 const m = findTrack(id);
 if (m && tmp.duration) { m.duration = tmp.duration; saveLibrary(); }
-try { tmp.src = ''; tmp.load(); } catch(e) {}
+cleanupTmp();
 oneDone();
 };
-tmp.onerror = function () {
-try { tmp.src = ''; tmp.load(); } catch(e) {}
-oneDone();
-};
-tmp.src = dataUrl;
+tmp.onerror = function () { cleanupTmp(); oneDone(); };
+if (payload instanceof Blob) {
+tmpUrl = URL.createObjectURL(payload);
+tmp.src = tmpUrl;
+} else {
+tmp.src = payload;
+}
 if (window.idbSet) {
-window.idbSet(uid + ':music-file:' + id, dataUrl).then(() => { saveLibrary(); renderPage(); }).catch(() => {});
+window.idbSet(uid + ':music-file:' + id, payload).then(() => { saveLibrary(); renderPage(); }).catch(() => {});
 } else {
 saveLibrary();
 }
 };
 reader.onerror = oneDone;
-reader.readAsDataURL(file);
+reader.readAsArrayBuffer(file);
 });
 toast('正在上传 ' + list.length + ' 首音乐…');
 }
@@ -12178,11 +12188,46 @@ renderHistory();
 updatePlayerBar();
 syncFloatToggle();
 }
+let curObjectUrl = null;
+function revokeObjectUrl() {
+if (curObjectUrl) { try { URL.revokeObjectURL(curObjectUrl); } catch (e) {} curObjectUrl = null; }
+}
+function dataUrlToBlob(dataUrl) {
+const manual = () => new Promise((resolve, reject) => {
+try {
+const m = /^data:([^;,]*)(;base64)?,(.*)$/s.exec(dataUrl);
+if (!m) { reject(new Error('bad data url')); return; }
+const raw = m[2] ? atob(m[3]) : decodeURIComponent(m[3]);
+const bytes = new Uint8Array(raw.length);
+for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+resolve(new Blob([bytes], { type: m[1] || 'audio/mpeg' }));
+} catch (e) { reject(e); }
+});
+if (typeof fetch === 'function') {
+return fetch(dataUrl).then(r => r.blob()).catch(() => manual());
+}
+return manual();
+}
+function playLocal(m, v) {
+const blobP = v instanceof Blob ? Promise.resolve(v) : dataUrlToBlob(v);
+blobP.then(blob => {
+if (currentId !== m.id) return; // 转换期间用户已切歌
+revokeObjectUrl();
+curObjectUrl = URL.createObjectURL(blob);
+audio = new Audio();
+audio.src = curObjectUrl;
+startPlayback(m);
+}).catch(() => {
+if (currentId !== m.id) return;
+toast('音乐文件加载失败，可能已被清理'); currentId = null; updatePlayerBar(); renderLibrary();
+});
+}
 function teardownAudio() {
 if (audio) {
 try { audio.pause(); audio.onended = null; audio.onerror = null; audio.onloadedmetadata = null; audio.onplay = null; audio.onpause = null; audio.removeAttribute('src'); audio.load(); } catch(e) {}
 audio = null;
 }
+revokeObjectUrl();
 if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
 }
 function seedIdxOf(m) {
@@ -12200,9 +12245,7 @@ demoFallbackBusy = false;
 if (currentId !== m.id) return;
 teardownAudio();
 if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
-audio = new Audio();
-audio.src = d;
-startPlayback(m);
+playLocal(m, d);
 });
 }
 function startPlayback(m) {
@@ -12222,6 +12265,7 @@ addRecord(m.id, '');
 }
 function setupHandlers(m) {
 audio.onended = function () {
+revokeObjectUrl();
 let handled = false;
 try { handled = maybeTAAutoAction(); } catch(e) {}
 if (!handled) next();
@@ -12264,9 +12308,7 @@ return;
 }
 toast('音乐文件加载失败，可能已被清理'); currentId = null; updatePlayerBar(); renderLibrary(); return;
 }
-audio = new Audio();
-audio.src = v;
-startPlayback(m);
+playLocal(m, v);
 };
 if (window.idbGet) {
 window.idbGet(key).then(v => {
@@ -12715,7 +12757,8 @@ return window.idbGetMany(fileKeys.slice(i, i + BATCH)).then(map => {
 let total = 0;
 fileKeys.slice(i, i + BATCH).forEach(k => {
 const v = map[k];
-if (typeof v === 'string') total += v.length;
+if (v instanceof Blob) total += v.size;
+else if (typeof v === 'string') total += v.length * 0.75;
 });
 return readBatch(i + BATCH).then(sub => total + sub);
 });
@@ -12726,7 +12769,7 @@ return readBatch(0);
 function fmtStorageMB(bytes) {
 if (bytes < 0) return '计算失败';
 if (!bytes) return '0 MB';
-const mb = bytes * 0.75 / 1048576;
+const mb = bytes / 1048576;
 return (mb < 0.01 ? '0.01' : mb.toFixed(1)) + ' MB';
 }
 function refreshStorageUse() {
@@ -13144,30 +13187,73 @@ if (phonePage) phonePage.hidden = false;
 }
 (function () {
 const key = 'greeted-' + todayStr();
-let greeted = false; // 本会话只弹一次
+let greeted = false; // 本会话只显示一次
+function openCalPage() {
+const calApp = document.querySelector('.app[data-app="calendar"]');
+if (!calApp || !page) return;
+const editing = Array.from(document.querySelectorAll('.app-grid')).some(g => g.classList.contains('editing'));
+if (editing) return;
+document.querySelectorAll('.page').forEach(p => p.hidden = true);
+page.hidden = false;
+viewM = -1;
+render();
+}
+function hideGreetBanner() {
+const el = document.getElementById('daily-greet');
+if (!el) return;
+el.hidden = true;
+clearTimeout(el._timer);
+}
+function showGreetBanner(e2, name) {
+let el = document.getElementById('daily-greet');
+if (!el) {
+el = document.createElement('div');
+el.id = 'daily-greet';
+el.style.cssText = 'position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:89;width:min(330px,calc(100% - 24px));box-sizing:border-box;background:rgba(255,255,255,.97);border:1px solid rgba(0,0,0,.1);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.12);padding:12px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;font-family:inherit;text-align:left;';
+const t = document.createElement('div');
+t.style.cssText = 'font-size:12px;font-weight:700;color:var(--ink,#111);margin-bottom:6px;';
+const b = document.createElement('div');
+b.style.cssText = 'font-size:12px;color:#666;line-height:1.6;white-space:pre-line;word-break:break-word;';
+el.appendChild(t); el.appendChild(b);
+el._t = t; el._b = b;
+el.addEventListener('click', () => { hideGreetBanner(); openCalPage(); });
+document.body.appendChild(el);
+}
+el._t.textContent = name + ' 的今日留言';
+el._b.textContent = '今日心情：' + e2.mood + '（' + e2.cat + '）\nTA 正在：' + e2.activity + '\n\nTA 留言：\n' + e2.message;
+el.hidden = false;
+el.style.transition = 'none';
+el.style.opacity = '0';
+el.style.transform = 'translateX(-50%) translateY(-8px)';
+requestAnimationFrame(() => {
+el.style.transition = 'opacity .25s ease, transform .25s ease';
+el.style.opacity = '1';
+el.style.transform = 'translateX(-50%) translateY(0)';
+});
+clearTimeout(el._timer);
+el._timer = setTimeout(hideGreetBanner, 8000);
+}
 function doGreet() {
 greeted = true;
 store.set(key, '1');
 try { if (window.idbSet) window.idbSet(uid + ':' + key, '1'); } catch (e) {}
+const splashEl = document.getElementById('splash');
+const iv = setInterval(() => {
+if (!splashEl || splashEl.classList.contains('hide')) {
+clearInterval(iv);
 setTimeout(() => {
+try {
+const phonePage = document.getElementById('page-phone');
+if (phonePage && phonePage.hidden) return;
 const mm = document.getElementById('modal-mask');
 const tc = document.getElementById('tc-mask');
 if ((mm && !mm.hidden) || (tc && !tc.hidden)) return;
-const chatPage = document.getElementById('page-chat');
-if (chatPage && !chatPage.hidden) return;
-const e2 = getToday();
-const name = store.get('lbl-partner') || 'TA';
-if (window.openModal) {
-window.openModal(name + ' 的今日留言', '', () => {}, {
-noInput: true,
-staticText: '今日心情：' + e2.mood + '（' + e2.cat + '）\nTA 正在：' + e2.activity + '\n\nTA 留言：\n' + e2.message
-});
-setTimeout(() => {
-const mask = document.getElementById('modal-mask');
-if (mask && !mask.hidden) mask.hidden = true;
-}, 8000);
+} catch (e) {}
+showGreetBanner(getToday(), store.get('lbl-partner') || 'TA');
+}, 1000);
 }
-}, 800);
+}, 500);
+setTimeout(() => { try { clearInterval(iv); } catch (e) {} }, 30000); // 30s 兜底停止轮询
 }
 function maybeGreet() {
 if (greeted) return;
@@ -13963,10 +14049,10 @@ if (!isSingle) {
 if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
 else if (opts && opts.popup === false) popup = false;
 }
-window.chatAddSystem('TA想问你一个问题。');
+window.chatAddSystem('TA想问你一个问题。', { special: 'ask-msg' });
 const el = window.chatAddSystem(q.text, { special: 'ask-card', askQuestion: q.text, askOptions: isSingle ? q.options : null, askType: isSingle ? 'single' : 'text' });
 const idx = el ? Number(el.dataset.idx) : -1;
-if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'TA的询问' });
+if (window.bgNotifyCheck) window.bgNotifyCheck('TA想问你一个问题：' + q.text, Date.now(), { name: 'TA的询问' });
 if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openAskReply && !cardPopupBusy()) window.openAskReply(idx); }, 400);
 }
 function maybeTriggerTAAsk() {
@@ -14384,12 +14470,12 @@ tcSave(d);
 let popup = true;
 if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
 else if (opts && opts.popup === false) popup = false;
-window.chatAddSystem('TA想让你选一个答案。');
+window.chatAddSystem('TA想让你选一个答案。', { special: 'ask-msg' });
 const el = window.chatAddSystem(q.text, {
 special: 'ask-choose', choiceQuestion: q.text, choiceOptions: q.options, choicePref: q.pref, choiceCat: q.cat || ''
 });
 const idx = el ? Number(el.dataset.idx) : -1;
-if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'TA的小问题' });
+if (window.bgNotifyCheck) window.bgNotifyCheck('TA想让你选一个答案：' + q.text, Date.now(), { name: 'TA的小问题' });
 if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openTC && !cardPopupBusy()) window.openTC(idx); }, 400);
 }
 function maybeTriggerTC() {
@@ -14810,13 +14896,13 @@ tcuSave(d);
 let popup = true;
 if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
 else if (opts && opts.popup === false) popup = false;
-window.chatAddSystem('TA对你有点好奇。');
+window.chatAddSystem('TA对你有点好奇。', { special: 'ask-msg' });
 const el = window.chatAddSystem(q.text, {
 special: 'ask-curious', curiousQuestion: q.text, curiousQuick: q.quick || [], curiousReplies: q.replies || [],
 curiousFollowup: q.followup || '', curiousQid: q.id || '', curiousCat: q.cat || ''
 });
 const idx = el ? Number(el.dataset.idx) : -1;
-if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'Ta的好奇' });
+if (window.bgNotifyCheck) window.bgNotifyCheck('TA对你有点好奇：' + q.text, Date.now(), { name: 'Ta的好奇' });
 if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openCurious && !cardPopupBusy()) window.openCurious(idx); }, 400);
 }
 function maybeTriggerTCU() {
@@ -15170,10 +15256,10 @@ trSave(d);
 let popup = true;
 if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
 else if (opts && opts.popup === false) popup = false;
-window.chatAddSystem('TA吐槽了你一句。');
+window.chatAddSystem('TA吐槽了你一句。', { special: 'ask-msg' });
 const el = window.chatAddSystem(q.text, { special: 'ask-roast', roastText: q.text, roastCat: q.cat || 'light' });
 const idx = el ? Number(el.dataset.idx) : -1;
-if (window.bgNotifyCheck) window.bgNotifyCheck(q.text, Date.now(), { name: 'Ta的吐槽' });
+if (window.bgNotifyCheck) window.bgNotifyCheck('TA吐槽了你一句：' + q.text, Date.now(), { name: 'Ta的吐槽' });
 if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openRoast && !cardPopupBusy()) window.openRoast(idx); }, 400);
 }
 function lastUserMsg() {
@@ -19610,7 +19696,20 @@ for (const k of keys || []) {
 if (k.indexOf(uid + ':') !== 0) continue;
 if (k in data.ls || k in data.idb) continue; // 已在上面收录
 const v = await window.idbGet(k);
-if (v !== undefined && v !== null) add(k, v);
+if (v !== undefined && v !== null) {
+if (v instanceof Blob) {
+const buf = await v.arrayBuffer();
+const bytes = new Uint8Array(buf);
+let bin = '';
+const chunk = 0x8000;
+for (let i = 0; i < bytes.length; i += chunk) {
+bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+}
+add(k, 'data:' + (v.type || 'audio/mpeg') + ';base64,' + btoa(bin));
+} else {
+add(k, v);
+}
+}
 }
 } catch (e) {}
 }
