@@ -662,6 +662,7 @@
     widgetColorRow.addEventListener('click', () => {
       if (!window.openModal) return;
       const current = store.get('widget-bg-color') || '#ffffff';
+      // v3.6.x：20 色板（覆盖黑白灰 + 8 个常用色相浅色 + 8 个深/中色）——告别"阉割版"
       const swatchList = [
         { color: '#ffffff', label: '默认白' },
         { color: '#f5f0eb', label: '暖米白' },
@@ -671,6 +672,18 @@
         { color: '#fff5e6', label: '奶油黄' },
         { color: '#f5e6ff', label: '淡紫' },
         { color: '#fff0e0', label: '暖橘' },
+        { color: '#e6f7f5', label: '薄青' },
+        { color: '#fff8dc', label: '米黄' },
+        { color: '#fce4ec', label: '粉桃' },
+        { color: '#e8eaf6', label: '淡靛' },
+        { color: '#f1f8e9', label: '嫩绿' },
+        { color: '#fafafa', label: '银灰' },
+        { color: '#f0f0f0', label: '浅灰' },
+        { color: '#d4d4d4', label: '中灰' },
+        { color: '#111111', label: '深黑' },
+        { color: '#e8b4b8', label: '玫瑰' },
+        { color: '#b8d4e8', label: '天蓝' },
+        { color: '#c8e6c9', label: '森绿' },
       ];
       window.openModal('小组件颜色', '', (v) => {
         // v 可能是色板下标（number）或自定义色值（#hex 字符串）
@@ -734,9 +747,17 @@
           { color: 'rgba(0,0,0,.25)', label: '中灰' },
           { color: 'rgba(0,0,0,.4)', label: '深灰' },
           { color: '#111111', label: '纯黑' },
+          { color: '#ffffff', label: '纯白' },
           { color: '#e05555', label: '樱花粉' },
           { color: '#5555cc', label: '雾霭蓝' },
           { color: '#55aa55', label: '薄荷绿' },
+          { color: '#d4a017', label: '暖橘黄' },
+          { color: '#cc55cc', label: '淡紫' },
+          { color: '#cc6622', label: '暖橘' },
+          { color: '#e8b4b8', label: '玫瑰' },
+          { color: '#b8d4e8', label: '天蓝' },
+          { color: '#c8e6c9', label: '森绿' },
+          { color: '#ffd54f', label: '明黄' },
         ],
         pills: [{ label: '恢复默认', value: '__reset__' }],
       });
@@ -778,13 +799,21 @@
         color: current,
         swatches: [
           { color: '#111111', label: '默认黑' },
+          { color: '#222222', label: '深灰' },
+          { color: '#444444', label: '中深' },
+          { color: '#666666', label: '中灰' },
+          { color: '#888888', label: '灰' },
+          { color: '#aaaaaa', label: '浅灰' },
+          { color: '#ffffff', label: '白' },
           { color: '#e05555', label: '樱花粉' },
           { color: '#5555cc', label: '雾霭蓝' },
           { color: '#55aa55', label: '薄荷绿' },
           { color: '#d4a017', label: '暖橘黄' },
-          { color: '#888888', label: '中灰' },
           { color: '#cc55cc', label: '淡紫' },
           { color: '#cc6622', label: '暖橘' },
+          { color: '#e8b4b8', label: '玫瑰' },
+          { color: '#b8d4e8', label: '天蓝' },
+          { color: '#c8e6c9', label: '森绿' },
         ],
         pills: [{ label: '恢复默认', value: '__reset__' }],
       });

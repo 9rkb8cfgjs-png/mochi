@@ -18,6 +18,9 @@
 ## 记录
 
 ### 2026-08-17
+- [本会话] 完成（朋友圈两项需求：清除所有数据按钮 + 单条动态删除按钮，已构建 verify 10/10 + CDP 端到端 13/13，**未提交**）：① `src/template.html` 回复设置→朋友圈 tab 底部新增「数据」分组 + `#feed-clear-all` 危险行「清除所有朋友圈数据」（复用 set-row danger 样式，与聊天设置删除记录同款）；`src/js/feed.js` 绑定确认弹窗（noInput+staticText）→ 清空 `feed-posts`/`feed-notices`/`feed-app-unread` 三个全局键 + 关评论条 + 刷新角标/列表/通知面板。② 单条删除按钮扩展到所有动态：主列表删除按钮原来只显示在我的动态上（isMine），现所有动态（含 TA 的）都显示 `.feed-del`；「全部朋友圈」页原先完全没有删除按钮，现每条动态头部加 `.feed-del`；删除逻辑抽成公共函数 `deletePostConfirm(pid)`（主列表+全部朋友圈共用，确认后按当前可见页面重渲染，删除的是评论条目标时同步关闭评论条）。CDP 13/13：主列表 3 条（含 TA）均有删除按钮/确认弹窗/删除后剩 2 条/全部朋友圈页有按钮/删除+重渲染/设置页入口可见/确认弹窗/清除后动态+通知+未读角标全空/空态文案。涉及 `src/template.html`、`src/js/feed.js`。已 `node build.mjs` + `npm run verify` 10/10。临时脚本已删。**未提交**，等待统一提交/部署。
+
+### 2026-08-17
 - [本会话] 完成（用户反馈「设置里的切换不同联系人桌面的按钮不见了」修复，已构建 verify 10/10 + CDP 验证 6/6，**未提交**）：根因——`row-contacts`（联系人 / 桌面入口）是上上轮多联系人功能加进工作区但**从未提交**（git 全历史 `-S row-contacts` 无记录），之后 template.html 因误操作被 `git checkout HEAD` 回退 + Python 截断重写时丢失；`contacts.js` 入口绑定（`getElementById('row-contacts')`）仍在但永远匹配不到。修复：① `src/template.html` 设置页顶部补回独立 set-group 入口行 `row-contacts`「联系人 / 桌面」（用户图标 + `contacts-val` + 箭头，恢复 WORKLOG 所述原设计）；② `src/js/contacts.js` 新增 `refreshContactsVal()`——入口行 val 显示当前联系人名（跟随 `contact-switched` 刷新，切换桌面后名称同步更新）。CDP 验证 6/6：入口存在/设置页可见/文本正确/val 显示「默认」/点击打开联系人管理弹窗（display:flex）/弹窗标题与说明正确。涉及 `src/template.html`、`src/js/contacts.js`。已 `node build.mjs` + `npm run verify` 10/10。临时脚本已删。**未提交**，等待统一提交/部署。
 
 ### 2026-08-17
