@@ -575,6 +575,46 @@
     });
   }
 
+  // 小组件颜色：点击色板选择，CSS 变量 --widget-bg 实时生效
+  const widgetColorRow = document.getElementById('row-widget-color');
+  const widgetColorVal = document.getElementById('widget-color-val');
+  const applyWidgetColor = (color) => {
+    document.documentElement.style.setProperty('--widget-bg', color);
+    if (widgetColorVal) widgetColorVal.textContent = color === '#ffffff' ? '默认白' : '';
+  };
+  const savedWidgetColor = store.get('widget-bg-color');
+  if (savedWidgetColor) applyWidgetColor(savedWidgetColor);
+  if (widgetColorRow) {
+    const syncWidgetColorUI = () => {
+      const c = store.get('widget-bg-color') || '#ffffff';
+      if (widgetColorVal) widgetColorVal.textContent = c === '#ffffff' ? '默认白' : '';
+    };
+    syncWidgetColorUI();
+    widgetColorRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const current = store.get('widget-bg-color') || '#ffffff';
+      window.openModal('小组件颜色', '', (v) => {
+        if (!v) return;
+        store.set('widget-bg-color', v);
+        applyWidgetColor(v);
+        syncWidgetColorUI();
+      }, {
+        colorPicker: true,
+        color: current,
+        swatches: [
+          { color: '#ffffff', label: '默认白' },
+          { color: '#f5f0eb', label: '暖米白' },
+          { color: '#fff0f0', label: '樱花粉' },
+          { color: '#f0f4ff', label: '雾霭蓝' },
+          { color: '#f0fff0', label: '薄荷绿' },
+          { color: '#fff5e6', label: '奶油黄' },
+          { color: '#f5e6ff', label: '淡紫' },
+          { color: '#fff0e0', label: '暖橘' },
+        ],
+      });
+    });
+  }
+
   // 退出装修模式（含桌面顶部"完成"按钮）
   function exitDecor() {
     grids.forEach(g => g.classList.remove('editing'));

@@ -419,6 +419,9 @@
   flex-shrink:0; scrollbar-width:none; -ms-overflow-style:none;
 }
 .poke-groups::-webkit-scrollbar { display:none; }
+.poke-groups .emoji-g-chip {
+  padding:9px 14px; font-size:13px; font-weight:700; border-radius:11px;
+}
 /* 拍一拍卡片：自定义文字输入行（复用聊天搜索输入行风格） */
 .poke-input-row {
   display:flex; gap:8px; padding:0 2px 10px; flex-shrink:0;
