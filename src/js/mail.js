@@ -153,12 +153,12 @@
     // 我的回信（寄出的信内容已在上方完整展示，不再重复）
     if (l.myReply && l.type !== 'sent') html += letterPaper('我的回信', l.myReply.content, fmtDT(l.myReply.tm), myName);
     if (l.partnerReply) html += letterPaper('对方的回信', l.partnerReply.content, fmtDT(l.partnerReply.tm), name);
-    // 底部按钮：收到的信且未回信 → 提笔回信（打开独立回信页）
+    // 底部按钮：收到的信且未回信 → 提笔回信（打开独立回信页）；任意信可删除
     let footer = '';
     if (l.type === 'received' && !l.myReply) {
-      footer = '<div class="mail-actions"><button class="cc-tool" id="mail-reply-btn">提笔回信</button><button class="cc-tool" id="mail-close2">关闭</button></div>';
+      footer = '<div class="mail-actions"><button class="cc-tool" id="mail-reply-btn">提笔回信</button><button class="cc-tool cc-tool-danger" id="mail-del-btn">删除</button><button class="cc-tool" id="mail-close2">关闭</button></div>';
     } else {
-      footer = '<div class="mail-actions"><button class="cc-tool" id="mail-close2">关闭</button></div>';
+      footer = '<div class="mail-actions"><button class="cc-tool cc-tool-danger" id="mail-del-btn">删除</button><button class="cc-tool" id="mail-close2">关闭</button></div>';
     }
     if (window.openTCPanel) window.openTCPanel('信件', html + footer);
     bindLetterImgClicks(document.getElementById('tc-body'));
@@ -166,6 +166,8 @@
     if (close2) close2.addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; viewLetter = null; });
     const replyBtn = document.getElementById('mail-reply-btn');
     if (replyBtn) replyBtn.addEventListener('click', () => openReply(l));
+    const delBtn = document.getElementById('mail-del-btn');
+    if (delBtn) delBtn.addEventListener('click', () => deleteLetter(l));
   }
   function showPage(id) {
     document.querySelectorAll('.page').forEach(p => p.hidden = true);
@@ -702,6 +704,24 @@
         updateBadge();
         toast('信箱已清空');
       }, { noInput: true, staticText: '将删除全部 ' + n + ' 封信（收信/寄信/回信），且无法恢复。' });
+    }
+  }
+  // 删除单封信：确认后移除该信及其 TA 回信计划，关闭详情并刷新列表/角标
+  function deleteLetter(l) {
+    if (!l || !l.id) return;
+    if (window.openModal) {
+      window.openModal('删除这封信？', '', () => {
+        const list = load();
+        save(list.filter(x => x.id !== l.id));
+        const pending = replyPendingLoad().filter(p => !p || p.id !== l.id);
+        replyPendingSave(pending);
+        viewLetter = null;
+        render();
+        updateBadge();
+        const mask = document.getElementById('tc-mask');
+        if (mask) mask.hidden = true;
+        toast('信件已删除');
+      }, { noInput: true, staticText: '删除后将无法恢复。' });
     }
   }
   const mailExportBtn = document.getElementById('mail-export');

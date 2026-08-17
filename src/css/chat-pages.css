@@ -713,6 +713,18 @@
 .avlib-toggle-txt { flex:1; min-width:0; }
 .avlib-toggle-name { font-size:15px; font-weight:700; }
 .avlib-toggle-sub { font-size:11px; color:var(--muted); margin-top:3px; }
+/* v3.6.x：头像库顶部页签（联系人头像库 / 我的头像库） */
+.avlib-tabs { display:flex; gap:8px; margin:2px 0 12px; }
+.avlib-tab {
+  flex:1; text-align:center; padding:8px 6px; border-radius:10px;
+  background:rgba(0,0,0,.06); color:var(--ink); font-size:13px; font-weight:700;
+  cursor:pointer; user-select:none; -webkit-user-select:none;
+  transition:background .15s, color .15s;
+}
+.avlib-tab.active { background:var(--ink); color:#fff; }
+.avlib-tab:active { opacity:.8; }
+.avlib-tab-cnt { font-weight:400; opacity:.7; margin-left:2px; }
+.avlib-tab.active .avlib-tab-cnt { opacity:.85; }
 .avlib-grid {
   display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; padding:4px 0 8px;
 }
@@ -1104,6 +1116,16 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
 .feed-replies { padding-left:22px; margin-top:2px; }
 .feed-reply { font-size:12px; color:#666; line-height:1.8; }
 .feed-reply b { color:var(--ink); font-weight:600; }
+/* v3.6.x：朋友圈页底部「删除全部动态」按钮（有动态时显示） */
+.feed-clear-btn {
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  width:100%; margin:4px 0 10px; padding:12px 0;
+  border:none; border-radius:12px;
+  background:rgba(214,69,69,.08); color:#d64545;
+  font-size:13px; cursor:pointer;
+}
+.feed-clear-btn:active { background:rgba(214,69,69,.18); }
+.feed-clear-btn[hidden] { display:none; }
 
 /* ===== 使用许可说明 ===== */
 .lic-block { margin-bottom:14px; }

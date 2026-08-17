@@ -8,14 +8,16 @@
     const p = (n) => (n < 10 ? '0' + n : '' + n);
     return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
   }
-  // ---- 换头像记录（含头像缩略图；最多 30 条） ----
+  // ---- 换头像记录（含事件文案 + 头像缩略图；最多 30 条） ----
+  // 记录所有换头像事件：联系人主动换我的头像（直接换 / 邀请同意 / 邀请拒绝）、
+  // 我手动换自己的头像等——统一由 chatSystem 写入，text 为聊天系统消息原文
   function avatarsLoad() {
     try { return JSON.parse(store.get('records-avatar') || '[]'); } catch (e) { return []; }
   }
   function avatarsSave(list) { store.set('records-avatar', JSON.stringify(list.slice(0, 30))); }
-  window.addAvatarRecord = function (img) {
+  window.addAvatarRecord = function (img, text) {
     const list = avatarsLoad();
-    list.unshift({ img: img, ts: Date.now() });
+    list.unshift({ img: img, text: text || '', ts: Date.now() });
     avatarsSave(list);
     if (!document.getElementById('page-home').hidden) render();
   };
@@ -113,15 +115,16 @@
           : '<div class="ta-empty">暂无心情记录</div>';
       }
     }
-    // 联系人换头像记录
+    // 换头像记录（全部事件：直接换 / 邀请同意 / 邀请拒绝 / 我手动更换）
     if (showOnly === 'av') {
       const avEl = document.getElementById('home-av');
       if (avEl) {
         const list = avatarsLoad();
         const name = store.get('lbl-partner') || 'TA';
+        const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         avEl.innerHTML = list.length
           ? list.map(x =>
-              '<div class="tc-listitem"><div class="tc-li-top"><span class="tc-li-q">' + name + ' 更换了头像</span><span class="tc-li-time">' + fmtDT(x.ts) + '</span></div>' +
+              '<div class="tc-listitem"><div class="tc-li-top"><span class="tc-li-q">' + esc(x.text || (name + ' 更换了头像')) + '</span><span class="tc-li-time">' + fmtDT(x.ts) + '</span></div>' +
               (x.img ? '<img class="rec-av-img" src="' + x.img + '" alt="头像">' : '') +
               '</div>'
             ).join('')

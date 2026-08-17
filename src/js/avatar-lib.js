@@ -1,6 +1,9 @@
-// ===== 功能：联系人头像库（完整版） =====
-// 独立页面：头像池缩略图网格 + 上传多张 + 删除单张 + 清空 + 开关
+// ===== 功能：头像互动（联系人头像池 + 我的头像池） =====
+// 聊天页内底部半框：两个头像池——联系人头像池（按昵称命名）与我的头像池，
+// 各自支持上传多张 + 删除单张 + 清空 + 开关
 // 定时随机更换联系人聊天头像（1-8 小时）；更换时聊天显示"昵称 更换了头像"
+// 我的头像池：联系人也会定时（1-8 小时）主动给我换头像——有概率直接换，
+// 有概率弹窗邀请我同意/拒绝（机制与联系人随机换头像一致，计时独立）
 // 上传/清空有成功/失败提示（toast）
 (function () {
   const uid = window.activePrefix();
@@ -23,13 +26,17 @@
   }
 
   // 换头像邀请的回应概率（手动点击切换时触发）
-  const INVITE_PROB = 50; // 触发"同意/拒绝"回应的概率 %
+  const INVITE_PROB = 50; // 触发"邀请/直接换"的概率 %（我换 TA 的：触发同意/拒绝回应；TA 换我的：触发弹窗邀请）
   const AGREE_PROB = 70;  // 触发回应时同意的概率 %（拒绝 = 100 - AGREE_PROB）
 
-  // 头像池
+  // 联系人头像池
   function getLib() { try { return JSON.parse(store.get('avatar-lib') || '[]'); } catch (e) { return []; } }
   function saveLib(list) { store.set('avatar-lib', JSON.stringify(list)); }
   function getEnabled() { const v = store.get('avatar-lib-enabled'); return v === null ? true : v === '1'; }
+  // 我的头像池
+  function getMeLib() { try { return JSON.parse(store.get('avatar-me-lib') || '[]'); } catch (e) { return []; } }
+  function saveMeLib(list) { store.set('avatar-me-lib', JSON.stringify(list)); }
+  function getMeEnabled() { const v = store.get('avatar-me-lib-enabled'); return v === null ? true : v === '1'; }
 
   // ===== 功能：头像互动（原联系人头像库，改为聊天页内底部半框） =====
   // 半框展示头像池：上传多张 + 删除单张 + 清空 + 开关 + 点击切换（半框露出聊天消息，方便边看边玩）
@@ -43,10 +50,35 @@
   const avUpload = document.getElementById('avlib-upload');
   const avClear = document.getElementById('avlib-clear');
   const avName = document.getElementById('avlib-name');
+  const avPoolName = document.getElementById('avlib-pool-name');
+  const avMeGrid = document.getElementById('avlib-me-grid');
+  const avMeCount = document.getElementById('avlib-me-count');
+  const avMeEmpty = document.getElementById('avlib-me-empty');
+  const avMeEnabled = document.getElementById('avlib-me-enabled');
+  const avMeUpload = document.getElementById('avlib-me-upload');
+  const avMeClear = document.getElementById('avlib-me-clear');
+  const avTabA = document.getElementById('avlib-tab-a');
+  const avTabB = document.getElementById('avlib-tab-b');
+  const avPaneA = document.getElementById('avlib-pane-a');
+  const avPaneB = document.getElementById('avlib-pane-b');
+  const avMeTabName = document.getElementById('avlib-me-tab-name');
 
   function syncVal() {
     if (avEnabled) avEnabled.checked = getEnabled();
+    if (avMeEnabled) avMeEnabled.checked = getMeEnabled();
     if (avName) avName.textContent = store.get('lbl-partner') || 'TA';
+    if (avPoolName) avPoolName.textContent = (store.get('lbl-partner') || 'TA') + ' 的头像库';
+    if (avMeTabName) {
+      const myName = store.get('lbl-user');
+      avMeTabName.textContent = myName ? myName + ' 的头像库' : '我的头像库';
+    }
+  }
+  // 顶部页签切换：联系人头像库 / 我的头像库（点页签直接切换）
+  function switchAvTab(me) {
+    if (avTabA) avTabA.classList.toggle('active', !me);
+    if (avTabB) avTabB.classList.toggle('active', me);
+    if (avPaneA) avPaneA.hidden = me;
+    if (avPaneB) avPaneB.hidden = !me;
   }
   function renderGrid() {
     if (!avGrid) return;
@@ -81,6 +113,39 @@
       avGrid.appendChild(d);
     });
   }
+  // 我的头像池网格：点击图片直接换成我的头像（也记入主页记录 + 聊天系统消息）；
+  // 另支持删除单张
+  function renderMeGrid() {
+    if (!avMeGrid) return;
+    const lib = getMeLib();
+    const current = store.get('avatar-user');
+    avMeGrid.innerHTML = '';
+    if (avMeCount) avMeCount.textContent = lib.length;
+    if (avMeEmpty) avMeEmpty.hidden = lib.length > 0;
+    lib.forEach((src, idx) => {
+      const d = document.createElement('div');
+      d.className = 'avlib-cell' + (src === current ? ' avlib-now' : '');
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = '头像';
+      const delBtn = document.createElement('button');
+      delBtn.className = 'avlib-del';
+      delBtn.textContent = '✕';
+      d.appendChild(img);
+      d.appendChild(delBtn);
+      // 点击图片：直接换成我的头像（我的头像池可手动切换）
+      img.addEventListener('click', () => {
+        switchMyAvatarFromLib(src);
+      });
+      delBtn.addEventListener('click', () => {
+        const l = getMeLib();
+        l.splice(idx, 1);
+        saveMeLib(l);
+        renderMeGrid();
+      });
+      avMeGrid.appendChild(d);
+    });
+  }
 
   // 打开/关闭半框
   function openAvlib() {
@@ -91,6 +156,7 @@
     const ep = document.getElementById('emoji-panel');
     if (ep) ep.hidden = true;
     renderGrid();
+    renderMeGrid();
     syncVal();
     avPage.hidden = false;
   }
@@ -104,6 +170,9 @@
   window.closeAvlib = closeAvlib;
   const avClose = document.getElementById('avlib-close');
   if (avClose) avClose.addEventListener('click', closeAvlib);
+  // 顶部页签点击切换
+  if (avTabA) avTabA.addEventListener('click', () => switchAvTab(false));
+  if (avTabB) avTabB.addEventListener('click', () => switchAvTab(true));
   // 聊天页更多功能 → 头像互动
   const moreAvatar = document.getElementById('more-avatar');
   if (moreAvatar) {
@@ -121,8 +190,15 @@
       syncVal();
     });
   }
-  // 上传多张：读取失败的文件会跳过，全部成功/部分失败都有提示
-  if (avUpload) {
+  if (avMeEnabled) {
+    avMeEnabled.addEventListener('change', () => {
+      store.set('avatar-me-lib-enabled', avMeEnabled.checked ? '1' : '0');
+      syncVal();
+    });
+  }
+  // 上传多张（两个头像池共用）：读取失败的文件会跳过，全部成功/部分失败都有提示
+  function bindPoolUpload(btn, listFn, saveFn, rerender) {
+    if (!btn) return;
     const input = document.createElement('input');
     input.type = 'file'; input.accept = 'image/*'; input.multiple = true;
     input.style.display = 'none';
@@ -131,7 +207,7 @@
       const files = Array.prototype.slice.call(input.files || []);
       input.value = '';
       if (!files.length) return;
-      const list = getLib();
+      const list = listFn();
       let done = 0, okCount = 0, failCount = 0;
       files.forEach(f => {
         const reader = new FileReader();
@@ -160,9 +236,8 @@
         reader.readAsDataURL(f);
       });
       function finish() {
-        saveLib(list);
-        renderGrid();
-        syncVal();
+        saveFn(list);
+        rerender();
         if (okCount > 0 && failCount === 0) {
           toast('成功添加 ' + okCount + ' 张头像');
         } else if (okCount > 0 && failCount > 0) {
@@ -172,29 +247,34 @@
         }
       }
     };
-    avUpload.addEventListener('click', () => input.click());
+    btn.addEventListener('click', () => input.click());
   }
-  // 清空
-  if (avClear) {
-    avClear.addEventListener('click', () => {
+  bindPoolUpload(avUpload, getLib, saveLib, () => { renderGrid(); syncVal(); });
+  bindPoolUpload(avMeUpload, getMeLib, saveMeLib, () => { renderMeGrid(); syncVal(); });
+  // 清空（两个头像池共用）
+  function bindPoolClear(btn, saveFn, rerender, title, okText) {
+    if (!btn) return;
+    btn.addEventListener('click', () => {
       if (window.openModal) {
-        window.openModal('清空头像池？', '', () => {
-          saveLib([]);
-          renderGrid();
-          syncVal();
-          toast('已清空头像池');
+        window.openModal(title, '', () => {
+          saveFn([]);
+          rerender();
+          toast(okText);
         }, { noInput: true });
       }
     });
   }
+  bindPoolClear(avClear, saveLib, () => { renderGrid(); syncVal(); }, '清空头像池？', '已清空头像池');
+  bindPoolClear(avMeClear, saveMeLib, () => { renderMeGrid(); syncVal(); }, '清空我的头像池？', '已清空我的头像池');
 
-  // 头像实时生效：聊天页顶部头像 + 桌面纪念日卡头像 + 已渲染的对方消息气泡头像
-  // （.msg-in .msg-av 是"对方消息"旁的头像；我的消息旁是 avatar-user，不动）
+  // 头像实时生效：聊天页顶部头像 + 桌面纪念日卡头像 + 已渲染的消息气泡头像
+  // out=false 换联系人头像（.msg-in .msg-av 是"对方消息"旁的头像）；
+  // out=true 换我的头像（.msg-out .msg-av 是我的消息旁的头像）
   // data 为空时恢复默认人物图标
   // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
-  function applyAvatarImg(data) {
-    const chatAv = document.getElementById('chat-partner-av');
-    const deskRing = document.querySelector('#avatar-partner .ring');
+  function applyAvatarImg(data, out) {
+    const chatAv = document.getElementById(out ? 'chat-user-av' : 'chat-partner-av');
+    const deskRing = document.querySelector(out ? '#avatar-user .ring' : '#avatar-partner .ring');
     const applyTo = (el) => {
       if (!el) return;
       el.innerHTML = '';
@@ -209,14 +289,22 @@
     };
     applyTo(chatAv);
     applyTo(deskRing);
-    document.querySelectorAll('.msg-in .msg-av').forEach(av => { applyTo(av); });
+    document.querySelectorAll((out ? '.msg-out' : '.msg-in') + ' .msg-av').forEach(av => { applyTo(av); });
   }
   // 聊天里显示系统消息（chatAddSystem 会持久化，下次进聊天也能看到）
   // img：可选，消息里附带换的头像图片
   function chatSystem(text, img) {
     if (window.chatAddSystem) window.chatAddSystem(text, { img: img });
-    // 记录：联系人主动换头像（写入记录页，含头像缩略图）
-    if (window.addAvatarRecord) window.addAvatarRecord(img);
+    // 记录：换头像事件（写入主页「换头像记录」，含事件文案 + 头像缩略图）。
+    // records.js 在 avatar-lib 之后加载，启动即触发的换头像可能赶不上
+    // addAvatarRecord 定义 → 延迟到下一轮 tick 再补写
+    if (window.addAvatarRecord) {
+      window.addAvatarRecord(img, text);
+    } else {
+      setTimeout(function () {
+        try { if (window.addAvatarRecord) window.addAvatarRecord(img, text); } catch (e) {}
+      }, 600);
+    }
   }
   // 聊天消息 + 黑色小字通知：换头像邀请的回应（消息带换的头像图片）
   // v3.6.x：不再弹白底可输入的 modal 弹窗——与头像互动其它通知一致，
@@ -263,6 +351,112 @@
     }
   }
 
+  // 手动点击我的头像库的图片：立即换成我的头像（聊天系统消息 + 主页记录）
+  function switchMyAvatarFromLib(data) {
+    const lib = getMeLib();
+    if (!data || lib.indexOf(data) === -1) return;
+    store.set('avatar-user', data);
+    applyAvatarImg(data, true);
+    renderMeGrid();
+    toast('头像已更换');
+    const myName = store.get('lbl-user') || '我';
+    chatSystem(myName + ' 更换了头像', data);
+  }
+
+  // TA 主动给我换头像：邀请回应文案（聊天消息 + toast）
+  function replyMeInvite(accepted, data) {
+    const name = store.get('lbl-partner') || 'TA';
+    const myName = store.get('lbl-user') || '我';
+    const text = accepted
+      ? myName + ' 同意了' + name + '的换头像邀请'
+      : myName + ' 拒绝了' + name + '的换头像邀请';
+    chatSystem(text, accepted ? data : null);
+    toast(text);
+  }
+  // 弹窗邀请：带新头像预览，我同意则直接换上 / 拒绝则保持原样
+  function showMeAvatarInvite(data) {
+    const name = store.get('lbl-partner') || 'TA';
+    window.openModal(name + ' 的换头像邀请', '', (v) => {
+      if (v === '1') {
+        store.set('avatar-user', data);
+        applyAvatarImg(data, true);
+        renderMeGrid();
+        replyMeInvite(true, data);
+      } else {
+        replyMeInvite(false, null);
+      }
+    }, {
+      noInput: true,
+      // v3.6.x：锁定弹窗——点遮罩/取消都不关闭，必须点同意/拒绝
+      lock: true,
+      pills: [{ label: '同意', value: '1' }, { label: '拒绝', value: '0' }],
+      staticText: name + ' 邀请你换上这张头像'
+    });
+    // 弹窗里附上新头像预览（openModal 只支持文字，预览图追加进 static 区）
+    const se = document.getElementById('modal-static');
+    if (se) {
+      const img = document.createElement('img');
+      img.src = data;
+      img.alt = '';
+      img.style.cssText = 'width:96px;height:96px;border-radius:50%;object-fit:cover;display:block;margin:10px auto;';
+      se.appendChild(img);
+    }
+  }
+
+  // 我的头像池定时换头像（触发概率/刷新机制与联系人主动换头像一致，计时独立）：
+  // 每 60 秒轮询检查一次 + 启动时立即检查；
+  // 上次/下次更换时间戳持久化（avatar-me-lib-last=0 / avatar-me-lib-next=0 初始值 → 首次加载立即触发），
+  // 触发后 next = 1 + random*7 小时；刷新页面周期不重置；异常时间戳归零重试。
+  // 触发时掷 INVITE_PROB：弹窗邀请我同意/拒绝，否则直接换上我的新头像
+  function getMeAvatarLast() { const v = parseInt(store.get('avatar-me-lib-last'), 10); return isNaN(v) ? 0 : v; }
+  function getMeAvatarNext() { const v = parseFloat(store.get('avatar-me-lib-next')); return isNaN(v) ? 0 : v; }
+  function checkMeAvatarRefresh() {
+    try {
+      // v3.6.x：去掉 document.hidden return——后台时也检查换头像周期，
+      // 到时间就换 + 写聊天消息 + 发后台通知（用户在后台也能收到系统通知）
+      if (!getMeEnabled()) return;
+      const now = Date.now();
+      let last = getMeAvatarLast();
+      let next = getMeAvatarNext();
+      // 异常时间戳 → 归零，下次检查立即触发
+      if (last > now || last < 0 || isNaN(last)) { last = 0; next = 0; }
+      if ((now - last) / 36e5 < next) return;
+      const lib = getMeLib();
+      if (!lib.length) return;
+      const idx = Math.floor(Math.random() * lib.length);
+      const data = lib[idx];
+      if (!data) return;
+      // 随机到当前头像：跳过不换，也不推进计时（60 秒后再随机一次）
+      if (data === store.get('avatar-user')) return;
+      const invite = Math.random() * 100 < INVITE_PROB;
+      if (invite) {
+        // 已有其他弹窗打开时本次跳过（不推进计时，60 秒后再触发）
+        const mask = document.getElementById('modal-mask');
+        if (mask && !mask.hidden) return;
+      }
+      // 推进周期：下次 1-8 小时
+      store.set('avatar-me-lib-last', String(now));
+      store.set('avatar-me-lib-next', String(1 + Math.random() * 7));
+      if (invite) {
+        showMeAvatarInvite(data);
+        // v3.6.x：后台时弹窗不可见，发系统通知让用户知道有换头像邀请
+        if (document.visibilityState === 'hidden' && window.bgNotifyCheck) {
+          const iname = store.get('lbl-partner') || 'TA';
+          window.bgNotifyCheck(iname + ' 想给你换头像', Date.now(), { name: iname, img: data });
+        }
+      } else {
+        // 直接换：换上 + 聊天显示"昵称 更换了你的头像" + 新头像图片
+        store.set('avatar-user', data);
+        applyAvatarImg(data, true);
+        renderMeGrid();
+        const name = store.get('lbl-partner') || 'TA';
+        const text = name + ' 更换了你的头像';
+        chatSystem(text, data);
+        toast(text);
+      }
+    } catch (e) {}
+  }
+
   // 定时随机更换（与星言简约版机制一致）：
   // 每 60 秒轮询检查一次 + 启动时立即检查；
   // 上次/下次更换时间戳持久化（lastChange=0 / nextChange=0 初始值 → 首次加载立即换一次），
@@ -272,8 +466,8 @@
   function getAvatarNext() { const v = parseFloat(store.get('avatar-lib-next')); return isNaN(v) ? 0 : v; }
   function checkAvatarLibRefresh() {
     try {
-      // v3.5.127：页面隐藏时不检查（后台 interval 白跑 + 每 60s 全量解析整个头像池）
-      if (document.hidden) return;
+      // v3.6.x：去掉 document.hidden return——后台时也检查换头像周期，
+      // 到时间就换 + 写聊天消息 + 发后台通知（时间未到时在 getLib 前 return，不解析头像池）
       if (!getEnabled()) return;
       const now = Date.now();
       let last = getAvatarLast();
@@ -302,6 +496,8 @@
   // 每 60 秒轮询一次 + 启动立即检查（首次加载立即换一次）
   try { setInterval(checkAvatarLibRefresh, 60000); } catch (e) {}
   checkAvatarLibRefresh();
+  try { setInterval(checkMeAvatarRefresh, 60000); } catch (e) {}
+  checkMeAvatarRefresh();
 
   syncVal();
   // v3.5.93：头像池大键（图片 dataURL）可能只存在 IndexedDB（导入兜底写入/运行时大键策略），
@@ -311,6 +507,15 @@
       window.idbGet(window.activePrefix() + ':avatar-lib').then(v => {
         if (v && typeof v === 'string' && v.length > 2) {
           store.set('avatar-lib', v);
+        }
+      });
+    }
+  } catch (e) {}
+  try {
+    if (window.idbGet) {
+      window.idbGet(window.activePrefix() + ':avatar-me-lib').then(v => {
+        if (v && typeof v === 'string' && v.length > 2) {
+          store.set('avatar-me-lib', v);
         }
       });
     }

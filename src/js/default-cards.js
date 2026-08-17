@@ -37,12 +37,19 @@
   //   存 localStorage 键：dc-off-<分类>:<字卡内容>，关闭为 '1'
   function isCardOff(cat, c) { return ls.get('dc-off-' + cat + ':' + c) === '1'; }
   function setCardOff(cat, c, off) { ls.set('dc-off-' + cat + ':' + c, off ? '1' : '0'); }
+  // v3.6.x：暴露单卡开关查询（供 chat.js 字卡池兜底过滤：自定义字卡为空时
+  //   系统字卡补池也必须跳过用户已关闭的字卡）
+  window.isDefaultCardOff = function (cat, c) { return isCardOff(cat, c); };
 
   // ---- 页面 UI ----
   let cur = 'main';
   let q = '';
   enabledEl.checked = getEnabled();
-  enabledEl.addEventListener('change', () => ls.set('dc-enabled', enabledEl.checked ? '1' : '0'));
+  enabledEl.addEventListener('change', () => {
+    ls.set('dc-enabled', enabledEl.checked ? '1' : '0');
+    // v3.6.x：总开关也弹轻提示（与单卡开关一致）
+    toast(enabledEl.checked ? '已开启：使用系统预设字卡' : '已关闭：使用系统预设字卡');
+  });
 
   let curGroup = '';
   function renderGroupsBar2() {

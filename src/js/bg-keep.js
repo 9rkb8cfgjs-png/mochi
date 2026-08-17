@@ -421,10 +421,13 @@
       // v3.5.138：时间精确到秒（原只有 时:分）
       t = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
     }
-    // v3.5.142：正文防乱码——任何混入的 dataURL（图片/表情包）都替换为占位文案，
+    // v3.5.142：正文防乱码——任何混入的 dataURL（图片/表情包/语音）都替换为占位文案，
     // 图片本体由 image 字段单独显示缩略图
+    // v3.6.x：正则从 data:image/ 扩展到任意 data:MIME/（覆盖 data:audio/ 等），
+    // 并清除语音「名|||dataURL」里 ||| 之后的音频 dataURL，避免 base64 乱码
     const body = String(text || '收到一条新消息')
-      .replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[图片]');
+      .replace(/data:[a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[附件]')
+      .replace(/\|\|\|.*$/, '');
     const opts = { body: (t ? t + '  ' : '') + (body && body.length > 40 ? body.slice(0, 40) + '…' : body) };
     // v3.5.138：头像无论 dataURL 还是 http(s) URL 都作为通知图标（走 SW 路径，
     //   dataURL 图标可正常显示；个别机型异常时 showSysNotification 已做去图标降级重发，

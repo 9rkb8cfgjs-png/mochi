@@ -267,6 +267,8 @@
             '</div>' + likes + commentsHtmlFor(p, name) + '</div>';
         }).join('')
       : '<div class="ta-empty">还没有动态，TA 会不定期分享生活</div>';
+    const clearBtn = document.getElementById('feed-page-clear');
+    if (clearBtn) clearBtn.hidden = !posts.length;
     bindEvents(listEl);
   }
   // v3.5.95：朋友圈图片点击放大（复用聊天大图查看器）
@@ -1221,6 +1223,32 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
         if (np && !np.hidden) renderNotices();
         toast('朋友圈数据已全部清除');
       }, { noInput: true, staticText: '将删除全部动态（我的与 TA 的）、评论、点赞和通知提醒，且无法恢复。确定继续吗？' });
+    });
+  }
+  // v3.6.x：朋友圈页底部「删除全部动态」——可只删我的动态 / 只删联系人的动态 / 全部删除
+  const feedPageClear = document.getElementById('feed-page-clear');
+  if (feedPageClear) {
+    feedPageClear.addEventListener('click', () => {
+      if (!window.openModal) return;
+      window.openModal('删除朋友圈动态', '', (v) => {
+        const mode = v || 'all';
+        const mine = (p) => (p.role || p.by) === 'me';
+        const keep = load().filter(p => mode === 'mine' ? !mine(p) : (mode === 'ta' ? mine(p) : false));
+        save(keep);
+        // 全部删除时同步清空通知提醒与桌面未读角标（与设置页「清除所有朋友圈数据」一致）
+        if (mode === 'all') {
+          saveNotices([]);
+          try { store.set('feed-app-unread', '0'); } catch (e) {}
+        }
+        hideCommentBar();
+        renderNoticeBadge();
+        render();
+        toast(mode === 'all' ? '朋友圈动态已全部删除' : (mode === 'mine' ? '我的动态已全部删除' : '联系人的动态已全部删除'));
+      }, { noInput: true, staticText: '删除后无法恢复。', pill: 'all', pills: [
+        { label: '全部删除', value: 'all' },
+        { label: '仅我的动态', value: 'mine' },
+        { label: '仅联系人的动态', value: 'ta' }
+      ] });
     });
   }
   render();

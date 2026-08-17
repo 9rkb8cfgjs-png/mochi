@@ -424,12 +424,17 @@
     // v3.6.x：字卡池空兜底——用户没在「自定义聊天字卡」里添加文字/颜文字/emoji 字卡时
     // （内置预设已移除），用系统默认字卡（3260 张）补池，否则联系人回复永远只能
     // 回兜底文案「收到～」，体验像"不管发什么都只回收到"
+    // v3.6.x：兜底必须与「系统预设字卡」开关一致——dc-enabled 关闭时整个兜底不注入
+    //   系统字卡；单卡「关闭使用」的字卡也不进池（isDefaultCardOff）
     try {
-      if (!text.length || !kaomoji.length || !emoji.length) {
+      const dcfg = (window.defaultCardCfg && window.defaultCardCfg()) || {};
+      const isOff = window.isDefaultCardOff || null;
+      if (dcfg.enabled !== false && (!text.length || !kaomoji.length || !emoji.length)) {
         const defGrps = (window.getDefaultCardGroups && window.getDefaultCardGroups('main')) || [];
         defGrps.forEach(g => {
           const arr = g[1] || [];
           arr.forEach(c => {
+            if (isOff && isOff('main', c)) return;
             if (typeof c !== 'string' || !c) return;
             if (/[\uD800-\uDBFF]/.test(c)) emoji.push(c);
             else if (/[\(（｡◕(◕)(づ｡(¬)]/.test(c) && /[\)）】)]/.test(c)) kaomoji.push(c);
@@ -438,11 +443,11 @@
         });
         if (!kaomoji.length) {
           const kg = (window.getDefaultCardGroups && window.getDefaultCardGroups('kaomoji')) || [];
-          kg.forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) kaomoji.push(c); }));
+          kg.forEach(g => (g[1] || []).forEach(c => { if (isOff && isOff('kaomoji', c)) return; if (typeof c === 'string' && c) kaomoji.push(c); }));
         }
         if (!emoji.length) {
           const eg = (window.getDefaultCardGroups && window.getDefaultCardGroups('emoji')) || [];
-          eg.forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) emoji.push(c); }));
+          eg.forEach(g => (g[1] || []).forEach(c => { if (isOff && isOff('emoji', c)) return; if (typeof c === 'string' && c) emoji.push(c); }));
         }
       }
     } catch (e) {}
@@ -1082,12 +1087,16 @@
     let t = String(opts.text || '');
     // v3.5.142：图片/表情包消息可能没有文字（纯图片），此时显示占位文案
     // v3.5.143：占位类型判定——type 明确为 sticker → [表情包]；其余（image/缺失）→ [图片]
-    if (!t && opts.img) t = opts.type === 'sticker' ? '[表情包]' : '[图片]';
+    if (!t && opts.img) t = opts.type === 'sticker' ? '[表情包]' : (opts.type === 'voice' ? '[语音]' : '[图片]');
     if (!t) return;
-    if (t.indexOf('data:') === 0) t = opts.type === 'sticker' ? '[表情包]' : '[图片]';
-    // v3.5.132：正文里混入的 dataURL 片段（写信内容带表情包/图片时，data: 前缀判断失效）
-    // 统一替换为占位文案，不再显示 base64 乱码
-    else if (t.indexOf('data:') > 0) t = t.replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[图片]');
+    if (t.indexOf('data:') === 0) t = opts.type === 'sticker' ? '[表情包]' : (opts.type === 'voice' ? '[语音]' : '[图片]');
+    // v3.5.132：正文里混入的 dataURL 片段（写信内容带表情包/图片/语音时，data: 前缀判断失效）
+    // v3.6.x：正则从 data:image/ 扩展到任意 data:MIME/（覆盖 data:audio/ data:video/ 等），
+    // 避免语音消息「名|||data:audio/...base64」里的音频 base64 漏过显示成乱码
+    else if (t.indexOf('data:') > 0) t = t.replace(/data:[a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[附件]');
+    // v3.6.x：语音消息 text 格式「名称|||音频dataURL」——extractDeskMsg 已拆分，但其他
+    // 调用路径可能仍传整段；兜底按 ||| 拆分取名称（去 mp3/mp4 等后缀），不显示 base64
+    else if (t.indexOf('|||') >= 0) t = t.split('|||')[0].replace(/\.[^.]+$/, '').trim() || '[语音]';
     // v3.6.x：通话等系统消息的正文含内联 SVG（来电铃铛/电话图标），textContent 会把
     // 整段 SVG 源码当文本显示成乱码——剥离标签只保留可见文字（来电/挂断等）
     // v3.5.131：仅对含 svg 的系统消息剥离标签——普通消息里的 `<`（如"1<2"）不再被误删
@@ -1101,7 +1110,12 @@
       window.bgNotifyCheck(t, Date.now(), { name: opts.name, img: opts.img });
     }
     if (!deskMsgEl || !deskMsgEnabled()) return;
-    if (deskMsgText) deskMsgText.textContent = t;
+    // v3.6.x：前台横幅补图片占位——图片+文字组合消息只显示文字时用户不知含图片，
+    // 有 img 且文字里没 [图片]/[表情包]/[语音] 占位时补「 [图片]」（后台通知有 image
+    // 字段显缩略图，不重复补；表情包/语音不补）
+    let dispT = t;
+    if (opts.img && opts.type !== 'sticker' && opts.type !== 'voice' && dispT && dispT.indexOf('[图片]') < 0 && dispT.indexOf('[表情包]') < 0 && dispT.indexOf('[语音]') < 0 && dispT.indexOf('[附件]') < 0) dispT = dispT + ' [图片]';
+    if (deskMsgText) deskMsgText.textContent = dispT;
     if (deskMsgName) deskMsgName.textContent = opts.name || store.get('lbl-partner') || 'TA';
     if (deskMsgAv) fillAvatar(deskMsgAv, 'avatar-partner');
     deskMsgAction = (typeof opts.onClick === 'function') ? opts.onClick : null;
@@ -1123,7 +1137,7 @@
   // 系统通知应基于浏览器可见性（hidden）判断，而非页面 UI 状态
   function extractDeskMsg(rec) {
     let text = rec.text || '';
-    let img = '';
+    let img = rec.img || '';
     if (rec.parts && rec.parts.length) {
       const ims = rec.parts.filter(p => p.k === 'img');
       if (ims.length) img = ims[0].v || '';
@@ -1134,6 +1148,12 @@
       // 旧数据 type 缺失时也能提取缩略图
       img = text;
       text = '';
+    }
+    // v3.6.x：语音消息 text 格式「名称|||音频dataURL」——拆分取名称（去 mp3/mp4 等后缀），
+    // 避免整段 base64 当文字显示成乱码（旧数据名称仍带后缀，一并去掉；与 renderMsg 一致）
+    if (rec.type === 'voice') {
+      const vname = String(text || '').split('|||')[0] || '';
+      text = vname.replace(/\.[^.]+$/, '').trim() || '语音消息';
     }
     return { text: text, img: img };
   }
@@ -1165,6 +1185,7 @@
   // 供信箱 / 朋友圈等模块复用（构建顺序：chat.js 先于 mail.js / feed.js 加载）
   window.showDeskPopup = showDeskPopup;
   window.hideDeskMsg = hideDeskMsg;
+
   // v3.5.106：横幅无 × 关闭按钮（v3.5.106 移除），点横幅直接进对应页面
   if (deskMsgEl) deskMsgEl.addEventListener('click', () => {
     if (deskMsgSuppressClick) { deskMsgSuppressClick = false; return; }

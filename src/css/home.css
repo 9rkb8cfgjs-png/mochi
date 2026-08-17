@@ -1,9 +1,11 @@
 /* ===== 手机桌面（情侣空间） ===== */
-/* 小组件背景色 / 边框色 / 按钮色 / 透明度：CSS 变量控制，由「手机桌面美化」设置 */
+/* 小组件背景色 / 边框色 / 按钮色 / 按钮文字色 / 爱心外框色 / 透明度：CSS 变量控制，由「手机桌面美化」设置 */
 :root {
   --widget-bg:#ffffff;
   --widget-border:rgba(0,0,0,.1);
   --widget-btn:#111111;
+  --widget-btn-text:#ffffff;
+  --widget-heart:#111111;
   --widget-opacity:1;
   --app-ico-radius:18px;
 }
@@ -26,7 +28,7 @@
 /* 头像：无外框，头像直接显示，仅按压微缩放（形状跟随聊天设置的圆形/方形） */
 .deco-avatar .ring {
   width:80px; height:80px; border-radius:var(--msg-av-radius, 50%);
-  background:transparent;
+  background:#f5f5f5; border:1px solid rgba(0,0,0,.08);
   display:flex; align-items:center; justify-content:center; overflow:hidden;
   transition:transform .18s ease;
 }
@@ -79,7 +81,7 @@
 }
 .ck-heart {
   width:30px; height:30px; border-radius:50%; flex-shrink:0;
-  background:var(--ink); color:#fff;
+  background:var(--widget-heart); color:#fff;
   display:flex; align-items:center; justify-content:center; font-size:13px;
 }
 .ck-txt {
@@ -87,7 +89,7 @@
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .ck-btn {
-  font-size:12px; font-weight:700; color:#fff; cursor:pointer;
+  font-size:12px; font-weight:700; color:var(--widget-btn-text); cursor:pointer;
   background:var(--widget-btn); padding:9px 16px; border-radius:99px;
   box-shadow:0 3px 8px rgba(0,0,0,.12);
   display:inline-flex; align-items:center; min-height:38px; border:none;
@@ -123,7 +125,7 @@
 .we-btn {
   flex-shrink:0; align-self:flex-start; margin-top:2px;
   border:none; cursor:pointer; font-family:inherit;
-  background:var(--widget-btn); color:#fff; font-size:12px; font-weight:700;
+  background:var(--widget-btn); color:var(--widget-btn-text); font-size:12px; font-weight:700;
   padding:6px 11px; border-radius:99px; box-shadow:0 3px 8px rgba(0,0,0,.25);
   display:flex; align-items:center; gap:3px;
 }

@@ -163,6 +163,12 @@
     const textarea = document.getElementById('modal-textarea');
     const swatches = document.getElementById('modal-swatches');
     const pillsEl = document.getElementById('modal-pills');
+    const sliderRow = document.getElementById('modal-slider');
+    const sliderLabel = document.getElementById('modal-slider-label');
+    const sliderVal = document.getElementById('modal-slider-val');
+    const sliderRange = document.getElementById('modal-slider-range');
+    const sliderPreview = document.getElementById('modal-slider-preview');
+    const sliderPreviewIco = document.getElementById('modal-slider-preview-ico');
     const colorInput = document.getElementById('modal-color');
     const customBtn = document.getElementById('modal-custom');
     const selectEl = document.getElementById('modal-select');
@@ -178,10 +184,17 @@
     let customVal = null;
     let pillVal = null;
     let selectedGroup = null;
+    let lock = false;
+    let sliderCfg = null;
+    let sliderInitPill = null;
     window.openModal = function (t, v, fn, opts) {
       opts = opts || {};
       pillsOnOk = opts.pillsOnOk || null;
       noInput = !!(opts.noInput);
+      // v3.6.x：opts.lock——锁定弹窗（换头像邀请等必须做出选择）：
+      // 点遮罩不关闭、隐藏取消按钮，只能走确定（含 pills/输入）路径
+      lock = !!(opts.lock);
+      if (cancelBtn) cancelBtn.hidden = lock;
       title.textContent = t;
       if (staticEl) {
         staticEl.hidden = !opts.staticText;
@@ -265,6 +278,27 @@
       customBtn.classList.remove('on');
       if (opts.colorPicker && opts.pick === -2) customBtn.classList.add('on');
       if (opts.color) colorInput.value = opts.color;
+      // v3.6.x：滑块（数值调整，如图标圆角）——opts.slider = { min, max, step, value, label, unit, preview, onChange }
+      sliderCfg = (opts.slider && typeof opts.slider === 'object') ? opts.slider : null;
+      sliderInitPill = pillVal;
+      if (sliderRow) {
+        sliderRow.hidden = !sliderCfg;
+        if (sliderCfg) {
+          const min = sliderCfg.min != null ? sliderCfg.min : 0;
+          const max = sliderCfg.max != null ? sliderCfg.max : 100;
+          const step = sliderCfg.step != null ? sliderCfg.step : 1;
+          const val = sliderCfg.value != null ? sliderCfg.value : min;
+          sliderRange.min = min; sliderRange.max = max; sliderRange.step = step;
+          sliderRange.value = val;
+          if (sliderLabel) sliderLabel.textContent = sliderCfg.label || '';
+          if (sliderVal) sliderVal.textContent = val + (sliderCfg.unit || '');
+          if (sliderPreview) {
+            sliderPreview.hidden = !sliderCfg.preview;
+            if (sliderCfg.preview && sliderPreviewIco) sliderPreviewIco.style.borderRadius = val + 'px';
+          }
+          if (sliderCfg.onChange) { try { sliderCfg.onChange(val); } catch (e) {} }
+        }
+      }
       cb = fn;
       mask.hidden = false;
       // v3.5.133：多行模式聚焦 textarea（原只 focus 单行 input——多行模式下 input 隐藏、
@@ -276,6 +310,16 @@
       }, 60);
     };
     customBtn.addEventListener('click', () => colorInput.click());
+    // v3.6.x：滑块拖动——实时更新值/预览块/onChange（图标圆角所见即所得）
+    if (sliderRange) {
+      sliderRange.addEventListener('input', () => {
+        if (!sliderCfg) return;
+        const val = parseInt(sliderRange.value, 10);
+        if (sliderVal) sliderVal.textContent = val + (sliderCfg.unit || '');
+        if (sliderPreviewIco) sliderPreviewIco.style.borderRadius = val + 'px';
+        if (sliderCfg.onChange) { try { sliderCfg.onChange(val); } catch (e) {} }
+      });
+    }
     colorInput.addEventListener('change', () => {
       customVal = colorInput.value;
       Array.prototype.forEach.call(swatches.children, c => c.classList.remove('on'));
@@ -290,6 +334,17 @@
       if (swatches && !swatches.hidden && (picked === -2 || picked >= 0)) {
         if (picked === -2 && customVal) { cb(customVal); return; }
         if (picked >= 0) { cb(picked); return; }
+      }
+      // v3.6.x：滑块弹窗——先于 pills 判断（滑块弹窗可能带「恢复默认」pill）：
+      // 用户点过 pill（值变化）→ 走 pills（如恢复默认）；否则提交滑块当前值
+      if (sliderRow && !sliderRow.hidden && sliderCfg) {
+        if (pillsEl && !pillsEl.hidden && pillVal !== sliderInitPill) {
+          if (pillsOnOk) pillsOnOk(pillVal);
+          cb(pillVal);
+          return;
+        }
+        cb(parseInt(sliderRange.value, 10));
+        return;
       }
       if (pillsEl && !pillsEl.hidden) {
         if (pillsOnOk) pillsOnOk(pillVal);
@@ -324,7 +379,7 @@
       try { fire(); } finally { close(); }
     });
     cancelBtn.addEventListener('click', close);
-    mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
+    mask.addEventListener('click', (e) => { if (e.target === mask && !lock) close(); });
     input.addEventListener('keydown', (e) => {
       // v3.6.x：与 OK 按钮一致用 try/finally——回调抛异常（如存储配额满）时也必须
       // 关闭弹窗，否则残留卡死、后续再点 OK 每次都抛
@@ -830,6 +885,123 @@
     });
   }
 
+  // 按钮文字颜色：CSS 变量 --widget-btn-text 实时生效（打卡按钮/周末倒计时按钮等）
+  const widgetBtnTextRow = document.getElementById('row-widget-btn-text');
+  const widgetBtnTextVal = document.getElementById('widget-btn-text-val');
+  const applyWidgetBtnText = (color) => {
+    document.documentElement.style.setProperty('--widget-btn-text', color);
+    if (widgetBtnTextVal) widgetBtnTextVal.textContent = color === '#ffffff' ? '默认白' : '';
+  };
+  const savedWidgetBtnText = store.get('widget-btn-text-color');
+  if (savedWidgetBtnText) applyWidgetBtnText(savedWidgetBtnText);
+  if (widgetBtnTextRow) {
+    const syncWidgetBtnTextUI = () => {
+      const c = store.get('widget-btn-text-color') || '#ffffff';
+      if (widgetBtnTextVal) widgetBtnTextVal.textContent = c === '#ffffff' ? '默认白' : '';
+    };
+    syncWidgetBtnTextUI();
+    const btnTextSwatches = [
+      { color: '#ffffff', label: '默认白' },
+      { color: '#f2f2f2', label: '亮白' },
+      { color: '#dddddd', label: '浅灰' },
+      { color: '#bbbbbb', label: '中浅灰' },
+      { color: '#999999', label: '中灰' },
+      { color: '#777777', label: '深灰' },
+      { color: '#555555', label: '更深灰' },
+      { color: '#111111', label: '纯黑' },
+      { color: '#e05555', label: '樱花粉' },
+      { color: '#5555cc', label: '雾霭蓝' },
+      { color: '#2e8b57', label: '薄荷绿' },
+      { color: '#d4a017', label: '暖橘黄' },
+      { color: '#cc55cc', label: '淡紫' },
+      { color: '#cc6622', label: '暖橘' },
+      { color: '#e8b4b8', label: '玫瑰' },
+      { color: '#b8d4e8', label: '天蓝' },
+    ];
+    widgetBtnTextRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const current = store.get('widget-btn-text-color') || '#ffffff';
+      window.openModal('按钮文字颜色', '', (v) => {
+        // 色板点击传下标（number），自定义取色传 #hex 字符串，pill 传 value
+        const color = (typeof v === 'number' && btnTextSwatches[v]) ? btnTextSwatches[v].color : v;
+        if (!color) return;
+        if (color === '__reset__') {
+          store.remove('widget-btn-text-color');
+          applyWidgetBtnText('#ffffff');
+          syncWidgetBtnTextUI();
+          return;
+        }
+        store.set('widget-btn-text-color', color);
+        applyWidgetBtnText(color);
+        syncWidgetBtnTextUI();
+      }, {
+        colorPicker: true,
+        noInput: true,
+        color: current,
+        swatches: btnTextSwatches,
+        pills: [{ label: '恢复默认', value: '__reset__' }],
+      });
+    });
+  }
+
+  // 爱心外框颜色：CSS 变量 --widget-heart 实时生效（打卡横幅「和 TA 一起摸鱼」的爱心圆底）
+  const widgetHeartRow = document.getElementById('row-widget-heart');
+  const widgetHeartVal = document.getElementById('widget-heart-val');
+  const applyWidgetHeart = (color) => {
+    document.documentElement.style.setProperty('--widget-heart', color);
+    if (widgetHeartVal) widgetHeartVal.textContent = color === '#111111' ? '默认黑' : '';
+  };
+  const savedWidgetHeart = store.get('widget-heart-color');
+  if (savedWidgetHeart) applyWidgetHeart(savedWidgetHeart);
+  if (widgetHeartRow) {
+    const syncWidgetHeartUI = () => {
+      const c = store.get('widget-heart-color') || '#111111';
+      if (widgetHeartVal) widgetHeartVal.textContent = c === '#111111' ? '默认黑' : '';
+    };
+    syncWidgetHeartUI();
+    const heartSwatches = [
+      { color: '#111111', label: '默认黑' },
+      { color: '#222222', label: '深灰' },
+      { color: '#444444', label: '中深' },
+      { color: '#666666', label: '中灰' },
+      { color: '#888888', label: '灰' },
+      { color: '#aaaaaa', label: '浅灰' },
+      { color: '#e05555', label: '樱花粉' },
+      { color: '#5555cc', label: '雾霭蓝' },
+      { color: '#2e8b57', label: '薄荷绿' },
+      { color: '#d4a017', label: '暖橘黄' },
+      { color: '#cc55cc', label: '淡紫' },
+      { color: '#cc6622', label: '暖橘' },
+      { color: '#e8b4b8', label: '玫瑰' },
+      { color: '#b8d4e8', label: '天蓝' },
+      { color: '#c8e6c9', label: '森绿' },
+      { color: '#ffd54f', label: '明黄' },
+    ];
+    widgetHeartRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const current = store.get('widget-heart-color') || '#111111';
+      window.openModal('爱心外框颜色', '', (v) => {
+        const color = (typeof v === 'number' && heartSwatches[v]) ? heartSwatches[v].color : v;
+        if (!color) return;
+        if (color === '__reset__') {
+          store.remove('widget-heart-color');
+          applyWidgetHeart('#111111');
+          syncWidgetHeartUI();
+          return;
+        }
+        store.set('widget-heart-color', color);
+        applyWidgetHeart(color);
+        syncWidgetHeartUI();
+      }, {
+        colorPicker: true,
+        noInput: true,
+        color: current,
+        swatches: heartSwatches,
+        pills: [{ label: '恢复默认', value: '__reset__' }],
+      });
+    });
+  }
+
   // 小组件透明度：CSS 变量 --widget-opacity（0~1），输入 0~100 百分比
   const widgetOpacityRow = document.getElementById('row-widget-opacity');
   const widgetOpacityVal = document.getElementById('widget-opacity-val');
@@ -869,48 +1041,57 @@
     });
   }
 
-  // 图标形状：圆形 / 圆角方 / 直角方，CSS 变量 --app-ico-radius
+  // v3.6.x：图标圆角——滑块 0~30px 自由调整（原「圆形/圆角方/直角方」三选一删除，
+  // 旧 ico-shape 值迁移：circle→30 / square→0 / rounded→18），CSS 变量 --app-ico-radius
   const icoShapeRow = document.getElementById('row-ico-shape');
   const icoShapeVal = document.getElementById('ico-shape-val');
-  const ICO_SHAPES = {
-    'rounded': { radius: '18px', label: '圆角方' },
-    'circle': { radius: '50%', label: '圆形' },
-    'square': { radius: '0px', label: '直角方' },
+  const ICO_RADIUS_DEFAULT = 18;
+  const getIcoRadius = () => {
+    const v = store.get('ico-radius');
+    if (v !== null && v !== undefined && v !== '') {
+      const n = parseInt(v, 10);
+      if (!isNaN(n)) return Math.max(0, Math.min(30, n));
+    }
+    const old = store.get('ico-shape');
+    if (old === 'circle') return 30;
+    if (old === 'square') return 0;
+    return ICO_RADIUS_DEFAULT;
   };
-  const applyIcoShape = (shape) => {
-    const s = ICO_SHAPES[shape] || ICO_SHAPES['rounded'];
-    document.documentElement.style.setProperty('--app-ico-radius', s.radius);
-    if (icoShapeVal) icoShapeVal.textContent = s.label;
+  const applyIcoRadius = (px) => {
+    document.documentElement.style.setProperty('--app-ico-radius', px + 'px');
+    if (icoShapeVal) icoShapeVal.textContent = px === ICO_RADIUS_DEFAULT ? '18px（默认）' : px + 'px';
   };
-  const savedIcoShape = store.get('ico-shape');
-  if (savedIcoShape) applyIcoShape(savedIcoShape);
+  applyIcoRadius(getIcoRadius());
   if (icoShapeRow) {
     const syncIcoShapeUI = () => {
-      const s = store.get('ico-shape') || 'rounded';
-      if (icoShapeVal) icoShapeVal.textContent = (ICO_SHAPES[s] || ICO_SHAPES['rounded']).label;
+      const px = getIcoRadius();
+      if (icoShapeVal) icoShapeVal.textContent = px === ICO_RADIUS_DEFAULT ? '18px（默认）' : px + 'px';
     };
     syncIcoShapeUI();
     icoShapeRow.addEventListener('click', () => {
       if (!window.openModal) return;
-      const current = store.get('ico-shape') || 'rounded';
-      window.openModal('图标形状', '', (v) => {
-        if (!v) return;
+      const current = getIcoRadius();
+      window.openModal('图标圆角', '', (v) => {
         if (v === '__reset__') {
+          store.remove('ico-radius');
           store.remove('ico-shape');
-          applyIcoShape('rounded');
+          applyIcoRadius(ICO_RADIUS_DEFAULT);
           syncIcoShapeUI();
           return;
         }
-        store.set('ico-shape', v);
-        applyIcoShape(v);
+        const px = parseInt(v, 10);
+        if (isNaN(px)) return;
+        store.set('ico-radius', String(px));
+        applyIcoRadius(px);
         syncIcoShapeUI();
       }, {
         noInput: true,
-        pills: [
-          { label: '圆形', value: 'circle' },
-          { label: '圆角方', value: 'rounded' },
-          { label: '直角方', value: 'square' },
-        ],
+        slider: {
+          min: 0, max: 30, step: 1, value: current, label: '拖动调整图标圆角', unit: 'px',
+          preview: true,
+          onChange: (val) => { document.documentElement.style.setProperty('--app-ico-radius', val + 'px'); },
+        },
+        pills: [{ label: '恢复默认', value: '__reset__' }],
       });
     });
   }
@@ -2065,8 +2246,10 @@
     try { applyWidgetColor(store.get('widget-bg-color') || '#ffffff'); } catch (e) {}
     try { applyWidgetBorder(store.get('widget-border-color') || 'rgba(0,0,0,.1)'); } catch (e) {}
     try { applyWidgetBtn(store.get('widget-btn-color') || '#111111'); } catch (e) {}
+    try { applyWidgetBtnText(store.get('widget-btn-text-color') || '#ffffff'); } catch (e) {}
+    try { applyWidgetHeart(store.get('widget-heart-color') || '#111111'); } catch (e) {}
     try { const op = store.get('widget-opacity'); if (op) applyWidgetOpacity(parseInt(op, 10)); } catch (e) {}
-    try { const sh = store.get('ico-shape'); if (sh) applyIcoShape(sh); } catch (e) {}
+    try { applyIcoRadius(getIcoRadius()); } catch (e) {}
     try {
       const btn = document.querySelector('.checkin .ck-btn');
       if (btn) {
