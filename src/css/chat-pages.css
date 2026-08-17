@@ -1016,9 +1016,9 @@
   padding:10px 14px 0;
 }
 .mail-paper-body { padding:8px 14px 14px; font-size:13px; color:#333; line-height:24px; word-break:break-word; white-space:pre-wrap; }
-/* 信件图片：图片大图；表情包（sticker: 标记）小图——不再一样大 */
-.mail-body-img { max-width:220px; max-height:220px; border-radius:8px; display:block; margin:4px 0; }
-.mail-body-img-stk { max-width:96px; max-height:96px; }
+/* 信件图片：图片/表情包统一为同尺寸缩略图（不再一大一小），行内混排——每个字卡
+   中间留空隙、不独占一行；点击可查看大图 */
+.mail-body-img { max-width:100px; max-height:100px; border-radius:8px; display:inline-block; vertical-align:middle; margin:2px 3px; cursor:zoom-in; }
 .mail-actions { display:flex; gap:8px; margin-top:6px; }
 .mail-reply-form { margin-bottom:8px; }
 .mail-reply-hint { font-size:12px; color:var(--muted); text-align:center; margin-bottom:10px; }
@@ -1487,12 +1487,13 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
   display:flex; align-items:center; justify-content:center;
 }
 /* 正文/评论图文混排：dataURL 图片内联显示 */
-/* v3.5.71 朋友圈评论/回复里的表情包+图片：合理缩略图（表情包不再被放大成 180px 巨图） */
+/* v3.5.71 朋友圈评论/回复里的表情包+图片：合理缩略图（表情包不再被放大成 180px 巨图）
+   v3.6.x：评论/回复图再收窄（100→80px / 60→56px），明确为缩略图、可点击查看大图 */
 .feed-inline-img {
-  display:inline-block; max-width:100px; max-height:100px; border-radius:8px;
-  vertical-align:middle; margin:2px 2px;
+  display:inline-block; max-width:80px; max-height:80px; border-radius:8px;
+  vertical-align:middle; margin:2px 2px; cursor:zoom-in;
 }
-.feed-reply .feed-inline-img { max-width:60px; max-height:60px; }
+.feed-reply .feed-inline-img { max-width:56px; max-height:56px; }
 /* v3.5.94：朋友圈动态独立图片区（九宫格，仿微信）——TA 发布/我的发布共用 */
 .feed-imgs {
   display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;

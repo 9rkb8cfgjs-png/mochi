@@ -97,13 +97,15 @@
     // 旧版本曾把种子歌曲强制替换成本地 14 秒旋律并清空 url——检测这类旧数据，
     // 自动恢复网易云外链（source:'url'），让默认歌曲回到完整版；
     // 本地旋律仅在外链播放失败时兜底（见 setupHandlers / playTrack）。
-    // v3.6.x：旧数据可能是 http:// 前缀（GitHub Pages 是 HTTPS，http 音频会被浏览器
-    // 按混合内容拦截，表现为"点击播放没反应/没声音"）——统一规范成 https://
+    // v3.6.x：无条件把种子歌链接规范成 https://（旧数据可能是 http://，GitHub Pages
+    // 是 HTTPS，http 音频会被浏览器按混合内容拦截）——不管数据怎么来的（旧版/手动导入/
+    // 备份恢复），只要加载到新代码，默认 2 首一定是 https 完整外链
     library.forEach(m => {
       const seedId = m ? String(m.neteaseId || '') : '';
       if (!m || !seedId || (seedId !== '2613048732' && seedId !== '27538343')) return;
-      if (!m.url || m.url.indexOf('https://music.163.com') !== 0) {
-        m.url = 'https://music.163.com/song/media/outer/url?id=' + seedId + '.mp3';
+      const target = 'https://music.163.com/song/media/outer/url?id=' + seedId + '.mp3';
+      if (m.url !== target) {
+        m.url = target;
         m.source = 'url';
         saveLibrary();
         // 清理可能残留的本地合成旋律数据

@@ -86,8 +86,8 @@
     if (mp) mp.hidden = false;
   }
   // 写信纸 HTML（简约卡片：标题 + 寄信人/时间 + 正文）
-  // 正文支持字卡库图片（dataURL）直接显示；插入的媒体带标记前缀（sticker:/image:）
-  // 以区分表情包小图 / 图片大图；旧数据无标记按大图显示
+  // 正文支持字卡库图片（dataURL）直接显示；图片/表情包都是字卡，统一渲染为
+  // 同尺寸缩略图（sticker:/image: 前缀仅作历史类型标记，不再区分显示大小）
   // v3.6.x：完整 HTML 转义（只转 < 可被 `&lt;…&gt;` 实体绕过注入）
   function escHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function renderBody(content) {
@@ -97,8 +97,7 @@
     let last = 0, m;
     while ((m = re.exec(s))) {
       html += escHtml(s.slice(last, m.index));
-      const cls = m[1] === 'sticker:' ? 'mail-body-img mail-body-img-stk' : 'mail-body-img';
-      html += '<img class="' + cls + '" src="' + m[2] + '" alt="表情">';
+      html += '<img class="mail-body-img" src="' + m[2] + '" alt="表情"> ';
       last = m.index + m[0].length;
     }
     html += escHtml(s.slice(last));
@@ -119,6 +118,17 @@
       (title ? '<div class="mail-paper-title">' + escHtml(title) + '</div>' : '') +
       '<div class="mail-paper-body">' + renderBody(content) + '</div>' +
       '</div>';
+  }
+  // 信纸图片可点击查看大图（复用聊天大图查看器 viewChatImage）
+  // v3.6.x：信箱来信/回信里的图片与表情包一律为缩略图，点击后打开原图查看
+  function bindLetterImgClicks(root) {
+    if (!root) return;
+    root.querySelectorAll('.mail-body-img').forEach(im => {
+      im.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (window.viewChatImage) window.viewChatImage(im.src);
+      });
+    });
   }
   // 打开信详情（复用 tc-mask 弹层；v3.5.68 打开即标记已读）
   function openLetter(l) {
@@ -151,6 +161,7 @@
       footer = '<div class="mail-actions"><button class="cc-tool" id="mail-close2">关闭</button></div>';
     }
     if (window.openTCPanel) window.openTCPanel('信件', html + footer);
+    bindLetterImgClicks(document.getElementById('tc-body'));
     const close2 = document.getElementById('mail-close2');
     if (close2) close2.addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; viewLetter = null; });
     const replyBtn = document.getElementById('mail-reply-btn');
@@ -166,7 +177,10 @@
     viewLetter = l;
     const name = partnerName();
     const origEl = document.getElementById('mail-reply-original');
-    if (origEl) origEl.innerHTML = letterPaper(l.tt || '来信', l.content, fmtDT(l.tm), name);
+    if (origEl) {
+      origEl.innerHTML = letterPaper(l.tt || '来信', l.content, fmtDT(l.tm), name);
+      bindLetterImgClicks(origEl);
+    }
     const toEl = document.getElementById('mail-reply-to');
     if (toEl) toEl.textContent = name;
     const input = document.getElementById('mail-reply-input');
@@ -177,7 +191,7 @@
   function submitReply() {
     const l = viewLetter;
     if (!l) return;
-    // v3.6.x：保留 sticker:/image: 标记前缀（渲染区分大小图），不再剥掉
+    // v3.6.x：保留 sticker:/image: 标记前缀（区分图片/表情包类型），不再剥掉
     const val = document.getElementById('mail-reply-input').value.trim();
     if (!val) { toast('回信内容不能为空'); return; }
     const name = partnerName();
@@ -285,7 +299,7 @@
   // 寄信
   function sendLetter() {
     const input = document.getElementById('mail-input');
-    // v3.6.x：保留 sticker:/image: 标记前缀（渲染区分大小图），不再剥掉
+    // v3.6.x：保留 sticker:/image: 标记前缀（区分图片/表情包类型），不再剥掉
     const content = input ? input.value.trim() : '';
     if (!content) { toast('信件内容不能为空'); return; }
     const name = partnerName();

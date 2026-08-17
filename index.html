@@ -14,6 +14,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Mochi">
 <meta name="format-detection" content="telephone=no,address=no,email=no">
+<!-- v3.6.x：全局无 Referer——网易云外链（music.163.com/song/media/outer/url）
+     对带 Referer 的请求返回 403（防盗链），移动端 WebView/Edge 对
+     audio.referrerPolicy 属性支持不完整，页面级 meta 是更可靠的保证 -->
+<meta name="referrer" content="no-referrer">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
@@ -2250,8 +2254,7 @@ font-size:15px; font-weight:700; color:var(--ink);
 padding:10px 14px 0;
 }
 .mail-paper-body { padding:8px 14px 14px; font-size:13px; color:#333; line-height:24px; word-break:break-word; white-space:pre-wrap; }
-.mail-body-img { max-width:220px; max-height:220px; border-radius:8px; display:block; margin:4px 0; }
-.mail-body-img-stk { max-width:96px; max-height:96px; }
+.mail-body-img { max-width:100px; max-height:100px; border-radius:8px; display:inline-block; vertical-align:middle; margin:2px 3px; cursor:zoom-in; }
 .mail-actions { display:flex; gap:8px; margin-top:6px; }
 .mail-reply-form { margin-bottom:8px; }
 .mail-reply-hint { font-size:12px; color:var(--muted); text-align:center; margin-bottom:10px; }
@@ -2682,10 +2685,10 @@ font-size:10px; line-height:18px; cursor:pointer; padding:0;
 display:flex; align-items:center; justify-content:center;
 }
 .feed-inline-img {
-display:inline-block; max-width:100px; max-height:100px; border-radius:8px;
-vertical-align:middle; margin:2px 2px;
+display:inline-block; max-width:80px; max-height:80px; border-radius:8px;
+vertical-align:middle; margin:2px 2px; cursor:zoom-in;
 }
-.feed-reply .feed-inline-img { max-width:60px; max-height:60px; }
+.feed-reply .feed-inline-img { max-width:56px; max-height:56px; }
 .feed-imgs {
 display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;
 margin-top:8px; max-width:100%;
@@ -2826,19 +2829,21 @@ transition:color .18s ease, background .18s ease;
         <div class="splash-notice-sub">【8.15 发布，还在修，暂时不建议开始二传二改】</div>
         <div class="splash-notice-list">
           <p>1. 感谢内测反馈：大家的每条反馈我都有认真看，谢谢参与内测的各位</p>
-          <p>2. 不开测试群</p>
-          <p>3. 测试安排：先测试几天，集中修不同设备的 bug；之后会公开发帖放出链接（链接已在 GitHub 仓库，但暂不公开宣传）。</p>
-          <p>4. 关于 bug：如果参与测试的人较多，不同设备差异导致的 bug 我可能无法全部修完——建议等我公开发帖后的版本，自己拿最新版代码让 AI 协助修复。</p>
-          <p>5. 使用规范：支持二传、二改和自行部署，但要遵守——转载要署名（小红书 @言序（1842523578））、二次修改要注明原作者、禁止商用。</p>
-          <p>6. 在边修边部署网站，有问题可以报修，使用时如果有问题也可以重新刷新用新版试试，修一天我会部署一天</p>
-          <p>7. 网站与我更新修复问题是同步的，可查看开屏最新部署时间。如果浏览器还没进入新版，可以关掉浏览器再打开多试几次流量刷新，或者过一段时间再打开</p>
-          <p>8. Mochi 字卡虽然是以我的另一个字卡「星言」为基础修改的，但字卡基础回复逻辑和灵感来源：小红书 @milk（2777299956）；帮我决定功能参考：小红书@FelixFelicis（9416318007）。</p>
-          <p>9. 新增可导入 milk 字卡库的【主字卡】【emoji】【拍一拍】</p>
+          <p>2. mochi字卡内测时间已定8.15～8.29</p>
+          <p>3. mochi字卡8.30完全公开后可二传二改</p>
+          <p>4. 不开测试群</p>
+          <p>5. 测试安排：先测试几天，集中修不同设备的 bug；之后会公开发帖放出链接（链接已在 GitHub 仓库，但暂不公开宣传）。</p>
+          <p>6. 关于 bug：如果参与测试的人较多，不同设备差异导致的 bug 我可能无法全部修完——建议等我公开发帖后的版本，自己拿最新版代码让 AI 协助修复。</p>
+          <p>7. 使用规范：支持二传、二改和自行部署，但要遵守——转载要署名（小红书 @言序（1842523578））、二次修改要注明原作者、禁止商用。</p>
+          <p>8. 在边修边部署网站，有问题可以报修，使用时如果有问题也可以重新刷新用新版试试，修一天我会部署一天</p>
+          <p>9. 网站与我更新修复问题是同步的，可查看开屏最新部署时间。如果浏览器还没进入新版，可以关掉浏览器再打开多试几次流量刷新，或者过一段时间再打开</p>
+          <p>10. Mochi 字卡虽然是以我的另一个字卡「星言」为基础修改的，但字卡基础回复逻辑和灵感来源：小红书 @milk（2777299956）；帮我决定功能参考：小红书@FelixFelicis（9416318007）。</p>
+          <p>11. 新增可导入 milk 字卡库的【主字卡】【emoji】【拍一拍】</p>
         </div>
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.37 · 部署于 2026-08-17 12:39</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.38 · 部署于 2026-08-17 14:17</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3480,7 +3485,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.37</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.38</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -11616,8 +11621,9 @@ renderPage();
 library.forEach(m => {
 const seedId = m ? String(m.neteaseId || '') : '';
 if (!m || !seedId || (seedId !== '2613048732' && seedId !== '27538343')) return;
-if (!m.url || m.url.indexOf('https://music.163.com') !== 0) {
-m.url = 'https://music.163.com/song/media/outer/url?id=' + seedId + '.mp3';
+const target = 'https://music.163.com/song/media/outer/url?id=' + seedId + '.mp3';
+if (m.url !== target) {
+m.url = target;
 m.source = 'url';
 saveLibrary();
 try { if (window.idbDelete) window.idbDelete(uid + ':music-file:' + m.id); } catch (e) {}
@@ -16522,8 +16528,7 @@ const re = /((?:sticker|image):)?(data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+
 let last = 0, m;
 while ((m = re.exec(s))) {
 html += escHtml(s.slice(last, m.index));
-const cls = m[1] === 'sticker:' ? 'mail-body-img mail-body-img-stk' : 'mail-body-img';
-html += '<img class="' + cls + '" src="' + m[2] + '" alt="表情">';
+html += '<img class="mail-body-img" src="' + m[2] + '" alt="表情"> ';
 last = m.index + m[0].length;
 }
 html += escHtml(s.slice(last));
@@ -16543,6 +16548,15 @@ return '<div class="mail-paper">' +
 (title ? '<div class="mail-paper-title">' + escHtml(title) + '</div>' : '') +
 '<div class="mail-paper-body">' + renderBody(content) + '</div>' +
 '</div>';
+}
+function bindLetterImgClicks(root) {
+if (!root) return;
+root.querySelectorAll('.mail-body-img').forEach(im => {
+im.addEventListener('click', (e) => {
+e.stopPropagation();
+if (window.viewChatImage) window.viewChatImage(im.src);
+});
+});
 }
 function openLetter(l) {
 viewLetter = l;
@@ -16570,6 +16584,7 @@ footer = '<div class="mail-actions"><button class="cc-tool" id="mail-reply-btn">
 footer = '<div class="mail-actions"><button class="cc-tool" id="mail-close2">关闭</button></div>';
 }
 if (window.openTCPanel) window.openTCPanel('信件', html + footer);
+bindLetterImgClicks(document.getElementById('tc-body'));
 const close2 = document.getElementById('mail-close2');
 if (close2) close2.addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; viewLetter = null; });
 const replyBtn = document.getElementById('mail-reply-btn');
@@ -16584,7 +16599,10 @@ function openReply(l) {
 viewLetter = l;
 const name = partnerName();
 const origEl = document.getElementById('mail-reply-original');
-if (origEl) origEl.innerHTML = letterPaper(l.tt || '来信', l.content, fmtDT(l.tm), name);
+if (origEl) {
+origEl.innerHTML = letterPaper(l.tt || '来信', l.content, fmtDT(l.tm), name);
+bindLetterImgClicks(origEl);
+}
 const toEl = document.getElementById('mail-reply-to');
 if (toEl) toEl.textContent = name;
 const input = document.getElementById('mail-reply-input');
@@ -17194,8 +17212,10 @@ if (!pushed) textParts.push(pool.text.length ? rand(pool.text) : rand(fb));
 return { content: textParts.join(' '), imgs: imgs };
 }
 function contentHtmlFor(p) {
-let html = inlineBody(p.content || '');
-const imgs = (p.imgs && p.imgs.length) ? p.imgs : (p.img ? [p.img] : []);
+let content = String(p.content || '');
+const imgs = (p.imgs && p.imgs.length) ? p.imgs.slice() : (p.img ? [p.img] : []);
+content = content.replace(/((?:sticker|image):)?(data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+)/g, (m, pre, u) => { imgs.push(u); return ' '; });
+let html = inlineBody(content);
 if (imgs.length) {
 html += '<div class="feed-imgs">' + imgs.map(u => '<img src="' + attrEsc(u) + '" alt="图片" loading="lazy">').join('') + '</div>';
 }
@@ -17294,11 +17314,18 @@ return '<div class="feed-post" id="feed-post-' + p.id + '"><div class="feed-head
 : '<div class="ta-empty">还没有动态，TA 会不定期分享生活</div>';
 bindEvents(listEl);
 }
+function bindFeedImageClicks(listEl) {
+listEl.querySelectorAll('.feed-imgs img, .feed-inline-img').forEach(img => img.addEventListener('click', (e) => {
+e.stopPropagation();
+if (window.viewChatImage) window.viewChatImage(img.src);
+}));
+}
 function bindEvents(listEl) {
 listEl.querySelectorAll('.feed-head-av').forEach(av => av.addEventListener('click', (e) => {
 e.stopPropagation();
 openFeedAll(av.dataset.owner);
 }));
+bindFeedImageClicks(listEl);
 listEl.querySelectorAll('.feed-del').forEach(b => b.addEventListener('click', (e) => {
 e.stopPropagation();
 if (window.openModal) {
@@ -17344,10 +17371,6 @@ const list = load();
 const p = list.find(x => x.id === pid);
 if (!p || !p.comments || !p.comments[ci] || p.comments[ci].by === 'me') return;
 showCommentBar(pid, { pid: pid, ci: ci });
-}));
-listEl.querySelectorAll('.feed-imgs img, .feed-inline-img').forEach(img => img.addEventListener('click', (e) => {
-e.stopPropagation();
-if (window.viewChatImage) window.viewChatImage(img.src);
 }));
 }
 const comBar = document.getElementById('feed-comment-bar');
@@ -17962,6 +17985,7 @@ return '<div class="feed-post"><div class="feed-head">' + avHtml(av) +
 commentsHtmlFor(p, author) + '</div>';
 }).join('')
 : '<div class="ta-empty">还没有动态</div>';
+bindFeedImageClicks(listEl);
 renderFeedAllCover();
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 const ap = document.getElementById('page-feed-all');

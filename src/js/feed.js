@@ -110,9 +110,17 @@
   }
   // 动态正文 HTML：文字混排 + 独立图片区（九宫格）
   // v3.5.95：兼容旧数据 p.img 字段
+  // v3.6.x：老数据兼容——旧版动态把图片/表情包 dataURL 直接拼进正文（含 sticker:/image:
+  // 前缀与无前缀两种），与我的发布/新 TA 动态的 imgs 网格显示不一致；这里渲染时把它们
+  // 抽出来并入图片网格，保证「联系人发布的图片/表情包 与 我发布的 大小一致」。
   function contentHtmlFor(p) {
-    let html = inlineBody(p.content || '');
-    const imgs = (p.imgs && p.imgs.length) ? p.imgs : (p.img ? [p.img] : []);
+    let content = String(p.content || '');
+    const imgs = (p.imgs && p.imgs.length) ? p.imgs.slice() : (p.img ? [p.img] : []);
+    // 前缀与 dataURL 必须整体作为一个可选分组（冒号在分组内）——若写成 (?:sticker|image):?
+    // 引擎会在 'data:image' 中间误匹配 'image'，导致后面 (data:image…) 整体匹配失败
+    // （mail.js renderBody 同款已生效模式）
+    content = content.replace(/((?:sticker|image):)?(data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+)/g, (m, pre, u) => { imgs.push(u); return ' '; });
+    let html = inlineBody(content);
     if (imgs.length) {
       html += '<div class="feed-imgs">' + imgs.map(u => '<img src="' + attrEsc(u) + '" alt="图片" loading="lazy">').join('') + '</div>';
     }
@@ -222,12 +230,21 @@
       : '<div class="ta-empty">还没有动态，TA 会不定期分享生活</div>';
     bindEvents(listEl);
   }
+  // v3.5.95：朋友圈图片点击放大（复用聊天大图查看器）
+  // v3.6.x：抽成独立函数，主列表与「全部朋友圈」共用（原先全部朋友圈页图片点不动）
+  function bindFeedImageClicks(listEl) {
+    listEl.querySelectorAll('.feed-imgs img, .feed-inline-img').forEach(img => img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (window.viewChatImage) window.viewChatImage(img.src);
+    }));
+  }
   function bindEvents(listEl) {
     // v3.5.63：动态头像点击 → 打开该人的全部朋友圈
     listEl.querySelectorAll('.feed-head-av').forEach(av => av.addEventListener('click', (e) => {
       e.stopPropagation();
       openFeedAll(av.dataset.owner);
     }));
+    bindFeedImageClicks(listEl);
     listEl.querySelectorAll('.feed-del').forEach(b => b.addEventListener('click', (e) => {
       e.stopPropagation();
       if (window.openModal) {
@@ -278,11 +295,6 @@
       const p = list.find(x => x.id === pid);
       if (!p || !p.comments || !p.comments[ci] || p.comments[ci].by === 'me') return;
       showCommentBar(pid, { pid: pid, ci: ci });
-    }));
-    // v3.5.95：朋友圈图片点击放大（复用聊天大图查看器）
-    listEl.querySelectorAll('.feed-imgs img, .feed-inline-img').forEach(img => img.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (window.viewChatImage) window.viewChatImage(img.src);
     }));
   }
   // ================= 评论条（固定元素只绑定一次，v3.5.64 修复重复弹窗） =================
@@ -949,6 +961,8 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
             commentsHtmlFor(p, author) + '</div>';
         }).join('')
       : '<div class="ta-empty">还没有动态</div>';
+    // v3.6.x：全部朋友圈页图片同样可点击放大（动态图/评论图，原先点不动）
+    bindFeedImageClicks(listEl);
     renderFeedAllCover();
     document.querySelectorAll('.page').forEach(p => p.hidden = true);
     const ap = document.getElementById('page-feed-all');
