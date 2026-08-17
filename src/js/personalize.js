@@ -723,42 +723,45 @@
       if (widgetBorderVal) widgetBorderVal.textContent = c === 'rgba(0,0,0,.1)' ? '默认' : '';
     };
     syncWidgetBorderUI();
+    const borderSwatches = [
+      { color: 'rgba(0,0,0,.1)', label: '默认' },
+      { color: 'rgba(0,0,0,.15)', label: '浅灰' },
+      { color: 'rgba(0,0,0,.25)', label: '中灰' },
+      { color: 'rgba(0,0,0,.4)', label: '深灰' },
+      { color: '#111111', label: '纯黑' },
+      { color: '#ffffff', label: '纯白' },
+      { color: '#e05555', label: '樱花粉' },
+      { color: '#5555cc', label: '雾霭蓝' },
+      { color: '#55aa55', label: '薄荷绿' },
+      { color: '#d4a017', label: '暖橘黄' },
+      { color: '#cc55cc', label: '淡紫' },
+      { color: '#cc6622', label: '暖橘' },
+      { color: '#e8b4b8', label: '玫瑰' },
+      { color: '#b8d4e8', label: '天蓝' },
+      { color: '#c8e6c9', label: '森绿' },
+      { color: '#ffd54f', label: '明黄' },
+    ];
     widgetBorderRow.addEventListener('click', () => {
       if (!window.openModal) return;
       const current = store.get('widget-border-color') || 'rgba(0,0,0,.1)';
       window.openModal('小组件边框颜色', '', (v) => {
-        if (!v) return;
-        if (v === '__reset__') {
+        // 色板点击传下标（number），自定义取色传 #hex 字符串，pill 传 value
+        const color = (typeof v === 'number' && borderSwatches[v]) ? borderSwatches[v].color : v;
+        if (!color) return;
+        if (color === '__reset__') {
           store.remove('widget-border-color');
           applyWidgetBorder('rgba(0,0,0,.1)');
           syncWidgetBorderUI();
           return;
         }
-        store.set('widget-border-color', v);
-        applyWidgetBorder(v);
+        store.set('widget-border-color', color);
+        applyWidgetBorder(color);
         syncWidgetBorderUI();
       }, {
         colorPicker: true,
         noInput: true,
         color: current,
-        swatches: [
-          { color: 'rgba(0,0,0,.1)', label: '默认' },
-          { color: 'rgba(0,0,0,.15)', label: '浅灰' },
-          { color: 'rgba(0,0,0,.25)', label: '中灰' },
-          { color: 'rgba(0,0,0,.4)', label: '深灰' },
-          { color: '#111111', label: '纯黑' },
-          { color: '#ffffff', label: '纯白' },
-          { color: '#e05555', label: '樱花粉' },
-          { color: '#5555cc', label: '雾霭蓝' },
-          { color: '#55aa55', label: '薄荷绿' },
-          { color: '#d4a017', label: '暖橘黄' },
-          { color: '#cc55cc', label: '淡紫' },
-          { color: '#cc6622', label: '暖橘' },
-          { color: '#e8b4b8', label: '玫瑰' },
-          { color: '#b8d4e8', label: '天蓝' },
-          { color: '#c8e6c9', label: '森绿' },
-          { color: '#ffd54f', label: '明黄' },
-        ],
+        swatches: borderSwatches,
         pills: [{ label: '恢复默认', value: '__reset__' }],
       });
     });
@@ -779,42 +782,45 @@
       if (widgetBtnVal) widgetBtnVal.textContent = c === '#111111' ? '默认黑' : '';
     };
     syncWidgetBtnUI();
+    const btnSwatches = [
+      { color: '#111111', label: '默认黑' },
+      { color: '#222222', label: '深灰' },
+      { color: '#444444', label: '中深' },
+      { color: '#666666', label: '中灰' },
+      { color: '#888888', label: '灰' },
+      { color: '#aaaaaa', label: '浅灰' },
+      { color: '#ffffff', label: '白' },
+      { color: '#e05555', label: '樱花粉' },
+      { color: '#5555cc', label: '雾霭蓝' },
+      { color: '#55aa55', label: '薄荷绿' },
+      { color: '#d4a017', label: '暖橘黄' },
+      { color: '#cc55cc', label: '淡紫' },
+      { color: '#cc6622', label: '暖橘' },
+      { color: '#e8b4b8', label: '玫瑰' },
+      { color: '#b8d4e8', label: '天蓝' },
+      { color: '#c8e6c9', label: '森绿' },
+    ];
     widgetBtnRow.addEventListener('click', () => {
       if (!window.openModal) return;
       const current = store.get('widget-btn-color') || '#111111';
       window.openModal('按钮颜色', '', (v) => {
-        if (!v) return;
-        if (v === '__reset__') {
+        // 色板点击传下标（number），自定义取色传 #hex 字符串，pill 传 value
+        const color = (typeof v === 'number' && btnSwatches[v]) ? btnSwatches[v].color : v;
+        if (!color) return;
+        if (color === '__reset__') {
           store.remove('widget-btn-color');
           applyWidgetBtn('#111111');
           syncWidgetBtnUI();
           return;
         }
-        store.set('widget-btn-color', v);
-        noInput: true,
-        applyWidgetBtn(v);
+        store.set('widget-btn-color', color);
+        applyWidgetBtn(color);
         syncWidgetBtnUI();
       }, {
         colorPicker: true,
+        noInput: true,
         color: current,
-        swatches: [
-          { color: '#111111', label: '默认黑' },
-          { color: '#222222', label: '深灰' },
-          { color: '#444444', label: '中深' },
-          { color: '#666666', label: '中灰' },
-          { color: '#888888', label: '灰' },
-          { color: '#aaaaaa', label: '浅灰' },
-          { color: '#ffffff', label: '白' },
-          { color: '#e05555', label: '樱花粉' },
-          { color: '#5555cc', label: '雾霭蓝' },
-          { color: '#55aa55', label: '薄荷绿' },
-          { color: '#d4a017', label: '暖橘黄' },
-          { color: '#cc55cc', label: '淡紫' },
-          { color: '#cc6622', label: '暖橘' },
-          { color: '#e8b4b8', label: '玫瑰' },
-          { color: '#b8d4e8', label: '天蓝' },
-          { color: '#c8e6c9', label: '森绿' },
-        ],
+        swatches: btnSwatches,
         pills: [{ label: '恢复默认', value: '__reset__' }],
       });
     });

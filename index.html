@@ -2901,7 +2901,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.44 · 部署于 2026-08-17 21:09</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.45 · 部署于 2026-08-17 21:18</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3552,7 +3552,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.44</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.45</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -3586,6 +3586,16 @@ transition:color .18s ease, background .18s ease;
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5-9 9"/></svg></div>
           <div class="txt">小组件颜色</div>
           <div class="val" id="widget-color-val"></div>
+        </div>
+        <div class="set-row" id="row-widget-border">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg></div>
+          <div class="txt">小组件边框颜色</div>
+          <div class="val" id="widget-border-val"></div>
+        </div>
+        <div class="set-row" id="row-widget-btn">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 12h6M12 9v6"/></svg></div>
+          <div class="txt">按钮颜色</div>
+          <div class="val" id="widget-btn-val"></div>
         </div>
       </div>
     </div>
@@ -6580,25 +6590,7 @@ const c = store.get('widget-border-color') || 'rgba(0,0,0,.1)';
 if (widgetBorderVal) widgetBorderVal.textContent = c === 'rgba(0,0,0,.1)' ? '默认' : '';
 };
 syncWidgetBorderUI();
-widgetBorderRow.addEventListener('click', () => {
-if (!window.openModal) return;
-const current = store.get('widget-border-color') || 'rgba(0,0,0,.1)';
-window.openModal('小组件边框颜色', '', (v) => {
-if (!v) return;
-if (v === '__reset__') {
-store.remove('widget-border-color');
-applyWidgetBorder('rgba(0,0,0,.1)');
-syncWidgetBorderUI();
-return;
-}
-store.set('widget-border-color', v);
-applyWidgetBorder(v);
-syncWidgetBorderUI();
-}, {
-colorPicker: true,
-noInput: true,
-color: current,
-swatches: [
+const borderSwatches = [
 { color: 'rgba(0,0,0,.1)', label: '默认' },
 { color: 'rgba(0,0,0,.15)', label: '浅灰' },
 { color: 'rgba(0,0,0,.25)', label: '中灰' },
@@ -6615,7 +6607,27 @@ swatches: [
 { color: '#b8d4e8', label: '天蓝' },
 { color: '#c8e6c9', label: '森绿' },
 { color: '#ffd54f', label: '明黄' },
-],
+];
+widgetBorderRow.addEventListener('click', () => {
+if (!window.openModal) return;
+const current = store.get('widget-border-color') || 'rgba(0,0,0,.1)';
+window.openModal('小组件边框颜色', '', (v) => {
+const color = (typeof v === 'number' && borderSwatches[v]) ? borderSwatches[v].color : v;
+if (!color) return;
+if (color === '__reset__') {
+store.remove('widget-border-color');
+applyWidgetBorder('rgba(0,0,0,.1)');
+syncWidgetBorderUI();
+return;
+}
+store.set('widget-border-color', color);
+applyWidgetBorder(color);
+syncWidgetBorderUI();
+}, {
+colorPicker: true,
+noInput: true,
+color: current,
+swatches: borderSwatches,
 pills: [{ label: '恢复默认', value: '__reset__' }],
 });
 });
@@ -6634,25 +6646,7 @@ const c = store.get('widget-btn-color') || '#111111';
 if (widgetBtnVal) widgetBtnVal.textContent = c === '#111111' ? '默认黑' : '';
 };
 syncWidgetBtnUI();
-widgetBtnRow.addEventListener('click', () => {
-if (!window.openModal) return;
-const current = store.get('widget-btn-color') || '#111111';
-window.openModal('按钮颜色', '', (v) => {
-if (!v) return;
-if (v === '__reset__') {
-store.remove('widget-btn-color');
-applyWidgetBtn('#111111');
-syncWidgetBtnUI();
-return;
-}
-store.set('widget-btn-color', v);
-noInput: true,
-applyWidgetBtn(v);
-syncWidgetBtnUI();
-}, {
-colorPicker: true,
-color: current,
-swatches: [
+const btnSwatches = [
 { color: '#111111', label: '默认黑' },
 { color: '#222222', label: '深灰' },
 { color: '#444444', label: '中深' },
@@ -6669,7 +6663,27 @@ swatches: [
 { color: '#e8b4b8', label: '玫瑰' },
 { color: '#b8d4e8', label: '天蓝' },
 { color: '#c8e6c9', label: '森绿' },
-],
+];
+widgetBtnRow.addEventListener('click', () => {
+if (!window.openModal) return;
+const current = store.get('widget-btn-color') || '#111111';
+window.openModal('按钮颜色', '', (v) => {
+const color = (typeof v === 'number' && btnSwatches[v]) ? btnSwatches[v].color : v;
+if (!color) return;
+if (color === '__reset__') {
+store.remove('widget-btn-color');
+applyWidgetBtn('#111111');
+syncWidgetBtnUI();
+return;
+}
+store.set('widget-btn-color', color);
+applyWidgetBtn(color);
+syncWidgetBtnUI();
+}, {
+colorPicker: true,
+noInput: true,
+color: current,
+swatches: btnSwatches,
 pills: [{ label: '恢复默认', value: '__reset__' }],
 });
 });
