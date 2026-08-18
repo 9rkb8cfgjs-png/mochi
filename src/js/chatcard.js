@@ -224,9 +224,11 @@
       if (src.indexOf('data:audio') === 0) {
         const parts = c.split('|||');
         const name = (parts[0] || '音频').replace(/\.[^.]+$/, '');
+        // v3.6.x：audio dataURL 不再嵌进按钮（几十条语音时 HTML 字符串会膨胀到
+        // 几十 MB，手机端 render/滚动必卡）——播放时从 groups 数据按 item 定位取
         return '<div class="cc-ico" style="background:rgba(0,0,0,.05)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></div>' +
           '<div class="cc-txt"><div class="t" style="color:var(--muted)">' + esc(name) + '</div></div>' +
-          '<button class="cc-play" data-src="' + esc(src) + '" title="播放">' +
+          '<button class="cc-play" title="播放">' +
           '<span class="cc-play-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>' +
           '<span class="cc-play-bars"><i></i><i></i><i></i></span></button>';
       }
@@ -281,6 +283,22 @@
     else {
       img.setAttribute('src', img.dataset.src || '');
       img.removeAttribute('data-src');
+    }
+  }
+
+  // v3.6.x：语音卡 audio dataURL 不嵌 DOM——用 WeakMap 存 播放按钮节点 -> 音频数据，
+  // 节点移除自动释放；搜索过滤后数组索引会错位，不能靠 dataset 索引回查，
+  // 直接按节点取最稳
+  const audioSrcMap = new WeakMap();
+
+  // 渲染后为卡片节点补数据（图片懒加载注册 / 语音按钮音频注册）——render 与局部重建共用
+  function attachCardData(d, c) {
+    attachLazy(d.querySelector('img[data-src]'));
+    const pb = d.querySelector('.cc-play');
+    if (pb && typeof c === 'string' && c.indexOf('|||') > 0) {
+      const p = c.indexOf('|||');
+      const s = c.slice(p + 3);
+      if (s.indexOf('data:audio') === 0) audioSrcMap.set(pb, s);
     }
   }
 
@@ -341,7 +359,7 @@
       d.dataset.g = gname;
       d.dataset.idx = i;
       d.innerHTML = cardItemHtml(c);
-      attachLazy(d.querySelector('img[data-src]'));
+      attachCardData(d, c);
       if (manageMode && selected.has(gname + '\u0001' + i)) d.classList.add('sel');
       d.addEventListener('click', () => {
         if (manageMode) { toggleSelect(d, gname, i); return; }
@@ -354,7 +372,16 @@
     else list.appendChild(frag);
   }
 
+  // v3.6.x：大列表分块渲染——几千张卡一次性创建会卡死主线程（手机端明显），
+  // 首帧同步渲染一批立即可见，其余按帧分批挂载，期间不阻塞滚动；
+  // 渲染途中触发新 render（切分类/筛选/搜索）通过 token 废弃旧批次
+  const RENDER_BATCH = 80;
+  let renderToken = 0;
+  let rendering = false; // 分块渲染进行中（局部删除前判断：渲染中改走全量 render，防旧批次复活已删卡片）
+
   function render() {
+    const token = ++renderToken;
+    rendering = true;
     renderTabCounts();
     // 表情包分类：网格一行四个；图片分类：网格一行两个；emoji 分类：网格一行六个；其他分类保持行式列表
     list.classList.toggle('cc-grid', cur === 'sticker');
@@ -381,40 +408,51 @@
       list.innerHTML = '<div class="cc-empty">' + emptyTxt + '</div>';
       return;
     }
-    // v3.6.x：DocumentFragment 批量挂载——逐条 appendChild 会让浏览器反复计算布局，
-    // 字卡多时卡；一次性挂载显著提速
-    const frag = document.createDocumentFragment();
+    // 展开扁平结构：分组 header 与字卡项交错（header 带 data-g 供局部更新定位）
+    const flat = [];
     shown.forEach(([gname, arr]) => {
-      const h = document.createElement('div');
-      h.className = 'cc-group-header';
-      h.dataset.g = gname; // 局部更新定位用
-      h.innerHTML = '<span class="ccg-name">' + esc(gname) + '</span><span class="ccg-count">' + arr.length + '</span>';
-      // 分组删除统一在【管理分组】里操作，这里不再显示删除按钮
-      frag.appendChild(h);
-      arr.forEach((c, i) => {
-        const d = document.createElement('div');
-        d.className = 'cc-item glass';
-        d.dataset.g = gname;
-        d.dataset.idx = i;
-        d.innerHTML = cardItemHtml(c);
-        attachLazy(d.querySelector('img[data-src]'));
-        // 管理模式：显示勾选状态
-        if (manageMode) {
-          if (selected.has(gname + '\u0001' + i)) d.classList.add('sel');
-        }
-        d.addEventListener('click', () => {
-          if (manageMode) { toggleSelect(d, gname, i); return; }
+      flat.push({ header: true, gname, count: arr.length });
+      arr.forEach((c, i) => flat.push({ header: false, gname, c, i }));
+    });
+    const frag = document.createDocumentFragment();
+    let pos = 0;
+    const build = (el, it) => {
+      if (it.header) {
+        el.className = 'cc-group-header';
+        el.dataset.g = it.gname;
+        el.innerHTML = '<span class="ccg-name">' + esc(it.gname) + '</span><span class="ccg-count">' + it.count + '</span>';
+      } else {
+        el.className = 'cc-item glass';
+        el.dataset.g = it.gname;
+        el.dataset.idx = it.i;
+        el.innerHTML = cardItemHtml(it.c);
+        attachCardData(el, it.c);
+        if (manageMode && selected.has(it.gname + '\u0001' + it.i)) el.classList.add('sel');
+        el.addEventListener('click', () => {
+          if (manageMode) { toggleSelect(el, it.gname, it.i); return; }
           // 图片/表情字卡：点击查看大图
-          if (typeof c === 'string' && c.indexOf('data:') === 0) {
-            viewImage(c);
+          if (typeof it.c === 'string' && it.c.indexOf('data:') === 0) {
+            viewImage(it.c);
             return;
           }
           if (window.logFish) window.logFish();
         });
-        frag.appendChild(d);
-      });
-    });
-    list.appendChild(frag);
+      }
+    };
+    const step = () => {
+      if (token !== renderToken) { rendering = false; return; } // 新渲染已开始，废弃本批次
+      const end = Math.min(pos + RENDER_BATCH, flat.length);
+      for (; pos < end; pos++) {
+        const el = document.createElement('div');
+        build(el, flat[pos]);
+        frag.appendChild(el);
+      }
+      // 每帧挂载一批：列表渐进出现，首屏立即可滚动
+      list.appendChild(frag);
+      if (pos < flat.length) requestAnimationFrame(step);
+      else rendering = false;
+    };
+    step(); // 首帧同步跑第一批（小列表一次完成，行为与原一致）
   }
 
   // 分类切换
@@ -520,8 +558,9 @@
                 if (wasCur) curGroup = '';
                 saveGroups(groups);
                 // v3.6.x：不再整页 render——分组在 DOM 中则局部移除该块 + 只更新计数；
-                // 当前筛选/搜索视图受影响时（需恢复全部视图或 DOM 无法精确定位）才全量重建
-                if (wasCur) {
+                // 当前筛选/搜索视图受影响时（需恢复全部视图或 DOM 无法精确定位）才全量重建；
+                // 分块渲染进行中同样走全量（防旧批次复活已删分组）
+                if (wasCur || rendering) {
                   render();
                 } else if (!q) {
                   groupBlockNodes(gname).forEach(el => {
@@ -580,7 +619,9 @@
     if (!removed) return;
     selected.clear();
     saveGroups(groups);
-    // v3.6.x：局部移除被删卡片 + 重建受影响分组，不再整页 render（删除卡顿主因）
+    // v3.6.x：局部移除被删卡片 + 重建受影响分组，不再整页 render（删除卡顿主因）；
+    // 但分块渲染进行中时不能局部更新——旧批次会把已删的卡重新挂载，改走全量 render
+    if (rendering) { render(); updateCount(); toast('已删除 ' + removed + ' 张字卡'); return; }
     touched.forEach((gname) => {
       rebuildGroupAfterRemove(gname);
     });
@@ -1170,8 +1211,9 @@
     const btn = e.target.closest('.cc-play');
     if (!btn) return;
     if (playingBtn === btn) { stopPlay(); return; }
-    const src = btn.dataset.src;
-    if (!src) return;
+    // v3.6.x：audio dataURL 不存 DOM——从 WeakMap 按节点取（搜索过滤后索引会错位，不能回查）
+    const src = audioSrcMap.get(btn) || '';
+    if (!src) { stopPlay(); toast('音频数据不可用'); return; }
     stopPlay();
     playingAudio = new Audio(src);
     playingBtn = btn;

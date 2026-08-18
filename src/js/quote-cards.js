@@ -151,7 +151,7 @@
     const custom = getCustom();
     let html = '';
     html += '<div class="mg-grp-row"><button class="cc-tool mg-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
-    if (!custom.length) {
+    if (!custom.length && !groups.length) {
       html += '<div class="ta-empty">暂未添加自定义情话，可在上方批量输入（每行一句）。</div>';
       el.innerHTML = html;
       bindCqGroupOps();
@@ -166,11 +166,10 @@
         '</div>';
     });
     const ungrouped = custom.filter(x => !x.grp);
-    if (ungrouped.length || !groups.length) {
-      html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
-      html += ungrouped.map(x => cqItemHtml(x, custom.indexOf(x))).join('');
-      html += '</div>';
-    }
+    html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+    if (!ungrouped.length) html += '<div class="ta-empty">暂无未分组情话，可在上方批量输入</div>';
+    html += ungrouped.map(x => cqItemHtml(x, custom.indexOf(x))).join('');
+    html += '</div>';
     el.innerHTML = html;
     el.querySelectorAll('.ta-del').forEach(b => {
       b.addEventListener('click', () => {
@@ -196,9 +195,10 @@
       if (b.__bound) return;
       b.__bound = true;
       b.addEventListener('click', () => {
-        window.cardGroups.addFlow(getGroups(), g => {
+        const groups = getGroups();
+        window.cardGroups.addFlow(groups, g => {
           if (!g) return;
-          saveGroups(getGroups());
+          saveGroups(groups);
           refreshGrpSelect();
           renderMineList();
           toast('已新建分组「' + g.name + '」');
@@ -237,11 +237,15 @@
     });
   }
   // 刷新批量输入的分组下拉
+  // v3.7.x：quote-cards.js 加载早于 ta-ask.js（cardGroups 定义处）——初始化时可能未就绪，
+  // 等一帧重试（页面加载完成后一定可用）；事件触发时 window.cardGroups 必然已存在
   function refreshGrpSelect() {
+    if (!window.cardGroups) { setTimeout(refreshGrpSelect, 50); return; }
     const grpSel = document.getElementById('cq-batch-grp');
     if (!grpSel) return;
-    grpSel.innerHTML = window.cardGroups.grpOnlyOptsHtml(getGroups(), grpSel.value);
-    window.cardGroups.bindNewGrp(grpSel, getGroups(), function () { saveGroups(getGroups()); });
+    const groups = getGroups();
+    grpSel.innerHTML = window.cardGroups.grpOnlyOptsHtml(groups, grpSel.value);
+    window.cardGroups.bindNewGrp(grpSel, groups, function () { saveGroups(groups); });
   }
   let curTab = 'sys';
   function switchTab(tab) {
@@ -283,9 +287,10 @@
   const cqNewGrp = document.getElementById('cq-new-grp');
   if (cqNewGrp) {
     cqNewGrp.addEventListener('click', () => {
-      window.cardGroups.addFlow(getGroups(), g => {
+      const groups = getGroups();
+      window.cardGroups.addFlow(groups, g => {
         if (!g) return;
-        saveGroups(getGroups());
+        saveGroups(groups);
         refreshGrpSelect();
         renderMineList();
         toast('已新建分组「' + g.name + '」');

@@ -3513,7 +3513,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.92 · 部署于 2026-08-18 21:40</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.93 · 部署于 2026-08-18 21:49</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4224,7 +4224,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.92</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.93</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -6877,7 +6877,7 @@ const groups = getGroups();
 const custom = getCustom();
 let html = '';
 html += '<div class="mg-grp-row"><button class="cc-tool mg-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
-if (!custom.length) {
+if (!custom.length && !groups.length) {
 html += '<div class="ta-empty">暂未添加自定义情话，可在上方批量输入（每行一句）。</div>';
 el.innerHTML = html;
 bindCqGroupOps();
@@ -6892,11 +6892,10 @@ html += '<div class="cal-card glass mg-block">' +
 '</div>';
 });
 const ungrouped = custom.filter(x => !x.grp);
-if (ungrouped.length || !groups.length) {
 html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+if (!ungrouped.length) html += '<div class="ta-empty">暂无未分组情话，可在上方批量输入</div>';
 html += ungrouped.map(x => cqItemHtml(x, custom.indexOf(x))).join('');
 html += '</div>';
-}
 el.innerHTML = html;
 el.querySelectorAll('.ta-del').forEach(b => {
 b.addEventListener('click', () => {
@@ -6921,9 +6920,10 @@ wrap.querySelectorAll('.mg-grp-add').forEach(b => {
 if (b.__bound) return;
 b.__bound = true;
 b.addEventListener('click', () => {
-window.cardGroups.addFlow(getGroups(), g => {
+const groups = getGroups();
+window.cardGroups.addFlow(groups, g => {
 if (!g) return;
-saveGroups(getGroups());
+saveGroups(groups);
 refreshGrpSelect();
 renderMineList();
 toast('已新建分组「' + g.name + '」');
@@ -6962,10 +6962,12 @@ toast('已删除分组「' + g.name + '」');
 });
 }
 function refreshGrpSelect() {
+if (!window.cardGroups) { setTimeout(refreshGrpSelect, 50); return; }
 const grpSel = document.getElementById('cq-batch-grp');
 if (!grpSel) return;
-grpSel.innerHTML = window.cardGroups.grpOnlyOptsHtml(getGroups(), grpSel.value);
-window.cardGroups.bindNewGrp(grpSel, getGroups(), function () { saveGroups(getGroups()); });
+const groups = getGroups();
+grpSel.innerHTML = window.cardGroups.grpOnlyOptsHtml(groups, grpSel.value);
+window.cardGroups.bindNewGrp(grpSel, groups, function () { saveGroups(groups); });
 }
 let curTab = 'sys';
 function switchTab(tab) {
@@ -7005,9 +7007,10 @@ toast('已添加 ' + items.length + ' 句今日情话');
 const cqNewGrp = document.getElementById('cq-new-grp');
 if (cqNewGrp) {
 cqNewGrp.addEventListener('click', () => {
-window.cardGroups.addFlow(getGroups(), g => {
+const groups = getGroups();
+window.cardGroups.addFlow(groups, g => {
 if (!g) return;
-saveGroups(getGroups());
+saveGroups(groups);
 refreshGrpSelect();
 renderMineList();
 toast('已新建分组「' + g.name + '」');
@@ -13034,7 +13037,7 @@ const parts = c.split('|||');
 const name = (parts[0] || '音频').replace(/\.[^.]+$/, '');
 return '<div class="cc-ico" style="background:rgba(0,0,0,.05)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></div>' +
 '<div class="cc-txt"><div class="t" style="color:var(--muted)">' + esc(name) + '</div></div>' +
-'<button class="cc-play" data-src="' + esc(src) + '" title="播放">' +
+'<button class="cc-play" title="播放">' +
 '<span class="cc-play-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>' +
 '<span class="cc-play-bars"><i></i><i></i><i></i></span></button>';
 }
@@ -13077,6 +13080,16 @@ if (imgObserver) { try { imgObserver.observe(img); } catch (e) {} }
 else {
 img.setAttribute('src', img.dataset.src || '');
 img.removeAttribute('data-src');
+}
+}
+const audioSrcMap = new WeakMap();
+function attachCardData(d, c) {
+attachLazy(d.querySelector('img[data-src]'));
+const pb = d.querySelector('.cc-play');
+if (pb && typeof c === 'string' && c.indexOf('|||') > 0) {
+const p = c.indexOf('|||');
+const s = c.slice(p + 3);
+if (s.indexOf('data:audio') === 0) audioSrcMap.set(pb, s);
 }
 }
 function updateCountsOnly() {
@@ -13125,7 +13138,7 @@ d.className = 'cc-item glass';
 d.dataset.g = gname;
 d.dataset.idx = i;
 d.innerHTML = cardItemHtml(c);
-attachLazy(d.querySelector('img[data-src]'));
+attachCardData(d, c);
 if (manageMode && selected.has(gname + '\u0001' + i)) d.classList.add('sel');
 d.addEventListener('click', () => {
 if (manageMode) { toggleSelect(d, gname, i); return; }
@@ -13137,7 +13150,12 @@ frag.appendChild(d);
 if (anchor && anchor.parentNode === list) list.insertBefore(frag, anchor);
 else list.appendChild(frag);
 }
+const RENDER_BATCH = 80;
+let renderToken = 0;
+let rendering = false; // 分块渲染进行中（局部删除前判断：渲染中改走全量 render，防旧批次复活已删卡片）
 function render() {
+const token = ++renderToken;
+rendering = true;
 renderTabCounts();
 list.classList.toggle('cc-grid', cur === 'sticker');
 list.classList.toggle('cc-grid2', cur === 'image');
@@ -13161,35 +13179,48 @@ const emptyTxt = cur === 'sticker' ? '暂无表情包 · 点击右上角批量�
 list.innerHTML = '<div class="cc-empty">' + emptyTxt + '</div>';
 return;
 }
-const frag = document.createDocumentFragment();
+const flat = [];
 shown.forEach(([gname, arr]) => {
-const h = document.createElement('div');
-h.className = 'cc-group-header';
-h.dataset.g = gname; // 局部更新定位用
-h.innerHTML = '<span class="ccg-name">' + esc(gname) + '</span><span class="ccg-count">' + arr.length + '</span>';
-frag.appendChild(h);
-arr.forEach((c, i) => {
-const d = document.createElement('div');
-d.className = 'cc-item glass';
-d.dataset.g = gname;
-d.dataset.idx = i;
-d.innerHTML = cardItemHtml(c);
-attachLazy(d.querySelector('img[data-src]'));
-if (manageMode) {
-if (selected.has(gname + '\u0001' + i)) d.classList.add('sel');
-}
-d.addEventListener('click', () => {
-if (manageMode) { toggleSelect(d, gname, i); return; }
-if (typeof c === 'string' && c.indexOf('data:') === 0) {
-viewImage(c);
+flat.push({ header: true, gname, count: arr.length });
+arr.forEach((c, i) => flat.push({ header: false, gname, c, i }));
+});
+const frag = document.createDocumentFragment();
+let pos = 0;
+const build = (el, it) => {
+if (it.header) {
+el.className = 'cc-group-header';
+el.dataset.g = it.gname;
+el.innerHTML = '<span class="ccg-name">' + esc(it.gname) + '</span><span class="ccg-count">' + it.count + '</span>';
+} else {
+el.className = 'cc-item glass';
+el.dataset.g = it.gname;
+el.dataset.idx = it.i;
+el.innerHTML = cardItemHtml(it.c);
+attachCardData(el, it.c);
+if (manageMode && selected.has(it.gname + '\u0001' + it.i)) el.classList.add('sel');
+el.addEventListener('click', () => {
+if (manageMode) { toggleSelect(el, it.gname, it.i); return; }
+if (typeof it.c === 'string' && it.c.indexOf('data:') === 0) {
+viewImage(it.c);
 return;
 }
 if (window.logFish) window.logFish();
 });
-frag.appendChild(d);
-});
-});
+}
+};
+const step = () => {
+if (token !== renderToken) { rendering = false; return; } // 新渲染已开始，废弃本批次
+const end = Math.min(pos + RENDER_BATCH, flat.length);
+for (; pos < end; pos++) {
+const el = document.createElement('div');
+build(el, flat[pos]);
+frag.appendChild(el);
+}
 list.appendChild(frag);
+if (pos < flat.length) requestAnimationFrame(step);
+else rendering = false;
+};
+step(); // 首帧同步跑第一批（小列表一次完成，行为与原一致）
 }
 tabsWrap.querySelectorAll('.cc-tab').forEach(tab => {
 tab.addEventListener('click', () => {
@@ -13855,8 +13886,8 @@ list.addEventListener('click', (e) => {
 const btn = e.target.closest('.cc-play');
 if (!btn) return;
 if (playingBtn === btn) { stopPlay(); return; }
-const src = btn.dataset.src;
-if (!src) return;
+const src = audioSrcMap.get(btn) || '';
+if (!src) { stopPlay(); toast('音频数据不可用'); return; }
 stopPlay();
 playingAudio = new Audio(src);
 playingBtn = btn;
@@ -18666,7 +18697,7 @@ const groups = Array.isArray(d.groups) ? d.groups : [];
 const mineQs = d.questions.filter(q => q.isPreset !== true);
 let html = '';
 html += '<div class="mg-grp-row"><button class="cc-tool" id="ask-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
-if (!mineQs.length) {
+if (!mineQs.length && !groups.length) {
 html += '<div class="ta-empty" style="padding:14px">暂未添加自定义问题，可在上方批量导入或下方添加</div>';
 mineCatsEl.innerHTML = html;
 bindAskGroupOps();
@@ -18683,8 +18714,8 @@ html += askAddFormHtml('g' + g.id, g.id, 'daily');
 html += '</div>';
 });
 const ungrouped = mineQs.filter(q => !q.grp);
-if (ungrouped.length || !groups.length) {
 html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组 · 按系统分类</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+if (!ungrouped.length) html += '<div class="ta-empty">暂无未分组内容，可在上方批量导入（选择系统分类）</div>';
 CATS.forEach(([k, label]) => {
 const arr = ungrouped.filter(q => q.cat === k);
 if (!arr.length) return;
@@ -18693,7 +18724,6 @@ arr.forEach(q => { html += askItemHtml(q, d.questions.indexOf(q)); });
 html += askAddFormHtml('c' + k, '', k);
 });
 html += '</div>';
-}
 mineCatsEl.innerHTML = html;
 mineCatsEl.querySelectorAll('input[data-idx]').forEach(cb => {
 cb.addEventListener('change', () => {
@@ -19196,7 +19226,7 @@ const groups = Array.isArray(d.groups) ? d.groups : [];
 const items = d.questions.filter(q => q.isPreset !== true);
 let html = '';
 html += '<div class="mg-grp-row"><button class="cc-tool mg-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
-if (!items.length) {
+if (!items.length && !groups.length) {
 html += '<div class="ta-empty">' + opt.emptyTip + '</div>';
 container.innerHTML = html;
 bindMineGroups(container, opt);
@@ -19211,8 +19241,8 @@ html += '<div class="cal-card glass mg-block">' +
 '</div>';
 });
 const ungrouped = items.filter(q => !q.grp);
-if (ungrouped.length || !groups.length) {
 html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组 · 按系统分类</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+if (!ungrouped.length) html += '<div class="ta-empty">暂无未分组内容，可在上方添加（选择系统分类）</div>';
 opt.order.forEach(k => {
 const arr = ungrouped.filter(q => q.cat === k);
 if (!arr.length) return;
@@ -19220,7 +19250,6 @@ html += '<div class="mg-subcat">' + escG(opt.label[k] || k) + ' <span style="fon
 html += arr.map(q => opt.rowHtml(q, d.questions.indexOf(q))).join('');
 });
 html += '</div>';
-}
 container.innerHTML = html;
 container.querySelectorAll('input[data-idx]').forEach(cb => {
 cb.addEventListener('change', () => {
@@ -23827,7 +23856,7 @@ const custom = ckItems(ckTab);
 const groups = ckGroups(ckTab);
 let html = '';
 html += '<div class="mg-grp-row"><button class="cc-tool mg-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
-if (!custom.length) {
+if (!custom.length && !groups.length) {
 listEl.innerHTML = html + '<div class="ta-empty">暂未添加自定义字卡，可在上方批量输入（每行一个）。</div>';
 bindCkGroupOps();
 return;
@@ -23841,11 +23870,10 @@ html += '<div class="cal-card glass mg-block">' +
 '</div>';
 });
 const ungrouped = custom.filter(x => !x.grp);
-if (ungrouped.length || !groups.length) {
 html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+if (!ungrouped.length) html += '<div class="ta-empty">暂无未分组字卡，可在上方批量输入</div>';
 html += ungrouped.map(x => ckMineItemHtml(x, custom.indexOf(x))).join('');
 html += '</div>';
-}
 listEl.innerHTML = html;
 listEl.querySelectorAll('.ta-del').forEach(b => {
 b.addEventListener('click', () => {

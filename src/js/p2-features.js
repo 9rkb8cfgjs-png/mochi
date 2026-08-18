@@ -574,7 +574,7 @@ if (ckRefresh) {
     const groups = ckGroups(ckTab);
     let html = '';
     html += '<div class="mg-grp-row"><button class="cc-tool mg-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
-    if (!custom.length) {
+    if (!custom.length && !groups.length) {
       listEl.innerHTML = html + '<div class="ta-empty">暂未添加自定义字卡，可在上方批量输入（每行一个）。</div>';
       bindCkGroupOps();
       return;
@@ -589,11 +589,10 @@ if (ckRefresh) {
         '</div>';
     });
     const ungrouped = custom.filter(x => !x.grp);
-    if (ungrouped.length || !groups.length) {
-      html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
-      html += ungrouped.map(x => ckMineItemHtml(x, custom.indexOf(x))).join('');
-      html += '</div>';
-    }
+    html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+    if (!ungrouped.length) html += '<div class="ta-empty">暂无未分组字卡，可在上方批量输入</div>';
+    html += ungrouped.map(x => ckMineItemHtml(x, custom.indexOf(x))).join('');
+    html += '</div>';
     listEl.innerHTML = html;
     listEl.querySelectorAll('.ta-del').forEach(b => {
       b.addEventListener('click', () => {

@@ -562,7 +562,7 @@
     const mineQs = d.questions.filter(q => q.isPreset !== true);
     let html = '';
     html += '<div class="mg-grp-row"><button class="cc-tool" id="ask-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
-    if (!mineQs.length) {
+    if (!mineQs.length && !groups.length) {
       html += '<div class="ta-empty" style="padding:14px">暂未添加自定义问题，可在上方批量导入或下方添加</div>';
       mineCatsEl.innerHTML = html;
       bindAskGroupOps();
@@ -579,19 +579,18 @@
       html += askAddFormHtml('g' + g.id, g.id, 'daily');
       html += '</div>';
     });
-    // 未分组区块（按系统分类小节）
+    // 未分组区块（始终渲染：与系统预设的分组体系隔开；空时提示走批量导入）
     const ungrouped = mineQs.filter(q => !q.grp);
-    if (ungrouped.length || !groups.length) {
-      html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组 · 按系统分类</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
-      CATS.forEach(([k, label]) => {
-        const arr = ungrouped.filter(q => q.cat === k);
-        if (!arr.length) return;
-        html += '<div class="mg-subcat">' + label + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
-        arr.forEach(q => { html += askItemHtml(q, d.questions.indexOf(q)); });
-        html += askAddFormHtml('c' + k, '', k);
-      });
-      html += '</div>';
-    }
+    html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组 · 按系统分类</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+    if (!ungrouped.length) html += '<div class="ta-empty">暂无未分组内容，可在上方批量导入（选择系统分类）</div>';
+    CATS.forEach(([k, label]) => {
+      const arr = ungrouped.filter(q => q.cat === k);
+      if (!arr.length) return;
+      html += '<div class="mg-subcat">' + label + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
+      arr.forEach(q => { html += askItemHtml(q, d.questions.indexOf(q)); });
+      html += askAddFormHtml('c' + k, '', k);
+    });
+    html += '</div>';
     mineCatsEl.innerHTML = html;
     mineCatsEl.querySelectorAll('input[data-idx]').forEach(cb => {
       cb.addEventListener('change', () => {
@@ -1134,7 +1133,7 @@ window.openTCPanel = openTCPanel;
     const items = d.questions.filter(q => q.isPreset !== true);
     let html = '';
     html += '<div class="mg-grp-row"><button class="cc-tool mg-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
-    if (!items.length) {
+    if (!items.length && !groups.length) {
       html += '<div class="ta-empty">' + opt.emptyTip + '</div>';
       container.innerHTML = html;
       bindMineGroups(container, opt);
@@ -1149,16 +1148,15 @@ window.openTCPanel = openTCPanel;
         '</div>';
     });
     const ungrouped = items.filter(q => !q.grp);
-    if (ungrouped.length || !groups.length) {
-      html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组 · 按系统分类</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
-      opt.order.forEach(k => {
-        const arr = ungrouped.filter(q => q.cat === k);
-        if (!arr.length) return;
-        html += '<div class="mg-subcat">' + escG(opt.label[k] || k) + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
-        html += arr.map(q => opt.rowHtml(q, d.questions.indexOf(q))).join('');
-      });
-      html += '</div>';
-    }
+    html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组 · 按系统分类</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+    if (!ungrouped.length) html += '<div class="ta-empty">暂无未分组内容，可在上方添加（选择系统分类）</div>';
+    opt.order.forEach(k => {
+      const arr = ungrouped.filter(q => q.cat === k);
+      if (!arr.length) return;
+      html += '<div class="mg-subcat">' + escG(opt.label[k] || k) + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
+      html += arr.map(q => opt.rowHtml(q, d.questions.indexOf(q))).join('');
+    });
+    html += '</div>';
     container.innerHTML = html;
     container.querySelectorAll('input[data-idx]').forEach(cb => {
       cb.addEventListener('change', () => {
