@@ -949,6 +949,18 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
         addNotice('comment', p2.id, (p2.taName || partnerName()) + ' 评论了你的动态');
       }, (cfg.commentSpeedMin + Math.random() * Math.max(1, cfg.commentSpeedMax - cfg.commentSpeedMin)) * 1000);
     }
+    // v3.6.x：TA 收藏我发布的动态（30% 概率，与聊天消息收藏一致，延迟同点赞节奏）
+    if (Math.random() * 100 < 30 && window.addTaFavItem) {
+      const cfg = feedCfg();
+      setTimeout(() => {
+        const list2 = load();
+        const p2 = list2.find(x => x.id === id);
+        if (!p2) return;
+        if (window.addTaFavItem({ kind: 'feed', text: p2.content || '', imgs: (p2.imgs || []).slice(), ts: Date.now() })) {
+          toast('TA 收藏了你的朋友圈动态');
+        }
+      }, (cfg.likeSpeedMin + Math.random() * Math.max(1, cfg.likeSpeedMax - cfg.likeSpeedMin)) * 1000);
+    }
   }
   // ================= TA 自动发布（定时机制，概率在回复设置-朋友圈调整，星言朋友圈机制） =================
   function feedCfg() {

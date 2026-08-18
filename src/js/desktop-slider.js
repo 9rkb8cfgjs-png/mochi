@@ -12,20 +12,28 @@
 
   let idx = 0;
 
+  // v3.6.x：页间有 gap 缝隙，每页滚动步长 = clientWidth + gap
+  // gap 是 CSS 固定值（.desktop-pages 的 flex gap），不随布局变化，但元素
+  // display:none 时 getComputedStyle 仍返回 CSS 值，可安全读取
+  function pageStep() {
+    const g = parseFloat(getComputedStyle(pages).columnGap) || 0;
+    return pages.clientWidth + g;
+  }
+
   function go(i) {
     const slides = getSlides();
     idx = Math.max(0, Math.min(slides.length - 1, i));
     // v3.5.132：页面隐藏（display:none）时 clientWidth=0，直接赋值会产生 Infinity 下标
     if (!pages.clientWidth) return;
     // 直接赋值 scrollLeft 立即切换（scroll-snap 会自动吸附），避免 smooth 滚动被 snap 打断
-    pages.scrollLeft = idx * pages.clientWidth;
+    pages.scrollLeft = idx * pageStep();
     getDots().forEach((d, k) => d.classList.toggle('active', k === idx));
   }
 
   function sync() {
     // v3.5.132：隐藏时跳过（防抖窗口内切页 → clientWidth=0 → idx 写坏、圆点全灭）
     if (!pages.clientWidth) return;
-    const pos = pages.scrollLeft / pages.clientWidth;
+    const pos = pages.scrollLeft / pageStep();
     const cur = Math.round(pos);
     if (cur !== idx) {
       idx = cur;
@@ -49,7 +57,7 @@
 
   // v3.5.132：旋转后按新宽度重设 scrollLeft（否则停在 1.x 页位置，圆点与内容不符）
   window.addEventListener('resize', () => {
-    if (pages.clientWidth) pages.scrollLeft = idx * pages.clientWidth;
+    if (pages.clientWidth) pages.scrollLeft = idx * pageStep();
   });
 
   // v3.6.x：桌面页隐藏时（切到聊天/设置等）旋转，resize 里 clientWidth=0 会跳过——
@@ -58,7 +66,7 @@
   if (phonePage) {
     const mo = new MutationObserver(() => {
       if (!phonePage.hidden && pages.clientWidth) {
-        pages.scrollLeft = idx * pages.clientWidth;
+        pages.scrollLeft = idx * pageStep();
         sync();
       }
     });
@@ -80,7 +88,7 @@
       }
     }
     if (pages.clientWidth) {
-      pages.scrollLeft = idx * pages.clientWidth;
+      pages.scrollLeft = idx * pageStep();
       sync();
     }
   };

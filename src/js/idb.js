@@ -271,6 +271,14 @@
             if (v === undefined || v === null) return;
             const str = typeof v === 'string' ? v : JSON.stringify(v);
             if (!memoryCache) memoryCache = {};
+            // v3.6.x 修复：回填只补「缺失」数据，不覆盖本会话已写入的新值。
+            // 场景：OPPO 雨见等 IndexedDB 打开/读取慢的浏览器，启动回填尚未完成时
+            // 收到新来信/新数据——大键（>200KB，如带表情包的来信）只进 IDB+内存缓存、
+            // 不写 localStorage，迟到回填拿 IDB 旧值覆盖 memoryCache → 来信弹窗已提示、
+            // 信箱列表却是旧数据（空白/缺新信），直到下次写入才恢复。
+            // memoryCache 有值 = 本会话已写入过（xyStore.set 同步更新），永远比
+            // 启动回填时的 IDB 快照新，故跳过回填（含 LS 补写，防旧值污染）。
+            if (k in memoryCache) return;
             memoryCache[k] = str;
             // v3.5.92：大键（>200KB 图片 dataURL）只留 IDB + 内存缓存，不回填 localStorage
             if (str.length > LS_BIG_LIMIT) return;

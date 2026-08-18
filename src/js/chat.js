@@ -43,6 +43,10 @@
   // 被并入新桌面的聊天记录（串桌面）；重置后下次 enterChat → loadMsgs 从
   // 新桌面的 IDB 命名空间重新加载。chatDbReady 归 false 使保存暂存内存，
   // 避免新桌面的历史被误覆盖。
+  // v3.6.x：同一次切换一并清掉「会话内跨桌面残留」——待引用（lastQuote）、
+  // TA 引用/收藏用的最后一条我的消息（lastMineText）、待发送图片草稿
+  // （draftImgs）与输入框草稿文本。否则在 A 桌面选了引用/打了字再切到 B，
+  // B 桌面发消息会带上 A 桌面聊天里的消息内容（数据串桌面）。
   document.addEventListener('contact-switched', function () {
     try {
       if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
@@ -51,6 +55,13 @@
       chatDbReady = false;
       sessionChangedIdx.clear();
       armReadyFuse();
+      try { lastQuote = null; } catch (e) {}
+      try { lastMineText = ''; } catch (e) {}
+      try {
+        draftImgs = [];
+        renderDraft();
+      } catch (e) {}
+      try { if (input) input.textContent = ''; } catch (e) {}
     } catch (e) {}
   });
   // v3.6.x：localStorage 兜底快照——聊天记录权威数据只存 IndexedDB（几千条带图
@@ -707,6 +718,14 @@
   // 兼容重渲染/懒加载；就地展开失败（数据异常等）时回退到对应弹窗，保证点卡片必有反应
   if (body) {
     body.addEventListener('click', (e) => {
+      // 卡片收藏按钮：整卡收藏到我的收藏（不展开作答）
+      const favBtn = e.target.closest('.msg-fav-heart');
+      if (favBtn) {
+        e.stopPropagation();
+        const fItem = favBtn.closest('.msg-ask');
+        if (fItem && fItem.dataset.idx !== undefined) window.favCardFromMsg(Number(fItem.dataset.idx));
+        return;
+      }
       // 就地作答区内部（选项按钮/发送/输入框）的点击不触发卡片委托
       if (e.target.closest('.msg-inplace')) return;
       const card = e.target.closest('.msg-ask-card, .msg-choose-card');
@@ -811,6 +830,7 @@
         (answered
           ? '<div class="msg-ask-a">✓ ' + escTxt(rec.inviteAnswer || 'TA 回应了你') + '</div>'
           : '<div class="msg-ask-tip">等待 TA 回应…</div>') +
+        favHeartHtml +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -827,6 +847,7 @@
         (answered
           ? '<div class="msg-ask-a">✓ TA：' + escTxt(rec.askAnswer || '回答了你') + '</div>' + (rec.askReply ? '<div class="msg-choose-r">TA：' + escTxt(rec.askReply) + '</div>' : '')
           : '<div class="msg-ask-tip">' + (askIsSingle ? '等待 TA 选择…' : '等待 TA 回答…') + '</div>') +
+        favHeartHtml +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -861,6 +882,7 @@
         (answered
           ? '<div class="msg-ask-a">✓ 你选择了：' + escTxt(rec.choiceAnswer) + '</div><div class="msg-choose-r">TA：' + escTxt(rec.choiceReply) + '</div>'
           : '<div class="msg-ask-tip">点击选择你的答案</div>') +
+        favHeartHtml +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -876,6 +898,7 @@
         (answered
           ? '<div class="msg-ask-a">✓ 你：' + escTxt(rec.curiousAnswer) + '</div><div class="msg-choose-r">TA：' + escTxt(rec.curiousReply) + '</div>'
           : '<div class="msg-ask-tip">点击回答 TA 的好奇</div>') +
+        favHeartHtml +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -891,6 +914,7 @@
         (answered
           ? '<div class="msg-ask-a">✓ 你：' + escTxt(rec.roastAnswer) + '</div><div class="msg-choose-r">TA：' + escTxt(rec.roastReply) + '</div>'
           : '<div class="msg-ask-tip">点击回 TA 一句</div>') +
+        favHeartHtml +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -908,6 +932,7 @@
         (answered
           ? '<div class="msg-ask-a">✓ 已回答：' + escTxt(rec.askAnswer) + '</div>' + (rec.askReply ? '<div class="msg-choose-r">TA：' + escTxt(rec.askReply) + '</div>' : '')
           : '<div class="msg-ask-tip">' + (isSingle ? '点击选择你的答案' : '点击回答 TA 的提问') + '</div>') +
+        favHeartHtml +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -1035,9 +1060,10 @@
     if (rec.mood && rec.mood.length) {
       const mm = document.createElement('div');
       mm.className = 'msg-moods';
+      const recalled = [];
       rec.mood.forEach((md, mi) => {
-        // 局部撤回：被撤的情绪字卡不显示
-        if (rec.retractedMood && rec.retractedMood.indexOf(mi) >= 0) return;
+        // v3.7.x：被撤的情绪字卡不再直接隐藏——收进「撤回胶囊」，可展开查看原内容
+        if (rec.retractedMood && rec.retractedMood.indexOf(mi) >= 0) { recalled.push(md); return; }
         const mt = escTxt(md.tag), ml = escTxt(md.label);
         if (md.tag === '交流意图') {
           mm.innerHTML += '<div class="msg-mood msg-intent"><span class="msg-mood-tag">' + mt + '</span><span>' + ml + '</span></div>';
@@ -1045,7 +1071,24 @@
           mm.innerHTML += '<div class="msg-mood"><span class="msg-mood-tag">' + mt + '</span><span>' + ml + '</span></div>';
         }
       });
+      // v3.7.x：撤回的情绪字卡胶囊（点击展开查看被撤内容，与文本段撤回同风格）
+      if (recalled.length) {
+        mm.innerHTML += '<div style="margin-top:2px">' +
+          '<span class="msg-poke-seg" data-rcm="1">' + (rec.side === 'out' ? '我' : '对方') + '撤回了 ' + recalled.length + ' 条情绪字卡 ▾</span>' +
+          '<div class="msg-poke-seg-detail" style="display:none">' +
+          recalled.map(md => '<div style="padding:2px 0">（已撤回）' + escTxt(md.tag || '') + '：' + escTxt(md.label || '') + '</div>').join('') +
+          '</div></div>';
+      }
       if (mm.children.length) b.appendChild(mm);
+      const rctip = mm.querySelector('.msg-poke-seg[data-rcm]');
+      if (rctip) {
+        // stopPropagation：展开/收起详情，不冒泡到 body 触发"引用/收藏"操作菜单
+        rctip.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const d = rctip.nextElementSibling;
+          if (d) d.style.display = d.style.display === 'block' ? 'none' : 'block';
+        });
+      }
     }
     fillAvatar(av, rec.side === 'out' ? 'avatar-user' : 'avatar-partner');
     // 点击联系人消息左侧头像 → 打开拍一拍半框，对 TA 使用拍一拍
@@ -1490,10 +1533,11 @@
     saveMsgsNow();
     addOut(answer);
     addIn(reply || '…');
+    taFavCard(rec);
     // 就地更新已渲染的卡片
     const el = body.querySelector('.msg-ask[data-idx="' + msgIdx + '"]');
     if (el) {
-      el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + escTxt(rec.choiceQuestion || '') + '</div><div class="msg-ask-a">✓ 你选择了：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(reply || '…') + '</div></div>';
+      el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + escTxt(rec.choiceQuestion || '') + '</div><div class="msg-ask-a">✓ 你选择了：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(reply || '…') + '</div>' + favHeartHtml() + '</div>';
     }
   };
   // 回答 TA 的好奇（开放式）：更新记录 + 插入"我的回答"和 TA 回应（含 30% 追问）
@@ -1508,9 +1552,10 @@
     addOut(answer);
     addIn(reply || '…');
     if (followup) addIn(followup);
+    taFavCard(rec);
     const el = body.querySelector('.msg-ask[data-idx="' + msgIdx + '"]');
     if (el) {
-      el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + escTxt(rec.curiousQuestion || '') + '</div><div class="msg-ask-a">✓ 你：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(reply || '…') + '</div></div>';
+      el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + escTxt(rec.curiousQuestion || '') + '</div><div class="msg-ask-a">✓ 你：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(reply || '…') + '</div>' + favHeartHtml() + '</div>';
     }
   };
   // 回应 TA 的吐槽：更新记录 + 插入"我的回应"和 TA 回应
@@ -1524,9 +1569,10 @@
     saveMsgsNow();
     addOut(answer);
     addIn(reply || '…');
+    taFavCard(rec);
     const el = body.querySelector('.msg-ask[data-idx="' + msgIdx + '"]');
     if (el) {
-      el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + escTxt(rec.roastText || '') + '</div><div class="msg-ask-a">✓ 你：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(reply || '…') + '</div></div>';
+      el.innerHTML = '<div class="msg-choose-card answered"><div class="msg-ask-q">' + escTxt(rec.roastText || '') + '</div><div class="msg-ask-a">✓ 你：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(reply || '…') + '</div>' + favHeartHtml() + '</div>';
     }
   };
   // 回答 TA 的询问：更新记录 + 插入"我的回答"和 TA 回复消息
@@ -1543,10 +1589,11 @@
     saveMsgsNow();
     addOut(answer);
     addIn(taReply);
+    taFavCard(rec);
     // 就地更新已渲染的询问卡片
     const el = body.querySelector('.msg-ask[data-idx="' + msgIdx + '"]');
     if (el) {
-      el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">' + escTxt(rec.askQuestion || '') + '</div><div class="msg-ask-a">✓ 已回答：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(taReply) + '</div></div>';
+      el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">' + escTxt(rec.askQuestion || '') + '</div><div class="msg-ask-a">✓ 已回答：' + escTxt(answer) + '</div><div class="msg-choose-r">TA：' + escTxt(taReply) + '</div>' + favHeartHtml() + '</div>';
     }
     return taReply;
   };
@@ -2237,6 +2284,15 @@ function partialRetractMsg(msgEl, side) {
     if (cs) cs.hidden = true;
     if (window.closeAvlib) window.closeAvlib();
     chatDivinePanel.hidden = false;
+    // v3.7.x：每次打开同步自动发送开关（每个联系人独立）并刷新历史记录
+    try {
+      const chatAuto = document.getElementById('div-chat-auto-send');
+      if (chatAuto) chatAuto.checked = !!(window.divineAutoGet && window.divineAutoGet());
+    } catch (err) {}
+    try {
+      const histList = document.getElementById('div-chat-history');
+      if (histList && !histList.hidden && window.divineHistLoad) renderChatHistory();
+    } catch (err) {}
   }
   const moreDivine = document.getElementById('more-divine');
   if (moreDivine) {
@@ -2254,6 +2310,9 @@ function partialRetractMsg(msgEl, side) {
         e.stopPropagation();
         chatDivineMode = b.getAttribute('data-chatmode');
         chatDivineBody.querySelectorAll('[data-chatmode]').forEach(x => x.classList.toggle('sel', x === b));
+        if (chatDrawCancel) { try { chatDrawCancel(); } catch (err) {} chatDrawCancel = null; }
+        const drawBtn2 = document.getElementById('div-chat-draw');
+        if (drawBtn2) drawBtn2.textContent = '抽牌';
         const r = document.getElementById('div-chat-result');
         if (r) r.innerHTML = '<div class="div-result-empty">点击上方按钮开始抽牌</div>';
       });
@@ -2263,46 +2322,159 @@ function partialRetractMsg(msgEl, side) {
         e.stopPropagation();
         chatDivineCount = Number(b.getAttribute('data-chatcount'));
         chatDivineBody.querySelectorAll('[data-chatcount]').forEach(x => x.classList.toggle('sel', x === b));
+        if (chatDrawCancel) { try { chatDrawCancel(); } catch (err) {} chatDrawCancel = null; }
+        const drawBtn2 = document.getElementById('div-chat-draw');
+        if (drawBtn2) drawBtn2.textContent = '抽牌';
         const r = document.getElementById('div-chat-result');
         if (r) r.innerHTML = '<div class="div-result-empty">点击上方按钮开始抽牌</div>';
       });
     });
+    // v3.7.x：聊天半框历史记录渲染（每个联系人独立，走 divination.js 暴露的动态 store API）
+    function renderChatHistory() {
+      const listEl = document.getElementById('div-chat-history');
+      if (!listEl) return;
+      let list = [];
+      try { list = (window.divineHistLoad && window.divineHistLoad()) || []; } catch (err) {}
+      if (!Array.isArray(list)) list = [];
+      if (!list.length) {
+        listEl.innerHTML = '<div class="div-result-empty" style="padding:14px 0">暂无占卜记录</div>';
+        return;
+      }
+      const fmt = (ts) => {
+        const d = new Date(ts);
+        const p = (n) => (n < 10 ? '0' + n : '' + n);
+        return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
+      };
+      const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      listEl.innerHTML = list.map((h, i) =>
+        '<div class="div-chat-hist-item">' +
+        '<div class="div-chat-hist-q">' + (h.mode === 'tarot' ? '塔罗' : '雷诺曼') + ' · ' + h.count + ' 张' +
+        (h.question ? ' · 问：' + esc(h.question) : '') + '</div>' +
+        '<div class="div-chat-hist-meta">' + fmt(h.ts) + ' · ' +
+        (Array.isArray(h.cards) ? h.cards.map(c => esc((c && c.name) || '') + (c && c.rev ? '(逆)' : '')).join('、') : '') +
+        '</div>' +
+        '<div class="div-chat-hist-acts">' +
+        '<button class="div-chat-hist-view" data-hi="' + i + '">查看</button>' +
+        '<button class="div-chat-hist-del" data-hi="' + i + '">删除</button>' +
+        '</div></div>').join('');
+      listEl.querySelectorAll('.div-chat-hist-view').forEach(b2 => b2.addEventListener('click', (e) => {
+        e.stopPropagation();
+        let cur = [];
+        try { cur = (window.divineHistLoad && window.divineHistLoad()) || []; } catch (err) {}
+        const h = cur[parseInt(b2.dataset.hi, 10)];
+        if (h && Array.isArray(h.cards)) {
+          const sr = document.getElementById('div-chat-result');
+          if (sr) sr.innerHTML = chatDivineResultHtml(h.cards, h.mode, h.question, h.summary || '');
+        }
+      }));
+      listEl.querySelectorAll('.div-chat-hist-del').forEach(b2 => b2.addEventListener('click', (e) => {
+        e.stopPropagation();
+        let cur = [];
+        try { cur = (window.divineHistLoad && window.divineHistLoad()) || []; } catch (err) {}
+        cur.splice(parseInt(b2.dataset.hi, 10), 1);
+        if (window.divineHistSave) { try { window.divineHistSave(cur); } catch (err) {} }
+        renderChatHistory();
+      }));
+    }
+    // v3.7.x：聊天半框结果渲染（与桌面占卜页同风格）
+    function chatDivineResultHtml(cards, mode, question, summary) {
+      const icons = mode === 'tarot' ? (window.__TAROT_ICONS__ || {}) : (window.__LENO_ICONS__ || {});
+      const labels = ((window.__MODE_LABELS__ || {})[mode] || {})[cards.length] || [];
+      const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      let html = '<div class="div-spread">';
+      cards.forEach((c, i) => {
+        html += '<div class="div-mini">' +
+          (labels[i] ? '<div class="div-mini-tag">' + labels[i] + '</div>' : '') +
+          '<div class="div-card-face">' +
+          '<div class="div-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (icons[c.icon] || '') + '</svg></div>' +
+          '<div class="div-card-name">' + esc(c.name) + (c.rev ? '（逆）' : '') + '</div>' +
+          '</div>' +
+          '<div class="div-card-meaning">' + esc(c.meaning) + '</div>' +
+          '</div>';
+      });
+      html += '</div>';
+      if (summary) html += '<div class="div-summary">' + esc(summary) + '</div>';
+      if (question) html += '<div class="div-card-meaning" style="opacity:.6;text-align:center;margin-top:8px">问：' + esc(question) + '</div>';
+      return html;
+    }
+    // v3.7.x：自动发送开关（每个联系人独立）
+    const chatAuto = document.getElementById('div-chat-auto-send');
+    if (chatAuto) {
+      chatAuto.addEventListener('change', () => {
+        if (window.divineAutoSet) window.divineAutoSet(chatAuto.checked);
+      });
+    }
+    // v3.7.x：历史记录展开/收起 + 清空
+    const histToggle = document.getElementById('div-chat-hist-toggle');
+    if (histToggle) {
+      histToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const listEl = document.getElementById('div-chat-history');
+        if (!listEl) return;
+        const show = listEl.hidden;
+        listEl.hidden = !show;
+        histToggle.textContent = show ? '📜 占卜记录 ▴' : '📜 占卜记录 ▾';
+        if (show) renderChatHistory();
+      });
+    }
+    const histClear = document.getElementById('div-chat-hist-clear');
+    if (histClear) {
+      histClear.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (window.openModal) {
+          window.openModal('清空本桌面的全部占卜记录？（不可恢复）', '', () => {
+            if (window.divineHistSave) { try { window.divineHistSave([]); } catch (err) {} }
+            renderChatHistory();
+            toast('占卜记录已清空');
+          });
+        }
+      });
+    }
     const divDraw = document.getElementById('div-chat-draw');
+    let chatDrawCancel = null;
     if (divDraw) {
       divDraw.addEventListener('click', (e) => {
         e.stopPropagation();
         const r = document.getElementById('div-chat-result');
         if (!r) return;
+        // 连点/重新抽牌：先取消进行中的流程
+        if (chatDrawCancel) { try { chatDrawCancel(); } catch (err) {} chatDrawCancel = null; }
         const question = (document.getElementById('div-chat-question') || {}).value || '';
-        // 复用桌面占卜的牌库
-        const deck = chatDivineMode === 'tarot' ? (window.__TAROT__ || []) : (window.__LENO__ || []);
-        const icons = chatDivineMode === 'tarot' ? (window.__TAROT_ICONS__ || {}) : (window.__LENO_ICONS__ || {});
-        const labels = (window.__MODE_LABELS__ || {})[chatDivineMode] || {};
-        const labelsArr = labels[chatDivineCount] || [];
-        const shuf = (a) => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = b[i]; b[i] = b[j]; b[j] = t; } return b; };
-        const cardHtml = (ico, name, meaning, label, rev) =>
-          '<div class="div-mini">' +
-          (label ? '<div class="div-mini-tag">' + label + '</div>' : '') +
-          '<div class="div-card-face">' +
-          '<div class="div-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (icons[ico] || '') + '</svg></div>' +
-          '<div class="div-card-name">' + (rev ? name + '（逆）' : name) + '</div>' +
-          '</div>' +
-          '<div class="div-card-meaning">' + meaning + '</div>' +
-          '</div>';
-        if (!deck.length) { r.innerHTML = '<div class="div-result-empty">占卜牌库加载中…</div>'; return; }
-        const cards = shuf(deck).slice(0, chatDivineCount);
-        let html = '<div class="div-spread">';
-        cards.forEach((c, i) => {
-          let rev = false, meaning = c.meaning;
-          if (chatDivineMode === 'tarot') { rev = Math.random() > 0.5; meaning = rev ? c.neg : c.pos; }
-          html += cardHtml(c.icon, c.name, meaning, labelsArr[i] || '', rev);
+        const snapMode = chatDivineMode, snapCount = chatDivineCount;
+        const deck = snapMode === 'tarot' ? (window.__TAROT__ || []) : (window.__LENO__ || []);
+        if (!window.startDivineDraw || !deck.length) { r.innerHTML = '<div class="div-result-empty">占卜牌库加载中…</div>'; return; }
+        divDraw.textContent = '抽牌中…';
+        chatDrawCancel = window.startDivineDraw(r, {
+          deck: deck,
+          count: snapCount,
+          labels: ((window.__MODE_LABELS__ || {})[snapMode] || {})[snapCount] || [],
+          tarot: snapMode === 'tarot',
+          onDone: (cards) => {
+            chatDrawCancel = null;
+            divDraw.textContent = '重新抽牌';
+            const summary = (window.divineBuildSummary && window.divineBuildSummary(cards, snapMode, question)) || '';
+            r.innerHTML = chatDivineResultHtml(cards, snapMode, question, summary);
+            // v3.7.x：自动发送开关——开启后抽牌完成自动把结果发到聊天
+            // 置于历史保存之前执行：发送不依赖历史渲染结果，互不阻塞
+            if (window.divineAutoGet && window.divineAutoGet() && window.divineSendResult) {
+              setTimeout(() => { try { window.divineSendResult(snapMode, cards, summary, question); } catch (err) {} }, 600);
+            }
+            // v3.7.x：保存记录（每个联系人桌面独立）
+            if (window.divineHistSave && window.divineHistLoad) {
+              try {
+                const list = window.divineHistLoad();
+                if (!Array.isArray(list)) { if (window.divineHistSave) window.divineHistSave([]); }
+                else {
+                  list.unshift({ ts: Date.now(), mode: snapMode, count: snapCount, question: question, cards: cards, summary: summary });
+                  window.divineHistSave(list);
+                }
+              } catch (err) {}
+              try { renderChatHistory(); } catch (err) {
+                try { if (window.__jsErrors) window.__jsErrors.push('divineHist: ' + (err && err.message)); } catch (e2) {}
+              }
+            }
+          }
         });
-        html += '</div>';
-        // v3.5.130：总结用实际抽出的牌（原来重新洗牌取的牌与展示牌面无关）
-        const names = cards.slice(0, 2).map(c => c.name).join(' · ');
-        html += '<div class="div-summary">综合解读：' + names + '</div>';
-        if (question) html += '<div class="div-card-meaning" style="opacity:.6;text-align:center;margin-top:8px">问：' + question + '</div>';
-        r.innerHTML = html;
       });
     }
   }
@@ -2498,9 +2670,10 @@ function partialRetractMsg(msgEl, side) {
           rec.inviteStatus = 'answered';
           rec.inviteAnswer = answer;
           saveMsgs();
+          taFavCard(rec);
           const el = body.querySelector('.msg-ask[data-idx="' + inviteIdx + '"]');
           if (el) {
-            el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">邀请TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ ' + escTxt(answer) + '</div></div>';
+            el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">邀请TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ ' + escTxt(answer) + '</div>' + favHeartHtml() + '</div>';
           }
         }
         try {
@@ -2540,7 +2713,7 @@ function partialRetractMsg(msgEl, side) {
           saveMsgs();
           const el = body.querySelector('.msg-ask[data-idx="' + askIdx + '"]');
           if (el) {
-            el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ TA：' + escTxt(text) + '</div>' + (replyText ? '<div class="msg-choose-r">TA：' + escTxt(replyText) + '</div>' : '') + '</div>';
+            el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ TA：' + escTxt(text) + '</div>' + (replyText ? '<div class="msg-choose-r">TA：' + escTxt(replyText) + '</div>' : '') + favHeartHtml() + '</div>';
           }
         }
         addIn(replyText || text);
@@ -2722,6 +2895,60 @@ function partialRetractMsg(msgEl, side) {
   // 收藏存储
   function getFav() { try { return JSON.parse(store.get('fav-msgs') || '[]'); } catch (e) { return []; } }
   function saveFav(list) { store.set('fav-msgs', JSON.stringify(list)); }
+  // 收藏去重：同类型(kind) + 同内容(q/text) + 同时刻(ts) 视为同一条（旧消息收藏无 kind，
+  // 统一按 'msg' 处理，匹配规则不变：仍比对 text+ts，避免收藏重复消息）
+  function favDup(list, f) {
+    return list.some(x => (x.kind || 'msg') === (f.kind || 'msg') &&
+      (x.q || '') === (f.q || '') && (x.text || '') === (f.text || '') && x.ts === f.ts);
+  }
+  // 收藏入口（我的收藏 / TA 收藏）：交互卡片 / 信箱回信 / 朋友圈动态 三种新条目共用，
+  // 返回是否新增成功（false=已收藏过）。聊天消息收藏仍走气泡菜单原逻辑，不经这里。
+  window.addMyFavItem = function (f) {
+    const fav = getFav();
+    if (favDup(fav, f)) return false;
+    fav.push(Object.assign({ by: 'me' }, f));
+    saveFav(fav);
+    return true;
+  };
+  window.addTaFavItem = function (f) {
+    const fav = getFav();
+    if (favDup(fav, f)) return false;
+    fav.push(Object.assign({ by: 'ta' }, f));
+    saveFav(fav);
+    return true;
+  };
+  // 互动卡片收藏快照：问题 + 我的回答 + 联系人的回复（邀请卡只有问题 + TA 的回应）
+  function cardSnapshot(rec) {
+    if (!rec) return null;
+    let q = '', mine = '', ta = '', special = rec.special;
+    if (special === 'ask-choose') { q = rec.choiceQuestion || ''; mine = rec.choiceAnswer || ''; ta = rec.choiceReply || ''; }
+    else if (special === 'ask-curious') { q = rec.curiousQuestion || ''; mine = rec.curiousAnswer || ''; ta = rec.curiousReply || ''; }
+    else if (special === 'ask-roast') { q = rec.roastText || ''; mine = rec.roastAnswer || ''; ta = rec.roastReply || ''; }
+    else if (special === 'ask-card') { q = rec.askQuestion || ''; mine = rec.askAnswer || ''; ta = rec.askReply || ''; }
+    else if (special === 'invite') { q = rec.inviteContent || ''; ta = rec.inviteAnswer || ''; }
+    else return null;
+    return { kind: 'card', special: special, q: q, mine: mine, ta: ta, ts: rec.ts || Date.now() };
+  }
+  // 我点击互动卡片上的收藏按钮：整卡收藏到我的收藏
+  window.favCardFromMsg = function (idx) {
+    const rec = msgs[idx];
+    if (!rec) return;
+    const f = cardSnapshot(rec);
+    if (!f) return;
+    if (window.addMyFavItem(f)) toast('已收藏互动卡片');
+    else toast('已收藏过这张卡片');
+  };
+  // 互动卡片收藏按钮 HTML（问题+我的回答+联系人的回复 一整个卡片，点收藏进桌面收藏页）
+  function favHeartHtml() {
+    return '<button class="msg-fav-heart" title="收藏整张互动卡片"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>收藏</button>';
+  }
+  // TA 收藏整张互动卡片（30% 概率，回答后随 TA 的回应一起判定）
+  function taFavCard(rec) {
+    if (!rec || Math.random() * 100 >= 30) return;
+    const f = cardSnapshot(rec);
+    if (!f) return;
+    if (window.addTaFavItem(f)) setTimeout(() => toast('TA 收藏了你们的互动卡片'), 1200);
+  }
 
   function closeMsgActions() {
     if (msgActions) msgActions.hidden = true;
@@ -2877,41 +3104,105 @@ function partialRetractMsg(msgEl, side) {
       return;
     }
     list.forEach(f => renderFavItem(f));
+    // 互动卡片类型名 / 信箱回信 / 朋友圈动态 的分类标签
+    const FAV_KIND_LABEL = {
+      'ask-choose': '小问题', 'ask-curious': '好奇', 'ask-roast': '吐槽',
+      'ask-card': '问问TA', 'invite': '邀请TA'
+    };
+    // 信箱回信/朋友圈正文：图片/表情 dataURL 按缩略图渲染（与信箱 renderBody 一致）
+    function favTextHtml(s) {
+      const str = String(s || '');
+      let html = '';
+      const re = /((?:sticker|image):)?(data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+)/g;
+      let last = 0, mm;
+      while ((mm = re.exec(str))) {
+        html += escTxt(str.slice(last, mm.index));
+        html += '<img class="fav-item-img" src="' + mm[2] + '" alt="图片">';
+        last = mm.index + mm[0].length;
+      }
+      html += escTxt(str.slice(last));
+      return html;
+    }
     function renderFavItem(f) {
+      const kind = f.kind || 'msg';
       const m = document.createElement('div');
       m.className = 'msg ' + (f.side === 'out' ? 'msg-out' : 'msg-in');
       const timeHtml = f.ts ? '<span class="msg-time">' + fmtTime(f.ts) + '</span>' : '';
       const side = '<div class="msg-side"><div class="msg-av"></div>' + timeHtml + '</div>';
-      m.innerHTML = f.side === 'out'
-        ? '<div class="msg-bubble"></div>' + side
-        : side + '<div class="msg-bubble"></div>';
-      const b = m.querySelector('.msg-bubble');
-      // 图片/表情：按类型或按 dataURL 内容识别（兼容旧数据收藏时 type 误存为 text 的乱码）
-      const isImg = f.type === 'sticker' || f.type === 'image' || (typeof f.text === 'string' && f.text.indexOf('data:') === 0);
-      if (isImg) {
-        b.style.padding = '6px';
-        b.innerHTML = '<img class="msg-img" src="' + f.text + '" alt="表情">';
+      if (kind === 'card') {
+        // 互动卡片收藏：问题 + 我的回答 + 联系人的回复（一整个卡片）
+        const label = FAV_KIND_LABEL[f.special] || '互动卡片';
+        let html = '<div class="fav-item-card">' +
+          '<span class="fav-item-tag">互动卡片 · ' + label + '</span>' +
+          '<div class="fav-item-q">' + (f.special === 'invite' ? '邀请TA · ' : '') + escTxt(f.q || '') + '</div>';
+        if (f.mine) html += '<div class="fav-item-a">✓ 我：' + escTxt(f.mine) + '</div>';
+        if (f.ta) html += '<div class="fav-item-r">TA：' + escTxt(f.ta) + '</div>';
+        if (!f.mine && !f.ta) html += '<div class="fav-item-tip">等待回应…</div>';
+        html += '</div>';
+        m.innerHTML = html + side;
+        fillAvatar(m.querySelector('.msg-av'), 'avatar-user');
+      } else if (kind === 'mail') {
+        // 信箱回信收藏
+        let html = '<div class="fav-item-card">' +
+          '<span class="fav-item-tag">信箱回信' + (f.title ? ' · 来信《' + escTxt(f.title) + '》' : '') + '</span>' +
+          '<div class="fav-item-body">' + favTextHtml(f.text) + '</div>' +
+          '</div>';
+        m.innerHTML = html + side;
+        fillAvatar(m.querySelector('.msg-av'), 'avatar-user');
+      } else if (kind === 'feed') {
+        // 朋友圈动态收藏
+        let html = '<div class="fav-item-card">' +
+          '<span class="fav-item-tag">朋友圈动态</span>' +
+          (f.text ? '<div class="fav-item-body">' + favTextHtml(f.text) + '</div>' : '') +
+          ((f.imgs && f.imgs.length) ? '<div class="fav-item-imgs">' + f.imgs.map(u => '<img src="' + attrEsc(u) + '" alt="图片">').join('') + '</div>' : '') +
+          '</div>';
+        m.innerHTML = html + side;
+        fillAvatar(m.querySelector('.msg-av'), 'avatar-user');
       } else {
-        b.innerHTML = '<span style="opacity:.85">' + f.text + '</span>';
+        // 聊天消息收藏（原逻辑）
+        m.innerHTML = f.side === 'out'
+          ? '<div class="msg-bubble"></div>' + side
+          : side + '<div class="msg-bubble"></div>';
+        const b = m.querySelector('.msg-bubble');
+        // 图片/表情：按类型或按 dataURL 内容识别（兼容旧数据收藏时 type 误存为 text 的乱码）
+        const isImg = f.type === 'sticker' || f.type === 'image' || (typeof f.text === 'string' && f.text.indexOf('data:') === 0);
+        if (isImg) {
+          b.style.padding = '6px';
+          b.innerHTML = '<img class="msg-img" src="' + f.text + '" alt="表情">';
+        } else {
+          b.innerHTML = '<span style="opacity:.85">' + f.text + '</span>';
+        }
+        // 收藏消息的情绪字卡
+        if (f.mood && f.mood.length) {
+          f.mood.forEach(md => {
+            if (md.tag === '交流意图') {
+              b.innerHTML += '<div class="msg-mood msg-intent"><span class="msg-mood-tag">' + md.tag + '</span><span>' + md.label + '</span></div>';
+            } else {
+              b.innerHTML += '<div class="msg-mood"><span class="msg-mood-tag">' + md.tag + '</span><span>' + md.label + '</span></div>';
+            }
+          });
+        }
+        fillAvatar(m.querySelector('.msg-av'), f.side === 'out' ? 'avatar-user' : 'avatar-partner');
       }
-      // 收藏消息的情绪字卡
-      if (f.mood && f.mood.length) {
-        f.mood.forEach(md => {
-          if (md.tag === '交流意图') {
-            b.innerHTML += '<div class="msg-mood msg-intent"><span class="msg-mood-tag">' + md.tag + '</span><span>' + md.label + '</span></div>';
-          } else {
-            b.innerHTML += '<div class="msg-mood"><span class="msg-mood-tag">' + md.tag + '</span><span>' + md.label + '</span></div>';
-          }
-        });
+      // 朋友圈收藏的图片点击放大
+      if (kind === 'feed') {
+        m.querySelectorAll('.fav-item-imgs img').forEach(im => im.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (window.viewChatImage) window.viewChatImage(im.src);
+        }));
       }
-      fillAvatar(m.querySelector('.msg-av'), f.side === 'out' ? 'avatar-user' : 'avatar-partner');
+      // 收藏条目内容匹配（按 kind + 内容 + 时间，getFav() 每次 JSON.parse 新对象，
+      // 必须按值匹配不能 indexOf 引用）
+      function matchFav(x) {
+        return (x.kind || 'msg') === kind &&
+          (x.q || '') === (f.q || '') && (x.text || '') === (f.text || '') && x.ts === f.ts;
+      }
       // 长按删除收藏（600ms）
       let pressTimer = null;
       m.addEventListener('touchstart', (e) => {
         pressTimer = setTimeout(() => {
           const fav2 = getFav();
-          // v3.5.131：按内容匹配——getFav() 每次 JSON.parse 新对象，indexOf 恒 -1（删除失效）
-          const idx2 = fav2.findIndex(x => x.side === f.side && x.text === f.text && x.ts === f.ts);
+          const idx2 = fav2.findIndex(matchFav);
           if (idx2 >= 0) {
             if (window.openModal) {
               window.openModal('删除这条收藏？', '', () => {
@@ -2928,8 +3219,7 @@ function partialRetractMsg(msgEl, side) {
       m.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         const fav2 = getFav();
-        // v3.5.131：按内容匹配（indexOf 恒 -1）
-        const idx2 = fav2.findIndex(x => x.side === f.side && x.text === f.text && x.ts === f.ts);
+        const idx2 = fav2.findIndex(matchFav);
         if (idx2 >= 0 && window.openModal) {
           window.openModal('删除这条收藏？', '', () => {
             fav2.splice(idx2, 1);

@@ -348,7 +348,7 @@
         cb(parseInt(sliderRange.value, 10));
         return;
       }
-      if (pillsEl && !pillsEl.hidden) {
+      if (pillsEl && !pillsEl.hidden && (pillVal !== null || noInput)) {
         if (pillsOnOk) pillsOnOk(pillVal);
         cb(pillVal);
         return;
@@ -1413,12 +1413,19 @@
       saveDeskLayout();
       toast(dir === 'up' ? '已上移' : '已下移');
     };
-    // 组装菜单选项：背景操作 + （装修模式点卡片时）摆放操作
-    // v3.6.x：遮罩浓度滑块 0~85%（替换原四档 pills）
-    const pills = [];
+// 组装菜单选项：背景操作 + （装修模式点卡片时）摆放操作
+  // v3.6.x：遮罩浓度滑块 0~85%（替换原四档 pills）
+  // 嵌套弹窗必须延迟到当前弹窗关闭后再开：okBtn 的 finally close() 会立刻关掉
+  // 当前 openModal 并清空 cb（fire() 对 cb===null 直接 return），同步嵌套必然闪关。
+  const openCardMenuNext = (t, v, fn, opts) => {
+    setTimeout(() => { if (window.openModal) window.openModal(t, v, fn, opts); }, 0);
+  };
+  const pills = [];
     pills.push({ label: img ? '更换图片' : '上传图片', value: '1' });
     if (img) pills.push({ label: '清除图片', value: '2' });
     if (img) pills.push({ label: '遮罩浓度', value: 'mask' });
+    if (img) pills.push({ label: maskPctOf(type) === 0 ? '原图直出 ✓' : '原图直出', value: 'origin' });
+    pills.push({ label: '组件透明度', value: 'opacity' });
     if (widgetEl) {
       pills.push({ label: '上移', value: 'up' });
       pills.push({ label: '下移', value: 'down' });
@@ -1436,18 +1443,18 @@
         toast('已恢复默认');
       } else if (v === 'mask') {
         const cur = maskPctOf(type);
-        window.openModal('遮罩浓度', '', (sv) => {
+        openCardMenuNext('遮罩浓度', '', (sv) => {
           if (sv === '__reset__') { store.set('card-bg-mask-' + type, '50'); applyCardBg(type); syncCardBgUIs(); toast('已恢复默认 50%'); return; }
           const pct = parseInt(sv, 10);
           if (isNaN(pct)) return;
           store.set('card-bg-mask-' + type, String(pct));
           applyCardBg(type);
           syncCardBgUIs();
-          toast('遮罩浓度 ' + pct + '%');
+          toast(pct === 0 ? '已切换为原图直出' : '遮罩浓度 ' + pct + '%');
         }, {
           noInput: true,
           slider: {
-            min: 0, max: 85, step: 1, value: cur, label: '拖动调整遮罩浓度', unit: '%',
+            min: 0, max: 85, step: 1, value: cur, label: '拖动调整遮罩浓度（0 为原图直出）', unit: '%',
             onChange: (val) => {
               const a = val / 100;
               const els2 = document.querySelectorAll(cardBgSel(type));
@@ -1458,6 +1465,32 @@
                   : 'url("' + img + '")';
               });
             },
+          },
+          pills: [
+            { label: '原图直出', value: '0' },
+            { label: '恢复默认', value: '__reset__' },
+          ],
+        });
+      } else if (v === 'origin') {
+        store.set('card-bg-mask-' + type, '0');
+        applyCardBg(type);
+        syncCardBgUIs();
+        toast('已切换为原图直出');
+      } else if (v === 'opacity') {
+        const n = parseInt(store.get('widget-opacity'), 10);
+        const curOp = !isNaN(n) ? Math.max(0, Math.min(100, n)) : 100;
+        openCardMenuNext('组件透明度', '', (sv) => {
+          if (sv === '__reset__') { store.remove('widget-opacity'); applyWidgetOpacity(100); toast('已恢复不透明'); return; }
+          const pct = parseInt(sv, 10);
+          if (isNaN(pct)) return;
+          store.set('widget-opacity', String(pct));
+          applyWidgetOpacity(pct);
+          toast('组件透明度 ' + pct + '%');
+        }, {
+          noInput: true,
+          slider: {
+            min: 0, max: 100, step: 1, value: curOp, label: '拖动调整组件透明度', unit: '%',
+            onChange: (val) => { document.documentElement.style.setProperty('--widget-opacity', String(val / 100)); },
           },
           pills: [{ label: '恢复默认', value: '__reset__' }],
         });
@@ -1531,11 +1564,14 @@
     const target = deskPageCount();
     const slides = Array.prototype.slice.call(pagesBox.querySelectorAll('.page-slide'));
     while (slides.length > target) {
+      const delIdx = slides.length - 1;
       const s = slides.pop();
       if (s && s.parentNode) {
         // 该页上的组件移回隐藏池（不随页面删除丢失）
         const pool = ensureWidgetPool();
         s.querySelectorAll('[data-desk-widget]').forEach(node => pool.appendChild(node));
+        // 该页上的图片组件直接删除（图片不跨页保留，避免索引错位）
+        removeDeskImagesOnPage(delIdx);
         s.parentNode.removeChild(s);
       }
     }
@@ -1675,6 +1711,11 @@
   }
   buildDeskPages();
   document.addEventListener('contact-switched', buildDeskPages);
+  // v3.6.x：图片组件——启动渲染 + 点击/查看器初始化 + 切联系人重渲染
+  renderDeskImages();
+  setupDeskImageClick();
+  setupDeskImageViewerClose();
+  document.addEventListener('contact-switched', renderDeskImages);
 
   // ===== v3.6.x：卡片自由摆放（装修模式：上移/下移/移除；新增页可添加卡片） =====
   // 组件 id 列表（对应 template.html 中 [data-desk-widget]）；组件节点唯一，
@@ -1788,6 +1829,18 @@
       item.appendChild(name); item.appendChild(where); item.appendChild(btn);
       box.appendChild(item);
     });
+    // v3.6.x：图片组件——可多个，上传新图片到本页
+    const imgItem = document.createElement('div');
+    imgItem.className = 'desk-lib-item';
+    const imgName = document.createElement('div');
+    imgName.textContent = '图片（上传新图片）';
+    imgName.style.cssText = 'flex:1';
+    const imgBtn = document.createElement('button');
+    imgBtn.className = 'dl-btn';
+    imgBtn.textContent = '上传并添加';
+    imgBtn.addEventListener('click', () => { addDeskImage(pageIdx); lib.remove(); });
+    imgItem.appendChild(imgName); imgItem.appendChild(imgBtn);
+    box.appendChild(imgItem);
     const close = document.createElement('button');
     close.textContent = '关闭';
     close.style.cssText = 'width:100%;margin-top:8px;padding:10px;border:1px solid #eee;border-radius:10px;background:#fafafa;font-size:13px;cursor:pointer;font-family:inherit';
@@ -1795,6 +1848,140 @@
     box.appendChild(close);
     lib.appendChild(box);
     document.body.appendChild(lib);
+  }
+
+  // ===== v3.6.x：桌面图片组件（可多个，每页可放多张不同图片） =====
+  // 存储：desk-images（localStorage，元数据数组 [{id,page,addedAt}]）
+  //       desk-image-src-<id>（IDB，图片 dataURL，大数据）
+  // 组件节点用 [data-desk-image="<id>"] 标识，不参与 desk-layout（与现有组件系统解耦）
+  function loadDeskImagesMeta() {
+    try { const v = JSON.parse(store.get('desk-images') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+  }
+  function saveDeskImagesMeta(arr) { store.set('desk-images', JSON.stringify(arr)); }
+  // 渲染所有图片组件到对应页
+  function renderDeskImages() {
+    if (!pagesBox) return;
+    pagesBox.querySelectorAll('[data-desk-image]').forEach(n => n.remove());
+    const meta = loadDeskImagesMeta();
+    const slides = pagesBox.querySelectorAll('.page-slide');
+    meta.forEach(m => {
+      const slide = slides[m.page];
+      if (!slide) return;
+      const node = document.createElement('div');
+      node.className = 'desk-image-widget';
+      node.dataset.deskImage = m.id;
+      const img = document.createElement('img');
+      node.appendChild(img);
+      const addBtn = slide.querySelector('.desk-page-add');
+      if (addBtn) slide.insertBefore(node, addBtn); else slide.appendChild(node);
+      const srcKey = window.activePrefix() + ':desk-image-src-' + m.id;
+      if (window.idbGet) {
+        window.idbGet(srcKey).then(src => { if (src && node.dataset.deskImage === m.id) img.src = src; });
+      } else {
+        const src = store.get('desk-image-src-' + m.id);
+        if (src) img.src = src;
+      }
+    });
+  }
+  // 上传新图片到指定页
+  function addDeskImage(pageIdx) {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    input.onchange = () => {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        compressImage(reader.result, 1280).then(data => {
+          if (!data) { toast('图片过大或格式不支持，请换一张'); return; }
+          const id = 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+          const meta = loadDeskImagesMeta();
+          meta.push({ id: id, page: pageIdx, addedAt: Date.now() });
+          saveDeskImagesMeta(meta);
+          const srcKey = window.activePrefix() + ':desk-image-src-' + id;
+          if (window.idbSet) window.idbSet(srcKey, data); else store.set('desk-image-src-' + id, data);
+          renderDeskImages();
+          toast('已添加图片');
+        });
+      };
+      reader.readAsDataURL(f);
+    };
+    input.click();
+  }
+  // 换图
+  function changeDeskImage(id) {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    input.onchange = () => {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        compressImage(reader.result, 1280).then(data => {
+          if (!data) { toast('图片过大或格式不支持'); return; }
+          const srcKey = window.activePrefix() + ':desk-image-src-' + id;
+          if (window.idbSet) window.idbSet(srcKey, data); else store.set('desk-image-src-' + id, data);
+          renderDeskImages();
+          toast('已更换图片');
+        });
+      };
+      reader.readAsDataURL(f);
+    };
+    input.click();
+  }
+  // 删除图片组件
+  function removeDeskImage(id) {
+    const meta = loadDeskImagesMeta().filter(m => m.id !== id);
+    saveDeskImagesMeta(meta);
+    try { if (window.idbDelete) window.idbDelete(window.activePrefix() + ':desk-image-src-' + id); } catch (e) {}
+    try { store.remove('desk-image-src-' + id); } catch (e) {}
+    renderDeskImages();
+    toast('已删除图片');
+  }
+  // 删除指定页上的所有图片（删页时调用，避免索引错位）
+  function removeDeskImagesOnPage(pageIdx) {
+    const meta = loadDeskImagesMeta();
+    const toRemove = meta.filter(m => m.page === pageIdx);
+    const remain = meta.filter(m => m.page !== pageIdx);
+    saveDeskImagesMeta(remain);
+    toRemove.forEach(m => {
+      try { if (window.idbDelete) window.idbDelete(window.activePrefix() + ':desk-image-src-' + m.id); } catch (e) {}
+      try { store.remove('desk-image-src-' + m.id); } catch (e) {}
+    });
+  }
+  // 图片组件点击：装修模式 → 菜单（换图/删除），非装修 → 全屏查看
+  function setupDeskImageClick() {
+    if (!pagesBox) return;
+    pagesBox.addEventListener('click', (e) => {
+      const widget = e.target.closest('[data-desk-image]');
+      if (!widget) return;
+      const id = widget.dataset.deskImage;
+      const phone = document.getElementById('page-phone');
+      const isDecor = phone && phone.classList.contains('decor-on');
+      if (isDecor) {
+        e.stopPropagation();
+        if (!window.openModal) return;
+        window.openModal('图片组件', '', (v) => {
+          if (v === '1') changeDeskImage(id);
+          else if (v === '2') removeDeskImage(id);
+        }, { noInput: true, pills: [{ label: '更换图片', value: '1' }, { label: '删除图片', value: '2' }] });
+      } else {
+        const img = widget.querySelector('img');
+        if (!img || !img.src) return;
+        const viewer = document.getElementById('desk-image-viewer');
+        const viewerImg = document.getElementById('desk-image-viewer-img');
+        if (viewer && viewerImg) { viewerImg.src = img.src; viewer.hidden = false; }
+      }
+    });
+  }
+  // 关闭全屏查看器
+  function setupDeskImageViewerClose() {
+    const viewer = document.getElementById('desk-image-viewer');
+    if (!viewer) return;
+    const closeBtn = document.getElementById('desk-image-viewer-close');
+    const close = () => { viewer.hidden = true; const vi = document.getElementById('desk-image-viewer-img'); if (vi) vi.src = ''; };
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    viewer.addEventListener('click', (e) => { if (e.target === viewer) close(); });
   }
 
   // v3.6.x：装修模式装饰条「+ 添加卡片」——找回被移出的桌面组件，加到当前页

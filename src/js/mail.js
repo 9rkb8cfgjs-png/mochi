@@ -219,6 +219,11 @@
       showPage('page-mail');
       if (window.chatAddSystem) window.chatAddSystem('你给 ' + name + ' 回了一封信');
       toast('回信已寄出');
+      // v3.6.x：TA 收藏我的回信（30% 概率，与聊天消息收藏一致）
+      if (Math.random() * 100 < 30 && window.addTaFavItem) {
+        window.addTaFavItem({ kind: 'mail', title: l.tt || '', text: val, ts: Date.now() });
+        setTimeout(() => toast('TA 收藏了你的回信'), 1200);
+      }
     }
   }
   // ===== TA 回信计划（持久化）：回信命中概率后，TA 的回信写入本地计划 =====

@@ -181,8 +181,137 @@
     });
   }
   function clearResult() {
+    // v3.7.x：切换模式/张数时取消进行中的抽牌流程，避免旧流程把结果写进已清空的舞台
+    if (window.__divActiveDraw) { try { window.__divActiveDraw(); } catch (e) {} window.__divActiveDraw = null; }
     const r = document.getElementById('div-result');
     if (r) r.innerHTML = '<div class="div-result-empty">点击下方按钮开始抽牌</div>';
+  }
+
+  // ---- v3.7.x：自动发送开关（每个联系人独立记忆，走动态 store） ----
+  function autoSendGet() { try { return store.get('divine-send-auto') === '1'; } catch (e) { return false; } }
+  function autoSendSet(on) { try { store.set('divine-send-auto', on ? '1' : '0'); } catch (e) {} }
+  function syncAutoToggle() {
+    const el = document.getElementById('div-auto-send');
+    if (el) el.checked = autoSendGet();
+  }
+
+  // ---- v3.7.x：星言式抽牌流程（洗牌动画 → 两行牌面自由滑动 → 点击抽取） ----
+  // 桌面占卜页与聊天页占卜半框共用；返回 cancel 函数（连点/切换设置时取消进行中的流程）
+  function startDivineDraw(stageEl, opts) {
+    const deck = shuf(opts.deck || []);
+    const count = Math.max(1, parseInt(opts.count, 10) || 1);
+    const labels = opts.labels || [];
+    const isTarot = !!opts.tarot;
+    const icons = isTarot ? TAROT_ICONS : LENO_ICONS;
+    const onDone = opts.onDone || function () {};
+    if (!stageEl || !deck.length) return function () {};
+    let cancelled = false;
+    const cancel = function () { cancelled = true; };
+    const results = [];
+    let remaining = deck.slice();
+    stageEl.innerHTML = '';
+    // ① 洗牌动画：卡片四散飞舞后收拢
+    const box = document.createElement('div');
+    box.className = 'div-shuf-box';
+    stageEl.appendChild(box);
+    const shufCount = Math.min(remaining.length + 6, 20);
+    const shufCards = [];
+    for (let i = 0; i < shufCount; i++) {
+      const el = document.createElement('div');
+      el.className = 'div-shuf-card';
+      el.textContent = '✦';
+      const size = 50 + Math.floor(Math.random() * 22);
+      const x = (Math.random() - 0.5) * 150;
+      const y = (Math.random() - 0.5) * 80;
+      const rot = (Math.random() - 0.5) * 60;
+      el.style.width = size + 'px';
+      el.style.height = Math.round(size * 1.55) + 'px';
+      el.style.transform = 'translate(' + x + 'px,' + y + 'px) rotate(' + rot + 'deg)';
+      el.style.opacity = (0.35 + Math.random() * 0.4).toFixed(2);
+      el.style.zIndex = shufCount - i;
+      box.appendChild(el);
+      shufCards.push(el);
+    }
+    requestAnimationFrame(function () {
+      shufCards.forEach(function (el, i) {
+        setTimeout(function () {
+          const px = (Math.random() - 0.5) * 160;
+          const py = (Math.random() - 0.5) * 90;
+          const pr = (Math.random() - 0.5) * 90;
+          el.style.transform = 'translate(' + px + 'px,' + py + 'px) rotate(' + pr + 'deg) scale(.9)';
+          el.style.opacity = (0.5 + Math.random() * 0.5).toFixed(2);
+        }, 50 + i * 50);
+      });
+      setTimeout(function () {
+        shufCards.forEach(function (el, i) {
+          const offX = (i - shufCount / 2) * 1.3;
+          const offY = (i - shufCount / 2) * 1.1;
+          el.style.transform = 'translate(' + offX + 'px,' + offY + 'px) rotate(0deg) scale(1)';
+          el.style.opacity = '0.92';
+          el.style.zIndex = shufCount - i;
+        });
+      }, 950);
+    });
+    // ② 洗牌完成 → 展示两行牌面（每行横向自由滑动），点击牌背抽取
+    setTimeout(function () {
+      if (cancelled) return;
+      box.innerHTML = '';
+      const hint = document.createElement('div');
+      hint.className = 'div-pile-hint';
+      stageEl.appendChild(hint);
+      const drawnRow = document.createElement('div');
+      drawnRow.className = 'div-drawn-row';
+      stageEl.appendChild(drawnRow);
+      const row1 = document.createElement('div'); row1.className = 'div-card-row';
+      const row2 = document.createElement('div'); row2.className = 'div-card-row';
+      stageEl.appendChild(row1); stageEl.appendChild(row2);
+      const updateHint = function () {
+        if (cancelled) return;
+        if (!remaining.length) hint.textContent = '牌库已空';
+        else hint.textContent = '左右滑动牌面 · 点击牌背抽取 · 剩 ' + remaining.length + ' 张 · 已抽 ' + results.length + ' / ' + count + ' 张';
+      };
+      const renderGrid = function () {
+        row1.innerHTML = ''; row2.innerHTML = '';
+        const total = remaining.length;
+        if (!total) { updateHint(); return; }
+        const half = Math.ceil(total / 2);
+        for (let i = 0; i < total; i++) {
+          const el = document.createElement('div');
+          el.className = 'div-pile-card';
+          el.textContent = '✦';
+          el.addEventListener('click', function () { pick(i); });
+          (i < half ? row1 : row2).appendChild(el);
+        }
+        updateHint();
+      };
+      const pick = function (idx) {
+        if (cancelled) return;
+        if (idx < 0 || idx >= remaining.length) return;
+        if (results.length >= count) return;
+        const c = remaining[idx];
+        remaining = remaining.slice(0, idx).concat(remaining.slice(idx + 1));
+        let rev = false, meaning = c.meaning;
+        if (isTarot) { rev = Math.random() > 0.5; meaning = rev ? c.neg : c.pos; }
+        results.push({ name: c.name, icon: c.icon, rev: rev, meaning: meaning, detail: c.detail || '' });
+        renderGrid();
+        // 已抽牌：翻牌动画展示（图标 + 牌名 + 正/逆位 + 位置标签）
+        const dc = document.createElement('div');
+        dc.className = 'div-drawn-card';
+        dc.innerHTML =
+          '<div class="ddc-face">' +
+          '<div class="div-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (icons[c.icon] || '') + '</svg></div>' +
+          '<div class="ddc-name">' + c.name + '</div>' +
+          (isTarot ? '<div class="ddc-pos' + (rev ? ' ddc-down' : ' ddc-up') + '">' + (rev ? '逆位' : '正位') + '</div>' : '') +
+          '</div>' +
+          (labels[results.length - 1] ? '<div class="ddc-label">' + labels[results.length - 1] + '</div>' : '');
+        drawnRow.appendChild(dc);
+        if (results.length >= count || !remaining.length) {
+          setTimeout(function () { if (!cancelled) onDone(results); }, 550);
+        }
+      };
+      renderGrid();
+    }, 1750);
+    return cancel;
   }
 
   function shuf(a) {
@@ -351,40 +480,42 @@
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
   }
 
-  // 抽牌
+  // 抽牌（v3.7.x：洗牌动画 → 两行牌面滑动抽取 → 结果）
   const drawBtn = document.getElementById('div-draw');
-  let drawTimer = null;
   if (drawBtn) {
     drawBtn.addEventListener('click', () => {
       const r = document.getElementById('div-result');
       if (!r) return;
-      // v3.5.130：连点守卫——旧轮未完成则取消，避免重复记录/结果错乱
-      if (drawTimer) clearTimeout(drawTimer);
+      // 连点/重新抽牌：先取消进行中的流程再重开
+      if (window.__divActiveDraw) { try { window.__divActiveDraw(); } catch (e) {} window.__divActiveDraw = null; }
       const question = ((document.getElementById('div-question') || {}).value || '').trim();
-      // v3.5.130：快照点击时的模式/张数——900ms 内切换设置不再影响本次结果
+      // v3.5.130：快照点击时的模式/张数——流程期间切换设置不再影响本次结果
       const snapMode = mode, snapCount = count;
-      // 洗牌动画：先显示洗牌中，再翻出结果
-      r.innerHTML = '<div class="div-result-empty">🔮 洗牌中…</div>';
-      drawTimer = setTimeout(() => {
-        drawTimer = null;
-        const deck = snapMode === 'tarot' ? TAROT : LENO;
-        const labels = (MODE_LABELS[snapMode] && MODE_LABELS[snapMode][snapCount]) || [];
-        const cards = shuf(deck).slice(0, snapCount).map(c => {
-          const out = { name: c.name, icon: c.icon, rev: false, meaning: c.meaning, detail: c.detail || '' };
-          if (snapMode === 'tarot') {
-            out.rev = Math.random() > 0.5;
-            out.meaning = out.rev ? c.neg : c.pos;
+      const deck = snapMode === 'tarot' ? TAROT : LENO;
+      if (!deck.length) { r.innerHTML = '<div class="div-result-empty">占卜牌库加载中…</div>'; return; }
+      const labels = (MODE_LABELS[snapMode] && MODE_LABELS[snapMode][snapCount]) || [];
+      drawBtn.textContent = '抽牌中…';
+      window.__divActiveDraw = startDivineDraw(r, {
+        deck: deck,
+        count: snapCount,
+        labels: labels,
+        tarot: snapMode === 'tarot',
+        onDone: (cards) => {
+          window.__divActiveDraw = null;
+          drawBtn.textContent = '重新抽牌';
+          const summary = buildSummary(cards, snapMode, question);
+          renderDrawResult(cards, snapMode, question, summary);
+          // 保存记录（v3.7.x：每个联系人桌面独立，store 动态绑定当前桌面）
+          const list = histLoad();
+          list.unshift({ ts: Date.now(), mode: snapMode, count: snapCount, question: question, cards: cards, summary: summary });
+          histSave(list);
+          renderHistory();
+          // v3.7.x：自动发送开关——开启后抽牌完成自动把结果发到聊天
+          if (autoSendGet()) {
+            setTimeout(() => { sendToChat(snapMode, cards, summary, question); }, 500);
           }
-          return out;
-        });
-        const summary = buildSummary(cards, snapMode, question);
-        renderDrawResult(cards, snapMode, question, summary);
-        // 保存记录
-        const list = histLoad();
-        list.unshift({ ts: Date.now(), mode: snapMode, count: snapCount, question: question, cards: cards, summary: summary });
-        histSave(list);
-        renderHistory();
-      }, 900);
+        }
+      });
     });
   }
 
@@ -406,4 +537,26 @@
       if (phonePage) phonePage.hidden = false;
     });
   }
+
+  // ---- v3.7.x：打开占卜页即渲染历史（原实现只在抽牌后渲染，历史区空白看不到记录）；
+  // 多桌面：切换联系人后重新渲染，记录随当前桌面独立展示 ----
+  function renderHistOnOpen() {
+    try { renderHistory(); } catch (e) {}
+    try { syncAutoToggle(); } catch (e) {}
+  }
+  renderHistOnOpen();
+  document.addEventListener('contact-switched', renderHistOnOpen);
+  // 自动发送开关（桌面占卜页）
+  const autoEl = document.getElementById('div-auto-send');
+  if (autoEl) autoEl.addEventListener('change', () => { autoSendSet(autoEl.checked); });
+
+  // ---- v3.7.x：暴露给聊天页占卜半框共用（chat.js 在 divination.js 之前加载，
+  // 半框只在点击时调用这些 API，运行时均已就绪） ----
+  window.startDivineDraw = startDivineDraw;
+  window.divineHistLoad = histLoad;
+  window.divineHistSave = histSave;
+  window.divineAutoGet = autoSendGet;
+  window.divineAutoSet = autoSendSet;
+  window.divineBuildSummary = buildSummary;
+  window.divineSendResult = function (m, cards, summary, question) { sendToChat(m, cards, summary, question); };
 })();

@@ -327,6 +327,29 @@
 /* 收藏页 */
 .fav-body { padding:6px 18px; }
 .fav-empty { text-align:center; color:#c0c0c0; font-size:13px; padding:50px 0; }
+/* 收藏页：互动卡片 / 信箱回信 / 朋友圈动态 条目（卡片式，左侧内容右侧头像时间） */
+.fav-item-card {
+  flex:1; min-width:0; max-width:100%;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; padding:12px 14px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+}
+.fav-item-tag {
+  display:inline-block; font-size:10px; color:#999;
+  background:rgba(0,0,0,.05); border-radius:99px; padding:2px 8px;
+  margin-bottom:8px;
+}
+.fav-item-q { font-size:14px; font-weight:700; color:var(--ink); line-height:1.5; margin-bottom:6px; word-break:break-word; }
+.fav-item-a { font-size:12px; color:#3b7a4e; font-weight:600; }
+.fav-item-r { font-size:12px; color:var(--ink); opacity:.75; margin-top:4px; line-height:1.5; word-break:break-word; }
+.fav-item-tip { font-size:11px; color:var(--muted); margin-top:6px; }
+.fav-item-body { font-size:13px; color:var(--ink); line-height:1.6; word-break:break-word; }
+.fav-item-body .fav-item-img {
+  display:inline-block; width:52px; height:52px; object-fit:cover;
+  border-radius:8px; margin:2px 4px 0 0; vertical-align:middle;
+}
+.fav-item-imgs { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.fav-item-imgs img { width:64px; height:64px; object-fit:cover; border-radius:8px; }
 
 /* 纪念页 */
 .mem-scroll { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; padding:0 18px; }
@@ -623,6 +646,105 @@
   background:transparent; color:#bbb; font-size:11px; cursor:pointer; padding:0;
 }
 .div-h-del:active { color:#e05555; }
+
+/* v3.7.x：开关行（自动发送到聊天）——桌面占卜页 + 聊天占卜半框共用 */
+.div-switch-row {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.div-switch-row .div-switch-t { font-size:13px; font-weight:600; color:var(--ink); }
+.div-switch { position:relative; width:44px; height:26px; flex-shrink:0; }
+.div-switch input {
+  position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; z-index:2;
+}
+.div-switch-knob {
+  position:absolute; inset:0; border-radius:99px; background:rgba(0,0,0,.18);
+  transition:background .2s ease;
+}
+.div-switch-knob::after {
+  content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%;
+  background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.28); transition:transform .2s ease;
+}
+.div-switch input:checked + .div-switch-knob { background:var(--ink); }
+.div-switch input:checked + .div-switch-knob::after { transform:translateX(18px); }
+#chat-divine-body .div-chat-switch { margin-bottom:10px; }
+#chat-divine-body .div-chat-switch .div-switch-t { font-size:12px; }
+
+/* v3.7.x：星言式抽牌舞台（洗牌动画 → 两行牌面滑动抽取 → 已抽展示） */
+.div-shuf-box { position:relative; height:170px; margin:6px 0 8px; }
+.div-shuf-card {
+  position:absolute; left:50%; top:50%;
+  border-radius:8px; background:#fff; border:1.5px solid rgba(0,0,0,.22);
+  display:flex; align-items:center; justify-content:center;
+  font-size:17px; color:rgba(0,0,0,.4);
+  will-change:transform,opacity; transition:transform .45s ease, opacity .45s ease;
+}
+.div-pile-hint {
+  text-align:center; font-size:11px; color:var(--muted); margin:2px 0 6px;
+}
+.div-card-row {
+  display:flex; gap:7px; overflow-x:auto; padding:6px 2px;
+  scrollbar-width:none; -ms-overflow-style:none;
+  -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+}
+.div-card-row::-webkit-scrollbar { display:none; }
+.div-pile-card {
+  flex-shrink:0; width:52px; height:82px; border-radius:7px; cursor:pointer;
+  background:linear-gradient(135deg,#fff,#f0f0f2);
+  border:1.5px solid rgba(0,0,0,.22);
+  display:flex; align-items:center; justify-content:center;
+  font-size:15px; color:rgba(0,0,0,.38);
+  transition:transform .12s ease, box-shadow .12s ease;
+  -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none;
+}
+.div-pile-card:active { transform:scale(.88); box-shadow:0 0 16px rgba(0,0,0,.18); }
+.div-pile-card.done { opacity:.12; pointer-events:none; }
+.div-drawn-row {
+  display:flex; flex-wrap:wrap; justify-content:center; gap:8px;
+  margin:6px 0 2px;
+}
+.div-drawn-card {
+  display:flex; flex-direction:column; align-items:center; width:76px;
+  animation:divDrawReveal .5s ease-out;
+}
+@keyframes divDrawReveal {
+  0% { transform:scale(.3) rotateY(90deg); opacity:0; }
+  60% { transform:scale(1.08) rotateY(0deg); opacity:1; }
+  100% { transform:scale(1) rotateY(0deg); opacity:1; }
+}
+.div-drawn-card .ddc-face {
+  width:62px; height:96px; border-radius:7px; background:#fff;
+  border:1.5px solid rgba(0,0,0,.18); box-shadow:0 3px 10px rgba(0,0,0,.08);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+}
+.div-drawn-card .ddc-face .div-card-ico { width:26px; height:26px; }
+.div-drawn-card .ddc-face .div-card-ico svg { width:26px; height:26px; }
+.div-drawn-card .ddc-name { font-size:10px; font-weight:700; color:var(--ink); max-width:56px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.div-drawn-card .ddc-pos { font-size:9px; font-weight:600; margin-top:1px; }
+.div-drawn-card .ddc-pos.ddc-up { color:#4a7a55; }
+.div-drawn-card .ddc-pos.ddc-down { color:#c47080; }
+.div-drawn-card .ddc-label { font-size:9px; color:var(--muted); margin-top:2px; font-weight:600; }
+
+/* v3.7.x：聊天占卜半框历史记录 */
+.div-chat-hist { margin-top:10px; border-top:1px dashed rgba(0,0,0,.12); padding-top:8px; }
+.div-chat-hist-bar { display:flex; align-items:center; justify-content:space-between; }
+.div-chat-hist-toggle { font-size:12px; font-weight:700; color:var(--ink); cursor:pointer; user-select:none; padding:2px 4px; }
+.div-chat-hist-toggle:active { opacity:.7; }
+.div-chat-hist-clear {
+  font-size:11px; color:var(--muted); cursor:pointer; border:none; background:none;
+  padding:3px 6px; font-family:inherit;
+}
+.div-chat-hist-clear:active { color:#a33; }
+.div-chat-hist-list { margin-top:6px; display:flex; flex-direction:column; gap:6px; }
+.div-chat-hist-item { border:1px solid rgba(0,0,0,.09); border-radius:10px; padding:8px 10px; background:rgba(255,255,255,.6); }
+.div-chat-hist-q { font-size:12px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.div-chat-hist-meta { font-size:10px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.div-chat-hist-acts { display:flex; gap:8px; margin-top:6px; }
+.div-chat-hist-view, .div-chat-hist-del {
+  font-size:11px; border:none; border-radius:8px; padding:3px 12px; cursor:pointer;
+  background:rgba(0,0,0,.06); color:var(--ink); font-family:inherit;
+}
+.div-chat-hist-view:active, .div-chat-hist-del:active { opacity:.7; }
+.div-chat-hist-del { color:#a33; }
 
 /* 帮我决定弹层内容 */
 .decide-options {

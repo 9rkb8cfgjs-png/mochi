@@ -189,6 +189,11 @@
   /* v3.5.129：明确手势归属——外层横滑翻页、内层纵滑列表，
      避免安卓轴锁定下斜滑"滑不动" */
   touch-action:pan-x pan-y;
+  /* v3.6.x：页间缝隙——flex gap 在页与页之间留空隙，透出 .phone 背景形成
+     分隔线，滑动时能看到下一页从缝隙后滑入，更接近真手机桌面的翻页感。
+     gap 只在子元素之间（首页左/末页右无 gap），不影响 width:100%。
+     desktop-slider.js 的 scrollLeft 计算需同步包含此 gap */
+  gap:var(--desk-page-gap, 8px);
 }
 .desktop-pages::-webkit-scrollbar { display:none; }
 .page-slide {
@@ -258,6 +263,38 @@
   background:#111; color:#fff; cursor:pointer; font-family:inherit;
 }
 .desk-lib-item .dl-btn:disabled { background:#ddd; color:#999; }
+
+/* v3.6.x：桌面图片组件——用户可上传多张图片到任意页，点击全屏查看 */
+.desk-image-widget {
+  position:relative; margin:10px 0; border-radius:var(--app-ico-radius,16px);
+  overflow:hidden; cursor:pointer; background:rgba(0,0,0,.04);
+  box-shadow:0 4px 14px rgba(0,0,0,.06);
+}
+.desk-image-widget img { width:100%; display:block; border-radius:inherit; }
+/* 装修模式下图片组件可操作：点组件弹菜单（换图/删除），加视觉提示 */
+.decor-on .desk-image-widget::after {
+  content:'点我换图 · 删除'; position:absolute; left:0; right:0; bottom:0;
+  padding:6px; text-align:center; font-size:11px; color:#fff;
+  background:linear-gradient(transparent, rgba(0,0,0,.6));
+  pointer-events:none;
+}
+/* v3.6.x：图片组件全屏查看器 */
+.desk-image-viewer {
+  position:fixed; inset:0; z-index:10000;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.92);
+}
+.desk-image-viewer[hidden] { display:none; }
+.desk-image-viewer img {
+  max-width:96vw; max-height:96vh; object-fit:contain;
+  border-radius:4px;
+}
+.desk-image-viewer-close {
+  position:absolute; top:env(safe-area-inset-top,12px); right:14px;
+  width:40px; height:40px; line-height:38px; text-align:center;
+  font-size:28px; color:#fff; cursor:pointer;
+  background:rgba(255,255,255,.15); border-radius:50%;
+}
 
 /* ---- 音乐播放器小组件（第二页） ---- */
 .music-widget {
