@@ -474,9 +474,17 @@ input.ce-ghost, textarea.ce-ghost {
 .modal-btn.cancel { background:var(--btn-cancel-bg); color:var(--btn-cancel-ink); }
 .modal-btn.ok { background:var(--btn-bg); color:var(--btn-ink); font-weight:600; }
 
-/* 隐藏页面滚动条（保留滚动功能） */
-.page { scrollbar-width:none; -ms-overflow-style:none; }
-.page::-webkit-scrollbar { display:none; }
+/* v3.6.69：页面滚动条从隐藏改为细显示——之前 display:none 让用户看不到
+   .page 是滚动容器，内容超出时被 .page 底边裁剪时没有视觉提示，
+   用户以为"被白色矩形遮挡"（实际是列表被裁），不知道可以滚动。
+   现在用 4px 细滚动条（webkit + firefox），浅灰 thumb + 透明 track，
+   视觉上不抢眼但能传达"可滚动"信号。其他浮层（.tc-body/.mg-list 等）的
+   滚动条隐藏保持原样（.page::-webkit-scrollbar 作用域明确，不影响）。 */
+.page { scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.22) transparent; -ms-overflow-style:auto; }
+.page::-webkit-scrollbar { width:4px; height:4px; }
+.page::-webkit-scrollbar-track { background:transparent; }
+.page::-webkit-scrollbar-thumb { background:rgba(0,0,0,.22); border-radius:2px; }
+.page::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.35); }
 
 .modal-select {
   width:100%; border:1px solid var(--input-border); border-radius:12px;

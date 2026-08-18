@@ -347,8 +347,11 @@ font-size:14px; font-family:inherit; cursor:pointer;
 }
 .modal-btn.cancel { background:var(--btn-cancel-bg); color:var(--btn-cancel-ink); }
 .modal-btn.ok { background:var(--btn-bg); color:var(--btn-ink); font-weight:600; }
-.page { scrollbar-width:none; -ms-overflow-style:none; }
-.page::-webkit-scrollbar { display:none; }
+.page { scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.22) transparent; -ms-overflow-style:auto; }
+.page::-webkit-scrollbar { width:4px; height:4px; }
+.page::-webkit-scrollbar-track { background:transparent; }
+.page::-webkit-scrollbar-thumb { background:rgba(0,0,0,.22); border-radius:2px; }
+.page::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.35); }
 .modal-select {
 width:100%; border:1px solid var(--input-border); border-radius:12px;
 padding:11px 13px; font-size:13px; font-family:inherit; background:var(--input-bg); color:var(--ink);
@@ -2976,10 +2979,10 @@ transition:color .18s ease, background .18s ease;
 .page.full .card-list { padding-left:18px; padding-right:18px; }
 .page.full .gs-scroll { padding-left:18px; padding-right:18px; }
 .page.full .chat-item, .page.full .chat-search { margin-left:18px; margin-right:18px; }
-#page-chatcard { padding-bottom:24px; background:var(--card-bg); }
-#page-chatcard .chat-title { padding:2px 2px 4px; }
-#page-chatcard .chat-sub { padding-bottom:6px; }
-#page-chatcard .chat-item { padding:8px 12px; margin-bottom:4px; }
+#page-chatcard, #page-setting { background:var(--card-bg); padding-bottom:0; }
+#page-chatcard .chat-item:last-child,
+#page-setting .set-group:last-of-type,
+#page-setting .ver { margin-bottom:20px; }
 [data-theme="dark"] {
 --dark-card: #1e1e1e;
 --dark-card-92: rgba(30,30,30,.92);
@@ -3289,7 +3292,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.69 · 部署于 2026-08-18 16:53</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.70 · 部署于 2026-08-18 17:16</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3942,7 +3945,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.69</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.70</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
