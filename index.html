@@ -3497,7 +3497,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.87 · 部署于 2026-08-18 20:12</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.89 · 部署于 2026-08-18 20:35</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4206,7 +4206,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.87</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.89</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -4339,6 +4339,8 @@ color: var(--muted);
           <div class="lic-li">聊天里点击顶部栏联系人的头像可打开【查岗 TA 的日常】页面</div>
           <div class="lic-li">聊天页面点击顶部栏联系人的昵称，可以让对方立即发送消息</div>
           <div class="lic-li">可搜索聊天记录并跳转到对应位置</div>
+          <div class="lic-li">聊天 + 按钮展开更多功能面板：帮我决定、邀请 TA、问问 TA、搜索记录、通话、拍一拍、头像互动、占卜</div>
+          <div class="lic-li">更多功能面板「TA 的提问」：让 TA 现在问一次（询问 / 小问题 / 好奇 / 吐槽）</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">字卡系统</div>
@@ -4348,6 +4350,10 @@ color: var(--muted);
           <div class="lic-li">TA 的询问 / TA 的小问题 / TA 的好奇 / TA 的吐槽：内容可自定义</div>
           <div class="lic-li">查岗日常字卡：地点、在做什么、说的话，均可自定义</div>
           <div class="lic-li">情绪回复：按你当前的心情自动匹配相应字卡</div>
+          <div class="lic-li">字卡库页入口：自定义聊天字卡、查岗日常字卡、桌面今日情话、聊天默认字卡、聊天情绪字卡、聊天回应字卡、TA 的询问 / 小问题 / 好奇 / 吐槽</div>
+          <div class="lic-li">字卡管理：去重复、导出数据、一键清空所有分类</div>
+          <div class="lic-li">兼容导入 milk 字卡库导出的 json</div>
+          <div class="lic-li">系统预设字卡可逐句开关（桌面今日情话 / 聊天默认字卡）</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">互动卡片</div>
@@ -4365,6 +4371,13 @@ color: var(--muted);
           <div class="lic-li">和 TA 一起摸鱼打卡，桌面组件可统计摸鱼打卡天数</div>
           <div class="lic-li">打开 mochi 使用时，我的摸鱼值和联系人的摸鱼值都会随机增加；桌面组件右侧黑色按钮可主动点击 +1</div>
           <div class="lic-li">桌面【工作值】刷新机制与摸鱼值一致（双方随机增加）</div>
+          <div class="lic-li">桌面多页滑动（scroll-snap），指示器圆点点击切换，支持动态新增 / 删除最后一页（最多 5 页）</div>
+          <div class="lic-li">装修模式：点图标换图、点卡片设背景、添加卡片、恢复图标、完成</div>
+          <div class="lic-li">桌面图片组件（尺寸档位：小 / 中 / 大，全屏查看器）</div>
+          <div class="lic-li">第一页功能图标：聊天、主页、信箱、朋友圈、日历、纪念、占卜、收藏</div>
+          <div class="lic-li">第二页功能图标：聊天统计、提问记录、查岗、今日备忘、今天的心情、本周日常、离周末还有几天</div>
+          <div class="lic-li">桌面美化：深色模式、主题色、桌面字号、卡片大小、内置壁纸预设</div>
+          <div class="lic-li">小组件颜色：背景 / 边框 / 按钮 / 按钮文字 / 爱心外框颜色、小组件透明度、图标圆角</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">查岗</div>
@@ -4377,18 +4390,25 @@ color: var(--muted);
           <div class="lic-li">桌面组件与【音乐】功能同步显示播放状态</div>
           <div class="lic-li">联系人可主动更换音乐播放模式（循环播放 / 顺序播放 / 随机播放）</div>
           <div class="lic-li">我的收藏、批量管理、悬浮小框可拖动</div>
+          <div class="lic-li">歌单：可新建歌单管理</div>
+          <div class="lic-li">听歌记录：联系人邀请听歌记录</div>
+          <div class="lic-li">自定义歌曲封面（上传图片压缩）、批量导入歌曲</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">通话</div>
           <div class="lic-li">联系人可主动拨打和挂断电话；我也可以拨打</div>
           <div class="lic-li">TA 会来电，可接听 / 拒绝，挂断后变为迷你小框</div>
           <div class="lic-li">来电可播放自定义铃声（音效设置）</div>
+          <div class="lic-li">通话设置页：可调来电 / 接听 / 忙线 / 拒接 / 通话中挂断概率</div>
+          <div class="lic-li">通话背景图片：可上传 / 移除</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">信箱</div>
           <div class="lic-li">信箱里我可以主动给联系人写信和回信</div>
           <div class="lic-li">联系人可以主动写信和回信</div>
           <div class="lic-li">新来信标记、回信确认等概率在回复设置-信箱可调</div>
+          <div class="lic-li">信件内容类型：颜文字 / emoji / 表情包 / 图片（多选上传压缩）</div>
+          <div class="lic-li">信件数据管理：导出 / 导入 / 清空所有信件</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">朋友圈</div>
@@ -4397,12 +4417,17 @@ color: var(--muted);
           <div class="lic-li">联系人可评论、回复我的朋友圈，我也可以评论、回复</div>
           <div class="lic-li">点击动态头像可查看我的 / 联系人的全部朋友圈</div>
           <div class="lic-li">点赞、评论、通知提醒（未读数字角标）</div>
+          <div class="lic-li">可删除单条动态（我的与 TA 的均可删）</div>
+          <div class="lic-li">可删除全部动态（分类删除：只删我的 / 只删联系人的 / 全部删除）</div>
+          <div class="lic-li">多联系人：朋友圈为全局共享，按联系人聚合显示</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">日历</div>
           <div class="lic-li">每日首次打开，联系人会在日历留言并触发弹窗</div>
           <div class="lic-li">日历里除了联系人留言，我也可以简单留言</div>
           <div class="lic-li">日历可切换月份查看</div>
+          <div class="lic-li">今日心情卡片（心情图标 + 分类标签）</div>
+          <div class="lic-li">TA 正在做什么、TA 的留言卡片、我的留言卡片（可编辑留言）</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">纪念</div>
@@ -4415,6 +4440,7 @@ color: var(--muted);
           <div class="lic-li">桌面【提问记录】统计历史：提问记录、TA 的询问、TA 的小问题、TA 的好奇、TA 的吐槽、我的邀请 / 问问</div>
           <div class="lic-li">桌面【主页】统计以下历史：联系人今日情话、联系人换头像、通话记录、每日摸鱼值、我的今日备忘、我的今天的心情</div>
           <div class="lic-li">桌面【聊天统计】统计：相处记录（第一次聊天时间、最近聊天时间、聊天消息条数、文字数量、收藏记录）、聊天记录（消息比例、最常聊天时间段、最常聊天日期、平均每日消息、最长连续聊天、单日最高消息）、情绪表达（文字字卡 / 情绪 / 心意 / 交流意图使用次数排行）</div>
+          <div class="lic-li">占卜记录、帮我决定记录</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">个性化</div>
@@ -4425,19 +4451,75 @@ color: var(--muted);
           <div class="lic-li">联系人【头像互动】可上传图片，联系人可触发随机更换头像</div>
           <div class="lic-li">【头像互动】里点击切换联系人头像，可触发直接更换 / 联系人同意 / 联系人拒绝换头像</div>
           <div class="lic-li">【头像互动】里我的头像池可上传图片，联系人可主动给我换头像（直接换或弹窗邀请我同意 / 拒绝）</div>
+          <div class="lic-li">聊天气泡：字体大小、行距（紧凑 / 标准 / 宽松）、我的 / 联系人气泡颜色与文字颜色、自定义气泡 CSS</div>
+          <div class="lic-li">聊天颜色：时间轴、正在输入中、发送按钮颜色与文字颜色</div>
+          <div class="lic-li">聊天记录导出 / 导入 / 删除</div>
+          <div class="lic-li">头像互动：定时随机更换联系人头像（1-8 小时）、我的头像池定时主动给我换头像</div>
           <div class="lic-li">通用设置：回复速度、概率、条数等参数可调</div>
           <div class="lic-li">后台保活与后台通知</div>
           <div class="lic-li">后台保活：开启可播放禁音音频；打开【后台弹窗】并设置浏览器弹窗权限，联系人发送消息可触发浏览器弹窗</div>
+          <div class="lic-li">PWA 安装：安装按钮、iOS 引导、已安装隐藏</div>
+          <div class="lic-li">版本检测：在线对比版本时间戳，显示新版本提示条，可关闭</div>
+          <div class="lic-li">定期备份提醒：距上次导出超 7 天提醒；首次使用引导：无数据时提示可导入备份</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">音效设置</div>
           <div class="lic-li">可本地上传音频设置：【联系人来电铃声】【联系人聊天消息音效】【我的消息音效】</div>
           <div class="lic-li">上传后可试听、清除；未设置则不播放</div>
+          <div class="lic-li">iOS Safari 自动播放策略兼容</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">数据</div>
           <div class="lic-li">数据存储设备本地，可导入导出</div>
           <div class="lic-li">支持导入星言简约版聊天字卡库导出的 json（字卡内容与分组完整导入）</div>
+          <div class="lic-li">导入预览：显示导出时间 / 键数 / 聊天条数 / 头像 / 摸鱼累计</div>
+          <div class="lic-li">导入进度遮罩：读取 / 解析 / 写入进度，原子恢复，导入后核对关键数据</div>
+          <div class="lic-li">兼容导入 milk 字卡库导出的 json</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">帮我决定</div>
+          <div class="lic-li">类型 A：是 / 否 / 半对 随机决定</div>
+          <div class="lic-li">类型 B：自定义选项随机决定，可设置最多选几个（1-5 个）</div>
+          <div class="lic-li">思考时间倒计时（1-10 秒），结果可发送到聊天（联系人回复样式，可开关）</div>
+          <div class="lic-li">历史记录（最多 1000 条），聊天页半框入口</div>
+          <div class="lic-li">功能参考：小红书 @FelixFelicis（9416318007）</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">占卜</div>
+          <div class="lic-li">两种模式：塔罗（22 张大阿卡纳，带正逆位与详细解读）/ 雷诺曼（40 张）</div>
+          <div class="lic-li">抽取张数：1 张（运势）/ 3 张（过去 · 现在 · 未来）</div>
+          <div class="lic-li">洗牌动画 → 牌面滑动 → 抽取 → 翻牌动画，综合解读（一句话总运势 + 问题呼应）</div>
+          <div class="lic-li">历史记录（查看 / 删除 / 清空），可把结果发给 TA</div>
+          <div class="lic-li">桌面占卜页入口 + 聊天页半框入口，自动发送开关（每个联系人独立记忆）</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">多联系人 / 多桌面</div>
+          <div class="lic-li">每个联系人 = 独立命名空间，数据互不互通（聊天 / 字卡 / 桌面 / 设置等均独立）</div>
+          <div class="lic-li">朋友圈为全局共享层，按联系人聚合显示所有动态</div>
+          <div class="lic-li">新建 / 改名 / 删除 / 切换联系人（设置页入口），旧顶层数据自动迁移到默认联系人</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">回复设置</div>
+          <div class="lic-li">三面板 tab：聊天 / 信箱 / 朋友圈，各页参数独立</div>
+          <div class="lic-li">聊天：被动回复（回复速度 / 条数 / 已读不回 / 拍一拍 / 表情包 / emoji / 图片 / 语音 / 颜文字 / 引用 / 撤回 / 补发概率）、多字卡回复（触发概率 / 最少最多条数）、主动发送（概率 / 间隔 / 条数 / 免打扰 / 爱心标识）</div>
+          <div class="lic-li">信箱：信件内容字卡条数、联系人主动写信（每天最多 / 概率 / 最短最长时间）、联系人回信（概率 / 最短最长时间）、写信内容类型</div>
+          <div class="lic-li">朋友圈：互动设置（点赞 / 评论 / 回复概率及速度 / 回赞概率）、回复内容设置（多字卡概率 / 最多字卡数 / 表情包概率）、TA 发朋友圈设置（主动发概率 / 每天最多 / 冷却 / 间隔 / 字卡条数 / 内容类型）、清除所有朋友圈数据</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">全屏 / 移动端适配</div>
+          <div class="lic-li">全屏模式：设置页开关，安卓 Chrome PWA 隐藏系统状态栏，iOS 隐藏应用内模拟状态栏</div>
+          <div class="lic-li">iOS 手势 / 双击缩放兜底，Via 浏览器 CSS 兜底保持竖屏</div>
+          <div class="lic-li">文本输入框 contenteditable 代理（防 Chrome 自动填充条，原 input 变 1px 幽灵锚点）</div>
+          <div class="lic-li">弹层滚动穿透锁（body.scroll-lock），输入法适配</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">开屏 / 系统</div>
+          <div class="lic-li">开屏加载动画（含公告 / 版本时间 / 数据加载等待 / 点击进入）</div>
+          <div class="lic-li">开屏公告远程化：notice.json 在线覆盖公告文案</div>
+          <div class="lic-li">状态栏显示真实时间（每 15 秒校准一次）</div>
+          <div class="lic-li">底部 tab：桌面 / 字卡库 / 设置，独立全屏页导航与状态栏隐藏</div>
+          <div class="lic-li">安卓返回键：弹层优先关闭 → 回上一页 → 最后退出应用</div>
+          <div class="lic-li">IndexedDB 存储：大键值存 IDB，localStorage 缓存，启动时回填；请求持久化存储防清理</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">许可</div>
@@ -15020,26 +15102,31 @@ const KNOWN_NETEASE = {
 '27538343': { name: 'Baby', artist: 'EXO-K' },
 '2613048732': { name: 'Moonlit Dream', artist: 'DLSS / shell' }
 };
+function parseNeteasePageTitle(html) {
+if (!html || typeof html !== 'string') return null;
+let m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+if (!m) return null;
+let title = m[1].trim().replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ');
+title = title.replace(/\s*[-－]\s*单曲\s*[-－]\s*网易云音乐\s*$/i, '');
+title = title.replace(/\s*[-－]\s*网易云音乐\s*$/i, '');
+const parts = title.split(/\s*[-－]\s*/);
+if (parts.length >= 2) {
+return { name: parts[0].trim(), artist: parts.slice(1).join(' - ').trim(), pic: '' };
+}
+if (parts.length === 1 && parts[0]) {
+return { name: parts[0].trim(), artist: '', pic: '' };
+}
+return null;
+}
 function fetchNeteaseInfo(id, cb) {
 const known = KNOWN_NETEASE[String(id)];
 if (known) { cb({ name: known.name, artist: known.artist, pic: '' }); return; }
+const songPageUrl = 'https://music.163.com/song?id=' + id;
 const apis = [
-{ url: 'https://api.injahow.cn/meting/?type=netease&id=' + id, isText: false, parse(d) {
-if (!d) return null;
-let name = d.name || d.title;
-if (!name) return null;
-let artist = d.artist;
-if (Array.isArray(artist)) artist = artist.map(a => (a && a.name) || a).join('/');
-else if (typeof artist !== 'string') artist = '';
-return { name: name, artist: artist, pic: d.pic || '' }; } },
-{ url: 'https://meting.summerstack.dev/?type=netease&id=' + id, isText: false, parse(d) {
-if (!d) return null;
-let name = d.name || d.title;
-if (!name) return null;
-let artist = d.artist;
-if (Array.isArray(artist)) artist = artist.map(a => (a && a.name) || a).join('/');
-else if (typeof artist !== 'string') artist = '';
-return { name: name, artist: artist, pic: d.pic || '' }; } },
+{ url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(songPageUrl), isText: true, parse(t) {
+return parseNeteasePageTitle(t); } },
+{ url: 'https://corsproxy.io/?url=' + encodeURIComponent(songPageUrl), isText: true, parse(t) {
+return parseNeteasePageTitle(t); } },
 { url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://music.163.com/api/song/detail/?ids=' + id), isText: true, parse(t) {
 let d; try { d = typeof t === 'string' ? JSON.parse(t) : t; } catch(e) { return null; }
 if (d && d.songs && d.songs[0]) {
@@ -15048,7 +15135,7 @@ const artist = (s.artists || []).map(a => a.name).join('/');
 return { name: s.name, artist: artist, pic: (s.album && s.album.picUrl) || '' };
 }
 return null; } },
-{ url: 'https://corsproxy.io/?' + encodeURIComponent('https://music.163.com/api/song/detail/?ids=' + id), isText: true, parse(t) {
+{ url: 'https://corsproxy.io/?url=' + encodeURIComponent('https://music.163.com/api/song/detail/?ids=' + id), isText: true, parse(t) {
 let d; try { d = typeof t === 'string' ? JSON.parse(t) : t; } catch(e) { return null; }
 if (d && d.songs && d.songs[0]) {
 const s = d.songs[0];
@@ -15726,6 +15813,26 @@ try { syncPlayIcons(false); } catch (e) {}
 function neteaseMetingUrl(id) {
 return 'https://api.injahow.cn/meting/?type=url&id=' + encodeURIComponent(String(id));
 }
+function resolveNeteaseDirectUrl(m, cb) {
+try {
+const xhr = new XMLHttpRequest();
+xhr.open('GET', neteaseMetingUrl(m.neteaseId), true);
+let done = false;
+const finish = function () {
+if (done) return;
+done = true;
+let finalUrl = (xhr.responseURL || '').replace(/^http:/i, 'https:');
+cb(finalUrl || null);
+};
+xhr.onreadystatechange = function () {
+if (xhr.readyState >= 2) { try { xhr.abort(); } catch (e) {} finish(); }
+};
+xhr.onerror = finish;
+xhr.ontimeout = finish;
+xhr.timeout = 8000;
+xhr.send();
+} catch (e) { cb(null); }
+}
 let httpsRetrying = false;
 function retryWithHttpsUrl(m) {
 if (httpsRetrying || !m || !m.neteaseId || m._httpsRetried) return false;
@@ -15736,12 +15843,14 @@ try {
 if (audio) { audio.onerror = null; audio.onended = null; audio.onloadedmetadata = null; }
 } catch (e) {}
 teardownAudio();
+resolveNeteaseDirectUrl(m, function (directUrl) {
 httpsRetrying = false;
 if (currentId !== m.id) { demoFallbackOrError(m); return; }
 audio = new Audio();
 try { audio.referrerPolicy = 'no-referrer'; } catch (e) {}
-audio.src = neteaseMetingUrl(m.neteaseId);
+audio.src = directUrl || neteaseMetingUrl(m.neteaseId);
 startPlayback(m);
+});
 return true;
 }
 function demoFallbackOrError(m) {

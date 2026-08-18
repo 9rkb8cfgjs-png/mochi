@@ -295,26 +295,40 @@
     '27538343': { name: 'Baby', artist: 'EXO-K' },
     '2613048732': { name: 'Moonlit Dream', artist: 'DLSS / shell' }
   };
+  // v3.6.x：解析网易云歌曲页面 HTML <title> 提取歌名/歌手
+  // 页面标题格式："歌曲名 - 歌手名 - 单曲 - 网易云音乐" 或 "歌曲名 - 歌手名 - 网易云音乐"
+  function parseNeteasePageTitle(html) {
+    if (!html || typeof html !== 'string') return null;
+    let m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    if (!m) return null;
+    let title = m[1].trim().replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ');
+    // 去掉末尾 " - 单曲 - 网易云音乐" 或 " - 网易云音乐"
+    title = title.replace(/\s*[-－]\s*单曲\s*[-－]\s*网易云音乐\s*$/i, '');
+    title = title.replace(/\s*[-－]\s*网易云音乐\s*$/i, '');
+    // 剩余格式："歌曲名 - 歌手名"
+    const parts = title.split(/\s*[-－]\s*/);
+    if (parts.length >= 2) {
+      return { name: parts[0].trim(), artist: parts.slice(1).join(' - ').trim(), pic: '' };
+    }
+    if (parts.length === 1 && parts[0]) {
+      return { name: parts[0].trim(), artist: '', pic: '' };
+    }
+    return null;
+  }
   function fetchNeteaseInfo(id, cb) {
     const known = KNOWN_NETEASE[String(id)];
     if (known) { cb({ name: known.name, artist: known.artist, pic: '' }); return; }
+    // v3.6.x：原 type=netease 不是有效 meting 类型（返回空），网易云 API 需 Cookie
+    // 返回 400——4 个 API 全失效。改用网易云歌曲页面 HTML <title> 解析歌名/歌手
+    //（页面标题格式："歌曲名 - 歌手名 - 单曲 - 网易云音乐"），多 CORS 代理兜底
+    const songPageUrl = 'https://music.163.com/song?id=' + id;
     const apis = [
-      { url: 'https://api.injahow.cn/meting/?type=netease&id=' + id, isText: false, parse(d) {
-          if (!d) return null;
-          let name = d.name || d.title;
-          if (!name) return null;
-          let artist = d.artist;
-          if (Array.isArray(artist)) artist = artist.map(a => (a && a.name) || a).join('/');
-          else if (typeof artist !== 'string') artist = '';
-          return { name: name, artist: artist, pic: d.pic || '' }; } },
-      { url: 'https://meting.summerstack.dev/?type=netease&id=' + id, isText: false, parse(d) {
-          if (!d) return null;
-          let name = d.name || d.title;
-          if (!name) return null;
-          let artist = d.artist;
-          if (Array.isArray(artist)) artist = artist.map(a => (a && a.name) || a).join('/');
-          else if (typeof artist !== 'string') artist = '';
-          return { name: name, artist: artist, pic: d.pic || '' }; } },
+      // 1-2：CORS 代理抓歌曲页面 HTML，解析 <title>
+      { url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(songPageUrl), isText: true, parse(t) {
+          return parseNeteasePageTitle(t); } },
+      { url: 'https://corsproxy.io/?url=' + encodeURIComponent(songPageUrl), isText: true, parse(t) {
+          return parseNeteasePageTitle(t); } },
+      // 3-4：原网易云 API 直链（需 Cookie，多数返回 400，仅作兜底）
       { url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://music.163.com/api/song/detail/?ids=' + id), isText: true, parse(t) {
           let d; try { d = typeof t === 'string' ? JSON.parse(t) : t; } catch(e) { return null; }
           if (d && d.songs && d.songs[0]) {
@@ -323,7 +337,7 @@
             return { name: s.name, artist: artist, pic: (s.album && s.album.picUrl) || '' };
           }
           return null; } },
-      { url: 'https://corsproxy.io/?' + encodeURIComponent('https://music.163.com/api/song/detail/?ids=' + id), isText: true, parse(t) {
+      { url: 'https://corsproxy.io/?url=' + encodeURIComponent('https://music.163.com/api/song/detail/?ids=' + id), isText: true, parse(t) {
           let d; try { d = typeof t === 'string' ? JSON.parse(t) : t; } catch(e) { return null; }
           if (d && d.songs && d.songs[0]) {
             const s = d.songs[0];
@@ -1096,6 +1110,29 @@
   function neteaseMetingUrl(id) {
     return 'https://api.injahow.cn/meting/?type=url&id=' + encodeURIComponent(String(id));
   }
+  // v3.6.x：用 XHR 解析 meting URL 的 302 跳转，拿到最终 CDN 直链 URL
+  //（xhr.responseURL 跟随重定向后的最终 URL，跨域也可读），把 http: 修正为 https:
+  // 避免混合内容拦截。XHR 只读到头信息就 abort，不下载音频 body
+  function resolveNeteaseDirectUrl(m, cb) {
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', neteaseMetingUrl(m.neteaseId), true);
+      let done = false;
+      const finish = function () {
+        if (done) return;
+        done = true;
+        let finalUrl = (xhr.responseURL || '').replace(/^http:/i, 'https:');
+        cb(finalUrl || null);
+      };
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState >= 2) { try { xhr.abort(); } catch (e) {} finish(); }
+      };
+      xhr.onerror = finish;
+      xhr.ontimeout = finish;
+      xhr.timeout = 8000;
+      xhr.send();
+    } catch (e) { cb(null); }
+  }
   let httpsRetrying = false;
   function retryWithHttpsUrl(m) {
     // v3.6.x：每首歌最多重试一次（_httpsRetried 内存标记）——防止 meting 直链也失败时
@@ -1104,17 +1141,20 @@
     m._httpsRetried = true;
     httpsRetrying = true;
     toast('正在获取完整版直链…');
-    // 直接换 src 为 meting URL（302 → https CDN 音频），audio 自动跟随
     try {
       if (audio) { audio.onerror = null; audio.onended = null; audio.onloadedmetadata = null; }
     } catch (e) {}
     teardownAudio();
-    httpsRetrying = false;
-    if (currentId !== m.id) { demoFallbackOrError(m); return; }
-    audio = new Audio();
-    try { audio.referrerPolicy = 'no-referrer'; } catch (e) {}
-    audio.src = neteaseMetingUrl(m.neteaseId);
-    startPlayback(m);
+    // v3.6.x：先解析 meting URL 的 302 拿最终 CDN 直链，修正 http→https，
+    // 再用直链播放（而非直接用 meting URL——和 m.url 相同的重试无意义）
+    resolveNeteaseDirectUrl(m, function (directUrl) {
+      httpsRetrying = false;
+      if (currentId !== m.id) { demoFallbackOrError(m); return; }
+      audio = new Audio();
+      try { audio.referrerPolicy = 'no-referrer'; } catch (e) {}
+      audio.src = directUrl || neteaseMetingUrl(m.neteaseId);
+      startPlayback(m);
+    });
     return true;
   }
   function demoFallbackOrError(m) {
