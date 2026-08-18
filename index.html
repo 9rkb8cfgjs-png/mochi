@@ -347,11 +347,8 @@ font-size:14px; font-family:inherit; cursor:pointer;
 }
 .modal-btn.cancel { background:var(--btn-cancel-bg); color:var(--btn-cancel-ink); }
 .modal-btn.ok { background:var(--btn-bg); color:var(--btn-ink); font-weight:600; }
-.page { scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.22) transparent; -ms-overflow-style:auto; }
-.page::-webkit-scrollbar { width:4px; height:4px; }
-.page::-webkit-scrollbar-track { background:transparent; }
-.page::-webkit-scrollbar-thumb { background:rgba(0,0,0,.22); border-radius:2px; }
-.page::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.35); }
+.page { scrollbar-width:none; -ms-overflow-style:none; }
+.page::-webkit-scrollbar { display:none; }
 .modal-select {
 width:100%; border:1px solid var(--input-border); border-radius:12px;
 padding:11px 13px; font-size:13px; font-family:inherit; background:var(--input-bg); color:var(--ink);
@@ -1485,6 +1482,8 @@ margin-top:6px; padding:8px 12px; border-radius:10px;
 background:rgba(0,0,0,.04); font-size:12px; color:var(--ink); line-height:1.8;
 }
 .msg-poke svg, .msg-center-card svg { width:15px; height:15px; vertical-align:-2px; margin-right:3px; color:inherit; }
+#page-chatcard { scrollbar-width:none; -ms-overflow-style:none; }
+#page-chatcard::-webkit-scrollbar { display:none; }
 .chat-title { font-size:22px; font-weight:700; padding:4px 2px 8px; letter-spacing:1px; }
 .chat-sub { font-size:12px; color:var(--muted); font-weight:400; letter-spacing:1px; padding-bottom:12px; }
 .chat-search {
@@ -3292,7 +3291,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.70 · 部署于 2026-08-18 17:16</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.71 · 部署于 2026-08-18 17:24</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3945,7 +3944,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.70</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.71</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 

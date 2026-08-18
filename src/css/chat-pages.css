@@ -1,5 +1,8 @@
 /* ===== 聊天页面样式（字卡库 / 管理面板 / 日历 / 占卜 / 查岗 / 统计等） ===== */
 /* ===== 聊天字卡库列表页 ===== */
+/* 字卡库页隐藏灰色细滚动条（base.css .page 的 4px 滚动条不适用于本页） */
+#page-chatcard { scrollbar-width:none; -ms-overflow-style:none; }
+#page-chatcard::-webkit-scrollbar { display:none; }
 .chat-title { font-size:22px; font-weight:700; padding:4px 2px 8px; letter-spacing:1px; }
 .chat-sub { font-size:12px; color:var(--muted); font-weight:400; letter-spacing:1px; padding-bottom:12px; }
 .chat-search {

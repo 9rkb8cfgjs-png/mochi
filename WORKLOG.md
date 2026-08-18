@@ -109,6 +109,9 @@
 
 ## 记录
 
+### 2026-08-18
+- [本会话] 完成（用户反馈「字卡库页面里有灰色的滑动栏滚动条删掉」）：`src/css/chat-pages.css` 顶部给 `#page-chatcard` 加滚动条隐藏（`scrollbar-width:none` + `::-webkit-scrollbar{display:none}`，ID 选择器覆盖 base.css .page 的 4px 细滚动条），只影响字卡库首页，其他页面保持 v3.6.69 细滚动条不动。**未构建未提交**，请构建者统一 `node build.mjs`。
+
 ### 2026-08-17
 - [本会话] 完成（用户反馈两处：①默认聊天字卡顶部总开关无弹窗提醒；②系统预设字卡单卡关闭后联系人仍在使用，已构建 verify 10/10 + CDP 端到端 6/6，**未提交**）：① `src/js/default-cards.js` 总开关（dc-enabled）change 时补 toast「已开启/已关闭：使用系统预设字卡」。② 根因——系统字卡进回复有三条链路，其中 chat.js `getPool()` 的「字卡池空兜底」（自定义字卡分类为空时用系统字卡补池）**完全不过滤开关**：兜底直接把全部系统字卡塞进回复池（getDefaultCards 混入链路和回应/情绪字卡链路都有过滤，唯独这条没有）。修复：`default-cards.js` 暴露 `window.isDefaultCardOff(cat, c)`；`chat.js` 兜底改两处——`dc-enabled` 关闭时整个兜底不注入系统字卡、单卡「关闭使用」的字卡跳过（main/kaomoji/emoji 三分类各按来源分类查开关）。CDP 6/6：总开关 toast 弹「已开启：使用系统预设字卡」/模拟全关后新回复全为「收到～」/dc-enabled=0 后无系统字卡/恢复后系统字卡正常回复/真实关闭一张字卡 12 轮采样零次出现/采样期间系统字卡仍在回复。探测注意：聊天输入框是模板原生 contenteditable div（不是 input），探测发送需 `input.textContent=...`；查岗/通话等特殊消息会混入采样需按 `m.special` 过滤。涉及 `src/js/default-cards.js`、`src/js/chat.js`。已 `node build.mjs` + `npm run verify` 10/10。临时脚本已删。**未提交**，等待统一提交/部署。
 

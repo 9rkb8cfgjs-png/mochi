@@ -474,17 +474,14 @@ input.ce-ghost, textarea.ce-ghost {
 .modal-btn.cancel { background:var(--btn-cancel-bg); color:var(--btn-cancel-ink); }
 .modal-btn.ok { background:var(--btn-bg); color:var(--btn-ink); font-weight:600; }
 
-/* v3.6.69：页面滚动条从隐藏改为细显示——之前 display:none 让用户看不到
-   .page 是滚动容器，内容超出时被 .page 底边裁剪时没有视觉提示，
-   用户以为"被白色矩形遮挡"（实际是列表被裁），不知道可以滚动。
-   现在用 4px 细滚动条（webkit + firefox），浅灰 thumb + 透明 track，
-   视觉上不抢眼但能传达"可滚动"信号。其他浮层（.tc-body/.mg-list 等）的
-   滚动条隐藏保持原样（.page::-webkit-scrollbar 作用域明确，不影响）。 */
-.page { scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.22) transparent; -ms-overflow-style:auto; }
-.page::-webkit-scrollbar { width:4px; height:4px; }
-.page::-webkit-scrollbar-track { background:transparent; }
-.page::-webkit-scrollbar-thumb { background:rgba(0,0,0,.22); border-radius:2px; }
-.page::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.35); }
+/* v3.6.69：页面滚动条恢复隐藏——之前 17:16 改成 4px 细显示想让用户看到
+   "可滚动"信号，但用户反馈"右边有灰色的滑动栏滚动条，删掉"——不想要滚动条。
+   最终方案：滚动条保持隐藏（scrollbar-width:none），"遮挡/白条"问题由
+   tabbar.css 的 #page-chatcard/#page-setting 修复解决（padding-bottom:0 +
+   background:var(--card-bg) + last-child margin-bottom:20px）——
+   页面底部不再有空白长方形，滚动到底内容完整且不贴底。 */
+.page { scrollbar-width:none; -ms-overflow-style:none; }
+.page::-webkit-scrollbar { display:none; }
 
 .modal-select {
   width:100%; border:1px solid var(--input-border); border-radius:12px;
