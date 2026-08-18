@@ -14,7 +14,7 @@
 - [本会话] 完成（用户反馈两处，已构建 verify 10/10 + CDP 端到端 14/14，**随本次提交**）：
   - **聊天设置里气泡颜色设置不见了**（我的/联系人气泡颜色+双方消息文字颜色）：根因——4 行 DOM（cs-out-bg/cs-out-ink/cs-in-bg/cs-in-ink）在 `src/template.html` 聊天设置页丢失（与 row-contacts 同因：此前模板被 checkout 回退+截断重写），`chat-settings.js` bindBubbleColorRow 匹配不到行静默 return。修复：`src/template.html`「气泡样式」组后新增「气泡颜色」组 4 行（默认值回显与 applySettings 一致）。
   - **切换桌面后桌面仍显示上一个联系人的昵称**：根因——`personalize.js` bindLabel 只在启动时写一次 lbl-user/lbl-partner，contact-switched 监听器未重读。修复：监听器补刷新（新联系人无昵称回退默认「我 / TA」）。
-  - 涉及 `src/template.html`、`src/js/personalize.js`。已 build+verify+提交推送。
+- 涉及 `src/template.html`、`src/js/personalize.js`。已 build+verify+提交推送。
 
 ### 2026-08-18
 - [本会话] 完成（主动发送爱心标识，已构建 verify 10/10 + CDP 探测 10/10，**本行记录随本次统一提交**）：需求——联系人主动发送消息的气泡左上角新增一枚极小爱心矢量图作为标识；回复设置→主动发送组新增开关可开/关。① `src/js/chat.js`：tryAutoSend 主动消息 `addIn(..., {initiative:true})`（撤回补发那条同步补 initiative:true）；`renderMsg` 对 `side==='in' && initiative && !retracted` 的消息读 `reply-as-badge`（默认 1）在气泡顶部注入 `.msg-hi-heart` SVG 爱心（Material heart 路径）；② `src/css/chat-main.css`：`.msg-bubble` 加 `position:relative`；`.msg-hi-heart` 绝对定位于气泡左上（top:-4 left:-5，14×14，`#ff4d6a` 粉红，pointer-events:none 不挡点击）；③ `src/template.html`：「免打扰」行后新增「主动发送爱心标识」开关 `as-badge`；④ `src/js/reply-settings.js`：DEFAULTS 加 `'as-badge':1`，开关数组（syncUI/保存/change）三处加 `as-badge`。CDP 10/10：产物含标记/SVG/主动消息爱心 14px 左上角粉红/正文正常/被动无爱心/拍一拍无爱心/关→无/开→恢复/设置页开关默认勾选且位于主动发送分组/点击落库 as-badge=0 且 UI 同步/无 JS 错误。涉及 `src/js/chat.js`、`src/css/chat-main.css`、`src/template.html`、`src/js/reply-settings.js`。已 build+verify+提交推送。
