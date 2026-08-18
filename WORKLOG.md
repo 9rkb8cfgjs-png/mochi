@@ -11,6 +11,9 @@
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
 
 ### 2026-08-18
+- [本会话] 完成（主动发送爱心标识，已构建 verify 10/10 + CDP 探测 10/10，**本行记录随本次统一提交**）：需求——联系人主动发送消息的气泡左上角新增一枚极小爱心矢量图作为标识；回复设置→主动发送组新增开关可开/关。① `src/js/chat.js`：tryAutoSend 主动消息 `addIn(..., {initiative:true})`（撤回补发那条同步补 initiative:true）；`renderMsg` 对 `side==='in' && initiative && !retracted` 的消息读 `reply-as-badge`（默认 1）在气泡顶部注入 `.msg-hi-heart` SVG 爱心（Material heart 路径）；② `src/css/chat-main.css`：`.msg-bubble` 加 `position:relative`；`.msg-hi-heart` 绝对定位于气泡左上（top:-4 left:-5，14×14，`#ff4d6a` 粉红，pointer-events:none 不挡点击）；③ `src/template.html`：「免打扰」行后新增「主动发送爱心标识」开关 `as-badge`；④ `src/js/reply-settings.js`：DEFAULTS 加 `'as-badge':1`，开关数组（syncUI/保存/change）三处加 `as-badge`。CDP 10/10：产物含标记/SVG/主动消息爱心 14px 左上角粉红/正文正常/被动无爱心/拍一拍无爱心/关→无/开→恢复/设置页开关默认勾选且位于主动发送分组/点击落库 as-badge=0 且 UI 同步/无 JS 错误。涉及 `src/js/chat.js`、`src/css/chat-main.css`、`src/template.html`、`src/js/reply-settings.js`。已 build+verify+提交推送。
+
+### 2026-08-18
 - [本会话] 开工/通知（12:33）：用户已确认由**本会话统一构建提交部署**。对方已多轮完成（聊天记录保险丝/朋友圈去重/OPPO K13 三问题/深色模式），**请停止新改动**，完成当前轮后不要再开工新任务；本会话会在对方 10 分钟无新写入后执行 `node build.mjs` + verify + git 提交推送（一次提交含全部待提交改动）。若对方还有未保存改动请尽快保存并留话。
 
 ### 2026-08-18

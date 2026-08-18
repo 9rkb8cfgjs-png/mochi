@@ -18,6 +18,8 @@
     // 提到 30%（与信箱写信概率默认一致），平均约 25 分钟一条
     'as-en': 1, 'as-prob': 30, 'as-min': 5, 'as-max': 10,
     'as-count-min': 1, 'as-count-max': 2, 'dnd-en': 0,
+    // v3.6.x：主动发送爱心标识——联系人主动找你的消息气泡左上角小爱心，默认开
+    'as-badge': 1,
     // 信箱（星言信箱设置）
     // v3.5.99：最长写信/回信时间默认 480 分钟（8 小时）太久，容易让用户误以为 TA 不写信，改为 120 分钟
     // v3.6.x：默认最多字卡条数 100 → 50（信太长反而像刷屏）；新增最少字卡条数默认 20
@@ -96,7 +98,7 @@
       }
     });
     // 开关
-    ['py-en', 'as-en', 'dnd-en', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
+    ['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
       const el = document.getElementById(k);
       if (el) el.checked = cfg[k] === 1;
     });
@@ -183,7 +185,7 @@
     });
   });
   // 开关交互
-  ['py-en', 'as-en', 'dnd-en', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
+  ['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
     const el = document.getElementById(k);
     if (el) {
       el.addEventListener('change', () => window.saveReplyCfg(k, el.checked ? 1 : 0));
@@ -230,7 +232,7 @@
             window.saveReplyCfg(k, v);
           }
         });
-        ['py-en', 'as-en', 'dnd-en', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
+        ['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
           const el = document.getElementById(k);
           if (el) window.saveReplyCfg(k, el.checked ? 1 : 0);
         });

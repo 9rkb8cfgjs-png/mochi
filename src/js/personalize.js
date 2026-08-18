@@ -465,8 +465,54 @@
       bgHome.style.backgroundImage = '';
     }
     store.remove('phone-bg');
+    store.remove('phone-bg-preset');
     syncBgUI();
+    const pv = document.getElementById('bg-preset-val'); if (pv) pv.textContent = '默认';
   };
+  // v3.6.x：内置壁纸预设（CSS 渐变）
+  const BG_PRESETS = [
+    { name: '晨曦', css: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' },
+    { name: '暮色', css: 'linear-gradient(135deg, #2c3e50 0%, #4a67a4 100%)' },
+    { name: '森林', css: 'linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%)' },
+    { name: '暖阳', css: 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)' },
+    { name: '极简', css: 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%)' },
+    { name: '星空', css: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)' },
+    { name: '樱花', css: 'linear-gradient(135deg, #ffdde1 0%, #ee9ca7 100%)' },
+    { name: '海洋', css: 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)' },
+  ];
+  const bgPresetRow = document.getElementById('row-bg-preset');
+  const bgPresetVal = document.getElementById('bg-preset-val');
+  const applyPhoneBgPreset = (css) => {
+    if (!phoneEl) return;
+    phoneEl.style.backgroundImage = css;
+    phoneEl.style.backgroundSize = 'cover';
+    phoneEl.style.backgroundPosition = 'center';
+    document.body.style.backgroundImage = css;
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
+    if (bgHome) { bgHome.classList.add('has-bg'); bgHome.style.backgroundImage = 'none'; }
+  };
+  const getBgPresetName = () => store.get('phone-bg-preset') || '';
+  const syncBgPresetUI = () => { if (bgPresetVal) bgPresetVal.textContent = getBgPresetName() || '默认'; };
+  { const savedPreset = getBgPresetName(); if (savedPreset) { const p = BG_PRESETS.find(b => b.name === savedPreset); if (p) applyPhoneBgPreset(p.css); } syncBgPresetUI(); }
+  if (bgPresetRow) {
+    bgPresetRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const pills = [{ label: '清除预设', value: '__clear__' }].concat(
+        BG_PRESETS.map(p => ({ label: p.name, value: p.name }))
+      );
+      window.openModal('内置壁纸预设', '', (v) => {
+        if (v === '__clear__') { clearPhoneBg(); return; }
+        const p = BG_PRESETS.find(b => b.name === v);
+        if (!p) return;
+        clearPhoneBg();
+        store.set('phone-bg-preset', p.name);
+        applyPhoneBgPreset(p.css);
+        syncBgPresetUI();
+        toast('已切换为「' + p.name + '」壁纸');
+      }, { noInput: true, pills: pills });
+    });
+  }
   if (bgRow) {
     const savedBg = sanitizeBg('phone-bg', BG_SAFE_LIMIT);
     if (savedBg) applyPhoneBg(savedBg);
@@ -484,7 +530,9 @@
             if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
             applyPhoneBg(data);
             store.set('phone-bg', data);
+            store.remove('phone-bg-preset');
             syncBgUI();
+            syncBgPresetUI();
             // v3.5.111：上传后立即同步一次桌面可见性，确保回桌面时壁纸已应用
             //（配合内存缓存修复：大壁纸不写 localStorage，靠内存缓存当前会话内读回）
             applyBgVisibility();
@@ -1668,6 +1716,7 @@
   applyDeskLayout();
   document.addEventListener('contact-switched', applyDeskLayout);
   document.addEventListener('contact-switched', () => { applyDeskFontPct(getDeskFontPct()); applyDeskCardPct(getDeskCardPct()); });
+  document.addEventListener('contact-switched', () => { const sp = getBgPresetName(); if (sp) { const p = BG_PRESETS.find(b => b.name === sp); if (p) applyPhoneBgPreset(p.css); else clearPhoneBg(); } syncBgPresetUI(); });
 
   // 组件库面板：列出所有组件 + 当前位置，点击「添加到此页」
   function openDeskLib(pageSlide, pageIdx) {
@@ -2433,5 +2482,13 @@
     try { updateLove(); } catch (e) {}
     try { renderQuoteOfDay(); } catch (e) {}
     try { renderExtras(); } catch (e) {}
+    // v3.6.x：桌面双方昵称（lbl-user / lbl-partner）只在加载时写一次，
+    // 切换联系人后必须按新桌面的 store 重新渲染，否则残留上一个联系人的名字
+    try {
+      const lu = document.getElementById('lbl-user');
+      if (lu) { const v = store.get('lbl-user'); if (v) lu.textContent = v; }
+      const lp = document.getElementById('lbl-partner');
+      if (lp) { const v = store.get('lbl-partner'); if (v) lp.textContent = v; }
+    } catch (e) {}
   });
 })();

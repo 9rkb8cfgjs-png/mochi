@@ -70,6 +70,8 @@
 .msg-av svg { width:19px; height:19px; }
 .msg-av img { width:100%; height:100%; object-fit:cover; border-radius:var(--msg-av-radius, 50%); display:block; }
 .msg-bubble {
+  /* v3.6.x：relative 供主动发送爱心标识（.msg-hi-heart）绝对定位 */
+  position:relative;
   padding: var(--chat-bubble-pad, 11px 14px);
   font-size: var(--chat-font-size, 14px);
   border-radius:18px; line-height:1.5; word-break:break-word;
@@ -81,6 +83,15 @@
 }
 .msg-in .msg-bubble { background: var(--msg-in-bg, #ffffff); color: var(--msg-in-ink, #111111); }
 .msg-out .msg-bubble { background: var(--msg-out-bg, #111111); color: var(--msg-out-ink, #ffffff); }
+
+/* 主动发送标识：联系人主动找你的消息，气泡左上角一枚小爱心（矢量图） */
+.msg-hi-heart {
+  position:absolute;
+  top:-4px; left:-5px;
+  width:14px; height:14px;
+  color:#ff4d6a;
+  pointer-events:none;
+}
 
 /* 头像列：头像 + 时间轴（时间在头像底下） */
 .msg-side {

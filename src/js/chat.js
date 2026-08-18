@@ -1040,6 +1040,19 @@
         openPokeCard();
       });
     }
+    // v3.6.x：主动发送标识——联系人主动找你的消息气泡左上角加小爱心；
+    // 开关在回复设置→主动发送（reply-as-badge，默认开）。撤回应不显示。
+    if (rec.side === 'in' && rec.initiative && !rec.retracted) {
+      try {
+        const c = cfg();
+        if (cfgn(c, 'as-badge', 1) === 1) {
+          b.insertAdjacentHTML('afterbegin',
+            '<svg class="msg-hi-heart" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+            '<path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>' +
+            '</svg>');
+        }
+      } catch (e) {}
+    }
     if (rec.side === 'in' || rec.side === 'out') m.dataset.idx = msgs.length - 1;
     body.appendChild(m);
     maybeScrollChatBottom();
@@ -1907,7 +1920,8 @@ function partialRetractMsg(msgEl, side) {
       setTimeout(() => {
         hideTyping();
         const am = autoMsg();
-        const m = addIn(am.text, { type: am.type });
+        // v3.6.x：主动发送标识——标记 initiative，渲染时气泡左上角显示小爱心
+        const m = addIn(am.text, { type: am.type, initiative: true });
         if (hit(c['rc-prob'])) {
           setTimeout(() => {
             retractMsg(m, 'in');
