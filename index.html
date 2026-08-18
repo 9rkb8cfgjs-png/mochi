@@ -3513,7 +3513,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.96 · 部署于 2026-08-18 22:15</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.98 · 部署于 2026-08-18 22:18</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4224,7 +4224,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.96</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.98</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -4800,6 +4800,11 @@ color: var(--muted);
           <div class="dc-toggle-sub">开启后，联系人回复会混入默认字卡</div>
         </div>
         <label class="toggle"><input type="checkbox" id="dc-enabled"><span class="tk"></span></label>
+      </div>
+      <div class="set-group glass" style="margin:10px 12px 0">
+        <div class="gs-row"><span>聊天使用</span><label class="toggle"><input type="checkbox" id="dc-use-chat" checked><span class="tk"></span></label></div>
+        <div class="gs-row"><span>信箱使用</span><label class="toggle"><input type="checkbox" id="dc-use-mail" checked><span class="tk"></span></label></div>
+        <div class="gs-row"><span>朋友圈使用</span><label class="toggle"><input type="checkbox" id="dc-use-feed" checked><span class="tk"></span></label></div>
       </div>
       <div class="card-tabs" id="dc-tabs">
         <button class="cc-tab sel" data-type="main">主字卡</button>
@@ -9945,7 +9950,8 @@ else text.push(c);
 try {
 const dcfg = (window.defaultCardCfg && window.defaultCardCfg()) || {};
 const isOff = window.isDefaultCardOff || null;
-if (dcfg.enabled !== false && (!text.length || !kaomoji.length || !emoji.length)) {
+const useChat = window.defaultCardUse ? window.defaultCardUse('chat') : true;
+if (dcfg.enabled !== false && useChat && (!text.length || !kaomoji.length || !emoji.length)) {
 const defGrps = (window.getDefaultCardGroups && window.getDefaultCardGroups('main')) || [];
 defGrps.forEach(g => {
 const arr = g[1] || [];
@@ -10471,7 +10477,8 @@ return m;
 function performPoke() {
 let action = '';
 const dcfg = (window.defaultCardCfg && window.defaultCardCfg()) || {};
-if (dcfg.enabled && dcfg.probs && (dcfg.probs.touch || 0) > 0) {
+const useChat = window.defaultCardUse ? window.defaultCardUse('chat') : true;
+if (dcfg.enabled && useChat && dcfg.probs && (dcfg.probs.touch || 0) > 0) {
 const d = (window.getDefaultCards && window.getDefaultCards()) || null;
 if (d && d.type === 'poke') action = d.text;
 }
@@ -14690,6 +14697,9 @@ toast((off ? '已关闭：' : '已开启：') + (s.length > 18 ? s.slice(0, 18) 
 function getEnabled() { const v = ls.get('dc-enabled'); return v === null ? true : v === '1'; }
 function getOverall() { const v = ls.get('dc-overall'); return v === null ? 30 : Number(v); }
 function getProb(k) { const v = ls.get('dc-prob-' + k); return v === null ? 30 : Number(v); }
+function getUse(k) { const v = ls.get('dc-use-' + k); return v === null ? true : v === '1'; }
+function setUse(k, on) { ls.set('dc-use-' + k, on ? '1' : '0'); }
+window.defaultCardUse = function (k) { return getUse(k); };
 window.defaultCardCfg = function () {
 return { enabled: getEnabled(), overall: getOverall(), probs: { main: getProb('main'), kaomoji: getProb('kaomoji'), emoji: getProb('emoji'), touch: getProb('touch') } };
 };
@@ -14703,6 +14713,15 @@ enabledEl.checked = getEnabled();
 enabledEl.addEventListener('change', () => {
 ls.set('dc-enabled', enabledEl.checked ? '1' : '0');
 toast(enabledEl.checked ? '已开启：使用系统预设字卡' : '已关闭：使用系统预设字卡');
+});
+[['chat', '聊天'], ['mail', '信箱'], ['feed', '朋友圈']].forEach(([k, label]) => {
+const el = document.getElementById('dc-use-' + k);
+if (!el) return;
+el.checked = getUse(k);
+el.addEventListener('change', () => {
+setUse(k, el.checked);
+toast((el.checked ? '已开启' : '已关闭') + '：默认字卡' + label + '使用');
+});
 });
 let curGroup = '';
 function renderGroupsBar2() {
@@ -14798,6 +14817,7 @@ if (home) home.hidden = false;
 });
 }
 window.getDefaultCards = function () {
+if (!getUse('chat')) return [];
 const cfg = window.defaultCardCfg();
 if (!cfg.enabled) return [];
 if (Math.random() * 100 >= cfg.overall) return [];
@@ -21723,6 +21743,7 @@ const custom = (window.getCustomCards && window.getCustomCards()) || [];
 const text = [], kaomoji = [], emoji = [];
 const pushDefault = () => {
 try {
+if (window.defaultCardUse && !window.defaultCardUse('mail')) return;
 if (!text.length) {
 const dg = (window.getDefaultCardGroups && window.getDefaultCardGroups('main')) || [];
 dg.forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) text.push(c); }));
@@ -22176,6 +22197,14 @@ if (/[\uD800-\uDBFF]/.test(c) || /^[😀-🙏🌀-🫿]/u.test(c)) emoji.push(c)
 else if (/[\(（｡◕(◕)(づ｡(¬)]/.test(c) && /[\)）】)]/.test(c)) kaomoji.push(c);
 else text.push(c);
 });
+try {
+if (window.defaultCardUse && window.defaultCardUse('feed') && window.getDefaultCardGroups) {
+const gd = window.getDefaultCardGroups;
+if (!text.length) (gd('main') || []).forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) text.push(c); }));
+if (!kaomoji.length) (gd('kaomoji') || []).forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) kaomoji.push(c); }));
+if (!emoji.length) (gd('emoji') || []).forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) emoji.push(c); }));
+}
+} catch (e) {}
 return { text: text, kaomoji: kaomoji, emoji: emoji, sticker: mediaSticker, image: mediaImage };
 }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }

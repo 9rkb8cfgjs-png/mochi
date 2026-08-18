@@ -26,6 +26,11 @@
   function getEnabled() { const v = ls.get('dc-enabled'); return v === null ? true : v === '1'; }
   function getOverall() { const v = ls.get('dc-overall'); return v === null ? 30 : Number(v); }
   function getProb(k) { const v = ls.get('dc-prob-' + k); return v === null ? 30 : Number(v); }
+  // v3.7.x：场景开关——默认字卡可分别用于 聊天 / 信箱 / 朋友圈（默认全开）
+  //   存 localStorage 键：dc-use-chat / dc-use-mail / dc-use-feed（'1' 开启）
+  function getUse(k) { const v = ls.get('dc-use-' + k); return v === null ? true : v === '1'; }
+  function setUse(k, on) { ls.set('dc-use-' + k, on ? '1' : '0'); }
+  window.defaultCardUse = function (k) { return getUse(k); };
   window.defaultCardCfg = function () {
     return { enabled: getEnabled(), overall: getOverall(), probs: { main: getProb('main'), kaomoji: getProb('kaomoji'), emoji: getProb('emoji'), touch: getProb('touch') } };
   };
@@ -49,6 +54,16 @@
     ls.set('dc-enabled', enabledEl.checked ? '1' : '0');
     // v3.6.x：总开关也弹轻提示（与单卡开关一致）
     toast(enabledEl.checked ? '已开启：使用系统预设字卡' : '已关闭：使用系统预设字卡');
+  });
+  // v3.7.x：场景开关绑定——聊天 / 信箱 / 朋友圈 分别控制默认字卡的使用
+  [['chat', '聊天'], ['mail', '信箱'], ['feed', '朋友圈']].forEach(([k, label]) => {
+    const el = document.getElementById('dc-use-' + k);
+    if (!el) return;
+    el.checked = getUse(k);
+    el.addEventListener('change', () => {
+      setUse(k, el.checked);
+      toast((el.checked ? '已开启' : '已关闭') + '：默认字卡' + label + '使用');
+    });
   });
 
   let curGroup = '';
@@ -162,6 +177,8 @@
   // ---- 回复混入：供 chat.js 调用 ----
   // 返回当前分类下按权重选中一个分组的字卡数组；未触发返回 []
   window.getDefaultCards = function () {
+    // v3.7.x：聊天场景开关——关闭后聊天回复混入/拍一拍均不使用默认字卡
+    if (!getUse('chat')) return [];
     const cfg = window.defaultCardCfg();
     if (!cfg.enabled) return [];
     if (Math.random() * 100 >= cfg.overall) return [];

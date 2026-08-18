@@ -534,7 +534,9 @@
     try {
       const dcfg = (window.defaultCardCfg && window.defaultCardCfg()) || {};
       const isOff = window.isDefaultCardOff || null;
-      if (dcfg.enabled !== false && (!text.length || !kaomoji.length || !emoji.length)) {
+      // v3.7.x：聊天场景开关——关闭后聊天字卡池兜底不注入默认字卡
+      const useChat = window.defaultCardUse ? window.defaultCardUse('chat') : true;
+      if (dcfg.enabled !== false && useChat && (!text.length || !kaomoji.length || !emoji.length)) {
         const defGrps = (window.getDefaultCardGroups && window.getDefaultCardGroups('main')) || [];
         defGrps.forEach(g => {
           const arr = g[1] || [];
@@ -1138,7 +1140,9 @@
     // 优先用默认字卡【拍一拍】（聊天默认字卡开启时）
     let action = '';
     const dcfg = (window.defaultCardCfg && window.defaultCardCfg()) || {};
-    if (dcfg.enabled && dcfg.probs && (dcfg.probs.touch || 0) > 0) {
+    // v3.7.x：聊天场景开关——关闭后拍一拍回退到自定义拍一拍
+    const useChat = window.defaultCardUse ? window.defaultCardUse('chat') : true;
+    if (dcfg.enabled && useChat && dcfg.probs && (dcfg.probs.touch || 0) > 0) {
       const d = (window.getDefaultCards && window.getDefaultCards()) || null;
       if (d && d.type === 'poke') action = d.text;
     }

@@ -58,6 +58,16 @@
       else if (/[\(（｡◕(◕)(づ｡(¬)]/.test(c) && /[\)）】)]/.test(c)) kaomoji.push(c);
       else text.push(c);
     });
+    // v3.7.x：默认字卡补池——TA 发动态/评论素材不足时用系统默认字卡补，
+    //   受「朋友圈使用」场景开关控制（聊天默认字卡-设置页可关闭）
+    try {
+      if (window.defaultCardUse && window.defaultCardUse('feed') && window.getDefaultCardGroups) {
+        const gd = window.getDefaultCardGroups;
+        if (!text.length) (gd('main') || []).forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) text.push(c); }));
+        if (!kaomoji.length) (gd('kaomoji') || []).forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) kaomoji.push(c); }));
+        if (!emoji.length) (gd('emoji') || []).forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) emoji.push(c); }));
+      }
+    } catch (e) {}
     return { text: text, kaomoji: kaomoji, emoji: emoji, sticker: mediaSticker, image: mediaImage };
   }
   // v3.6.x：完整 HTML 转义（昵称/评论/点赞列表/分组名是用户输入，直拼 innerHTML 可注入）

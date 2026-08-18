@@ -355,11 +355,13 @@
   // 字卡库分类（与聊天/朋友圈同一套规则）：文字 / 颜文字 / emoji / 表情包(图片)
   // v3.6.x：用户未添加自定义字卡时（内置预设已移除）用系统默认字卡补池——
   //   否则信件只能从 5 条固定文案里抽，内容单一且条数上限超过池子时爆重复
+  // v3.7.x：补池受「信箱使用」场景开关控制（默认字卡-设置页可关闭）
   function mailCardPool() {
     const custom = (window.getCustomCards && window.getCustomCards()) || [];
     const text = [], kaomoji = [], emoji = [];
     const pushDefault = () => {
       try {
+        if (window.defaultCardUse && !window.defaultCardUse('mail')) return;
         if (!text.length) {
           const dg = (window.getDefaultCardGroups && window.getDefaultCardGroups('main')) || [];
           dg.forEach(g => (g[1] || []).forEach(c => { if (typeof c === 'string' && c) text.push(c); }));
