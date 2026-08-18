@@ -465,12 +465,16 @@
   }
   function sendToChat(m, cards, summary, question) {
     const modeTxt = m === 'tarot' ? '塔罗' : '雷诺曼';
-    let text = '🔮 占卜 · ' + modeTxt + ' ' + cards.length + ' 张\n';
+    // v3.7.x：去掉 🔮 emoji，精简排版（聊天渲染已把 \n 转 <br>，多行显示正常）
+    let text = '占卜 · ' + modeTxt + ' ' + cards.length + ' 张';
+    if (question) text += '（问：' + question + '）';
+    text += '\n';
     cards.forEach((c, i) => {
       const labels = (MODE_LABELS[m] && MODE_LABELS[m][cards.length]) || [];
-      text += '【' + (labels[i] || ('位置' + (i + 1))) + '】' + c.name + (c.rev ? '（逆）' : '') + '：' + c.meaning + '\n';
+      text += (i + 1) + '. ' + (labels[i] || ('位置' + (i + 1))) + ' · ' + c.name + (c.rev ? '（逆）' : '') + '：' + c.meaning + '\n';
     });
-    text += '综合：' + summary;
+    // 防 summary 自带"综合："前缀时重复
+    text += '综合：' + String(summary || '').replace(/^综合[:：]/, '');
     if (window.chatSendMsg) { window.chatSendMsg(text); toast('已发送给 ' + (partnerName2() || 'TA')); }
     else toast('请先进入聊天页');
   }

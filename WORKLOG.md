@@ -341,3 +341,9 @@
   2. **舞台防溢出**：`chat-pages.css` 给 `.div-shuf-box` 加 `overflow:hidden`（杜绝"飞出屏幕"），高度 170→178px 留呼吸。
   3. **牌背塔罗风格设计**（纯 CSS 无图片）：深紫渐变（#5a5270→#2b2538）+ 白色双线内画框 + 四角星点 + 中央✦星徽。`.div-shuf-card` / `.div-pile-card` 共享设计，`.ddc-face`（已抽翻面）加同风格内画框 + 浅色四角点与牌背呼应。JS 移除 `el.textContent = '✦'`（星徽改由 CSS `::after` 绘制）。
   涉及 `src/js/divination.js` `src/css/chat-pages.css`。**未构建未提交**，等待对方构建部署。
+
+- [本会话] 完成（用户反馈「占卜完在聊天里发送的文字消息排版是乱的，而且有个 emoji 删掉」——**已构建未提交**）：
+  1. **多行排版修复**：`chat.js` 渲染层根因——`escTxt` 不处理 `\n`，HTML 里 \n 被折叠成空格，多行消息显示成一坨。修复：新增 `escTxtBr(s)` = `escTxt(s).replace(/\n/g,'<br>')`，替换 renderMsg 主文本/组合消息 textPart/局部撤回 segHtml/quoteHtml 引用文本（5 处）——所有用户多行消息（占卜结果、引用块、组合消息文本段、局部撤回段）都正常换行。
+  2. **删 🔮 emoji + 精简排版**：`divination.js` sendToChat 去掉 `🔮 ` 前缀，格式改为 `占卜 · 塔罗 3 张（问：...）\n1. 过去 · 愚人：...\n2. 现在 · 太阳（逆）：...\n3. 未来 · 世界：...\n综合：...`；防 summary 自带「综合：」前缀时重复。
+  CDP 实测：消息文本无 🔮 含 \n，气泡 innerHTML 含 <br> 换行，半框自动发送消息同样无 🔮，8/8 通过。
+  涉及 `src/js/chat.js` `src/js/divination.js`。**未提交**，等待统一构建部署。

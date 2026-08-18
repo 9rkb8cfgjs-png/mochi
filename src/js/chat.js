@@ -352,6 +352,11 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+  // v3.7.x：转义 + 换行转 <br>——多行文本（如占卜结果）在 HTML 里 \n 会被折叠成
+  // 空格导致排版错乱，转义后再把换行转成显式换行标签
+  function escTxtBr(s) {
+    return escTxt(s).replace(/\n/g, '<br>');
+  }
   // v3.6.x：系统提示图标白名单——call.js 等以固定 <svg class="st-ico"> 前缀拼接
   // 系统图标（非用户内容），渲染时原样保留；其余文本仍走 escTxt 全量转义
   function pokeIconHtml(text) {
@@ -590,7 +595,7 @@
       const imgs = (q.imgs || []).filter(s => typeof s === 'string' && s.indexOf('data:') === 0).slice(0, 3);
       const t = String(q.t || '');
       // t 若是 dataURL（纯表情包消息的 text 就是图片），不当作文字显示，避免 base64 乱码
-      const tHtml = (t && t.indexOf('data:') !== 0) ? escTxt(t) : '';
+      const tHtml = (t && t.indexOf('data:') !== 0) ? escTxtBr(t) : '';
       let inner = '';
       if (imgs.length) inner += '<span class="msg-quote-imgs">' + imgs.map(s => '<img class="msg-quote-img" src="' + attrEsc(s) + '" alt="图片">').join('') + '</span>';
       if (tHtml) inner += '<span class="msg-quote-text">' + tHtml + '</span>';
@@ -600,7 +605,7 @@
       // 引用图片（表情包）缩略图
       return '<div class="msg-quote"><img class="msg-quote-img" src="' + attrEsc(q) + '" alt="图片"></div>';
     }
-    return '<div class="msg-quote"><span class="msg-quote-text">' + escTxt(q) + '</span></div>';
+    return '<div class="msg-quote"><span class="msg-quote-text">' + escTxtBr(q) + '</span></div>';
   }
   // v3.6.x：互动卡片就地作答——点击聊天里的互动卡片（小问题/好奇/吐槽/询问），
   // 直接在卡片内展开选项/输入框作答，不再强制弹窗。
@@ -1015,7 +1020,7 @@
           }).join('') + '</div>';
       }
       if (textPart) {
-        inner += '<span style="opacity:.85;word-break:break-word">' + escTxt(textPart) + '</span>';
+        inner += '<span style="opacity:.85;word-break:break-word">' + escTxtBr(textPart) + '</span>';
       }
       b.innerHTML = rec.quote
         ? quoteHtml(rec.quote, rec.qside) + inner
@@ -1035,7 +1040,7 @@
       for (let i = 0; i < segs.length; i++) {
         if (!rcs.some(r => r.idx === i)) {
           if (segHtml) segHtml += ' ';
-          segHtml += escTxt(segs[i]);
+          segHtml += escTxtBr(segs[i]);
         }
       }
       let sub = '';
@@ -1058,7 +1063,8 @@
     } else {
       // v3.5.131：文本转义（用户输入含 < 会破坏气泡结构/注入 HTML）
       // v3.6.x：升级为完整转义（只转 < 可被 `&lt;…&gt;` 实体绕过）
-      const escTxtS = escTxt(rec.text);
+      // v3.7.x：多行文本 \n 转 <br>（占卜结果等多行消息排版正常）
+      const escTxtS = escTxtBr(rec.text);
       b.innerHTML = rec.quote
         ? quoteHtml(rec.quote, rec.qside) + '<span style="opacity:.85">' + escTxtS + '</span>'
         : '<span style="opacity:.85">' + escTxtS + '</span>';
