@@ -790,6 +790,7 @@
     }
     revokeObjectUrl();
     playRejected = false;
+    disarmAutoResume();
     clearStallGuard();
     if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
   }
@@ -821,10 +822,13 @@
     const p = audio.play();
     if (p && p.catch) {
       p.catch(() => {
-        // v3.6.x：安卓自动播放策略会拒绝非用户手势触发的 play()——不再静默吞掉，
-        // 把播放图标回退为暂停态，避免「显示在播却无声」的假象
+        // v3.6.x：移动端自动播放策略——本地文件是「异步从 IDB/Blob 读回后再 play()」，
+        // 用户点击的手势上下文已丢失，play() 被浏览器拒绝（NotAllowedError）。
+        // 不再静默：明确提示 + 挂起下一次手势自动续播（用户再点一次屏幕即恢复）。
         playRejected = true;
         try { syncPlayIcons(false); } catch (e) {}
+        toast('点击播放被浏览器拦截，请再点一下屏幕继续播放');
+        armAutoResume();
       });
     }
     armStallGuard(m);
@@ -833,10 +837,38 @@
     startProgress();
     addRecord(m.id, '');
   }
+  // v3.6.x：自动播放被拒后的手势恢复——移动端 play() 被拒（异步链丢手势）后，
+  // 挂一次性手势监听，用户下一次触摸/点击（任意位置）时 audio.play()，
+  // 此时处于真实用户手势内，浏览器必放行；恢复成功后自动移除监听。
+  let autoResumeArmed = false;
+  function armAutoResume() {
+    if (autoResumeArmed) return;
+    autoResumeArmed = true;
+    const retry = function () {
+      disarmAutoResume();
+      if (!audio || !currentId || !audio.paused) return;
+      const p2 = audio.play();
+      if (p2 && p2.catch) p2.catch(function () { armAutoResume(); });
+    };
+    document.addEventListener('pointerdown', retry, true);
+    document.addEventListener('touchend', retry, true);
+    document.addEventListener('click', retry, true);
+    document._mochiAutoResume = retry;
+  }
+  function disarmAutoResume() {
+    autoResumeArmed = false;
+    const retry = document._mochiAutoResume;
+    if (!retry) return;
+    document._mochiAutoResume = null;
+    document.removeEventListener('pointerdown', retry, true);
+    document.removeEventListener('touchend', retry, true);
+    document.removeEventListener('click', retry, true);
+  }
   // v3.6.x：播放停滞守卫——外链被拦截/302 跳转挂起时 audio 不触发 error 也不出声
-  //（图标转但永远无声，Edge 等浏览器实测），play() 被自动播放策略拒绝同理。
-  // 启动 12 秒后 currentTime 仍为 0：种子歌自动切内置示例旋律，其余歌曲提示并停止；
-  // 有进度/暂停/切歌/播放事件都会取消守卫，慢网缓冲不会误伤。
+  //（图标转但永远无声，Edge 等浏览器实测）。启动 12 秒后 currentTime 仍为 0：
+  // 种子歌自动切内置示例旋律，其余歌曲提示并停止；有进度/暂停/切歌/播放事件都会取消守卫。
+  // play() 被自动播放策略拒绝（playRejected）不算停滞——走 armAutoResume 等用户手势，
+  // 不在这里误判成「外链失败」切兜底。
   let stallTimer = null;
   let playRejected = false;
   function clearStallGuard() {
@@ -850,7 +882,8 @@
       try {
         if (!audio || currentId !== m.id) return;
         if (audio.currentTime > 0) return;
-        if (audio.paused && !playRejected) return; // 用户主动暂停，不兜底
+        if (playRejected) return; // 等手势恢复播放，不误判外链失败
+        if (audio.paused) return; // 用户主动暂停，不兜底
         const idx = seedIdxOf(m);
         if (idx >= 0 && !demoFallbackBusy) {
           demoFallbackBusy = true;
@@ -892,13 +925,18 @@
       if (el) el.textContent = fmtDur(dur);
       if (m && dur) { m.duration = dur; saveLibrary(); }
       // v3.6.x：play() 曾被拒绝（自动播放策略/音频未就绪）→ 元数据就绪后补播一次
+      //（非手势触发仍可能被拒，被拒时走 armAutoResume 等下一次用户手势）
       if (playRejected && currentId === m.id) {
         playRejected = false;
         const p2 = audio.play();
-        if (p2 && p2.catch) p2.catch(() => { playRejected = true; try { syncPlayIcons(false); } catch (e) {} });
+        if (p2 && p2.catch) p2.catch(() => {
+          playRejected = true;
+          try { syncPlayIcons(false); } catch (e) {}
+          armAutoResume();
+        });
       }
     };
-    audio.onplay = function () { playRejected = false; clearStallGuard(); syncPlayIcons(true); };
+    audio.onplay = function () { playRejected = false; clearStallGuard(); disarmAutoResume(); syncPlayIcons(true); };
     audio.onpause = function () { syncPlayIcons(false); };
   }
   function playTrack(id) {
@@ -976,8 +1014,14 @@
       return;
     }
     if (audio.paused) {
+      // v3.6.x：按钮点击本身是用户手势，正常可播；个别浏览器仍拒 → 明确提示 + 手势续播
       const p = audio.play();
-      if (p && p.catch) p.catch(() => { try { syncPlayIcons(false); } catch (e) {} });
+      if (p && p.catch) p.catch(() => {
+        playRejected = true;
+        try { syncPlayIcons(false); } catch (e) {}
+        toast('点击播放被浏览器拦截，请再点一下屏幕继续播放');
+        armAutoResume();
+      });
     }
     else audio.pause();
   }
@@ -994,7 +1038,12 @@
       } else {
         if (callHoldPlaying && audio && currentId) {
           const p = audio.play();
-          if (p && p.catch) p.catch(() => { try { syncPlayIcons(false); } catch (e) {} });
+          if (p && p.catch) p.catch(() => {
+            // v3.6.x：通话结束恢复也是非手势播放，被拒时等下一次手势续播
+            playRejected = true;
+            try { syncPlayIcons(false); } catch (e) {}
+            armAutoResume();
+          });
         }
         callHoldPlaying = false;
         if (el && el.dataset.callHold === '0') { el.hidden = false; delete el.dataset.callHold; }

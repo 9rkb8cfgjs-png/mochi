@@ -3176,7 +3176,7 @@ background:rgba(255,255,255,.06);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.55 · 部署于 2026-08-18 13:10</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.57 · 部署于 2026-08-18 13:19</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3827,7 +3827,7 @@ background:rgba(255,255,255,.06);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.55</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.57</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -3885,7 +3885,7 @@ background:rgba(255,255,255,.06);
       </div>
       <div class="set-group glass">
         <div class="set-row" id="row-widget-color">
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5-9 9"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c1.7 0 3-1.3 3-3 0-.8-.3-1.5-.8-2-.5-.5-.8-1.2-.8-2 0-1.7 1.3-3 3-3h2c2.8 0 5-2.2 5-5 0-4.4-4.5-8-10-8z"/><circle cx="7" cy="10" r="1.2" fill="#111111" stroke="none"/><circle cx="12" cy="7" r="1.2" fill="#111111" stroke="none"/><circle cx="17" cy="10" r="1.2" fill="#111111" stroke="none"/></svg></div>
           <div class="txt">小组件颜色</div>
           <div class="val" id="widget-color-val"></div>
         </div>
@@ -6408,7 +6408,7 @@ img.src = saved;
 img.alt = '';
 ring.appendChild(img);
 } else if (ring) {
-ring.innerHTML = '';
+ring.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
 }
 }
 function bindAvatar(id, key) {
@@ -14376,6 +14376,7 @@ audio = null;
 }
 revokeObjectUrl();
 playRejected = false;
+disarmAutoResume();
 clearStallGuard();
 if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
 }
@@ -14406,6 +14407,8 @@ if (p && p.catch) {
 p.catch(() => {
 playRejected = true;
 try { syncPlayIcons(false); } catch (e) {}
+toast('点击播放被浏览器拦截，请再点一下屏幕继续播放');
+armAutoResume();
 });
 }
 armStallGuard(m);
@@ -14413,6 +14416,30 @@ updatePlayerBar();
 renderLibrary();
 startProgress();
 addRecord(m.id, '');
+}
+let autoResumeArmed = false;
+function armAutoResume() {
+if (autoResumeArmed) return;
+autoResumeArmed = true;
+const retry = function () {
+disarmAutoResume();
+if (!audio || !currentId || !audio.paused) return;
+const p2 = audio.play();
+if (p2 && p2.catch) p2.catch(function () { armAutoResume(); });
+};
+document.addEventListener('pointerdown', retry, true);
+document.addEventListener('touchend', retry, true);
+document.addEventListener('click', retry, true);
+document._mochiAutoResume = retry;
+}
+function disarmAutoResume() {
+autoResumeArmed = false;
+const retry = document._mochiAutoResume;
+if (!retry) return;
+document._mochiAutoResume = null;
+document.removeEventListener('pointerdown', retry, true);
+document.removeEventListener('touchend', retry, true);
+document.removeEventListener('click', retry, true);
 }
 let stallTimer = null;
 let playRejected = false;
@@ -14427,7 +14454,8 @@ stallTimer = null;
 try {
 if (!audio || currentId !== m.id) return;
 if (audio.currentTime > 0) return;
-if (audio.paused && !playRejected) return; // 用户主动暂停，不兜底
+if (playRejected) return; // 等手势恢复播放，不误判外链失败
+if (audio.paused) return; // 用户主动暂停，不兜底
 const idx = seedIdxOf(m);
 if (idx >= 0 && !demoFallbackBusy) {
 demoFallbackBusy = true;
@@ -14467,10 +14495,14 @@ if (m && dur) { m.duration = dur; saveLibrary(); }
 if (playRejected && currentId === m.id) {
 playRejected = false;
 const p2 = audio.play();
-if (p2 && p2.catch) p2.catch(() => { playRejected = true; try { syncPlayIcons(false); } catch (e) {} });
+if (p2 && p2.catch) p2.catch(() => {
+playRejected = true;
+try { syncPlayIcons(false); } catch (e) {}
+armAutoResume();
+});
 }
 };
-audio.onplay = function () { playRejected = false; clearStallGuard(); syncPlayIcons(true); };
+audio.onplay = function () { playRejected = false; clearStallGuard(); disarmAutoResume(); syncPlayIcons(true); };
 audio.onpause = function () { syncPlayIcons(false); };
 }
 function playTrack(id) {
@@ -14539,7 +14571,12 @@ return;
 }
 if (audio.paused) {
 const p = audio.play();
-if (p && p.catch) p.catch(() => { try { syncPlayIcons(false); } catch (e) {} });
+if (p && p.catch) p.catch(() => {
+playRejected = true;
+try { syncPlayIcons(false); } catch (e) {}
+toast('点击播放被浏览器拦截，请再点一下屏幕继续播放');
+armAutoResume();
+});
 }
 else audio.pause();
 }
@@ -14554,7 +14591,11 @@ if (el) { el.dataset.callHold = el.hidden ? '1' : '0'; el.hidden = true; }
 } else {
 if (callHoldPlaying && audio && currentId) {
 const p = audio.play();
-if (p && p.catch) p.catch(() => { try { syncPlayIcons(false); } catch (e) {} });
+if (p && p.catch) p.catch(() => {
+playRejected = true;
+try { syncPlayIcons(false); } catch (e) {}
+armAutoResume();
+});
 }
 callHoldPlaying = false;
 if (el && el.dataset.callHold === '0') { el.hidden = false; delete el.dataset.callHold; }

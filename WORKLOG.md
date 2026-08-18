@@ -11,6 +11,10 @@
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
 
 ### 2026-08-18
+- [本会话] 完成（桌面默认头像矢量图恢复，已构建 verify 10/10 + CDP 冒烟 7/7，**随本次提交**）：用户反馈桌面第一页顶部头像圆圈里没有聊天默认头像那种人形矢量图。根因——`template.html` 的 `.ring` 内本来有默认 SVG，但 `personalize.js` `applyAvatar()` 在「当前联系人未设置头像」时执行 `ring.innerHTML=''`，把模板默认 SVG 一并清掉（v3.6.x 多桌面「不残留旧头像 img」逻辑的副作用）；聊天页 `fillAvatar` 无头像时会主动重建 SVG 所以正常。修复：else 分支改为重建默认人形 SVG（与 template.html 一致 `#111111`）。CDP 7/7：无头像桌面两圈均渲染 SVG / 人形路径 / 有头像渲染 img / 清空恢复 SVG。涉及 `src/js/personalize.js`。
+- [对方改动·本次统一构建随提交] `music-player.js` 自动播放被拒后手势恢复（armAutoResume/disarmAutoResume，失败 toast 提示）+ `src/template.html` 小组件颜色图标换调色板图标（13:17 保存，已重新构建进产物）。
+
+### 2026-08-18
 - [本会话] 完成（用户反馈两处，已构建 verify 10/10 + CDP 端到端 14/14，**随本次提交**）：
   - **聊天设置里气泡颜色设置不见了**（我的/联系人气泡颜色+双方消息文字颜色）：根因——4 行 DOM（cs-out-bg/cs-out-ink/cs-in-bg/cs-in-ink）在 `src/template.html` 聊天设置页丢失（与 row-contacts 同因：此前模板被 checkout 回退+截断重写），`chat-settings.js` bindBubbleColorRow 匹配不到行静默 return。修复：`src/template.html`「气泡样式」组后新增「气泡颜色」组 4 行（默认值回显与 applySettings 一致）。
   - **切换桌面后桌面仍显示上一个联系人的昵称**：根因——`personalize.js` bindLabel 只在启动时写一次 lbl-user/lbl-partner，contact-switched 监听器未重读。修复：监听器补刷新（新联系人无昵称回退默认「我 / TA」）。

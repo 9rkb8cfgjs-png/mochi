@@ -89,8 +89,10 @@
       ring.appendChild(img);
     } else if (ring) {
       // v3.6.x：当前联系人未设置头像（或数据异常被清）→ 清掉残留的上一联系人头像，
-      // 否则多桌面切换后旧桌面的头像 img 会一直留在 DOM 里（切到无头像桌面仍显示旧头像）
-      ring.innerHTML = '';
+      // 否则多桌面切换后旧桌面的头像 img 会一直留在 DOM 里（切到无头像桌面仍显示旧头像）。
+      // v3.6.x 修复：恢复模板默认人形矢量图（此前 innerHTML='' 把 template.html 里
+      // 的默认 SVG 也一并清掉，无头像时桌面圆圈变空白，与聊天页默认头像不一致）
+      ring.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
     }
   }
   function bindAvatar(id, key) {
