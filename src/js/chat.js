@@ -718,6 +718,10 @@
   // 兼容重渲染/懒加载；就地展开失败（数据异常等）时回退到对应弹窗，保证点卡片必有反应
   if (body) {
     body.addEventListener('click', (e) => {
+      // v3.6.77：点击卡片外区域 → 所有互动卡片的收藏按钮收起
+      if (!e.target.closest('.msg-ask-card, .msg-choose-card, .msg-fav-heart, .msg-inplace')) {
+        body.querySelectorAll('.msg-ask-card.show-fav, .msg-choose-card.show-fav').forEach(c => c.classList.remove('show-fav'));
+      }
       // 卡片收藏按钮：整卡收藏到我的收藏（不展开作答）
       const favBtn = e.target.closest('.msg-fav-heart');
       if (favBtn) {
@@ -732,7 +736,11 @@
       if (!card) return;
       const item = card.closest('.msg-ask');
       if (!item || item.dataset.idx === undefined) return;
-      if (card.classList.contains('answered')) return; // 已作答不重复展开
+      // v3.6.77：点击卡片 toggle 收藏按钮显示（单选——先收起其它卡片的收藏按钮）
+      const hadFav = card.classList.contains('show-fav');
+      body.querySelectorAll('.msg-ask-card.show-fav, .msg-choose-card.show-fav').forEach(c => c.classList.remove('show-fav'));
+      if (!hadFav) card.classList.add('show-fav');
+      if (card.classList.contains('answered')) { e.stopPropagation(); return; } // 已作答：只切换收藏按钮
       const idx = Number(item.dataset.idx);
       const rec = msgs[idx];
       if (!rec) return;
