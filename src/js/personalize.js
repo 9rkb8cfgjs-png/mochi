@@ -1717,6 +1717,22 @@
   }
   buildDeskPages();
   document.addEventListener('contact-switched', buildDeskPages);
+  // v3.6.x 修复（刷新后桌面页数消失）：IndexedDB 回填完成前，desk-page-count 若只存于
+  // IDB（localStorage 缺失，如旧数据迁移后/个别浏览器配额清理），首次 buildDeskPages
+  // 会按默认 2 页构建，恢复完成后页数/新增页不会自动重建 → 刷新后「新增的页消失」。
+  // 恢复完成事件后重建一次：页数未变时幂等（不动已存在页内容，仅重设背景/圆点）。
+  const rebuildDeskWhenReady = () => {
+    try { buildDeskPages(); } catch (e) {}
+  };
+  if (window.__mochiDataReady) rebuildDeskWhenReady();
+  else {
+    try {
+      document.addEventListener('mochi-restore-done', function h() {
+        document.removeEventListener('mochi-restore-done', h);
+        rebuildDeskWhenReady();
+      });
+    } catch (e) { rebuildDeskWhenReady(); }
+  }
   // v3.6.x：图片组件——启动渲染 + 点击/查看器初始化 + 切联系人重渲染
   renderDeskImages();
   setupDeskImageClick();

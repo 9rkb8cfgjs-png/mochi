@@ -350,3 +350,6 @@
   2. **删 🔮 emoji + 精简排版**：`divination.js` sendToChat 去掉 `🔮 ` 前缀，格式改为 `占卜 · 塔罗 3 张（问：...）\n1. 过去 · 愚人：...\n2. 现在 · 太阳（逆）：...\n3. 未来 · 世界：...\n综合：...`；防 summary 自带「综合：」前缀时重复。
   CDP 实测：消息文本无 🔮 含 \n，气泡 innerHTML 含 <br> 换行，半框自动发送消息同样无 🔮，8/8 通过。
   涉及 `src/js/chat.js` `src/js/divination.js`。**未提交**，等待统一构建部署。
+
+### 2026-08-18
+- [本会话] 完成（用户反馈「手机桌面美化里新增的桌面页数，重新刷新打开后会消失」修复，已构建 verify 10/10 + CDP 复现验证）：根因——`desk-page-count` 是 localStorage/IDB 双写小键，若该键只存于 IndexedDB（localStorage 缺失：旧数据迁移后残留键被清/浏览器配额清理），启动时 `idbRestore` 尚未回填，`personalize.js` 的 `buildDeskPages()` 已按默认 2 页构建完成，恢复完成后没有任何代码重建页面结构 → 刷新后新增页消失（设置页也显示「共 2 页」）。CDP 复现：清掉 LS 键仅留 IDB → 刷新后 `desk-page-count` 已回填为 3 但页面卡在 2 页。修复：`buildDeskPages()` 初始构建后追加「数据恢复完成（mochi-restore-done）后重建一次」（已 ready 直接重建，与 contacts.js/chat.js 同模式）；页数未变时幂等（不动已存在页内容，仅重设背景/圆点）。CDP 验证：正常路径与 LS 缺失路径刷新后均为 3 页。涉及 `src/js/personalize.js`（AI-B 文件，本会话统一实现）。已 `node build.mjs` + `npm run verify` 10/10。待提交。

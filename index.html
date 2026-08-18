@@ -3497,7 +3497,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.89 · 部署于 2026-08-18 20:35</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.90 · 部署于 2026-08-18 20:49</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4206,7 +4206,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.89</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.90</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -8477,6 +8477,18 @@ buildDeskPages();
 }
 buildDeskPages();
 document.addEventListener('contact-switched', buildDeskPages);
+const rebuildDeskWhenReady = () => {
+try { buildDeskPages(); } catch (e) {}
+};
+if (window.__mochiDataReady) rebuildDeskWhenReady();
+else {
+try {
+document.addEventListener('mochi-restore-done', function h() {
+document.removeEventListener('mochi-restore-done', h);
+rebuildDeskWhenReady();
+});
+} catch (e) { rebuildDeskWhenReady(); }
+}
 renderDeskImages();
 setupDeskImageClick();
 setupDeskImageViewerClose();
