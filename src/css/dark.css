@@ -1,0 +1,221 @@
+/* ===== v3.6.x 深色模式覆盖 ===== */
+/* 仅 [data-theme="dark"] 生效；覆盖 home/setting/chat-main/chat-pages 中硬编码色 */
+/* 已用 var(--ink)/var(--muted)/var(--widget-bg) 等变量的元素由 base.css [data-theme=dark] 自动切换，此处不重复 */
+
+[data-theme="dark"] {
+
+  /* ---- home.css ---- */
+  .deco-avatar .ring { background:#2a2a2a; border-color:rgba(255,255,255,.1); }
+  .deco-avatar .lbl { color:#aaa; background:#1e1e1e; border-color:rgba(255,255,255,.12); }
+  .deco-avatar .lbl:hover { background:rgba(255,255,255,.06); }
+  .deco-heart { color:#f0f0f0; }
+  .deco-love { border-top-color:rgba(255,255,255,.1); }
+
+  .ck-txt { color:#aaa; }
+  .ck-btn.done { background:#333; color:#777; }
+
+  .we-ta { color:#aaa; }
+  .we-sep { color:#555; }
+
+  .app .app-ico { background:rgba(40,40,40,.92); border-color:rgba(255,255,255,.1); }
+  .app-badge { background:#1e1e1e; color:#ccc; border-color:rgba(255,255,255,.2); }
+  .dot { background:rgba(255,255,255,.2); }
+  .dot.active { background:var(--ink); }
+  .desk-page-add { border-color:rgba(255,255,255,.2); background:rgba(30,30,30,.6); }
+  .desk-lib { background:rgba(0,0,0,.6); }
+  .desk-lib-box { background:#1e1e1e; }
+  .desk-lib-sub { color:#888; }
+  .desk-lib-item { border-color:#3a3a3a; }
+  .desk-lib-item .dl-where { color:#777; }
+  .desk-lib-item .dl-btn { background:#f0f0f0; color:#111; }
+  .desk-lib-item .dl-btn:disabled { background:#333; color:#777; }
+
+  .mw-bar { background:#3a3a3a; }
+  .mw-fill { background:linear-gradient(90deg,#aaa,#f0f0f0); }
+  .mw-knob { background:#f0f0f0; }
+  .mw-play { background:#2a2a2a; color:#f0f0f0; border-color:rgba(255,255,255,.1); }
+  .mw-play svg { fill:#f0f0f0; }
+  #mw-cover { background:#2a2a2a; border-color:rgba(255,255,255,.08); }
+  #mw-cover .mw-cover-ico { color:#666; }
+
+  .week-day { background:rgba(255,255,255,.06); }
+  .week-day.today { background:var(--ink); color:#111; }
+  .week-day.today b { color:#111; }
+
+  .desk-msg { background:rgba(30,30,30,.96); border-color:rgba(255,255,255,.1); }
+  .desk-msg-av { background:#2a2a2a; }
+  .desk-msg-av svg { stroke:#777; }
+
+  /* ---- setting.css ---- */
+  .set-row { border-bottom-color:rgba(255,255,255,.05); }
+  .set-row .arrow { color:#666; }
+  .set-row .arrow svg { stroke:#666; }
+  .set-row.sub .txt { color:#ccc; }
+  .ver { color:#666; }
+  .ver-credit { color:#555; }
+  .gs-row { border-bottom-color:rgba(255,255,255,.05); }
+  .stp-min, .stp-max { background:rgba(255,255,255,.08); color:#aaa; }
+  .stp-min:active, .stp-max:active { background:var(--ink); color:#111; }
+  .stp-val { border-bottom-color:rgba(255,255,255,.25); }
+  .tk { background:#444; }
+  .tk::before { background:#f0f0f0; }
+  .toggle input:checked + .tk { background:var(--ink); }
+  .bg-notify-test { border-color:rgba(255,255,255,.15); background:#1e1e1e; color:#ccc; }
+  .bg-notify-test:active { background:rgba(255,255,255,.06); }
+
+  /* ---- chat-main.css ---- */
+  .chat-head { background:transparent; }
+  .msg-av { background:#2a2a2a; }
+  .chat-search-new { background:rgba(255,255,255,.06); }
+  .chat-search-new:active { background:rgba(255,255,255,.1); }
+  .chat-search-bar { background:var(--input-bg); border-color:var(--input-border); }
+  .chat-search-input { background:transparent; border-color:var(--input-border); color:var(--ink); }
+  .chat-search-input:focus { border-color:var(--ink); background:var(--input-bg); }
+  .chat-search-go { background:var(--btn-bg); color:var(--btn-ink); }
+  .chat-search-results .tc-listitem:active { background:rgba(255,255,255,.05); }
+  .chat-search-hl { background:#7a6a1f; color:#fff; }
+  .chat-search-empty { color:#666; }
+  .chat-ask-input { background:var(--input-bg); border-color:var(--input-border); color:var(--ink); }
+  .chat-ask-type-btn { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
+  .chat-ask-type-btn.sel { background:var(--ink); color:#111; border-color:var(--ink); }
+  .chat-ask-opts { background:var(--input-bg); border-color:var(--input-border); color:var(--ink); }
+  .chat-input-row { background:var(--glass-bg); border-color:var(--card-border); }
+  .chat-input { color:var(--ink); }
+  .chat-input:empty::before { color:var(--hint-ink); }
+
+  .poke-card { background:var(--card-bg); border-color:var(--card-border); }
+  .poke-card-head { border-bottom-color:var(--card-border); }
+  .poke-card-close { background:rgba(255,255,255,.06); color:var(--ink); }
+  .poke-big { background:rgba(255,255,255,.06); }
+  .poke-big:active { background:rgba(255,255,255,.1); }
+  .poke-groups .emoji-g-chip { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
+  .poke-groups .emoji-g-chip.sel { background:var(--ink); color:#111; border-color:var(--ink); }
+  .poke-input { background:var(--input-bg); border-color:var(--input-border); color:var(--ink); }
+  .poke-input:focus { border-color:var(--ink); background:var(--input-bg); }
+  .poke-input-go { background:var(--btn-bg); color:var(--btn-ink); }
+
+  .emoji-card { background:var(--card-bg); border-color:var(--card-border); }
+  .emoji-g-chip { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
+  .emoji-g-chip.sel { background:var(--ink); color:#111; border-color:var(--ink); }
+  .emoji-tab { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
+  .emoji-tab.sel { background:var(--ink); color:#111; border-color:var(--ink); }
+  .emoji-tool { background:rgba(255,255,255,.06); color:var(--soft-ink); }
+  .emoji-tool:active { background:rgba(255,255,255,.1); }
+  .emoji-batch { background:var(--card-bg); border-color:var(--card-border); }
+  .emoji-batch-btn { border-color:var(--pill-border); color:var(--soft-ink); }
+  .emoji-batch-btn:active { background:rgba(255,255,255,.05); }
+  .emoji-item { border-color:rgba(255,255,255,.06); }
+  .emoji-item:active { background:rgba(255,255,255,.05); }
+  .emoji-item.sel { background:rgba(255,255,255,.08); }
+  .emoji-empty { color:#666; }
+
+  /* ---- chat-pages.css ---- */
+  .card-tabs { background:transparent; }
+  .card-tab { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
+  .card-tab.sel { background:var(--ink); color:#111; border-color:var(--ink); }
+  .card-search { background:var(--input-bg); border-color:var(--input-border); }
+  .card-search-input { background:transparent; color:var(--ink); }
+  .cc-item { background:var(--card-bg); border-color:var(--card-border); }
+  .cc-item:active { background:rgba(255,255,255,.04); }
+  .cc-item.sel { background:rgba(255,255,255,.06); }
+  .cc-ico { background:rgba(255,255,255,.06); }
+  .cc-tool { background:rgba(255,255,255,.06); color:var(--soft-ink); }
+  .cc-tool:active { background:rgba(255,255,255,.1); }
+  .cc-add { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.1); color:var(--soft-ink); }
+  .cc-empty { color:#666; }
+  .cc-group-header { color:var(--soft-ink); }
+
+  .fav-empty { color:#666; }
+  .fav-tab { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
+  .fav-tab.sel { background:var(--ink); color:#111; border-color:var(--ink); }
+
+  .mem-card { background:var(--card-bg); border-color:var(--card-border); }
+  .mem-tip { background:rgba(255,255,255,.04); }
+  .mem-extra { background:rgba(255,255,255,.04); }
+  .mem-extra .me-del { background:rgba(255,255,255,.06); color:var(--soft-ink); }
+  .mem-add { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.1); color:var(--soft-ink); }
+  .mem-add:active { background:rgba(255,255,255,.08); }
+  .mem-add-input { background:var(--input-bg); border-color:var(--input-border); color:var(--ink); }
+  .mem-cal-btn { background:rgba(255,255,255,.06); color:var(--soft-ink); }
+  .mem-cal-btn:active { background:var(--ink); color:#111; }
+  .mem-cal-cell { background:rgba(255,255,255,.04); color:var(--soft-ink); }
+  .mem-cal-cell:hover { background:rgba(255,255,255,.08); }
+  .mem-cal-cell.sel { background:var(--ink); color:#111; }
+  .mem-type-pill { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
+  .mem-type-pill.sel { background:var(--ink); color:#111; border-color:var(--ink); }
+  .mem-add-cancel { border-color:rgba(255,255,255,.12); background:var(--card-bg); color:#aaa; }
+  .mem-add-ok { background:var(--ink); color:#111; }
+
+  .cal-card { background:var(--card-bg); border-color:var(--card-border); }
+  .cal-cat-tag { background:rgba(255,255,255,.08); color:var(--soft-ink); }
+  .cal-activity { background:rgba(255,255,255,.04); }
+  .cal-message { background:rgba(255,255,255,.04); color:var(--soft-ink); }
+  .cal-month-btn { background:rgba(255,255,255,.06); color:var(--soft-ink); }
+  .cal-month-btn:active { background:var(--ink); color:#111; }
+
+  .div-card { background:var(--card-bg); border-color:var(--card-border); }
+  .div-card-meaning { background:rgba(255,255,255,.04); }
+  .div-btn { background:var(--btn-bg); color:var(--btn-ink); }
+
+  .mail-item { background:var(--card-bg); border-color:var(--card-border); }
+  .mail-item:active { background:rgba(255,255,255,.04); }
+  .mail-item.unread { background:rgba(255,255,255,.06); }
+  .mail-write-area { background:var(--input-bg); border-color:var(--input-border); color:var(--ink); }
+
+  .feed-post { background:var(--card-bg); border-color:var(--card-border); }
+  .feed-comment { background:rgba(255,255,255,.04); }
+  .feed-input { background:var(--input-bg); border-color:var(--input-border); color:var(--ink); }
+
+  .sm-item { background:var(--card-bg); border-color:var(--card-border); }
+  .sm-item:active { background:rgba(255,255,255,.04); }
+
+  .stats-card { background:var(--card-bg); border-color:var(--card-border); }
+  .stats-bar-track { background:rgba(255,255,255,.06); }
+
+  .tc-listitem { background:var(--card-bg); border-color:var(--card-border); }
+  .tc-listitem:active { background:rgba(255,255,255,.04); }
+  .tc-q { color:var(--ink); }
+  .tc-opt { background:rgba(255,255,255,.04); color:var(--soft-ink); }
+  .tc-opt:active { background:rgba(255,255,255,.08); }
+
+  .qa-mask { background:rgba(0,0,0,.6); }
+  .qa-body { background:var(--card-bg); border-color:var(--card-border); }
+  .qa-q { color:var(--ink); }
+  .qa-opt { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
+  .qa-opt:active { background:rgba(255,255,255,.1); }
+
+  .gs-title { color:var(--muted); }
+  .lic-card, .cal-card.lic-card { background:var(--card-bg); border-color:var(--card-border); }
+
+  /* 通用：白色背景元素兜底 */
+  .cal-card, .div-card, .mail-card, .feed-card, .stats-card,
+  .mem-card, .sm-item, .mail-item, .feed-post, .tc-listitem, .cc-item {
+    background:var(--card-bg);
+  }
+
+  /* SVG stroke 兜底：模板里写死 stroke="#111111" 的图标 */
+  .ch-back svg, .set-row .ico svg, .app .app-ico svg,
+  .chat-search svg, .msg-av svg, .mw-btn, .mw-heart,
+  .cal-month-btn svg, .mem-cal-btn svg {
+    stroke:var(--ink);
+  }
+
+  /* 输入框 placeholder */
+  .card-search-input::placeholder,
+  .chat-search-input::placeholder,
+  .mail-write-area::placeholder,
+  .feed-input::placeholder,
+  .mem-add-input::placeholder,
+  .poke-input::placeholder,
+  .chat-ask-input::placeholder,
+  .chat-ask-opts::placeholder {
+    color:var(--muted);
+  }
+
+  /* 通用 hover/active 态 */
+  .chat-search-new:active, .emoji-tool:active, .emoji-item:active,
+  .cc-item:active, .mail-item:active, .sm-item:active, .tc-listitem:active,
+  .mem-cal-cell:hover, .emoji-batch-btn:active, .cc-tool:active {
+    background:rgba(255,255,255,.06);
+  }
+}

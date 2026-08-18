@@ -50,6 +50,7 @@
       pendingLocal = null;
       chatDbReady = false;
       sessionChangedIdx.clear();
+      armReadyFuse();
     } catch (e) {}
   });
   // v3.6.x：localStorage 兜底快照——聊天记录权威数据只存 IndexedDB（几千条带图
@@ -83,12 +84,32 @@
       }
     } catch (e) {}
   }
+  // v3.6.x：IDB 权威读取保险丝（仿 mail.js 15s）——X浏览器等第三方浏览器在 OPPO
+  // 后台挂起时 indexedDB.open/读取可能永不返回，chatDbReady 永远 false → 消息只进
+  // 内存不落盘，刷新即丢（用户实测"聊一天、第二天全没"）。15s 后强制就绪：此后
+  // 保存至少走 LS 快照兜底，IDB 恢复后 loadMsgs 按权威合并；就绪时若有未落盘消息
+  // 顺手写一份快照，防就绪后立刻被杀。仅在未就绪时武装一次，切联系人后重新武装。
+  let readyFuse = null;
+  function armReadyFuse() {
+    if (readyFuse || chatDbReady) return;
+    readyFuse = setTimeout(function () {
+      readyFuse = null;
+      if (chatDbReady) return;
+      chatDbReady = true;
+      const fuseMsgs = (pendingLocal && pendingLocal.length) ? pendingLocal : msgs;
+      if (fuseMsgs && fuseMsgs.length) {
+        try { writeLsSnapshot(JSON.stringify(fuseMsgs)); } catch (e) {}
+      }
+    }, 15000);
+  }
   function saveMsgs() {
     const data = JSON.stringify(msgs);
-    // 权威未就绪：只暂存内存。既不能写 localStorage（会让 loadMsgs 第一步读到
-    // 不完整的 [1条] 而忽略 IDB 权威），更不能写 IndexedDB（会覆盖历史）
+    // 权威未就绪（IDB 打开/读取挂起，如 X浏览器等第三方浏览器后台挂起）：消息暂存
+    // 内存，同时写 LS 快照兜底——loadMsgs 第一步会先读 LS 快照渲染，IDB 读回后按
+    // 权威合并（快照仅兜底，不会覆盖 IDB 权威）；不写 LS 的话刷新后消息全部丢失
     if (!chatDbReady) {
       try { pendingLocal = msgs.slice(); } catch (e) {}
+      writeLsSnapshot(data);
       return;
     }
     if (saveTimer) clearTimeout(saveTimer);
@@ -109,6 +130,9 @@
       const data = JSON.stringify(msgs);
       try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
       writeLsSnapshot(data);
+    } else if (!chatDbReady && msgs.length) {
+      // IDB 未就绪期间的杀进程/切后台：内存消息写 LS 快照兜底，下次启动从快照恢复
+      writeLsSnapshot(JSON.stringify(msgs));
     }
   }
   // v3.5.134：暴露给导出/清除等外部流程（导出前强制落盘，防止备份缺最后几条消息）
@@ -143,6 +167,7 @@
     return false;
   }
   function loadMsgs() {
+    armReadyFuse();
     // v3.6.x：聊天记录已改为只写 IndexedDB，这里不再优先读 localStorage 快照。
     // 仅当内存为空（首次启动/刷新）且 IDB 尚未读回时，用 localStorage 兜底渲染一次
     //（老版本数据/IDB 读取慢时的即时展示），IDB 权威合并后会覆盖它；
@@ -1186,6 +1211,8 @@
   // 系统通知应基于浏览器可见性（hidden）判断，而非页面 UI 状态
   function extractDeskMsg(rec) {
     let text = rec.text || '';
+    // v3.5.150：恢复 rec.img 作为图片来源（拍一拍/换头像消息的图片照常展示）——
+    // 上一版误移除；本次要改的只有通知左侧图标（见 bg-keep.js v3.5.148）
     let img = rec.img || '';
     if (rec.parts && rec.parts.length) {
       const ims = rec.parts.filter(p => p.k === 'img');

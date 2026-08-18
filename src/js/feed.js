@@ -60,7 +60,6 @@
     });
     return { text: text, kaomoji: kaomoji, emoji: emoji, sticker: mediaSticker, image: mediaImage };
   }
-  function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
   // v3.6.x：完整 HTML 转义（昵称/评论/点赞列表/分组名是用户输入，直拼 innerHTML 可注入）
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function attrEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
@@ -78,44 +77,84 @@
     html += str.slice(last).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     return html;
   }
+  // 无重复抽取器：同一轮生成内不重复抽同一张卡（池子抽完一轮后重新洗牌再继续），
+  // 修复小字卡池下同一条动态/评论连续重复同一张卡（如「爱你爱你爱你…」）
+  function makePicker(arr) {
+    const a = arr.slice();
+    let i = a.length;
+    return function () {
+      if (i >= a.length) {
+        for (let j = a.length - 1; j > 0; j--) {
+          const k = Math.floor(Math.random() * (j + 1));
+          const t = a[j]; a[j] = a[k]; a[k] = t;
+        }
+        i = 0;
+      }
+      return a[i++];
+    };
+  }
+  function uniqArr(arr) {
+    const seen = new Set(); const out = [];
+    arr.forEach(x => { if (!seen.has(x)) { seen.add(x); out.push(x); } });
+    return out;
+  }
   // 图文混排生成器：主字卡/颜文字/emoji/表情包/图片 全 5 类，每张卡是一块内容（图片/表情包即 1 个字卡）
   // opts: { kaoP, emoP, stP, imP, imgP } —— 各类别每卡出现概率（0~100，直接取回复设置数值）；
   //       imgP 为表情包+图片合并概率（评论/回复用「使用表情包概率」fd-image-prob）
   // v3.6.x：cid 指定用该联系人桌面的字卡（朋友圈 TA 评论/回复/动态都用所属桌面字卡）
+  // v3.6.x：各分类字卡去重 + 无重复抽取（同轮不抽同一张卡），修复小池内容大量重复
   function genMixedCards(cfg, minN, maxN, opts, cid) {
     const o = opts || {};
     const pool = cardPool(cid);
-    const fb = TA_COMMENT_POOL.concat(TA_REPLY_POOL);
+    const fb = uniqArr(TA_COMMENT_POOL.concat(TA_REPLY_POOL));
+    const pick = {
+      image: makePicker(uniqArr(pool.image)),
+      sticker: makePicker(uniqArr(pool.sticker)),
+      si: makePicker(uniqArr(pool.sticker.concat(pool.image))),
+      emoji: makePicker(uniqArr(pool.emoji)),
+      kaomoji: makePicker(uniqArr(pool.kaomoji)),
+      text: makePicker(uniqArr(pool.text)),
+      fb: makePicker(fb)
+    };
     const n = minN + Math.floor(Math.random() * Math.max(1, maxN - minN + 1));
     const parts = [];
     for (let i = 0; i < n; i++) {
       const r = Math.random() * 100;
       let pushed = false;
-      if (o.imP > 0 && pool.image.length && r < o.imP) { parts.push(rand(pool.image)); pushed = true; }
-      if (!pushed && o.stP > 0 && pool.sticker.length && r < o.stP) { parts.push(rand(pool.sticker)); pushed = true; }
-      if (!pushed && o.imgP > 0 && (pool.sticker.length || pool.image.length) && r < o.imgP) { parts.push(rand(pool.sticker.concat(pool.image))); pushed = true; }
-      if (!pushed && o.emoP > 0 && pool.emoji.length && r < o.emoP) { parts.push(rand(pool.emoji)); pushed = true; }
-      if (!pushed && o.kaoP > 0 && pool.kaomoji.length && r < o.kaoP) { parts.push(rand(pool.kaomoji)); pushed = true; }
-      if (!pushed) parts.push(pool.text.length ? rand(pool.text) : rand(fb));
+      if (o.imP > 0 && pool.image.length && r < o.imP) { parts.push(pick.image()); pushed = true; }
+      if (!pushed && o.stP > 0 && pool.sticker.length && r < o.stP) { parts.push(pick.sticker()); pushed = true; }
+      if (!pushed && o.imgP > 0 && (pool.sticker.length || pool.image.length) && r < o.imgP) { parts.push(pick.si()); pushed = true; }
+      if (!pushed && o.emoP > 0 && pool.emoji.length && r < o.emoP) { parts.push(pick.emoji()); pushed = true; }
+      if (!pushed && o.kaoP > 0 && pool.kaomoji.length && r < o.kaoP) { parts.push(pick.kaomoji()); pushed = true; }
+      if (!pushed) parts.push(pool.text.length ? pick.text() : pick.fb());
     }
     return parts.join(' ');
   }
   // v3.5.94：TA 发布动态专用生成器——文字（主字卡/颜文字/emoji）与图片（表情包/图片）
   // 分离：图片进 imgs 数组独立展示（与我的发布一致），不再混插在文字中间
   // v3.5.95：每类独立抽随机数——各概率设置（fd-post-kaomoji/emoji/sticker/image）独立生效
+  // v3.6.x：各分类字卡去重 + 无重复抽取（同轮不抽同一张卡），修复小池内容大量重复
   function genPostContent(cfg, cid) {
     const pool = cardPool(cid);
-    const fb = TA_COMMENT_POOL.concat(TA_REPLY_POOL);
+    const fb = uniqArr(TA_COMMENT_POOL.concat(TA_REPLY_POOL));
+    const pick = {
+      image: makePicker(uniqArr(pool.image)),
+      sticker: makePicker(uniqArr(pool.sticker)),
+      emoji: makePicker(uniqArr(pool.emoji)),
+      kaomoji: makePicker(uniqArr(pool.kaomoji)),
+      text: makePicker(uniqArr(pool.text)),
+      fb: makePicker(fb)
+    };
     const n = cfg.minCardsPost + Math.floor(Math.random() * Math.max(1, cfg.maxCardsPost - cfg.minCardsPost + 1));
     const textParts = [];
     const imgs = [];
     for (let i = 0; i < n; i++) {
       let pushed = false;
-      if (cfg.postImage > 0 && pool.image.length && Math.random() * 100 < cfg.postImage) { imgs.push(rand(pool.image)); pushed = true; }
-      if (!pushed && cfg.postSticker > 0 && pool.sticker.length && Math.random() * 100 < cfg.postSticker) { imgs.push(rand(pool.sticker)); pushed = true; }
-      if (!pushed && cfg.postEmoji > 0 && pool.emoji.length && Math.random() * 100 < cfg.postEmoji) { textParts.push(rand(pool.emoji)); pushed = true; }
-      if (!pushed && cfg.postKaomoji > 0 && pool.kaomoji.length && Math.random() * 100 < cfg.postKaomoji) { textParts.push(rand(pool.kaomoji)); pushed = true; }
-      if (!pushed) textParts.push(pool.text.length ? rand(pool.text) : rand(fb));
+      if (cfg.postImage > 0 && pool.image.length && Math.random() * 100 < cfg.postImage) { imgs.push(pick.image()); pushed = true; }
+      if (!pushed && cfg.postSticker > 0 && pool.sticker.length && Math.random() * 100 < cfg.postSticker) { imgs.push(pick.sticker()); pushed = true; }
+      if (!pushed && cfg.postEmoji > 0 && pool.emoji.length && Math.random() * 100 < cfg.postEmoji) { textParts.push(pick.emoji()); pushed = true; }
+      if (!pushed && cfg.postKaomoji > 0 && pool.kaomoji.length && Math.random() * 100 < cfg.postKaomoji) { textParts.push(pick.kaomoji()); pushed = true; }
+      if (!pushed) textParts.push(pool.text.length ? pick.text() : pick.fb());
     }
     return { content: textParts.join(' '), imgs: imgs };
   }

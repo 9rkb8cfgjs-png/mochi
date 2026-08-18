@@ -429,16 +429,49 @@
       .replace(/data:[a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[附件]')
       .replace(/\|\|\|.*$/, '');
     const opts = { body: (t ? t + '  ' : '') + (body && body.length > 40 ? body.slice(0, 40) + '…' : body) };
-    // v3.5.138：头像无论 dataURL 还是 http(s) URL 都作为通知图标（走 SW 路径，
-    //   dataURL 图标可正常显示；个别机型异常时 showSysNotification 已做去图标降级重发，
-    //   不会因头像拖垮整条通知）
-    const avatar = store.get('avatar-partner') || '';
-    if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) opts.icon = avatar;
+    // v3.5.148：通知左侧图标固定用 mochi 应用图标（NOTIFY_ICON = icon-192.png，
+    // showSysNotification 内部兜底）。之前把联系人头像（dataURL）塞进 icon——
+    // 安卓 Chrome 对 dataURL 图标支持不稳定，失败降级后通知左侧会回退成浏览器
+    // 默认图标（Chrome 图标）；头像改为不带（通知缩略图 image 字段保留）
     // v3.5.142：图片缩略图——聊天图文消息/表情包以通知 image 字段展示（正文预览大图）
-    if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) opts.image = extra.img;
+    // v3.5.147：dataURL 原图可能过大（安卓 Chrome 通知 image 字段对 dataURL 有大小限制，
+    // 超大 dataURL 会致 showNotification 失败 → 走降级重发 → 通知只剩文字没图片）。
+    // 发送前把 dataURL 压缩成小缩略图（96px JPEG，几 KB），稳定渲染且不拖垮通知；
+    // http(s) URL 图片不受限，直接使用
+    if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) {
+      if (extra.img.indexOf('data:') === 0 && extra.img.length > 30000) {
+        compressNotifyImg(extra.img, function (small) {
+          if (small) opts.image = small;
+          showSysNotification(name, opts);
+        });
+        return;
+      }
+      opts.image = extra.img;
+    }
     // v3.5.135：核心修复——后台消息通知必须走 Service Worker showNotification：
     //   页面在后台（隐藏）时 Chrome 会静默抑制页面脚本的 new Notification()，
     //   这是此功能此前"开关全开也弹不出来"的代码级根因。
     showSysNotification(name, opts);
   };
+  // v3.5.147：通知缩略图压缩——canvas 把图片 dataURL 压到最长边 96px JPEG。
+  // 压缩失败返回空串（调用方不带图发送，保证文字通知不丢）
+  function compressNotifyImg(dataUrl, cb) {
+    try {
+      const img = new Image();
+      img.onload = function () {
+        try {
+          const maxSide = 96;
+          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          cb(c.toDataURL('image/jpeg', 0.72));
+        } catch (e) { cb(''); }
+      };
+      img.onerror = function () { cb(''); };
+      img.src = dataUrl;
+    } catch (e) { cb(''); }
+  }
 })();

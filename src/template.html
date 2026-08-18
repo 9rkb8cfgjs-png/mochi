@@ -18,6 +18,7 @@
      对带 Referer 的请求返回 403（防盗链），移动端 WebView/Edge 对
      audio.referrerPolicy 属性支持不完整，页面级 meta 是更可靠的保证 -->
 <meta name="referrer" content="no-referrer">
+<script>try{if(localStorage.getItem('xy-home-v2:theme-mode')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}</script>
 <style>
 /*__STYLES__*/
 </style>
@@ -34,19 +35,19 @@
       <!-- v3.6.x：公告内容可由 notice.json 远程覆盖（clock.js 拉取），此处写死内容为离线兜底 -->
       <div class="splash-notice" id="splash-notice">
         <div class="splash-notice-title">关于 Mochi 字卡</div>
-        <div class="splash-notice-sub">【8.15 发布，还在修，暂时不建议开始二传二改】</div>
+        <div class="splash-notice-sub">【8.12开搓三十个小时，8.15发布，目前还在日更修，暂时不建议开始二传二改】</div>
         <div class="splash-notice-list">
           <p>1. 感谢内测反馈：大家的每条反馈我都有认真看，谢谢参与内测的各位</p>
-          <p>2. mochi字卡内测时间已定8.15～8.29</p>
-          <p>3. mochi字卡8.30完全公开后可二传二改</p>
-          <p>4. 不开测试群</p>
-          <p>5. 测试安排：先测试几天，集中修不同设备的 bug；之后会公开发帖放出链接（链接已在 GitHub 仓库，但暂不公开宣传）。</p>
-          <p>6. 关于 bug：如果参与测试的人较多，不同设备差异导致的 bug 我可能无法全部修完——建议等我公开发帖后的版本，自己拿最新版代码让 AI 协助修复。</p>
-          <p>7. 使用规范（8.30 完全公开后适用）：支持二传、二改和自行部署，但要遵守——转载要署名（小红书 @言序（1842523578））、二次修改要注明原作者、禁止商用。</p>
-          <p>8. 在边修边部署网站，有问题可以报修，使用时如果有问题也可以重新刷新用新版试试，修一天我会部署一天</p>
-          <p>9. 网站与我更新修复问题是同步的，可查看开屏最新部署时间。如果浏览器还没进入新版，可以关掉浏览器再打开多试几次流量刷新，或者过一段时间再打开</p>
-          <p>10. Mochi 字卡虽然是以我的另一个字卡「星言」为基础修改的，但字卡基础回复逻辑和灵感来源：小红书 @milk（2777299956）；帮我决定功能参考：小红书@FelixFelicis（9416318007）。</p>
-          <p>11. 新增可导入 milk 字卡库的【主字卡】【emoji】【拍一拍】</p>
+          <p>2. mochi字卡内测时间已定8.15～8.29（链接已在GitHub，但内测时间内暂不公开宣传）</p>
+          <p>3. mochi字卡8.30完全公开后可二传二改。在边修边部署网站，有问题可以报修，使用时如果有问题也可以重新刷新用新版试试，修一天我会部署一天</p>
+          <p>4. 不开测试群，有问题直接评论和私信</p>
+          <p>5. 反馈问题请附上手机型号和浏览器，因为很多问题不是代码本身出错，大部分问题是因为不同设备差异出现的特定bug</p>
+          <p>6. 关于bug：如果参与测试的人较多，不同设备差异导致的bug我可能无法全部修完——如果需要二传二改和自行部署，建议等我公开发帖后的版本，自己拿最新版代码让AI协助修复。</p>
+          <p>7. 使用规范（8.30完全公开后适用）：支持二传、二改和自行部署，但要遵守——转载要署名（小红书@言序（1842523578））、二次修改要注明原作者、禁止商用。</p>
+          <p>8. 网站与我更新修复问题是同步的，可查看开屏最新部署时间。如果浏览器还没进入新版，可以关掉浏览器再打开多试几次流量刷新，或者过一段时间再打开</p>
+          <p>9. Mochi字卡虽然是以我的另一个字卡「星言」为基础修改的，但字卡基础回复逻辑和灵感来源：小红书@milk（2777299956）；帮我决定功能参考：小红书@FelixFelicis（9416318007）。</p>
+          <p>10. 新增可导入milk字卡库的【主字卡】【emoji】【拍一拍】</p>
+          <p>11. 关于数据丢失：有可能有bug，也有可能是浏览器触发丢失。如果不是高频率丢失，就是正常情况，浏览器自身正常概率丢失数据，所以需要备份。目前还在内测更新多，也有可能更新的时候出现问题，建议提示有新版本需要刷新使用的时候备份一下数据</p>
         </div>
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
@@ -713,6 +714,28 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </span>
         <span class="ch-name">手机桌面美化</span>
+      </div>
+      <div class="set-group glass">
+        <div class="set-row" id="row-theme-mode">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg></div>
+          <div class="txt">深色模式</div>
+          <div class="val" id="theme-mode-val">关闭</div>
+        </div>
+        <div class="set-row" id="row-accent-color">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="#111111" stroke="none"/></svg></div>
+          <div class="txt">主题色</div>
+          <div class="val" id="accent-color-val">默认</div>
+        </div>
+        <div class="set-row" id="row-desk-font-size">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></div>
+          <div class="txt">桌面字号</div>
+          <div class="val" id="desk-font-size-val">默认</div>
+        </div>
+        <div class="set-row" id="row-desk-card-scale">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z" fill="none" stroke-dasharray="2 2"/></svg></div>
+          <div class="txt">卡片大小</div>
+          <div class="val" id="desk-card-scale-val">默认</div>
+        </div>
       </div>
       <div class="set-group glass">
         <div class="set-row" id="row-bg-upload">

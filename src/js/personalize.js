@@ -1096,6 +1096,148 @@
     });
   }
 
+  // ===== v3.6.x：深色模式（两档手动开关：浅色/深色，不跟随系统） =====
+  // 全局设置（不按联系人隔离），存储键 xy-home-v2:theme-mode
+  // 切换时在 <html> 上设 data-theme 属性，base.css [data-theme=dark] + dark.css 覆盖
+  const THEME_KEY = 'xy-home-v2:theme-mode';
+  const themeModeRow = document.getElementById('row-theme-mode');
+  const themeModeVal = document.getElementById('theme-mode-val');
+  const getThemeMode = () => { try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; } catch (e) { return 'light'; } };
+  const applyThemeMode = (mode) => {
+    if (mode === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      if (themeModeVal) themeModeVal.textContent = '已开启';
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      if (themeModeVal) themeModeVal.textContent = '关闭';
+    }
+  };
+  applyThemeMode(getThemeMode());
+  if (themeModeRow) {
+    themeModeRow.addEventListener('click', () => {
+      const next = getThemeMode() === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+      applyThemeMode(next);
+    });
+  }
+
+  // ===== v3.6.x：主题色（全局，覆盖按钮/激活态颜色） =====
+  const ACCENT_KEY = 'xy-home-v2:accent-color';
+  const accentRow = document.getElementById('row-accent-color');
+  const accentVal = document.getElementById('accent-color-val');
+  const ACCENT_PRESETS = [
+    { color: '#111111', label: '经典黑' },
+    { color: '#e05555', label: '珊瑚红' },
+    { color: '#e8753a', label: '暖橘' },
+    { color: '#f0a020', label: '琥珀金' },
+    { color: '#4a9d5e', label: '森绿' },
+    { color: '#3a7bd5', label: '天蓝' },
+    { color: '#7b5fd6', label: '紫罗兰' },
+    { color: '#d6459d', label: '玫红' },
+  ];
+  const accentLuminance = (hex) => {
+    const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+  };
+  const getAccentColor = () => { try { return localStorage.getItem(ACCENT_KEY) || ''; } catch (e) { return ''; } };
+  const applyAccentColor = (color) => {
+    if (color && /^#[0-9a-fA-F]{6}$/.test(color)) {
+      document.documentElement.style.setProperty('--btn-bg', color);
+      document.documentElement.style.setProperty('--btn-ink', accentLuminance(color) > 0.55 ? '#111111' : '#ffffff');
+      if (accentVal) accentVal.textContent = color.toUpperCase() === '#111111' ? '默认' : '已设置';
+    } else {
+      document.documentElement.style.removeProperty('--btn-bg');
+      document.documentElement.style.removeProperty('--btn-ink');
+      if (accentVal) accentVal.textContent = '默认';
+    }
+  };
+  applyAccentColor(getAccentColor());
+  if (accentRow) {
+    accentRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const current = getAccentColor();
+      window.openModal('主题色', '', (v) => {
+        if (v === '__reset__') { try { localStorage.removeItem(ACCENT_KEY); } catch (e) {} applyAccentColor(''); return; }
+        const color = (typeof v === 'number' && ACCENT_PRESETS[v]) ? ACCENT_PRESETS[v].color : v;
+        if (!color || !/^#[0-9a-fA-F]{6}$/.test(color)) return;
+        try { localStorage.setItem(ACCENT_KEY, color); } catch (e) {}
+        applyAccentColor(color);
+      }, {
+        noInput: true,
+        colorPicker: true,
+        color: current,
+        swatches: ACCENT_PRESETS,
+        pills: [{ label: '恢复默认', value: '__reset__' }],
+      });
+    });
+  }
+
+  // ===== v3.6.x：桌面字号（滑块 85~120%，默认 100%） =====
+  const deskFontRow = document.getElementById('row-desk-font-size');
+  const deskFontVal = document.getElementById('desk-font-size-val');
+  const DESK_FONT_DEFAULT = 100;
+  const getDeskFontPct = () => {
+    const v = store.get('desk-font-size');
+    if (v !== null && v !== undefined && v !== '') { const n = parseInt(v, 10); if (!isNaN(n)) return Math.max(85, Math.min(120, n)); }
+    return DESK_FONT_DEFAULT;
+  };
+  const applyDeskFontPct = (pct) => {
+    document.documentElement.style.setProperty('--desk-font-scale', String(pct / 100));
+    if (deskFontVal) deskFontVal.textContent = pct === DESK_FONT_DEFAULT ? '默认' : pct + '%';
+  };
+  applyDeskFontPct(getDeskFontPct());
+  if (deskFontRow) {
+    const syncDeskFontUI = () => { const pct = getDeskFontPct(); if (deskFontVal) deskFontVal.textContent = pct === DESK_FONT_DEFAULT ? '默认' : pct + '%'; };
+    syncDeskFontUI();
+    deskFontRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const current = getDeskFontPct();
+      window.openModal('桌面字号', '', (v) => {
+        if (v === '__reset__') { store.remove('desk-font-size'); applyDeskFontPct(DESK_FONT_DEFAULT); syncDeskFontUI(); return; }
+        const pct = parseInt(v, 10); if (isNaN(pct)) return;
+        store.set('desk-font-size', String(pct)); applyDeskFontPct(pct); syncDeskFontUI();
+      }, {
+        noInput: true,
+        slider: { min: 85, max: 120, step: 1, value: current, label: '拖动调整桌面字号', unit: '%',
+          onChange: (val) => { document.documentElement.style.setProperty('--desk-font-scale', String(val / 100)); } },
+        pills: [{ label: '恢复默认', value: '__reset__' }],
+      });
+    });
+  }
+
+  // ===== v3.6.x：卡片大小（滑块 80~120%，默认 100%） =====
+  const deskCardRow = document.getElementById('row-desk-card-scale');
+  const deskCardVal = document.getElementById('desk-card-scale-val');
+  const DESK_CARD_DEFAULT = 100;
+  const getDeskCardPct = () => {
+    const v = store.get('desk-card-scale');
+    if (v !== null && v !== undefined && v !== '') { const n = parseInt(v, 10); if (!isNaN(n)) return Math.max(80, Math.min(120, n)); }
+    return DESK_CARD_DEFAULT;
+  };
+  const applyDeskCardPct = (pct) => {
+    document.documentElement.style.setProperty('--desk-card-scale', String(pct / 100));
+    if (deskCardVal) deskCardVal.textContent = pct === DESK_CARD_DEFAULT ? '默认' : pct + '%';
+  };
+  applyDeskCardPct(getDeskCardPct());
+  if (deskCardRow) {
+    const syncDeskCardUI = () => { const pct = getDeskCardPct(); if (deskCardVal) deskCardVal.textContent = pct === DESK_CARD_DEFAULT ? '默认' : pct + '%'; };
+    syncDeskCardUI();
+    deskCardRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const current = getDeskCardPct();
+      window.openModal('卡片大小', '', (v) => {
+        if (v === '__reset__') { store.remove('desk-card-scale'); applyDeskCardPct(DESK_CARD_DEFAULT); syncDeskCardUI(); return; }
+        const pct = parseInt(v, 10); if (isNaN(pct)) return;
+        store.set('desk-card-scale', String(pct)); applyDeskCardPct(pct); syncDeskCardUI();
+      }, {
+        noInput: true,
+        slider: { min: 80, max: 120, step: 1, value: current, label: '拖动调整卡片大小', unit: '%',
+          onChange: (val) => { document.documentElement.style.setProperty('--desk-card-scale', String(val / 100)); } },
+        pills: [{ label: '恢复默认', value: '__reset__' }],
+      });
+    });
+  }
+
   // ===== v3.6.x：卡片背景图片（每类卡片独立上传，遮罩/原图可切换） =====
   // 存储：card-bg-<type>（图片 dataURL）+ card-bg-mask-<type>（'on'=白色遮罩 / 'off'=原图直出）
   // 卡片类型 → 目标元素：统一用 [data-card-bg] 属性选择（v3.6.x：卡片可被移到新增页，
@@ -1116,16 +1258,17 @@
     return def ? def.sel : '';
   };
   // 应用单个卡片的背景：遮罩用多层背景（白色半透明叠加在图片上）
-  // v3.6.x：遮罩浓度可调——card-bg-mask 存 'off'（原图直出）/ 'light'（0.3）/
-  // 'mid'（0.5）/ 'strong'（0.72）；旧值 'on' 视作 mid。默认 mid（原 0.78 太浓
-  // 图几乎看不见，0.5 图清晰可见、深色文字仍可读）
-  const MASK_ALPHA = { light: 0.3, mid: 0.5, strong: 0.72 };
+  // v3.6.x：遮罩浓度滑块 0~85（百分比），存数字字符串；旧值 'off'/'light'/'mid'/'strong'/'on' 迁移
+  const MASK_ALPHA_LEGACY = { off: 0, light: 30, mid: 50, strong: 72, on: 50 };
   const maskAlphaOf = (type) => {
     const v = store.get('card-bg-mask-' + type);
-    if (v === 'off') return 0;
-    if (MASK_ALPHA[v]) return MASK_ALPHA[v];
-    return MASK_ALPHA.mid; // undefined / 'on' / 其他 → mid
+    if (v === null || v === undefined || v === '') return 0.5;
+    if (MASK_ALPHA_LEGACY[v] !== undefined) return MASK_ALPHA_LEGACY[v] / 100;
+    const n = parseFloat(v);
+    if (!isNaN(n)) return Math.max(0, Math.min(85, n)) / 100;
+    return 0.5;
   };
+  const maskPctOf = (type) => Math.round(maskAlphaOf(type) * 100);
   const applyCardBg = (type) => {
     const sel = cardBgSel(type);
     if (!sel) return;
@@ -1162,7 +1305,7 @@
   // 会遮挡图标导致无法恢复默认，且用户反馈按钮多余，改为收进点卡片菜单）。
   const openCardBgMenu = (type, name, anchorEl) => {
     const img = store.get('card-bg-' + type);
-    const maskVal = store.get('card-bg-mask-' + type) || 'mid';
+
     const widgetEl = anchorEl ? anchorEl.closest('[data-desk-widget]') : null;
     const pickFile = () => {
       const input = document.createElement('input');
@@ -1197,16 +1340,11 @@
       toast(dir === 'up' ? '已上移' : '已下移');
     };
     // 组装菜单选项：背景操作 + （装修模式点卡片时）摆放操作
-    // v3.6.x：遮罩浓度三档（淡0.3/中0.5/浓0.72）+ 原图直出（off）
+    // v3.6.x：遮罩浓度滑块 0~85%（替换原四档 pills）
     const pills = [];
     pills.push({ label: img ? '更换图片' : '上传图片', value: '1' });
     if (img) pills.push({ label: '清除图片', value: '2' });
-    if (img) {
-      pills.push({ label: maskVal === 'off' ? '原图直出 ✓' : '原图直出', value: 'off' });
-      pills.push({ label: maskVal === 'light' ? '遮罩 · 淡 ✓' : '遮罩 · 淡', value: 'light' });
-      pills.push({ label: (maskVal === 'mid' || maskVal === 'on') ? '遮罩 · 中 ✓' : '遮罩 · 中', value: 'mid' });
-      pills.push({ label: maskVal === 'strong' ? '遮罩 · 浓 ✓' : '遮罩 · 浓', value: 'strong' });
-    }
+    if (img) pills.push({ label: '遮罩浓度', value: 'mask' });
     if (widgetEl) {
       pills.push({ label: '上移', value: 'up' });
       pills.push({ label: '下移', value: 'down' });
@@ -1222,11 +1360,33 @@
         applyCardBg(type);
         syncCardBgUIs();
         toast('已恢复默认');
-      } else if (v === 'off' || v === 'light' || v === 'mid' || v === 'strong') {
-        store.set('card-bg-mask-' + type, v);
-        applyCardBg(type);
-        syncCardBgUIs();
-        toast(v === 'off' ? '已切换为原图直出' : (v === 'light' ? '已切换为淡遮罩' : (v === 'mid' ? '已切换为中遮罩' : '已切换为浓遮罩')));
+      } else if (v === 'mask') {
+        const cur = maskPctOf(type);
+        window.openModal('遮罩浓度', '', (sv) => {
+          if (sv === '__reset__') { store.set('card-bg-mask-' + type, '50'); applyCardBg(type); syncCardBgUIs(); toast('已恢复默认 50%'); return; }
+          const pct = parseInt(sv, 10);
+          if (isNaN(pct)) return;
+          store.set('card-bg-mask-' + type, String(pct));
+          applyCardBg(type);
+          syncCardBgUIs();
+          toast('遮罩浓度 ' + pct + '%');
+        }, {
+          noInput: true,
+          slider: {
+            min: 0, max: 85, step: 1, value: cur, label: '拖动调整遮罩浓度', unit: '%',
+            onChange: (val) => {
+              const a = val / 100;
+              const els2 = document.querySelectorAll(cardBgSel(type));
+              els2.forEach(el => {
+                if (!el || !img) return;
+                el.style.backgroundImage = a > 0
+                  ? 'linear-gradient(rgba(255,255,255,' + a + '), rgba(255,255,255,' + a + ')), url("' + img + '")'
+                  : 'url("' + img + '")';
+              });
+            },
+          },
+          pills: [{ label: '恢复默认', value: '__reset__' }],
+        });
       } else if (v === 'up') moveWidget('up');
       else if (v === 'down') moveWidget('down');
       else if (v === 'out') {
@@ -1245,8 +1405,8 @@
       const val = document.getElementById('card-bg-val-' + c.type);
       if (!val) return;
       const img = store.get('card-bg-' + c.type);
-      const mv = store.get('card-bg-mask-' + c.type) || 'mid';
-      const maskTxt = mv === 'off' ? '原图' : (mv === 'light' ? '淡遮罩' : (mv === 'strong' ? '浓遮罩' : '遮罩'));
+      const pct = maskPctOf(c.type);
+      const maskTxt = pct === 0 ? '原图' : '遮罩' + pct + '%';
       val.textContent = img ? '已设置 · ' + maskTxt : '';
     });
   };
@@ -1507,6 +1667,7 @@
   };
   applyDeskLayout();
   document.addEventListener('contact-switched', applyDeskLayout);
+  document.addEventListener('contact-switched', () => { applyDeskFontPct(getDeskFontPct()); applyDeskCardPct(getDeskCardPct()); });
 
   // 组件库面板：列出所有组件 + 当前位置，点击「添加到此页」
   function openDeskLib(pageSlide, pageIdx) {

@@ -9,6 +9,10 @@
   --widget-opacity:1;
   --app-ico-radius:18px;
 }
+/* v3.6.x：桌面字号/卡片大小可调——zoom 影响布局不重叠，比 transform:scale 更安全 */
+.page-slide.desk-page { zoom:var(--desk-font-scale, 1); }
+.deco-widget, .mini-card, .checkin, .weekend-box, .music-widget,
+.memo-card, .mood-card, .week-card { zoom:var(--desk-card-scale, 1); }
 /* 纪念日卡片（纯装饰：头像 + 爱心 + 纪念日；已禁止上传背景图）
    纯白纸底 + 虚线描边 + 上下装饰点，细节更精致 */
 .deco-widget {

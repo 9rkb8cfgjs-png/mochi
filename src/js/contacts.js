@@ -4,7 +4,7 @@
 // 归属：系统/全局（AI-B 域），须最先于功能模块加载（build.mjs 中放在 idb.js 之后）。
 (function () {
   const G = 'xy-home-v2';
-  const EXCLUDE = ['contacts', 'active-contact', 'feed-posts', 'migrated-v1', 'js-errors'];
+  const EXCLUDE = ['contacts', 'active-contact', 'feed-posts', 'migrated-v1', 'js-errors', 'theme-mode', 'accent-color'];
   function isExcluded(k) {
     const r = k.slice(G.length + 1);
     if (EXCLUDE.indexOf(r) >= 0) return true;

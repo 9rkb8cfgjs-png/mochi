@@ -789,6 +789,8 @@
       audio = null;
     }
     revokeObjectUrl();
+    playRejected = false;
+    clearStallGuard();
     if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
   }
   // v3.5.112：内置种子歌曲判定与本地旋律兜底（共享：外链播放失败 / 本地数据缺失时使用）
@@ -821,13 +823,46 @@
       p.catch(() => {
         // v3.6.x：安卓自动播放策略会拒绝非用户手势触发的 play()——不再静默吞掉，
         // 把播放图标回退为暂停态，避免「显示在播却无声」的假象
+        playRejected = true;
         try { syncPlayIcons(false); } catch (e) {}
       });
     }
+    armStallGuard(m);
     updatePlayerBar();
     renderLibrary();
     startProgress();
     addRecord(m.id, '');
+  }
+  // v3.6.x：播放停滞守卫——外链被拦截/302 跳转挂起时 audio 不触发 error 也不出声
+  //（图标转但永远无声，Edge 等浏览器实测），play() 被自动播放策略拒绝同理。
+  // 启动 12 秒后 currentTime 仍为 0：种子歌自动切内置示例旋律，其余歌曲提示并停止；
+  // 有进度/暂停/切歌/播放事件都会取消守卫，慢网缓冲不会误伤。
+  let stallTimer = null;
+  let playRejected = false;
+  function clearStallGuard() {
+    if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
+  }
+  function armStallGuard(m) {
+    clearStallGuard();
+    if (!m || (m.source !== 'url' && !m.url)) return;
+    stallTimer = setTimeout(function () {
+      stallTimer = null;
+      try {
+        if (!audio || currentId !== m.id) return;
+        if (audio.currentTime > 0) return;
+        if (audio.paused && !playRejected) return; // 用户主动暂停，不兜底
+        const idx = seedIdxOf(m);
+        if (idx >= 0 && !demoFallbackBusy) {
+          demoFallbackBusy = true;
+          toast('外链播放失败，已改用内置示例旋律');
+          playDemoFor(m, idx);
+        } else if (idx < 0) {
+          toast('播放失败：网络链接可能已失效');
+          try { audio.pause(); } catch (e) {}
+          try { syncPlayIcons(false); } catch (e) {}
+        }
+      } catch (e) {}
+    }, 12000);
   }
   function setupHandlers(m) {
     audio.onended = function () {
@@ -856,8 +891,14 @@
       const el = document.getElementById('sm-pb-dur');
       if (el) el.textContent = fmtDur(dur);
       if (m && dur) { m.duration = dur; saveLibrary(); }
+      // v3.6.x：play() 曾被拒绝（自动播放策略/音频未就绪）→ 元数据就绪后补播一次
+      if (playRejected && currentId === m.id) {
+        playRejected = false;
+        const p2 = audio.play();
+        if (p2 && p2.catch) p2.catch(() => { playRejected = true; try { syncPlayIcons(false); } catch (e) {} });
+      }
     };
-    audio.onplay = function () { syncPlayIcons(true); };
+    audio.onplay = function () { playRejected = false; clearStallGuard(); syncPlayIcons(true); };
     audio.onpause = function () { syncPlayIcons(false); };
   }
   function playTrack(id) {
@@ -918,6 +959,8 @@
     if (progressTimer) clearInterval(progressTimer);
     progressTimer = setInterval(() => {
       if (!audio || !audio.duration) return;
+      // v3.6.x：有真实播放进度 → 取消停滞守卫（正常播放/慢网缓冲都算有进度）
+      if (audio.currentTime > 0) clearStallGuard();
       const cur = document.getElementById('sm-pb-cur');
       if (cur) cur.textContent = fmtDur(audio.currentTime);
       // 悬浮小框进度
