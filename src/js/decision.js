@@ -75,7 +75,7 @@
   // v3.6.x：思考时间 / 最多选几个 也持久化——之前每次打开面板都重置回默认值
   // （关掉面板再打开，「帮我决定时间」又得重新设置）
   function loadSettings() {
-    const d = { replyToChat: true, thinkA: 3, maxA: 1, thinkB: 3, maxB: 1 };
+    const d = { replyToChat: true, thinkA: 3, thinkB: 3, maxB: 1 };
     try { return Object.assign(d, JSON.parse(store.get(SETTINGS_KEY) || '{}')); } catch (e) { return d; }
   }
   function saveSettings(s) { store.set(SETTINGS_KEY, JSON.stringify(s)); }
@@ -117,7 +117,6 @@
       '<div class="dc-panel" data-dpanel="typea">' +
       '<div class="sm-fld"><label>输入你的纠结</label><div class="dec-inp-wrap"><textarea class="tc-input" id="dec-q-a" rows="3" placeholder="例如：我今晚该吃火锅吗？"></textarea><button class="dec-inp-clear" data-clear="dec-q-a" aria-label="清空" title="清空">✕</button></div></div>' +
       '<div class="gs-row"><span>思考时间（秒）</span><div class="stepper" id="dec-think-a" data-min="1" data-max="10" data-step="1"><button class="stp-min">−</button><input class="stp-val" id="dec-think-a-val" readonly><button class="stp-max">+</button></div></div>' +
-      '<div class="gs-row"><span>最多选几个（可多选）</span><div class="stepper" id="dec-max-a" data-min="1" data-max="3" data-step="1"><button class="stp-min">−</button><input class="stp-val" id="dec-max-a-val" readonly><button class="stp-max">+</button></div></div>' +
       '<button class="ta-add-btn" style="width:100%;margin-top:10px" id="dec-go-a">让对方决定</button>' +
       '<div class="dc-result" id="dec-result-a" hidden></div></div>' +
       '<div class="dc-panel" data-dpanel="typeb" hidden>' +
@@ -137,7 +136,6 @@
     const s = loadSettings();
     const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = String(v); };
     setVal('dec-think-a-val', s.thinkA);
-    setVal('dec-max-a-val', s.maxA);
     setVal('dec-think-b-val', s.thinkB);
     setVal('dec-max-b-val', s.maxB);
     const rc = document.getElementById('dec-reply-chat');
@@ -155,7 +153,7 @@
       });
     });
     // 思考时间 / 最多选几个 stepper（点击即持久化，关掉面板再打开不重置）
-    const sMap = { 'dec-think-a': 'thinkA', 'dec-max-a': 'maxA', 'dec-think-b': 'thinkB', 'dec-max-b': 'maxB' };
+    const sMap = { 'dec-think-a': 'thinkA', 'dec-think-b': 'thinkB', 'dec-max-b': 'maxB' };
     Object.keys(sMap).forEach(id => {
       const st = document.getElementById(id);
       if (!st) return;
@@ -205,7 +203,7 @@
     if (type === 'typea') {
       question = (document.getElementById('dec-q-a').value || '').trim();
       thinkTime = parseInt(document.getElementById('dec-think-a-val').value, 10) || 3;
-      maxSelect = parseInt(document.getElementById('dec-max-a-val').value, 10) || 1;
+      maxSelect = 1; // 是/否/半对：固定单选，最多选几个只用于自定义选项
     } else {
       question = (document.getElementById('dec-q-b').value || '').trim();
       thinkTime = parseInt(document.getElementById('dec-think-b-val').value, 10) || 3;
