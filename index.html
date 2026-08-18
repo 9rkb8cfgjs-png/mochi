@@ -1989,6 +1989,7 @@ cursor:pointer; font-family:inherit;
 .cal-edit-btn svg { width:14px; height:14px; }
 .div-scroll { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; padding:0 18px; }
 .div-scroll::-webkit-scrollbar { display:none; }
+.div-setup { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
 .div-hero {
 border-radius:20px; padding:22px 18px; text-align:center; margin-bottom:14px;
 background:rgba(255,255,255,.92);
@@ -2017,10 +2018,10 @@ color:#666; border-radius:12px; cursor:pointer; font-family:inherit;
 .div-input {
 width:100%; border:1px solid rgba(0,0,0,.1); border-radius:12px;
 padding:12px 14px; font-size:13px; font-family:inherit; outline:none;
-background:rgba(255,255,255,.92); color:var(--ink);
+background:rgba(255,255,255,.92); color:var(--ink); margin-bottom:12px; box-sizing:border-box;
 }
-.div-result { min-height:120px; display:flex; flex-direction:column; gap:10px; }
-.div-result-empty { color:#c0c0c0; font-size:12px; text-align:center; padding:30px 0; }
+.div-result { min-height:80px; display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+.div-result-empty { color:#c0c0c0; font-size:12px; text-align:center; padding:20px 0; }
 .div-card-face {
 width:100%; aspect-ratio:1; border-radius:14px;
 background:#eceff3; border:1px solid rgba(0,0,0,.05);
@@ -3506,7 +3507,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.102 · 部署于 2026-08-18 22:58</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.104 · 部署于 2026-08-18 23:06</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4217,7 +4218,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.102</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.104</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
