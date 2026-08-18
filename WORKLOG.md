@@ -11,6 +11,8 @@
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
 
 ### 2026-08-18
+- [本会话] 完成（用户反馈「字卡库自定义聊天字卡：主字卡/颜文字/emoji/表情包/图片/拍一拍/语音 大分类 tab 不显示该分类字卡数量」——**已构建 verify 10/10 + CDP 端到端功能点全过，随本次提交 b015e28**）：`src/js/chatcard.js` + `src/css/chat-pages.css` + `src/css/dark.css`。①chatcard.js 新增 `renderTabCounts()`：遍历 `#cc-tabs .cc-tab` 按 data-type 统计该分类所有分组字卡数，在 tab 尾部追加 `<em class="cc-tab-n">N</em>` 徽标（0 时显示 0 并加 `.zero` 弱化）；在 `render()` 开头调用——所有数据变更（增删/导入/IDB 恢复/切分类/搜索）都汇聚到 render，计数实时刷新；②样式：圆角小徽标（浅色半透明底灰字，选中态白底白字），dark.css 补暗色覆盖。CDP 验证：注入 7 分类测试数据后徽标 3/1/3/1/2/1/0 全部正确、空分类显示 0、选中态样式、切换分类后徽标保留（注意：测试内容若撞 BUILTIN 预设会被 stripBuiltins 清掉，验证时避开）。**已提交**（commit 统一包含对方 5 个字卡库双 tab 批次 ta-ask.js/template.html/p2-features.js/pwa.js/chat-main.css）。
+
 - [本会话] 完成（用户需求「桌面字卡库【今日情话】顶部双分类：系统预设 / 我的添加，数据分开不乱」，**已构建 verify 10/10 + CDP 端到端 22/22，未提交**）：`src/js/quote-cards.js` + `src/template.html` + `src/css/chat-pages.css`（复用 `.cc-tab`）。①`page-quote-cards` 顶部加两个 tab（系统预设/我的添加，复用字卡库 `.cc-tab` 样式）；②`renderList` 拆为 `renderSysList`（系统 46 句带单卡开关、不可删、标【系统】）+ `renderMineList`（用户自定义、带删除按钮），`switchTab` 切换面板；③**修复数据污染根因**：原批量添加走 `getQuotes()`，无自定义库时返回 `DEFAULT_QUOTES.slice()` → 用户首次添加会把系统 46 句+新内容一起存进自定义库（系统预设"转正"）；改为 `getCustom()` 只追加纯自定义库；④入口计数 `cc-quote-count` 改为实时计算（系统开启且未关的 + 自定义数），关闭总开关/删条目即时更新；⑤关闭系统预设总开关时系统 tab 显示灰化提示而非空。CDP 22/22：双 tab 切换/系统 46 行带开关无删除/我的添加空提示/批量添加 3 句落自定义/入口计数 49/切回系统未污染/关闭系统后计数 3/重开恢复 46/删除一条剩 2 计数 48/自定义库不含系统预设。**未提交**，等待统一提交/部署。
 
 - [本会话] 完成（用户反馈「聊天更多→占卜：无法查看历史记录（应每桌面独立）/无法开关记录自动发送至聊天/抽牌无动画无 2 行可滑动牌面；联系人撤回的情绪字卡不显示被撤、无法点击查看」——**已构建 verify 10/10 + CDP 端到端 27/27，随本次提交**）：
