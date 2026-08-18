@@ -326,3 +326,6 @@
 \n### 2026-08-18\n- [AI-A] 完工：修复永恒浏览器（OPPO Find X9，安卓 WebView）音乐无法播放。根因：该 WebView 对 blob: URL 音频静默失败（play() Promise 挂起、onplay 不触发、无声无提示），原 playLocal 统一转 blob: 导致本地歌点了无反应、网易云兜底旋律也无声。改 music-player.js playLocal 为 blob:/dataURL 双路径互为兜底——Blob 优先 blob:、dataURL 字符串优先 dataURL 直接作为 src，4 秒无 onplay/无进度 teardown 切另一种 src 重试；新增 blobToDataUrl 辅助函数。夸克（dataURL 失效）和永恒（blob: 失效）都兼容。node --check 通过。未构建，待构建者执行 node build.mjs + npm run verify。涉及文件：src/js/music-player.js\n
 ### 2026-08-18
 - [本会话] 完成（用户反馈 OPPO K13 + 雨见浏览器「信箱来信弹窗提示但点进信箱没有」排查+修复，已构建 verify 10/10 + CDP 探测 6/6 + 综合冒烟 4/4）：根因——`src/js/idb.js` idbRestore 启动回填**无条件覆盖 memoryCache[k]**；雨见等 IndexedDB 打开/读取慢的浏览器，启动回填尚未完成时收到新来信（大键信件 >200KB 只进 IDB+内存、不写 LS），迟到回填拿 IDB 旧值覆盖内存新值 → 弹窗已提示来信、信箱列表却是旧数据（空白/缺新信），直到下次写入才恢复。修复：回填只补「缺失」数据（memoryCache 已有值则跳过，含 LS 补写防污染）。CDP 复现测试：构造大键来信 + 12s 迟到回填 → 修复前内存被旧值覆盖、修复后新信保留。同时排查确认正常：正常来信/IDB挂起期间来信(mailPending)/TA回信落地/多桌面隔离/点弹窗进信箱。本次构建同时包含 AI-A 已保存改动（TA 收藏体系 chat/mail/feed + 占卜 v3.7 抽牌新流程 + 累积），18:29 构建产物与源码一致。遗留：`tools/diag-viewer-tmp.mjs`（未跟踪调试脚本，非本会话创建）待 AI-A 确认清理。
+
+### 2026-08-18
+- [本会话] 完成（开屏公告新增第12条，已构建 + 提交 v3.6.75）：公告新增「更新和bug修复」说明——灵感有但修设备bug耗时长所以慢；网站持续部署、每个反馈都修了，但只能靠用户自己设备验证，没设备无法验证修复程度；反馈修完后不一一回复，可晚点刷新新版再试；开屏无法跳过，加载完才能点进入。涉及 src/pwa/notice.json、src/template.html（离线兜底同步）。已 node build.mjs，产物与源码同次提交。
