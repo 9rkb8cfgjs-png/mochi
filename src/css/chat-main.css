@@ -360,7 +360,7 @@
   font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
 .more-tab.sel { background:#111; color:#fff; border-color:#111; }
-.more-grid { display:flex; flex-wrap:wrap; gap:14px; }
+.more-grid { display:flex; flex-wrap:wrap; gap:14px; justify-content:center; }
 .more-grid[hidden] { display:none; }
 .more-item {
   width:64px; display:flex; flex-direction:column; align-items:center; gap:7px;

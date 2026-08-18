@@ -164,7 +164,7 @@
   // 图片压缩（上传图片表情用）
   // v3.6.x：失败/超大图不再回退存原图——iOS Safari 解码超大 dataURL 会拖崩渲染进程
   //（画面正常但点击无响应），失败返回 null 由调用方提示换图
-  function compressImage(dataUrl, maxSide) {
+  function compressImage(dataUrl, maxSide, format, quality) {
     return new Promise((resolve) => {
       // 解码前拦截：>8MB base64 不解码不存储（48MP/ProRAW 级别）
       if (typeof dataUrl === 'string' && dataUrl.length > 8 * 1024 * 1024) {
@@ -181,8 +181,11 @@
           const h = Math.max(1, Math.round(img.height * scale));
           const c = document.createElement('canvas');
           c.width = w; c.height = h;
-          c.getContext('2d').drawImage(img, 0, 0, w, h);
-          resolve(c.toDataURL('image/png'));
+          const ctx = c.getContext('2d');
+          // v3.7.x：JPEG 无透明通道，先填白底避免透明区域变黑
+          if (format === 'image/jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); }
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL(format || 'image/png', quality));
         } catch (e) { resolve(null); }
       };
       img.onerror = () => resolve(null);
@@ -1115,11 +1118,16 @@
                 if (done === files.length) finishUpload(done - skipped, skipped);
               };
               if (cur === 'voice') process(reader.result);
-              else compressImage(reader.result, 260).then((data) => {
-                // v3.6.x：压缩失败/图片过大返回 null——不存原图（防 iOS 解码崩溃），跳过并提示
-                if (!data) { skipped++; done++; if (done === files.length) finishUpload(done - skipped, skipped); return; }
-                process(data);
-              });
+              else {
+                // v3.7.x：原 260px 在 3x 高清屏被放大 2~3 倍导致模糊。
+                //   图片分类当大图显示，压到 720px JPEG 0.85；表情包多小图且需透明背景，用 PNG 480px
+                const isImg = cur === 'image';
+                compressImage(reader.result, isImg ? 720 : 480, isImg ? 'image/jpeg' : 'image/png', isImg ? 0.85 : undefined).then((data) => {
+                  // v3.6.x：压缩失败/图片过大返回 null——不存原图（防 iOS 解码崩溃），跳过并提示
+                  if (!data) { skipped++; done++; if (done === files.length) finishUpload(done - skipped, skipped); return; }
+                  process(data);
+                });
+              }
             };
             reader.readAsDataURL(f);
           });

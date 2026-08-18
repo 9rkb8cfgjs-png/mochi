@@ -433,20 +433,28 @@
     // showSysNotification 内部兜底）。之前把联系人头像（dataURL）塞进 icon——
     // 安卓 Chrome 对 dataURL 图标支持不稳定，失败降级后通知左侧会回退成浏览器
     // 默认图标（Chrome 图标）；头像改为不带（通知缩略图 image 字段保留）
-    // v3.5.142：图片缩略图——聊天图文消息/表情包以通知 image 字段展示（正文预览大图）
+    // v3.5.150：右侧大图（image）——消息自带图片优先（聊天图片/表情包），
+    // 消息没带图时用联系人头像（代表"TA 发来的"，通知右侧始终有内容）；
+    // 左侧图标仍为 mochi（icon=NOTIFY_ICON，v3.5.148），两者不冲突
+    let rightImg = '';
+    if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) rightImg = extra.img;
+    else {
+      const avatar = store.get('avatar-partner') || '';
+      if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) rightImg = avatar;
+    }
     // v3.5.147：dataURL 原图可能过大（安卓 Chrome 通知 image 字段对 dataURL 有大小限制，
     // 超大 dataURL 会致 showNotification 失败 → 走降级重发 → 通知只剩文字没图片）。
     // 发送前把 dataURL 压缩成小缩略图（96px JPEG，几 KB），稳定渲染且不拖垮通知；
     // http(s) URL 图片不受限，直接使用
-    if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) {
-      if (extra.img.indexOf('data:') === 0 && extra.img.length > 30000) {
-        compressNotifyImg(extra.img, function (small) {
+    if (rightImg) {
+      if (rightImg.indexOf('data:') === 0 && rightImg.length > 30000) {
+        compressNotifyImg(rightImg, function (small) {
           if (small) opts.image = small;
           showSysNotification(name, opts);
         });
         return;
       }
-      opts.image = extra.img;
+      opts.image = rightImg;
     }
     // v3.5.135：核心修复——后台消息通知必须走 Service Worker showNotification：
     //   页面在后台（隐藏）时 Chrome 会静默抑制页面脚本的 new Notification()，

@@ -2225,7 +2225,7 @@ function partialRetractMsg(msgEl, side) {
       }, randInt(800, 2000));
     }, randInt(600, 1200));
   }
-  let pokeCurGroup = ''; // 当前选中的拍一拍分组（'' = 全部）
+  let pokeCurGroup = ''; // 当前选中的拍一拍分组（'' = 未选，自动落到第一个分组）
   function renderPokeGroupsBar(groups) {
     if (!pokeGroupsBar) return;
     pokeGroupsBar.innerHTML = '';
@@ -2240,15 +2240,16 @@ function partialRetractMsg(msgEl, side) {
       });
       pokeGroupsBar.appendChild(c);
     };
-    mk('全部', '');
     groups.forEach(g => { if (g[1] && g[1].length) mk(g[0] + g[1].length, g[0]); });
   }
   function renderPokeCard() {
     const name = store.get('lbl-partner') || 'TA';
     if (pokeName) pokeName.textContent = name;
     const groups = (window.getPokeGroups && window.getPokeGroups()) || [];
-    // 上次选中的分组已被删除 → 回到全部
-    if (pokeCurGroup && !groups.some(g => g[0] === pokeCurGroup)) pokeCurGroup = '';
+    // 选中分组无效或未选 → 落到第一个分组（不再有"全部"分类）
+    if (groups.length && (!pokeCurGroup || !groups.some(g => g[0] === pokeCurGroup))) {
+      pokeCurGroup = groups[0][0];
+    }
     renderPokeGroupsBar(groups);
     if (!pokeList) return;
     pokeList.innerHTML = '';

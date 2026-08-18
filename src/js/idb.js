@@ -32,15 +32,44 @@
   }
 
   // 写入（key: 完整键名，如 'xy-home-v2:cc-groups'）
+  // v3.7.0：写入失败重试 2 次（间隔 100ms），累计失败超 5 次 openModal 告警。
+  // 不破坏现有数据：重试是再写一次同样的 key/value，不删不改其他键。
+  // 告警让用户感知"静默丢数据"风险——原实现 resolve(false) 调用方忽略返回值，
+  // 数据只进 memoryCache 刷新即丢且无感知；告警后用户可主动导出备份。
+  let _idbFailCnt = 0;
+  let _idbFailAlerted = false;
+  function _idbFailNotify() {
+    _idbFailCnt++;
+    if (_idbFailCnt < 5 || _idbFailAlerted) return;
+    _idbFailAlerted = true;
+    try { console.warn('[mochi] IDB 写入累计失败 ' + _idbFailCnt + ' 次，建议立即导出备份'); } catch (e) {}
+    try {
+      if (window.openModal) {
+        window.openModal('存储异常', '', null, {
+          noInput: true,
+          staticText: '近期数据多次写入失败，可能因存储空间不足或浏览器限制。\n\n建议立即在设置页导出一份备份，避免数据丢失。'
+        });
+      }
+    } catch (e) {}
+  }
   window.idbSet = function (key, value) {
-    return open().then(db => new Promise((resolve) => {
-      try {
-        const tx = db.transaction(STORE, 'readwrite');
-        tx.objectStore(STORE).put(value, key);
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => resolve(false);
-      } catch (e) { resolve(false); }
-    })).catch(() => false);
+    function tryOnce() {
+      return open().then(db => new Promise((resolve) => {
+        try {
+          const tx = db.transaction(STORE, 'readwrite');
+          tx.objectStore(STORE).put(value, key);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } catch (e) { resolve(false); }
+      })).catch(() => false);
+    }
+    return (async () => {
+      let ok = await tryOnce();
+      if (!ok) { await new Promise(r => setTimeout(r, 100)); ok = await tryOnce(); }
+      if (!ok) { await new Promise(r => setTimeout(r, 100)); ok = await tryOnce(); }
+      if (!ok) _idbFailNotify();
+      return ok;
+    })();
   };
 
   // 批量写入（单事务一次完成，比逐条 idbSet 快；任一条失败则整体失败）

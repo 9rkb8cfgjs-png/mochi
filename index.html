@@ -1068,7 +1068,7 @@ background:rgba(255,255,255,.92); color:#666; cursor:pointer;
 font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
 .more-tab.sel { background:#111; color:#fff; border-color:#111; }
-.more-grid { display:flex; flex-wrap:wrap; gap:14px; }
+.more-grid { display:flex; flex-wrap:wrap; gap:14px; justify-content:center; }
 .more-grid[hidden] { display:none; }
 .more-item {
 width:64px; display:flex; flex-direction:column; align-items:center; gap:7px;
@@ -1531,13 +1531,6 @@ background:rgba(0,0,0,.04); font-size:12px; color:var(--ink); line-height:1.8;
 #page-chatcard::-webkit-scrollbar { display:none; }
 .chat-title { font-size:22px; font-weight:700; padding:4px 2px 8px; letter-spacing:1px; }
 .chat-sub { font-size:12px; color:var(--muted); font-weight:400; letter-spacing:1px; padding-bottom:12px; }
-.chat-search {
-display:flex; align-items:center; gap:8px;
-border-radius:16px; padding:11px 14px; margin-bottom:12px;
-color:var(--muted); cursor:pointer;
-}
-.chat-search svg { width:17px; height:17px; flex-shrink:0; }
-.chat-search .ph { font-size:13px; letter-spacing:.5px; }
 .chat-item {
 display:flex; align-items:center; gap:12px;
 border-radius:18px; padding:14px; margin-bottom:10px; cursor:pointer;
@@ -3513,7 +3506,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.98 · 部署于 2026-08-18 22:18</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.99 · 部署于 2026-08-18 22:43</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4224,7 +4217,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.98</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.99</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -4257,6 +4250,10 @@ color: var(--muted);
           <div class="txt">卡片大小</div>
           <div class="val" id="desk-card-scale-val">默认</div>
         </div>
+        <div class="set-row" id="row-custom-icon">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
+          <div class="txt">自定义手机桌面图标<span class="sub">自定义图标图片 · 桌面组件卡片位置 · 卡片背景图片</span></div>
+        </div>
       </div>
       <div class="set-group glass">
         <div class="set-row" id="row-desk-add-page">
@@ -4284,12 +4281,6 @@ color: var(--muted);
         <div class="set-row sub" id="row-bg-remove" hidden>
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2"/></svg></div>
           <div class="txt">移除背景图片</div>
-        </div>
-      </div>
-      <div class="set-group glass">
-        <div class="set-row" id="row-custom-icon">
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
-          <div class="txt">自定义手机桌面图标<span class="sub">自定义图标图片 · 桌面组件卡片位置 · 卡片背景图片</span></div>
         </div>
       </div>
       <div class="set-group glass">
@@ -5968,7 +5959,24 @@ req.onerror = () => reject(req.error);
 dbPromise.catch(() => { dbPromise = null; });
 return dbPromise;
 }
+let _idbFailCnt = 0;
+let _idbFailAlerted = false;
+function _idbFailNotify() {
+_idbFailCnt++;
+if (_idbFailCnt < 5 || _idbFailAlerted) return;
+_idbFailAlerted = true;
+try { console.warn('[mochi] IDB 写入累计失败 ' + _idbFailCnt + ' 次，建议立即导出备份'); } catch (e) {}
+try {
+if (window.openModal) {
+window.openModal('存储异常', '', null, {
+noInput: true,
+staticText: '近期数据多次写入失败，可能因存储空间不足或浏览器限制。\n\n建议立即在设置页导出一份备份，避免数据丢失。'
+});
+}
+} catch (e) {}
+}
 window.idbSet = function (key, value) {
+function tryOnce() {
 return open().then(db => new Promise((resolve) => {
 try {
 const tx = db.transaction(STORE, 'readwrite');
@@ -5977,6 +5985,14 @@ tx.oncomplete = () => resolve(true);
 tx.onerror = () => resolve(false);
 } catch (e) { resolve(false); }
 })).catch(() => false);
+}
+return (async () => {
+let ok = await tryOnce();
+if (!ok) { await new Promise(r => setTimeout(r, 100)); ok = await tryOnce(); }
+if (!ok) { await new Promise(r => setTimeout(r, 100)); ok = await tryOnce(); }
+if (!ok) _idbFailNotify();
+return ok;
+})();
 };
 window.idbSetAll = function (pairs) {
 if (!pairs || !pairs.length) return Promise.resolve(true);
@@ -11331,7 +11347,7 @@ setTimeout(() => { retractMsg(m2, 'in'); }, 900);
 }, randInt(800, 2000));
 }, randInt(600, 1200));
 }
-let pokeCurGroup = ''; // 当前选中的拍一拍分组（'' = 全部）
+let pokeCurGroup = ''; // 当前选中的拍一拍分组（'' = 未选，自动落到第一个分组）
 function renderPokeGroupsBar(groups) {
 if (!pokeGroupsBar) return;
 pokeGroupsBar.innerHTML = '';
@@ -11346,14 +11362,15 @@ renderPokeCard();
 });
 pokeGroupsBar.appendChild(c);
 };
-mk('全部', '');
 groups.forEach(g => { if (g[1] && g[1].length) mk(g[0] + g[1].length, g[0]); });
 }
 function renderPokeCard() {
 const name = store.get('lbl-partner') || 'TA';
 if (pokeName) pokeName.textContent = name;
 const groups = (window.getPokeGroups && window.getPokeGroups()) || [];
-if (pokeCurGroup && !groups.some(g => g[0] === pokeCurGroup)) pokeCurGroup = '';
+if (groups.length && (!pokeCurGroup || !groups.some(g => g[0] === pokeCurGroup))) {
+pokeCurGroup = groups[0][0];
+}
 renderPokeGroupsBar(groups);
 if (!pokeList) return;
 pokeList.innerHTML = '';
@@ -12993,7 +13010,7 @@ let n = 0;
 Object.keys(g).forEach(t => g[t].forEach(grp => n += grp[1].length));
 return n;
 }
-function compressImage(dataUrl, maxSide) {
+function compressImage(dataUrl, maxSide, format, quality) {
 return new Promise((resolve) => {
 if (typeof dataUrl === 'string' && dataUrl.length > 8 * 1024 * 1024) {
 resolve(null);
@@ -13008,8 +13025,10 @@ const w = Math.max(1, Math.round(img.width * scale));
 const h = Math.max(1, Math.round(img.height * scale));
 const c = document.createElement('canvas');
 c.width = w; c.height = h;
-c.getContext('2d').drawImage(img, 0, 0, w, h);
-resolve(c.toDataURL('image/png'));
+const ctx = c.getContext('2d');
+if (format === 'image/jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); }
+ctx.drawImage(img, 0, 0, w, h);
+resolve(c.toDataURL(format || 'image/png', quality));
 } catch (e) { resolve(null); }
 };
 img.onerror = () => resolve(null);
@@ -13810,10 +13829,13 @@ done++;
 if (done === files.length) finishUpload(done - skipped, skipped);
 };
 if (cur === 'voice') process(reader.result);
-else compressImage(reader.result, 260).then((data) => {
+else {
+const isImg = cur === 'image';
+compressImage(reader.result, isImg ? 720 : 480, isImg ? 'image/jpeg' : 'image/png', isImg ? 0.85 : undefined).then((data) => {
 if (!data) { skipped++; done++; if (done === files.length) finishUpload(done - skipped, skipped); return; }
 process(data);
 });
+}
 };
 reader.readAsDataURL(f);
 });
@@ -20786,15 +20808,21 @@ const body = String(text || '收到一条新消息')
 .replace(/data:[a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[附件]')
 .replace(/\|\|\|.*$/, '');
 const opts = { body: (t ? t + '  ' : '') + (body && body.length > 40 ? body.slice(0, 40) + '…' : body) };
-if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) {
-if (extra.img.indexOf('data:') === 0 && extra.img.length > 30000) {
-compressNotifyImg(extra.img, function (small) {
+let rightImg = '';
+if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) rightImg = extra.img;
+else {
+const avatar = store.get('avatar-partner') || '';
+if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) rightImg = avatar;
+}
+if (rightImg) {
+if (rightImg.indexOf('data:') === 0 && rightImg.length > 30000) {
+compressNotifyImg(rightImg, function (small) {
 if (small) opts.image = small;
 showSysNotification(name, opts);
 });
 return;
 }
-opts.image = extra.img;
+opts.image = rightImg;
 }
 showSysNotification(name, opts);
 };
