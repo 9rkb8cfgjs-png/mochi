@@ -669,13 +669,45 @@
 #chat-divine-body .div-chat-switch { margin-bottom:10px; }
 #chat-divine-body .div-chat-switch .div-switch-t { font-size:12px; }
 
-/* v3.7.x：星言式抽牌舞台（洗牌动画 → 两行牌面滑动抽取 → 已抽展示） */
-.div-shuf-box { position:relative; height:170px; margin:6px 0 8px; }
+/* v3.7.x：星言式抽牌舞台（洗牌动画 → 两行牌面滑动抽取 → 已抽展示）
+   牌背为塔罗风格设计：深紫渐变 + 双线画框 + 四角星点 + 中央✦星徽（纯 CSS 无图片） */
+.div-shuf-box {
+  position:relative; height:178px; margin:6px 0 8px;
+  overflow:hidden;  /* v3.7.x：卡片飞舞不出舞台，杜绝"飞出屏幕" */
+}
+.div-shuf-card, .div-pile-card {
+  position:relative;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255,255,255,.30) 0%, rgba(255,255,255,0) 46%),
+    radial-gradient(circle at 50% 128%, rgba(0,0,0,.30) 0%, rgba(0,0,0,0) 55%),
+    linear-gradient(168deg, #5a5270 0%, #3d3650 46%, #2b2538 100%);
+  border:1.5px solid rgba(18,14,30,.6);
+  box-shadow:0 2px 7px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.16);
+}
+/* 双线内画框 + 四角星点（经典塔罗牌背纹样） */
+.div-shuf-card::before, .div-pile-card::before {
+  content:''; position:absolute; inset:3px; border-radius:5px;
+  border:1px solid rgba(255,255,255,.38);
+  background:
+    radial-gradient(circle at 6px 6px, rgba(255,255,255,.55) 1.2px, transparent 1.7px),
+    radial-gradient(circle at calc(100% - 6px) 6px, rgba(255,255,255,.55) 1.2px, transparent 1.7px),
+    radial-gradient(circle at 6px calc(100% - 6px), rgba(255,255,255,.55) 1.2px, transparent 1.7px),
+    radial-gradient(circle at calc(100% - 6px) calc(100% - 6px), rgba(255,255,255,.55) 1.2px, transparent 1.7px);
+  pointer-events:none;
+}
+/* 中央星徽 */
+.div-shuf-card::after, .div-pile-card::after {
+  content:'✦';
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  color:rgba(255,255,255,.88);
+  font-size:15px;
+  text-shadow:0 1px 3px rgba(0,0,0,.5);
+  pointer-events:none;
+}
 .div-shuf-card {
   position:absolute; left:50%; top:50%;
-  border-radius:8px; background:#fff; border:1.5px solid rgba(0,0,0,.22);
+  border-radius:8px;
   display:flex; align-items:center; justify-content:center;
-  font-size:17px; color:rgba(0,0,0,.4);
   will-change:transform,opacity; transition:transform .45s ease, opacity .45s ease;
 }
 .div-pile-hint {
@@ -689,14 +721,11 @@
 .div-card-row::-webkit-scrollbar { display:none; }
 .div-pile-card {
   flex-shrink:0; width:52px; height:82px; border-radius:7px; cursor:pointer;
-  background:linear-gradient(135deg,#fff,#f0f0f2);
-  border:1.5px solid rgba(0,0,0,.22);
   display:flex; align-items:center; justify-content:center;
-  font-size:15px; color:rgba(0,0,0,.38);
   transition:transform .12s ease, box-shadow .12s ease;
   -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none;
 }
-.div-pile-card:active { transform:scale(.88); box-shadow:0 0 16px rgba(0,0,0,.18); }
+.div-pile-card:active { transform:scale(.88); box-shadow:0 0 16px rgba(60,50,80,.5); }
 .div-pile-card.done { opacity:.12; pointer-events:none; }
 .div-drawn-row {
   display:flex; flex-wrap:wrap; justify-content:center; gap:8px;
@@ -712,9 +741,21 @@
   100% { transform:scale(1) rotateY(0deg); opacity:1; }
 }
 .div-drawn-card .ddc-face {
+  position:relative;
   width:62px; height:96px; border-radius:7px; background:#fff;
-  border:1.5px solid rgba(0,0,0,.18); box-shadow:0 3px 10px rgba(0,0,0,.08);
+  border:1.5px solid rgba(0,0,0,.18); box-shadow:0 3px 10px rgba(0,0,0,.1);
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+}
+/* 已抽牌牌面：内画框 + 四角星点（与牌背呼应的翻面设计） */
+.div-drawn-card .ddc-face::before {
+  content:''; position:absolute; inset:3px; border-radius:4px;
+  border:1px solid rgba(0,0,0,.1);
+  background:
+    radial-gradient(circle at 5px 5px, rgba(0,0,0,.14) 1.1px, transparent 1.6px),
+    radial-gradient(circle at calc(100% - 5px) 5px, rgba(0,0,0,.14) 1.1px, transparent 1.6px),
+    radial-gradient(circle at 5px calc(100% - 5px), rgba(0,0,0,.14) 1.1px, transparent 1.6px),
+    radial-gradient(circle at calc(100% - 5px) calc(100% - 5px), rgba(0,0,0,.14) 1.1px, transparent 1.6px);
+  pointer-events:none;
 }
 .div-drawn-card .ddc-face .div-card-ico { width:26px; height:26px; }
 .div-drawn-card .ddc-face .div-card-ico svg { width:26px; height:26px; }

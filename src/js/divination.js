@@ -211,23 +211,26 @@
     let remaining = deck.slice();
     stageEl.innerHTML = '';
     // ① 洗牌动画：卡片四散飞舞后收拢
+    // v3.7.x 修复：卡片以 left/top 50% 为锚（左上角），transform 必须带
+    // translate(-50%,-50%) 自身居中补偿，否则整叠牌从舞台中心向右下悬挂（偏下、
+    // 飞出舞台）；偏移量收敛在舞台范围内，半屏/全屏都不出界。
     const box = document.createElement('div');
     box.className = 'div-shuf-box';
     stageEl.appendChild(box);
     const shufCount = Math.min(remaining.length + 6, 20);
     const shufCards = [];
+    const rnd = (a, b) => a + Math.random() * (b - a);
     for (let i = 0; i < shufCount; i++) {
       const el = document.createElement('div');
       el.className = 'div-shuf-card';
-      el.textContent = '✦';
-      const size = 50 + Math.floor(Math.random() * 22);
-      const x = (Math.random() - 0.5) * 150;
-      const y = (Math.random() - 0.5) * 80;
-      const rot = (Math.random() - 0.5) * 60;
+      const size = Math.round(rnd(46, 60));
+      const x = Math.round(rnd(-64, 64));
+      const y = Math.round(rnd(-30, 30));
+      const rot = Math.round(rnd(-32, 32));
       el.style.width = size + 'px';
-      el.style.height = Math.round(size * 1.55) + 'px';
-      el.style.transform = 'translate(' + x + 'px,' + y + 'px) rotate(' + rot + 'deg)';
-      el.style.opacity = (0.35 + Math.random() * 0.4).toFixed(2);
+      el.style.height = Math.round(size * 1.58) + 'px';
+      el.style.transform = 'translate(-50%,-50%) translate(' + x + 'px,' + y + 'px) rotate(' + rot + 'deg)';
+      el.style.opacity = (0.5 + Math.random() * 0.4).toFixed(2);
       el.style.zIndex = shufCount - i;
       box.appendChild(el);
       shufCards.push(el);
@@ -235,19 +238,19 @@
     requestAnimationFrame(function () {
       shufCards.forEach(function (el, i) {
         setTimeout(function () {
-          const px = (Math.random() - 0.5) * 160;
-          const py = (Math.random() - 0.5) * 90;
-          const pr = (Math.random() - 0.5) * 90;
-          el.style.transform = 'translate(' + px + 'px,' + py + 'px) rotate(' + pr + 'deg) scale(.9)';
-          el.style.opacity = (0.5 + Math.random() * 0.5).toFixed(2);
+          const px = Math.round(rnd(-76, 76));
+          const py = Math.round(rnd(-34, 34));
+          const pr = Math.round(rnd(-52, 52));
+          el.style.transform = 'translate(-50%,-50%) translate(' + px + 'px,' + py + 'px) rotate(' + pr + 'deg) scale(.92)';
+          el.style.opacity = (0.65 + Math.random() * 0.35).toFixed(2);
         }, 50 + i * 50);
       });
       setTimeout(function () {
         shufCards.forEach(function (el, i) {
-          const offX = (i - shufCount / 2) * 1.3;
-          const offY = (i - shufCount / 2) * 1.1;
-          el.style.transform = 'translate(' + offX + 'px,' + offY + 'px) rotate(0deg) scale(1)';
-          el.style.opacity = '0.92';
+          const offX = Math.round((i - shufCount / 2) * 1.2);
+          const offY = Math.round((i - shufCount / 2) * 0.9);
+          el.style.transform = 'translate(-50%,-50%) translate(' + offX + 'px,' + offY + 'px) rotate(0deg) scale(1)';
+          el.style.opacity = '0.95';
           el.style.zIndex = shufCount - i;
         });
       }, 950);
@@ -278,7 +281,7 @@
         for (let i = 0; i < total; i++) {
           const el = document.createElement('div');
           el.className = 'div-pile-card';
-          el.textContent = '✦';
+          // v3.7.x：牌背图形由 CSS ::after 绘制（✦ 星徽），不再用文本子元素
           el.addEventListener('click', function () { pick(i); });
           (i < half ? row1 : row2).appendChild(el);
         }

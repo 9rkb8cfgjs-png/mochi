@@ -335,3 +335,9 @@
 - [本会话] 完成（互动卡片收藏按钮显示乱码「function favHeartHtmlO{return收藏}」修复，已构建 verify 10/10 + 提交 v3.6.76）：根因——src/js/chat.js renderMsg 六类互动卡片（invite/ask/ask-choose/ask-curious/ask-roast/ask-card）拼 HTML 时漏写调用括号 `favHeartHtml +`（应 `favHeartHtml() +`），函数源码被 toString 拼进卡片导致乱码；其余 7 处正常。修复：6 处补 `()`。已 node build.mjs + verify 10/10，产物与源码同次提交。
 
 - [本会话] 完成（互动卡片收藏按钮隐蔽化，已构建 verify 10/10 + CDP 探测 9/9 + 提交 v3.6.77）：收藏按钮不再常驻卡片，改为默认隐藏、点击卡片才浮现（再点收起，点卡片外区域自动收起，单选同时只显示一张卡片的按钮）。改 src/css/chat-main.css（.msg-fav-heart 默认 display:none，卡片 .show-fav 时显示+淡入动画；answered 卡片 cursor 改 pointer）+ src/js/chat.js（body click 委托：外层点非卡片区域清除 show-fav；card 分支 toggle show-fav，answered 卡片只 toggle 不再触发作答）。CDP 验证 9/9：默认隐藏/点显/再点收/点外收/未作答卡片浮现且作答区照常展开/收藏正常。本次构建同时带上 AI-A 已保存的音乐修复（music-player.js blob/dataURL 双路径）。临时脚本已删。
+
+- [本会话] 完成（用户反馈「占卜半屏抽牌洗牌动画位置不居中、偏下要飞出屏幕；牌面需要设计图形」——**未构建未提交**）：
+  1. **洗牌动画居中**：`divination.js` startDivineDraw 修两处——①卡片以 `left/top:50%` 为锚（左上角）但 transform 没做自身居中补偿，整叠牌从舞台中心向右下悬挂（偏下、出界）——所有 transform 加上 `translate(-50%,-50%)` 基础偏移，叠加随机位移/旋转；②随机偏移量收敛到舞台范围内（x∈[-76,76]、y∈[-34,34]、rot∈[-52,52]），卡牌尺寸稍缩（46-60px）。CDP 实测：卡片群中心 (dx=-1, dy=2) 精确居中，全部在舞台内（20/20）。
+  2. **舞台防溢出**：`chat-pages.css` 给 `.div-shuf-box` 加 `overflow:hidden`（杜绝"飞出屏幕"），高度 170→178px 留呼吸。
+  3. **牌背塔罗风格设计**（纯 CSS 无图片）：深紫渐变（#5a5270→#2b2538）+ 白色双线内画框 + 四角星点 + 中央✦星徽。`.div-shuf-card` / `.div-pile-card` 共享设计，`.ddc-face`（已抽翻面）加同风格内画框 + 浅色四角点与牌背呼应。JS 移除 `el.textContent = '✦'`（星徽改由 CSS `::after` 绘制）。
+  涉及 `src/js/divination.js` `src/css/chat-pages.css`。**未构建未提交**，等待对方构建部署。
