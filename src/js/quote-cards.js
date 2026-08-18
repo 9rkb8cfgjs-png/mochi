@@ -80,68 +80,104 @@
   };
   window.quoteCardCount = function () { return getQuotes().length; };
 
-  // 渲染管理列表
-  // v3.6.x：系统预设句（默认库内容）标【系统】且不可单独删除；用户添加的可删除；
-  //   关闭「使用系统预设」时系统预设句灰化提示（题目保留，可随时重新开启）
+  // v3.6.x：顶部双分类 tab——系统预设 / 我的添加，数据分开渲染互不干扰
   function isDefaultQuote(q) { return DEFAULT_QUOTES.indexOf(q) >= 0; }
-  function renderList() {
-    const el = document.getElementById('cq-list');
+  function getCustom() {
+    try {
+      const v = JSON.parse(store.get(KEY) || 'null');
+      if (Array.isArray(v)) return v;
+    } catch (e) {}
+    return [];
+  }
+  // 入口处计数：可用情话总数（系统开启的 + 用户添加的）
+  function updateEntryCount() {
     const cnt = document.getElementById('cc-quote-count');
-    const custom = hasCustom();
+    if (!cnt) return;
+    const useDefault = getUseDefault();
+    const custom = getCustom();
+    let n = custom.length;
+    if (useDefault) n += DEFAULT_QUOTES.filter(q => !isQuoteOff(q)).length;
+    cnt.textContent = n;
+  }
+  // 渲染【系统预设】tab：每句带单卡开关，不可删除；关闭总开关时灰化提示
+  function renderSysList() {
+    const el = document.getElementById('cq-sys-list');
+    if (!el) return;
     const useDefault = getUseDefault();
     const defEl = document.getElementById('cq-default');
     if (defEl) defEl.checked = useDefault;
-    // v3.6.x：无自定义库时显示默认库实际句数（原逻辑显示 0（默认），
-    //   明明默认 46 句在正常用，却让用户以为字卡是空的）
-    if (cnt) cnt.textContent = getQuotes().length + (custom ? '' : '（默认）');
-    if (!el) return;
-    const quotes = getQuotes();
-    if (!quotes.length) { el.innerHTML = '<div class="ta-empty">暂无，可添加</div>'; return; }
-    // v3.6.x：改为 DOM 构建——系统预设句逐句渲染单卡开关（可开启/关闭）；
-    // 用户添加的保留删除按钮
     el.innerHTML = '';
-    quotes.forEach((q, i) => {
-      const sys = isDefaultQuote(q);
-      const off = isQuoteOff(q) || (sys && !useDefault);
+    if (!useDefault) {
+      const tip = document.createElement('div');
+      tip.className = 'ta-empty';
+      tip.textContent = '系统预设情话已关闭（桌面今日情话只从「我的添加」里抽取）。开启上方开关即可恢复使用。';
+      el.appendChild(tip);
+      return;
+    }
+    DEFAULT_QUOTES.forEach(q => {
+      const off = isQuoteOff(q);
       const row = document.createElement('div');
       row.className = 'tc-qrow' + (off ? ' off' : '');
-      row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + esc(q) + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>';
-      if (sys) {
-        // v3.6.x：系统预设单卡开关——逐句开启/关闭（关闭后桌面今日情话不再抽取该句）
-        const lab = document.createElement('label');
-        lab.className = 'toggle ccard-toggle';
-        lab.innerHTML = '<input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span>';
-        lab.querySelector('input').addEventListener('change', () => {
-          const nowOff = !lab.querySelector('input').checked;
-          setQuoteOff(q, nowOff);
-          renderList();
-          const s = String(q == null ? '' : q);
-          toast((nowOff ? '已关闭：' : '已开启：') + (s.length > 18 ? s.slice(0, 18) + '…' : s));
-        });
-        row.appendChild(lab);
-      } else {
-        const del = document.createElement('button');
-        del.className = 'ta-del';
-        del.textContent = '✕';
-        del.addEventListener('click', () => {
-          const list = getQuotes();
-          list.splice(i, 1);
-          store.set(KEY, JSON.stringify(list));
-          renderList();
-        });
-        row.appendChild(del);
-      }
+      row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + esc(q) + ' <span class="tc-known">系统</span></div></div>';
+      const lab = document.createElement('label');
+      lab.className = 'toggle ccard-toggle';
+      lab.innerHTML = '<input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span>';
+      lab.querySelector('input').addEventListener('change', () => {
+        const nowOff = !lab.querySelector('input').checked;
+        setQuoteOff(q, nowOff);
+        renderSysList();
+        updateEntryCount();
+        const s = String(q == null ? '' : q);
+        toast((nowOff ? '已关闭：' : '已开启：') + (s.length > 18 ? s.slice(0, 18) + '…' : s));
+      });
+      row.appendChild(lab);
       el.appendChild(row);
     });
-    if (!custom) {
+  }
+  // 渲染【我的添加】tab：用户自定义情话，每条带删除按钮
+  function renderMineList() {
+    const el = document.getElementById('cq-mine-list');
+    if (!el) return;
+    const custom = getCustom();
+    el.innerHTML = '';
+    if (!custom.length) {
       const empty = document.createElement('div');
       empty.className = 'ta-empty';
-      empty.style.marginTop = '10px';
-      empty.textContent = '当前使用系统预设情话（共 ' + quotes.length + ' 句，不可删除，可逐句开关）。添加自定义情话后即可管理。';
+      empty.textContent = '暂未添加自定义情话，可在上方批量输入（每行一句）。';
       el.appendChild(empty);
+      return;
     }
+    custom.forEach((q, i) => {
+      const row = document.createElement('div');
+      row.className = 'tc-qrow';
+      row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + esc(q) + '</div></div>';
+      const del = document.createElement('button');
+      del.className = 'ta-del';
+      del.textContent = '✕';
+      del.addEventListener('click', () => {
+        const list = getCustom();
+        list.splice(i, 1);
+        store.set(KEY, JSON.stringify(list));
+        renderMineList();
+        updateEntryCount();
+        toast('已删除');
+      });
+      row.appendChild(del);
+      el.appendChild(row);
+    });
   }
-  // 批量添加
+  let curTab = 'sys';
+  function switchTab(tab) {
+    curTab = tab;
+    const tabsWrap = document.getElementById('cq-tabs');
+    if (tabsWrap) tabsWrap.querySelectorAll('.cc-tab').forEach(t => t.classList.toggle('sel', t.dataset.tab === tab));
+    const sysPanel = document.getElementById('cq-sys-panel');
+    const minePanel = document.getElementById('cq-mine-panel');
+    if (sysPanel) sysPanel.hidden = tab !== 'sys';
+    if (minePanel) minePanel.hidden = tab !== 'mine';
+    if (tab === 'sys') renderSysList(); else renderMineList();
+  }
+  // 批量添加（只追加到用户自定义库，不污染系统预设）
   const batchAdd = document.getElementById('cq-batch-add');
   if (batchAdd) {
     batchAdd.addEventListener('click', () => {
@@ -149,11 +185,12 @@
       const raw = ta ? ta.value : '';
       const items = raw.split('\n').map(s => s.trim()).filter(Boolean);
       if (!items.length) { toast('请输入内容，每行一句'); return; }
-      const list = getQuotes();
+      const list = getCustom();
       items.forEach(it => list.push(it));
       store.set(KEY, JSON.stringify(list));
       if (ta) ta.value = '';
-      renderList();
+      renderMineList();
+      updateEntryCount();
       toast('已添加 ' + items.length + ' 句今日情话');
     });
   }
@@ -162,8 +199,16 @@
   if (cqDefault) {
     cqDefault.addEventListener('change', () => {
       store.set(DEF_KEY, cqDefault.checked ? '1' : '0');
-      renderList();
+      renderSysList();
+      updateEntryCount();
       toast(cqDefault.checked ? '系统预设情话已开启' : '系统预设情话已关闭（仅用你添加的情话）');
+    });
+  }
+  // tab 切换
+  const tabsWrap = document.getElementById('cq-tabs');
+  if (tabsWrap) {
+    tabsWrap.querySelectorAll('.cc-tab').forEach(tab => {
+      tab.addEventListener('click', () => switchTab(tab.dataset.tab));
     });
   }
   // 入口：字卡库页点「桌面今日情话」→ 管理页
@@ -173,7 +218,7 @@
     liQuote.addEventListener('click', () => {
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       quotePage.hidden = false;
-      renderList();
+      switchTab(curTab);
     });
   }
   const quoteBack = document.getElementById('quote-cards-back');
@@ -184,5 +229,6 @@
       if (home) home.hidden = false;
     });
   }
-  renderList();
+  switchTab('sys');
+  updateEntryCount();
 })();

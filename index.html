@@ -3451,7 +3451,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.80 · 部署于 2026-08-18 19:10</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.82 · 部署于 2026-08-18 19:16</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3925,21 +3925,25 @@ color: var(--muted);
     <span class="ch-name">桌面今日情话</span>
   </div>
   <div class="gs-scroll">
-    <div class="set-group glass">
-      <div class="gs-row"><span>使用系统预设情话</span><label class="toggle"><input type="checkbox" id="cq-default" checked><span class="tk"></span></label></div>
+    <div class="card-tabs" id="cq-tabs" style="padding:6px 12px 8px">
+      <button class="cc-tab sel" data-tab="sys">系统预设</button>
+      <button class="cc-tab" data-tab="mine">我的添加</button>
     </div>
-    <div class="set-group glass">
+    <div class="set-group glass" id="cq-sys-panel">
+      <div class="gs-row"><span>使用系统预设情话</span><label class="toggle"><input type="checkbox" id="cq-default" checked><span class="tk"></span></label></div>
+      <div class="cal-card-title" style="padding:14px 14px 0">系统预设情话（可逐句开关，不可删除）</div>
+      <div id="cq-sys-list" style="padding:8px 14px 14px"></div>
+    </div>
+    <div class="set-group glass" id="cq-mine-panel" hidden>
       <div class="cal-card-title" style="padding:14px 14px 0">批量输入情话</div>
       <div class="tc-addform">
         <textarea id="cq-batch" class="tc-input" rows="6" placeholder="每行一句，如：&#10;我偏爱你。&#10;今天也很喜欢你。&#10;你是我的例外。"></textarea>
         <button class="ta-add-btn" style="width:100%" id="cq-batch-add">添加到今日情话</button>
       </div>
+      <div class="cal-card-title" style="padding:14px 14px 0">我添加的情话</div>
+      <div id="cq-mine-list" style="padding:8px 14px 14px"></div>
     </div>
-    <div class="set-group glass">
-      <div class="cal-card-title" style="padding:14px 14px 0">今日情话字卡</div>
-      <div id="cq-list" style="padding:8px 14px 14px"></div>
-    </div>
-    <div class="cal-card-title" style="padding:0 2px">桌面每天会从这些情话里随机展示一句，可自由添加</div>
+    <div class="cal-card-title" style="padding:0 2px">桌面每天会从这些情话里随机展示一句</div>
   </div>
 </div>
 
@@ -4104,7 +4108,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.80</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.82</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -6603,57 +6607,97 @@ return quotes[hash % quotes.length];
 };
 window.quoteCardCount = function () { return getQuotes().length; };
 function isDefaultQuote(q) { return DEFAULT_QUOTES.indexOf(q) >= 0; }
-function renderList() {
-const el = document.getElementById('cq-list');
+function getCustom() {
+try {
+const v = JSON.parse(store.get(KEY) || 'null');
+if (Array.isArray(v)) return v;
+} catch (e) {}
+return [];
+}
+function updateEntryCount() {
 const cnt = document.getElementById('cc-quote-count');
-const custom = hasCustom();
+if (!cnt) return;
+const useDefault = getUseDefault();
+const custom = getCustom();
+let n = custom.length;
+if (useDefault) n += DEFAULT_QUOTES.filter(q => !isQuoteOff(q)).length;
+cnt.textContent = n;
+}
+function renderSysList() {
+const el = document.getElementById('cq-sys-list');
+if (!el) return;
 const useDefault = getUseDefault();
 const defEl = document.getElementById('cq-default');
 if (defEl) defEl.checked = useDefault;
-if (cnt) cnt.textContent = getQuotes().length + (custom ? '' : '（默认）');
-if (!el) return;
-const quotes = getQuotes();
-if (!quotes.length) { el.innerHTML = '<div class="ta-empty">暂无，可添加</div>'; return; }
 el.innerHTML = '';
-quotes.forEach((q, i) => {
-const sys = isDefaultQuote(q);
-const off = isQuoteOff(q) || (sys && !useDefault);
+if (!useDefault) {
+const tip = document.createElement('div');
+tip.className = 'ta-empty';
+tip.textContent = '系统预设情话已关闭（桌面今日情话只从「我的添加」里抽取）。开启上方开关即可恢复使用。';
+el.appendChild(tip);
+return;
+}
+DEFAULT_QUOTES.forEach(q => {
+const off = isQuoteOff(q);
 const row = document.createElement('div');
 row.className = 'tc-qrow' + (off ? ' off' : '');
-row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + esc(q) + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>';
-if (sys) {
+row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + esc(q) + ' <span class="tc-known">系统</span></div></div>';
 const lab = document.createElement('label');
 lab.className = 'toggle ccard-toggle';
 lab.innerHTML = '<input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span>';
 lab.querySelector('input').addEventListener('change', () => {
 const nowOff = !lab.querySelector('input').checked;
 setQuoteOff(q, nowOff);
-renderList();
+renderSysList();
+updateEntryCount();
 const s = String(q == null ? '' : q);
 toast((nowOff ? '已关闭：' : '已开启：') + (s.length > 18 ? s.slice(0, 18) + '…' : s));
 });
 row.appendChild(lab);
-} else {
+el.appendChild(row);
+});
+}
+function renderMineList() {
+const el = document.getElementById('cq-mine-list');
+if (!el) return;
+const custom = getCustom();
+el.innerHTML = '';
+if (!custom.length) {
+const empty = document.createElement('div');
+empty.className = 'ta-empty';
+empty.textContent = '暂未添加自定义情话，可在上方批量输入（每行一句）。';
+el.appendChild(empty);
+return;
+}
+custom.forEach((q, i) => {
+const row = document.createElement('div');
+row.className = 'tc-qrow';
+row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + esc(q) + '</div></div>';
 const del = document.createElement('button');
 del.className = 'ta-del';
 del.textContent = '✕';
 del.addEventListener('click', () => {
-const list = getQuotes();
+const list = getCustom();
 list.splice(i, 1);
 store.set(KEY, JSON.stringify(list));
-renderList();
+renderMineList();
+updateEntryCount();
+toast('已删除');
 });
 row.appendChild(del);
-}
 el.appendChild(row);
 });
-if (!custom) {
-const empty = document.createElement('div');
-empty.className = 'ta-empty';
-empty.style.marginTop = '10px';
-empty.textContent = '当前使用系统预设情话（共 ' + quotes.length + ' 句，不可删除，可逐句开关）。添加自定义情话后即可管理。';
-el.appendChild(empty);
 }
+let curTab = 'sys';
+function switchTab(tab) {
+curTab = tab;
+const tabsWrap = document.getElementById('cq-tabs');
+if (tabsWrap) tabsWrap.querySelectorAll('.cc-tab').forEach(t => t.classList.toggle('sel', t.dataset.tab === tab));
+const sysPanel = document.getElementById('cq-sys-panel');
+const minePanel = document.getElementById('cq-mine-panel');
+if (sysPanel) sysPanel.hidden = tab !== 'sys';
+if (minePanel) minePanel.hidden = tab !== 'mine';
+if (tab === 'sys') renderSysList(); else renderMineList();
 }
 const batchAdd = document.getElementById('cq-batch-add');
 if (batchAdd) {
@@ -6662,11 +6706,12 @@ const ta = document.getElementById('cq-batch');
 const raw = ta ? ta.value : '';
 const items = raw.split('\n').map(s => s.trim()).filter(Boolean);
 if (!items.length) { toast('请输入内容，每行一句'); return; }
-const list = getQuotes();
+const list = getCustom();
 items.forEach(it => list.push(it));
 store.set(KEY, JSON.stringify(list));
 if (ta) ta.value = '';
-renderList();
+renderMineList();
+updateEntryCount();
 toast('已添加 ' + items.length + ' 句今日情话');
 });
 }
@@ -6674,8 +6719,15 @@ const cqDefault = document.getElementById('cq-default');
 if (cqDefault) {
 cqDefault.addEventListener('change', () => {
 store.set(DEF_KEY, cqDefault.checked ? '1' : '0');
-renderList();
+renderSysList();
+updateEntryCount();
 toast(cqDefault.checked ? '系统预设情话已开启' : '系统预设情话已关闭（仅用你添加的情话）');
+});
+}
+const tabsWrap = document.getElementById('cq-tabs');
+if (tabsWrap) {
+tabsWrap.querySelectorAll('.cc-tab').forEach(tab => {
+tab.addEventListener('click', () => switchTab(tab.dataset.tab));
 });
 }
 const liQuote = document.getElementById('li-quote-cards');
@@ -6684,7 +6736,7 @@ if (liQuote && quotePage) {
 liQuote.addEventListener('click', () => {
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 quotePage.hidden = false;
-renderList();
+switchTab(curTab);
 });
 }
 const quoteBack = document.getElementById('quote-cards-back');
@@ -6695,7 +6747,8 @@ const home = document.getElementById('page-chatcard');
 if (home) home.hidden = false;
 });
 }
-renderList();
+switchTab('sys');
+updateEntryCount();
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
@@ -14703,7 +14756,7 @@ SEED_DEFS.forEach((s, i) => {
 const has = library.some(m => m && String(m.neteaseId || '') === String(s.id));
 if (has) return;
 const id = 'sm_seed_' + Date.now() + '_' + i + '_h';
-library.push({ id: id, neteaseId: String(s.id), name: s.name, artist: s.artist, cover: s.cover || '', url: 'https://music.163.com/song/media/outer/url?id=' + s.id + '.mp3', source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
+library.push({ id: id, neteaseId: String(s.id), name: s.name, artist: s.artist, cover: s.cover || '', url: neteaseMetingUrl(s.id), source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
 healed = true;
 });
 if (healed) saveLibrary();
@@ -15018,7 +15071,7 @@ if (pathMatch) neteaseId = pathMatch[1];
 }
 let url = raw;
 if (neteaseId) {
-url = 'https://music.163.com/song/media/outer/url?id=' + neteaseId + '.mp3';
+url = neteaseMetingUrl(neteaseId);
 if (!name) name = '网易云音乐-' + neteaseId;
 }
 if (!/^(https?:\/\/|file:\/\/|data:|\/)/i.test(url)) { toast('请输入有效的ID或链接'); return; }
@@ -15077,7 +15130,7 @@ if (idMatch) neteaseId = idMatch[1];
 else if (pathMatch) neteaseId = pathMatch[1];
 }
 if (neteaseId) {
-url = 'https://music.163.com/song/media/outer/url?id=' + neteaseId + '.mp3';
+url = neteaseMetingUrl(neteaseId);
 if (!name) name = '网易云音乐-' + neteaseId; // 只填数字时自动补默认名
 }
 if (!name) return;
@@ -15583,6 +15636,7 @@ audio.onpause = function () { syncPlayIcons(false); };
 function playTrack(id) {
 const m = findTrack(id);
 if (!m) return;
+if (m) m._httpsRetried = false;
 currentId = id;
 teardownAudio();
 if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }

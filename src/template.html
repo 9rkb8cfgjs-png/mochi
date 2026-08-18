@@ -527,21 +527,25 @@
     <span class="ch-name">桌面今日情话</span>
   </div>
   <div class="gs-scroll">
-    <div class="set-group glass">
-      <div class="gs-row"><span>使用系统预设情话</span><label class="toggle"><input type="checkbox" id="cq-default" checked><span class="tk"></span></label></div>
+    <div class="card-tabs" id="cq-tabs" style="padding:6px 12px 8px">
+      <button class="cc-tab sel" data-tab="sys">系统预设</button>
+      <button class="cc-tab" data-tab="mine">我的添加</button>
     </div>
-    <div class="set-group glass">
+    <div class="set-group glass" id="cq-sys-panel">
+      <div class="gs-row"><span>使用系统预设情话</span><label class="toggle"><input type="checkbox" id="cq-default" checked><span class="tk"></span></label></div>
+      <div class="cal-card-title" style="padding:14px 14px 0">系统预设情话（可逐句开关，不可删除）</div>
+      <div id="cq-sys-list" style="padding:8px 14px 14px"></div>
+    </div>
+    <div class="set-group glass" id="cq-mine-panel" hidden>
       <div class="cal-card-title" style="padding:14px 14px 0">批量输入情话</div>
       <div class="tc-addform">
         <textarea id="cq-batch" class="tc-input" rows="6" placeholder="每行一句，如：&#10;我偏爱你。&#10;今天也很喜欢你。&#10;你是我的例外。"></textarea>
         <button class="ta-add-btn" style="width:100%" id="cq-batch-add">添加到今日情话</button>
       </div>
+      <div class="cal-card-title" style="padding:14px 14px 0">我添加的情话</div>
+      <div id="cq-mine-list" style="padding:8px 14px 14px"></div>
     </div>
-    <div class="set-group glass">
-      <div class="cal-card-title" style="padding:14px 14px 0">今日情话字卡</div>
-      <div id="cq-list" style="padding:8px 14px 14px"></div>
-    </div>
-    <div class="cal-card-title" style="padding:0 2px">桌面每天会从这些情话里随机展示一句，可自由添加</div>
+    <div class="cal-card-title" style="padding:0 2px">桌面每天会从这些情话里随机展示一句</div>
   </div>
 </div>
 

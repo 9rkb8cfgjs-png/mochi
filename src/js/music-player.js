@@ -121,7 +121,7 @@
       seeds.forEach((s, i) => {
         const id = 'sm_seed_' + Date.now() + '_' + i;
         ids.push(id);
-        library.push({ id: id, neteaseId: String(s.id), name: s.name || '示例旋律-' + (i + 1), artist: s.artist || '', cover: s.cover || '', url: 'https://music.163.com/song/media/outer/url?id=' + s.id + '.mp3', source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
+        library.push({ id: id, neteaseId: String(s.id), name: s.name || '示例旋律-' + (i + 1), artist: s.artist || '', cover: s.cover || '', url: neteaseMetingUrl(s.id), source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
       });
       store.set('music-seed-done', '1');
       saveLibrary();
@@ -142,13 +142,13 @@
     // 旧版本曾把种子歌曲强制替换成本地 14 秒旋律并清空 url——检测这类旧数据，
     // 自动恢复网易云外链（source:'url'），让默认歌曲回到完整版；
     // 本地旋律仅在外链播放失败时兜底（见 setupHandlers / playTrack）。
-    // v3.6.x：无条件把种子歌链接规范成 https://（旧数据可能是 http://，GitHub Pages
-    // 是 HTTPS，http 音频会被浏览器按混合内容拦截）——不管数据怎么来的（旧版/手动导入/
-    // 备份恢复），只要加载到新代码，默认 2 首一定是 https 完整外链
+    // v3.6.x：种子歌 url 直接用 meting API（api.injahow.cn/meting 302 → https CDN），
+    // 不经 music.163.com/song/media/outer/url（302 → http CDN，HTTPS 页面下被
+    // 混合内容拦截）。旧数据/备份恢复后自动规范成 meting URL，不管数据怎么来的
     library.forEach(m => {
       const seedId = m ? String(m.neteaseId || '') : '';
       if (!m || !seedId || (seedId !== '2613048732' && seedId !== '27538343')) return;
-      const target = 'https://music.163.com/song/media/outer/url?id=' + seedId + '.mp3';
+      const target = neteaseMetingUrl(seedId);
       if (m.url !== target) {
         m.url = target;
         m.source = 'url';
@@ -170,7 +170,7 @@
         const has = library.some(m => m && String(m.neteaseId || '') === String(s.id));
         if (has) return;
         const id = 'sm_seed_' + Date.now() + '_' + i + '_h';
-        library.push({ id: id, neteaseId: String(s.id), name: s.name, artist: s.artist, cover: s.cover || '', url: 'https://music.163.com/song/media/outer/url?id=' + s.id + '.mp3', source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
+        library.push({ id: id, neteaseId: String(s.id), name: s.name, artist: s.artist, cover: s.cover || '', url: neteaseMetingUrl(s.id), source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
         healed = true;
       });
       if (healed) saveLibrary();
@@ -539,7 +539,7 @@
       }
       let url = raw;
       if (neteaseId) {
-        url = 'https://music.163.com/song/media/outer/url?id=' + neteaseId + '.mp3';
+        url = neteaseMetingUrl(neteaseId);
         if (!name) name = '网易云音乐-' + neteaseId;
       }
       if (!/^(https?:\/\/|file:\/\/|data:|\/)/i.test(url)) { toast('请输入有效的ID或链接'); return; }
@@ -603,7 +603,7 @@
           else if (pathMatch) neteaseId = pathMatch[1];
         }
         if (neteaseId) {
-          url = 'https://music.163.com/song/media/outer/url?id=' + neteaseId + '.mp3';
+          url = neteaseMetingUrl(neteaseId);
           if (!name) name = '网易云音乐-' + neteaseId; // 只填数字时自动补默认名
         }
         if (!name) return;
@@ -1172,6 +1172,11 @@
   function playTrack(id) {
     const m = findTrack(id);
     if (!m) return;
+    // v3.6.x：重置 https 重试标记——_httpsRetried 在 retryWithHttpsUrl 里设 true 后
+    // 永不重置，导致后续每次播放都先尝试失败的原始 URL 被混合内容拦截，
+    // catch 不区分错误类型当"自动播放拦截"处理 → toast"被浏览器拦截"。
+    // 每次新播放重置，允许重新尝试 meting URL
+    if (m) m._httpsRetried = false;
     currentId = id;
     teardownAudio();
     if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
