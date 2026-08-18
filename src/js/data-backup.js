@@ -11,6 +11,11 @@
   const uid = window.activePrefix();
   // 容量余量：给正在运行的其他功能留一点（手机 localStorage 约 5MB，桌面 10MB）
   const LS_HEADROOM = 512 * 1024;
+  // v3.7.0：自动备份副本键——每次手动导出时同步把 JSON 写入 IndexedDB 此键。
+  // 启动时若检测到业务键几乎为空但副本存在，提示用户从副本恢复。
+  // 防御场景：导入失败导致数据被清、IDB 写入失败导致部分键丢失、用户误删部分数据。
+  // 不防御场景：浏览器系统级清空整个源的 LS+IDB（副本也一起没，需用户手动备份文件）。
+  const SNAPSHOT_KEY = 'xy-home-v2:__auto-backup-snapshot';
 
   function toast(msg) {
     let t = document.getElementById('cc-toast');
@@ -93,6 +98,7 @@
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (!k || k.indexOf('xy-home-v2:') !== 0) continue;
+        if (k === SNAPSHOT_KEY) continue; // v3.7.0：副本键不进导出文件（防自包含无限增长）
         add(k, localStorage.getItem(k));
       }
     } catch (e) {}
@@ -102,6 +108,7 @@
         const keys = await window.idbGetAllKeys();
         for (const k of keys || []) {
           if (k.indexOf('xy-home-v2:') !== 0) continue;
+          if (k === SNAPSHOT_KEY) continue; // v3.7.0：副本键不进导出文件
           if (k in data.ls || k in data.idb) continue; // 已在上面收录
           const v = await window.idbGet(k);
           if (v !== undefined && v !== null) {
@@ -133,6 +140,11 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     // v3.6.x：记录最近一次成功导出时间——备份提醒条（pwa.js）据此判断是否该提醒
     try { localStorage.setItem('xy-home-v2:__last-backup', String(Date.now())); } catch (e) {}
+    // v3.7.0：同步把导出 JSON 写入 IndexedDB 副本键——启动时若检测到数据丢失，
+    // 可从此副本恢复。写入失败不提示（不影响导出本身，下次导出再尝试）。
+    if (window.idbSet) {
+      try { window.idbSet(SNAPSHOT_KEY, json); } catch (e) {}
+    }
     toast('数据已导出（' + Math.round(json.length / 1024) + ' KB，全部数据完整）');
   }
 
@@ -237,7 +249,7 @@
     // 导入真正变成「要么全部替换、要么原样不动」。
     const idbRestored = new Promise((resolve) => {
       if (!data.idb || typeof data.idb !== 'object') { resolve(true); return; }
-      const idbKeys = Object.keys(data.idb).filter(k => k.indexOf('xy-home-v2:') === 0);
+      const idbKeys = Object.keys(data.idb).filter(k => k.indexOf('xy-home-v2:') === 0 && k !== SNAPSHOT_KEY);
       if (!idbKeys.length) { resolve(true); return; }
       if (window.idbReplaceAll) {
         impShow('正在导入…', '正在原子写入大文件（字卡/聊天/音乐等）…', 8);
@@ -301,7 +313,7 @@
       // 聊天记录双写（localStorage + IndexedDB）：导入时 IndexedDB 已恢复完整权威版
       // （含图片 dataURL），localStorage 无需再写超大聊天记录——启动时 loadMsgs 会
       // 自动从 IndexedDB 恢复。这样导入不再因聊天记录占几十 MB 而整体取消。
-      const lsKeys = Object.keys(data.ls).filter(k => k.indexOf('xy-home-v2:') === 0);
+      const lsKeys = Object.keys(data.ls).filter(k => k.indexOf('xy-home-v2:') === 0 && k !== SNAPSHOT_KEY);
       let entries = lsKeys.map(k => ({ k: k, len: byteLen(data.ls[k]) + byteLen(k) }));
       let chatMoved = false;
       if (idbOk && data.idb && typeof data.idb === 'object') {
@@ -410,6 +422,57 @@
         // v3.5.117：完成页停留 3.5 秒（用户反馈缓冲时间不够、看不清结果）
         setTimeout(() => { impHide(); location.reload(); }, 3500);
       });
+    });
+  }
+
+  // v3.7.0：启动时检测数据丢失——若业务键几乎为空但 IDB 有自动备份副本，提示恢复。
+  // 防御：导入失败导致数据被清、IDB 写入失败导致部分键丢失、用户误删部分数据。
+  // 不防御浏览器系统级清空（副本同源同清，需用户手动备份文件）。
+  // 用 sessionStorage 防本会话重复弹窗（用户取消后不再打扰，新会话才会再检测）。
+  function checkLostAndOfferRestore() {
+    if (sessionStorage.getItem('xy-snapshot-offer-done')) return;
+    let lsBiz = 0;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf('xy-home-v2:') === 0 && k !== SNAPSHOT_KEY) lsBiz++;
+      }
+    } catch (e) {}
+    if (lsBiz >= 3) return; // localStorage 有足够业务数据，非丢失场景
+    if (!window.idbGetAllKeys || !window.idbGet) return;
+    window.idbGetAllKeys().then(keys => {
+      const idbBiz = (keys || []).filter(k => k.indexOf('xy-home-v2:') === 0 && k !== SNAPSHOT_KEY);
+      if (idbBiz.length >= 3) return; // IDB 有足够业务数据，非丢失场景
+      // 业务键 < 3，检查是否有副本
+      return window.idbGet(SNAPSHOT_KEY);
+    }).then(raw => {
+      if (!raw || typeof raw !== 'string') return;
+      let data;
+      try { data = JSON.parse(raw); } catch (e) { return; }
+      if (!data || typeof data !== 'object' || !data.ls) return;
+      // 副本本身也要有足够数据才提示（防"空副本"误提示）
+      const snapBiz = Object.keys(data.ls || {}).concat(Object.keys(data.idb || {}))
+        .filter(k => k.indexOf('xy-home-v2:') === 0 && k !== SNAPSHOT_KEY);
+      if (snapBiz.length < 3) return;
+      if (!window.openModal) return;
+      try { sessionStorage.setItem('xy-snapshot-offer-done', '1'); } catch (e) {}
+      const tm = data.exportTime ? String(data.exportTime).slice(0, 16).replace('T', ' ') : '未知时间';
+      const cnt = (o) => (o && typeof o === 'object' ? Object.keys(o).length : 0);
+      const summary = '当前几乎没有数据，但发现一份自动备份副本：\n' +
+        '· 导出时间：' + tm + '\n' +
+        '· 小存储 ' + cnt(data.ls) + ' 项 + 大文件 ' + cnt(data.idb) + ' 项\n\n' +
+        '点「确定」从副本恢复，点「取消」保留当前空白状态。';
+      window.openModal('检测到数据可能丢失', '', () => {
+        doImportGo(data);
+      }, { noInput: true, staticText: summary });
+    }).catch(() => {});
+  }
+  // 数据就绪后检测（openModal 在 personalize.js，加载顺序在 data-backup.js 之前，已就绪）
+  if (window.__mochiDataReady) { setTimeout(checkLostAndOfferRestore, 800); }
+  else {
+    document.addEventListener('mochi-restore-done', function h() {
+      document.removeEventListener('mochi-restore-done', h);
+      setTimeout(checkLostAndOfferRestore, 800);
     });
   }
 

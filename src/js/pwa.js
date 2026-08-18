@@ -184,6 +184,32 @@
         }
         return;
       }
+      // v3.6.x：Edge 安卓 PWA 与浏览器标签页使用独立存储分区，安装后桌面应用看到的是空数据。
+      // 安装前若检测到有数据且从未导出过备份，提示先导出——避免用户装完才发现"数据丢了"。
+      // 仅 Edge 安卓触发（Chrome 安卓 PWA 与标签页共享存储，不打扰）。
+      try {
+        const ua = navigator.userAgent || '';
+        const isEdgeAndroid = /android/i.test(ua) && /edg/i.test(ua);
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        const G = 'xy-home-v2:';
+        let hasData = false;
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.indexOf(G) === 0 && k !== G + '__onboard-done' && k !== G + '__edge-backup-hint-done') { hasData = true; break; }
+        }
+        if (isEdgeAndroid && !isStandalone && hasData && !localStorage.getItem(G + '__last-backup') && !localStorage.getItem(G + '__edge-backup-hint-done')) {
+          try { localStorage.setItem(G + '__edge-backup-hint-done', String(Date.now())); } catch (e) {}
+          if (window.openModal) {
+            window.openModal('安装前建议先导出备份', '', () => {
+              try { if (window.runBackupExport) window.runBackupExport(); } catch (e) {}
+            }, {
+              noInput: true,
+              staticText: 'Edge 安卓的桌面应用与浏览器使用各自独立的存储空间，安装后从桌面打开会看到空数据（昵称/打卡/摸鱼天数都会是默认值）。\n\n建议先在浏览器里导出一份备份，安装到桌面后再导入即可恢复。\n\n· 点「确定」：立即导出备份（导出完成后再次点安装按钮即可安装）\n· 点「取消」：直接安装（之后可在设置页导出备份再导入）'
+            });
+            return;
+          }
+        }
+      } catch (e) {}
       try {
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then((r) => {
@@ -213,9 +239,10 @@
 })();
 
 // ===== 全新环境引导：无任何数据时首次提示「可导入备份」 =====
-// 背景：Edge/Chrome 安卓「安装应用」的 PWA 与浏览器标签页使用独立存储分区
+// 背景：Edge 安卓「安装应用」的 PWA 与浏览器标签页使用独立存储分区
 // （storage partition），用户从标签页换到桌面图标打开时看到的是全新空环境
 // （昵称/打卡/摸鱼全默认值），误以为数据丢了。
+// 注：Chrome 安卓 PWA 与标签页共享存储不隔离，这是 Edge 的实现策略差异。
 // 判定：localStorage + IndexedDB 都没有 xy-home-v2: 数据键 → 全新环境。
 // 时机：等数据就绪（__mochiDataReady）且开屏关闭后再弹——modal-mask z-index(90)
 // 低于 splash(999)，开屏期间弹会被盖住。弹过一次写标记（含点取消），不再打扰。

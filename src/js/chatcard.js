@@ -233,7 +233,10 @@
     }
     if (typeof c === 'string' && c.indexOf('data:') === 0) {
       // 图片字卡：缩略图 + 点击查看大图（无文字标签）
-      return '<div class="cc-ico cc-imgbox"><img class="cc-img" src="' + esc(c) + '" alt="图片"></div>';
+      // v3.6.x：data-src 懒加载——表情包/图片多时不一次性解码全部 dataURL，
+      // 只解码进入视口的图（render 里用 IntersectionObserver 补 src），
+      // 删除/重渲染也不再有全量解码开销
+      return '<div class="cc-ico cc-imgbox"><img class="cc-img" data-src="' + esc(c) + '" alt="图片" decoding="async"></div>';
     }
     return '<div class="cc-txt"><div class="t">' + esc(c) + '</div></div>';
   }
@@ -255,6 +258,102 @@
     });
   }
 
+  // v3.6.x：图片字卡懒加载——只给进入视口的图补 src（dataURL 解码），
+  // 表情包/图片分类几百张图时首屏只解码可见部分；重渲染/删除不再全量解码。
+  // 无 IntersectionObserver 的旧浏览器由 render() 直接全部补 src 兜底
+  const imgObserver = ('IntersectionObserver' in window) ? new IntersectionObserver((entries) => {
+    for (let i = 0; i < entries.length; i++) {
+      const en = entries[i];
+      if (!en.isIntersecting) continue;
+      const img = en.target;
+      if (img && img.dataset && img.dataset.src && !img.getAttribute('src')) {
+        img.setAttribute('src', img.dataset.src);
+        img.removeAttribute('data-src');
+      }
+      try { imgObserver.unobserve(img); } catch (e) {}
+    }
+  }, { root: list, rootMargin: '300px 0px' }) : null;
+
+  // 给图片节点注册懒加载（render / 局部重建共用）
+  function attachLazy(img) {
+    if (!img) return;
+    if (imgObserver) { try { imgObserver.observe(img); } catch (e) {} }
+    else {
+      img.setAttribute('src', img.dataset.src || '');
+      img.removeAttribute('data-src');
+    }
+  }
+
+  // v3.6.x：只更新各类计数（tab 徽标/分组栏/总数），不重建列表 DOM——
+  // 删除字卡/删除分组等高频操作改局部移除 DOM + 本函数，替代整页 render()
+  function updateCountsOnly() {
+    renderTabCounts();
+    renderGroupsBar();
+    const total = totalCount(groups);
+    const totalEl = document.getElementById('cc-total');
+    if (totalEl) totalEl.textContent = total + ' 张';
+    const sub = document.getElementById('cc-sub-count');
+    if (sub) sub.textContent = '共收录 ' + total + ' 张字卡';
+    const cnt = document.getElementById('cc-list-count');
+    if (cnt) cnt.textContent = total;
+  }
+
+  // v3.6.x：定位某分组在列表中的 DOM 节点（header 带 data-g 标记，item 也带）
+  function groupBlockNodes(gname) {
+    const sel = (window.CSS && CSS.escape) ? CSS.escape(String(gname)) : String(gname).replace(/["\\]/g, '\\$&');
+    const nodes = [];
+    const header = list.querySelector('.cc-group-header[data-g="' + sel + '"]');
+    if (header) nodes.push(header);
+    list.querySelectorAll('.cc-item[data-g="' + sel + '"]').forEach(el => nodes.push(el));
+    return nodes;
+  }
+
+  // v3.6.x：删除后重建某个分组在列表中的卡片区（含未观察 img 的解绑），
+  // 其余分组 DOM 保持不动——删除一张卡不再整页重建；
+  // 分组仍在但被删空时保留 header（显示 0 张），与原来整页渲染的行为一致
+  function rebuildGroupAfterRemove(gname) {
+    // 分组不在当前视图（被分组筛选隐藏）：数据已删即可，不要动 DOM
+    if (curGroup && curGroup !== gname) return;
+    groupBlockNodes(gname).forEach(el => {
+      if (imgObserver) el.querySelectorAll('img[data-src]').forEach(im => { try { imgObserver.unobserve(im); } catch (e) {} });
+      el.remove();
+    });
+    const grps = groups[cur] || [];
+    const g = grps.find(x => x[0] === gname);
+    if (!g) return; // 分组整体已删（走删除分组流程，不经过这里）
+    // 重建 header（数量更新；空分组显示 0 张）
+    const h = document.createElement('div');
+    h.className = 'cc-group-header';
+    h.dataset.g = gname;
+    h.innerHTML = '<span class="ccg-name">' + esc(gname) + '</span><span class="ccg-count">' + g[1].length + '</span>';
+    // 找插入锚点：下一个分组的 header（按 DOM 顺序），否则 list 末尾
+    const grpNames = grps.map(x => x[0]);
+    const nextIdx = grpNames.indexOf(gname) + 1;
+    const nextSel = (window.CSS && CSS.escape) ? CSS.escape(String(grpNames[nextIdx] || '')) : '';
+    const anchor = nextIdx < grpNames.length
+      ? list.querySelector('.cc-group-header[data-g="' + nextSel + '"]')
+      : null;
+    const frag = document.createDocumentFragment();
+    frag.appendChild(h);
+    g[1].forEach((c, i) => {
+      const d = document.createElement('div');
+      d.className = 'cc-item glass';
+      d.dataset.g = gname;
+      d.dataset.idx = i;
+      d.innerHTML = cardItemHtml(c);
+      attachLazy(d.querySelector('img[data-src]'));
+      if (manageMode && selected.has(gname + '\u0001' + i)) d.classList.add('sel');
+      d.addEventListener('click', () => {
+        if (manageMode) { toggleSelect(d, gname, i); return; }
+        if (typeof c === 'string' && c.indexOf('data:') === 0) { viewImage(c); return; }
+        if (window.logFish) window.logFish();
+      });
+      frag.appendChild(d);
+    });
+    if (anchor && anchor.parentNode === list) list.insertBefore(frag, anchor);
+    else list.appendChild(frag);
+  }
+
   function render() {
     renderTabCounts();
     // 表情包分类：网格一行四个；图片分类：网格一行两个；emoji 分类：网格一行六个；其他分类保持行式列表
@@ -270,13 +369,9 @@
         .map(([g, arr]) => [g, arr.filter(c => (typeof c === 'string' && c.indexOf('data:') !== 0) && c.indexOf(q) >= 0)])
         .filter(([g, arr]) => arr.length || g.indexOf(q) >= 0);
     }
-    const total = totalCount(groups);
-    const totalEl = document.getElementById('cc-total');
-    if (totalEl) totalEl.textContent = total + ' 张';
-    const sub = document.getElementById('cc-sub-count');
-    if (sub) sub.textContent = '共收录 ' + total + ' 张字卡';
-    const cnt = document.getElementById('cc-list-count');
-    if (cnt) cnt.textContent = total;
+    updateCountsOnly();
+    // v3.6.x：清空前先解除旧图片懒加载观察，避免 observer 引用累积
+    if (imgObserver) list.querySelectorAll('img[data-src]').forEach(im => { try { imgObserver.unobserve(im); } catch (e) {} });
     list.innerHTML = '';
     if (!shown.length) {
       const emptyTxt = cur === 'sticker' ? '暂无表情包 · 点击右上角批量导入上传图片'
@@ -286,18 +381,23 @@
       list.innerHTML = '<div class="cc-empty">' + emptyTxt + '</div>';
       return;
     }
+    // v3.6.x：DocumentFragment 批量挂载——逐条 appendChild 会让浏览器反复计算布局，
+    // 字卡多时卡；一次性挂载显著提速
+    const frag = document.createDocumentFragment();
     shown.forEach(([gname, arr]) => {
       const h = document.createElement('div');
       h.className = 'cc-group-header';
+      h.dataset.g = gname; // 局部更新定位用
       h.innerHTML = '<span class="ccg-name">' + esc(gname) + '</span><span class="ccg-count">' + arr.length + '</span>';
       // 分组删除统一在【管理分组】里操作，这里不再显示删除按钮
-      list.appendChild(h);
+      frag.appendChild(h);
       arr.forEach((c, i) => {
         const d = document.createElement('div');
         d.className = 'cc-item glass';
         d.dataset.g = gname;
         d.dataset.idx = i;
         d.innerHTML = cardItemHtml(c);
+        attachLazy(d.querySelector('img[data-src]'));
         // 管理模式：显示勾选状态
         if (manageMode) {
           if (selected.has(gname + '\u0001' + i)) d.classList.add('sel');
@@ -311,9 +411,10 @@
           }
           if (window.logFish) window.logFish();
         });
-        list.appendChild(d);
+        frag.appendChild(d);
       });
     });
+    list.appendChild(frag);
   }
 
   // 分类切换
@@ -340,15 +441,23 @@
     // 雨见浏览器特意保留原生 input，但这手机 Chrome 对原生 input 聚焦仍弹
     // 「自动填充」白条。ce-box 已兼容 input 事件转发 + value 代理 + Escape
     // keydown 转发（见 mobile-adapt.js），转接后输入即筛/清空恢复照常工作。
+    // v3.6.x：120ms 防抖——字卡多时每敲一个字全量渲染会卡，输入停顿后再筛
+    let searchTimer = null;
     searchInput.addEventListener('input', () => {
       // 管理模式禁用搜索——搜索过滤会让勾选下标与原始数组错位，
       // 删除/移动会误删别的卡片（数据丢失），输入立即清空
       if (manageMode) { searchInput.value = ''; return; }
       q = searchInput.value.trim();
-      render();
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(render, 120);
     });
     searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { searchInput.value = ''; q = ''; render(); searchInput.blur(); }
+      if (e.key === 'Escape') {
+        searchInput.value = ''; q = '';
+        clearTimeout(searchTimer);
+        render();
+        searchInput.blur();
+      }
     });
   }
 
@@ -406,11 +515,23 @@
           row.querySelector('.mg-del').addEventListener('click', () => {
             if (window.openModal) {
               window.openModal('删除分组「' + gname + '」及其全部字卡？', '', () => {
+                const wasCur = curGroup === gname;
                 groups[cur] = groups[cur].filter(([g]) => g !== gname);
-                if (curGroup === gname) curGroup = '';
+                if (wasCur) curGroup = '';
                 saveGroups(groups);
-                renderGroupsBar();
-                render();
+                // v3.6.x：不再整页 render——分组在 DOM 中则局部移除该块 + 只更新计数；
+                // 当前筛选/搜索视图受影响时（需恢复全部视图或 DOM 无法精确定位）才全量重建
+                if (wasCur) {
+                  render();
+                } else if (!q) {
+                  groupBlockNodes(gname).forEach(el => {
+                    if (imgObserver) el.querySelectorAll('img[data-src]').forEach(im => { try { imgObserver.unobserve(im); } catch (e) {} });
+                    el.remove();
+                  });
+                  updateCountsOnly();
+                } else {
+                  render();
+                }
                 renderMgList();
               }, { noInput: true });
             }
@@ -445,16 +566,25 @@
   }
   function delSelected() {
     let removed = 0;
+    // v3.6.x：先记录受影响的分组（局部 DOM 更新需要），再倒序 splice 防错位
+    const touched = new Set(); // 受影响分组名
     (groups[cur] || []).forEach(([gname, arr]) => {
       for (let i = arr.length - 1; i >= 0; i--) {
-        if (selected.has(gname + '\u0001' + i)) { arr.splice(i, 1); removed++; }
+        if (selected.has(gname + '\u0001' + i)) {
+          touched.add(gname);
+          arr.splice(i, 1);
+          removed++;
+        }
       }
     });
     if (!removed) return;
     selected.clear();
     saveGroups(groups);
-    renderGroupsBar();
-    render();
+    // v3.6.x：局部移除被删卡片 + 重建受影响分组，不再整页 render（删除卡顿主因）
+    touched.forEach((gname) => {
+      rebuildGroupAfterRemove(gname);
+    });
+    updateCountsOnly();
     updateCount();
     toast('已删除 ' + removed + ' 张字卡');
   }

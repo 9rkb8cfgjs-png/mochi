@@ -252,7 +252,10 @@
         // 修复：原 `indexOf(uidPrefix+'chat-msgs')!==0` 匹配不到命名空间键
         //（xy-home-v2:default:chat-msgs），改用 isChatMsgsKey 同时排除旧顶层键
         // 与各联系人命名空间键
-        !isChatMsgsKey(k));
+        !isChatMsgsKey(k) &&
+        // v3.7.0：自动备份副本键不回填——它是 data-backup.js 写入的全量 JSON 快照，
+        // 体积可能几 MB，回填到 localStorage 会撑爆 5MB 配额，且不是业务数据
+        k !== 'xy-home-v2:__auto-backup-snapshot');
       if (!need.length) { finish(); return; }
       // v3.5.122：分批恢复（每批 8 个键，批间让出主线程）——v3.5.117 的单事务
       //   idbGetMany 会把几百个键（含几十 MB 大图）一次性读进内存，低端手机
