@@ -386,7 +386,7 @@
     </div>
     <div id="tc-mine-panel" hidden>
       <div class="set-group glass">
-        <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加问题</div>
+        <div class="cal-card-title" style="padding:14px 14px 0;display:flex;align-items:center;justify-content:space-between"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加问题</span><button class="cc-tool" id="tc-new-grp" style="padding:4px 8px;font-size:11px">＋ 分组</button></div>
         <div class="tc-addform">
           <select id="tc-new-cat" class="tc-input">
             <option value="daily">日常</option>
@@ -445,7 +445,7 @@
     </div>
     <div id="tcu-mine-panel" hidden>
       <div class="set-group glass">
-        <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加问题</div>
+        <div class="cal-card-title" style="padding:14px 14px 0;display:flex;align-items:center;justify-content:space-between"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加问题</span><button class="cc-tool" id="tcu-new-grp" style="padding:4px 8px;font-size:11px">＋ 分组</button></div>
         <div class="tc-addform">
           <select id="tcu-new-cat" class="tc-input">
             <option value="you">关于你</option>
@@ -503,7 +503,7 @@
     </div>
     <div id="tr-mine-panel" hidden>
       <div class="set-group glass">
-        <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加吐槽字卡</div>
+        <div class="cal-card-title" style="padding:14px 14px 0;display:flex;align-items:center;justify-content:space-between"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加吐槽字卡</span><button class="cc-tool" id="tr-new-grp" style="padding:4px 8px;font-size:11px">＋ 分组</button></div>
         <div class="tc-addform">
           <select id="tr-new-cat" class="tc-input">
             <option value="light">轻微调侃</option>
@@ -555,8 +555,9 @@
     </div>
     <div id="ck-mine-panel" hidden>
       <div class="set-group glass">
-        <div class="cal-card-title" style="padding:14px 14px 0">批量输入字卡</div>
+        <div class="cal-card-title" style="padding:14px 14px 0;display:flex;align-items:center;justify-content:space-between"><span>批量输入字卡</span><button class="cc-tool" id="ck-new-grp" style="padding:4px 8px;font-size:11px">＋ 分组</button></div>
         <div class="tc-addform">
+          <select id="cck-batch-grp" class="tc-input"></select>
           <textarea id="cck-batch" class="tc-input" rows="6" placeholder="每行一个，如：&#10;在家&#10;在公司&#10;在咖啡店"></textarea>
           <button class="ta-add-btn" style="width:100%" id="cck-batch-add">添加到当前分类</button>
         </div>
@@ -589,8 +590,9 @@
       <div id="cq-sys-list" style="padding:8px 14px 14px"></div>
     </div>
     <div class="set-group glass" id="cq-mine-panel" hidden>
-      <div class="cal-card-title" style="padding:14px 14px 0">批量输入情话</div>
+      <div class="cal-card-title" style="padding:14px 14px 0;display:flex;align-items:center;justify-content:space-between"><span>批量输入情话</span><button class="cc-tool" id="cq-new-grp" style="padding:4px 8px;font-size:11px">＋ 分组</button></div>
       <div class="tc-addform">
+        <select id="cq-batch-grp" class="tc-input"></select>
         <textarea id="cq-batch" class="tc-input" rows="6" placeholder="每行一句，如：&#10;我偏爱你。&#10;今天也很喜欢你。&#10;你是我的例外。"></textarea>
         <button class="ta-add-btn" style="width:100%" id="cq-batch-add">添加到今日情话</button>
       </div>

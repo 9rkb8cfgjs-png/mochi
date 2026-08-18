@@ -597,7 +597,7 @@ transition:width .25s ease, background .25s ease;
 display:flex; flex-direction:column;
 }
 .desk-page-hint {
-margin:auto; text-align:center; color:var(--muted);
+display:none; margin:auto; text-align:center; color:var(--muted);
 font-size:12px; letter-spacing:1px; padding:40px 20px;
 }
 .desk-page-add {
@@ -606,7 +606,8 @@ border:1px dashed rgba(0,0,0,.2); background:rgba(255,255,255,.6);
 color:var(--ink); font-size:13px; font-weight:600; cursor:pointer;
 display:none; align-items:center; gap:6px;
 }
-.page-slide.desk-page .desk-page-add { display:inline-flex; }
+.decor-on .page-slide.desk-page .desk-page-hint { display:block; }
+.decor-on .page-slide.desk-page .desk-page-add { display:inline-flex; }
 .desk-widget, [data-desk-widget] {
 position:relative;
 }
@@ -2370,6 +2371,18 @@ display:flex; align-items:center; justify-content:center; gap:6px;
 }
 .mg-add:active { background:rgba(0,0,0,.04); }
 .ta-empty { text-align:center; color:#c0c0c0; font-size:12px; padding:10px 0; }
+.mg-grp-row { display:flex; align-items:center; gap:8px; margin:2px 0 10px; }
+.mg-grp-row .cc-tool { padding:7px 12px; font-size:12px; }
+.mg-block { margin-bottom:12px; }
+.mg-block .mg-title { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.mg-title .mg-name { font-size:14px; font-weight:700; }
+.mg-title .mg-cnt { font-size:11px; color:var(--muted); font-weight:400; }
+.mg-title .mg-ops { margin-left:auto; display:flex; gap:6px; }
+.mg-op { width:26px; height:26px; border-radius:50%; border:1px solid rgba(0,0,0,.12); background:transparent; color:#888; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.mg-op:active { background:rgba(0,0,0,.06); color:#111; }
+.mg-ungrouped .mg-title .mg-name { font-weight:600; color:var(--muted); }
+.mg-subcat { font-size:12px; font-weight:700; color:#888; margin:10px 0 4px; padding-top:6px; border-top:1px dashed rgba(0,0,0,.08); }
+.mg-subcat:first-of-type { margin-top:0; padding-top:0; border-top:none; }
 .fish-total {
 display:flex; gap:8px; margin-bottom:12px;
 }
@@ -3449,6 +3462,9 @@ background: var(--dark-card-92);
 .cal-edit-btn:active, .it-btn:active, .ck-refresh:active {
 background: var(--dark-hover);
 }
+.mg-op { border-color: var(--dark-border-12); color: var(--muted); }
+.mg-op:active { background: var(--dark-hover); color: var(--ink); }
+.mg-subcat { border-top-color: var(--dark-border-12); }
 .tabbar { background:var(--dark-card-92); border-color:var(--dark-border-12); }
 .tabbar .tab.active { background:var(--dark-hover); }
 .ch-back svg, .set-row .ico svg, .app .app-ico svg,
@@ -3497,7 +3513,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.91 · 部署于 2026-08-18 21:32</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.92 · 部署于 2026-08-18 21:40</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3830,7 +3846,7 @@ color: var(--muted);
     </div>
     <div id="tc-mine-panel" hidden>
       <div class="set-group glass">
-        <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加问题</div>
+        <div class="cal-card-title" style="padding:14px 14px 0;display:flex;align-items:center;justify-content:space-between"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加问题</span><button class="cc-tool" id="tc-new-grp" style="padding:4px 8px;font-size:11px">＋ 分组</button></div>
         <div class="tc-addform">
           <select id="tc-new-cat" class="tc-input">
             <option value="daily">日常</option>
@@ -3889,7 +3905,7 @@ color: var(--muted);
     </div>
     <div id="tcu-mine-panel" hidden>
       <div class="set-group glass">
-        <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加问题</div>
+        <div class="cal-card-title" style="padding:14px 14px 0;display:flex;align-items:center;justify-content:space-between"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加问题</span><button class="cc-tool" id="tcu-new-grp" style="padding:4px 8px;font-size:11px">＋ 分组</button></div>
         <div class="tc-addform">
           <select id="tcu-new-cat" class="tc-input">
             <option value="you">关于你</option>
@@ -3947,7 +3963,7 @@ color: var(--muted);
     </div>
     <div id="tr-mine-panel" hidden>
       <div class="set-group glass">
-        <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加吐槽字卡</div>
+        <div class="cal-card-title" style="padding:14px 14px 0;display:flex;align-items:center;justify-content:space-between"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加吐槽字卡</span><button class="cc-tool" id="tr-new-grp" style="padding:4px 8px;font-size:11px">＋ 分组</button></div>
         <div class="tc-addform">
           <select id="tr-new-cat" class="tc-input">
             <option value="light">轻微调侃</option>
@@ -3999,8 +4015,9 @@ color: var(--muted);
     </div>
     <div id="ck-mine-panel" hidden>
       <div class="set-group glass">
-        <div class="cal-card-title" style="padding:14px 14px 0">批量输入字卡</div>
+        <div class="cal-card-title" style="padding:14px 14px 0;display:flex;align-items:center;justify-content:space-between"><span>批量输入字卡</span><button class="cc-tool" id="ck-new-grp" style="padding:4px 8px;font-size:11px">＋ 分组</button></div>
         <div class="tc-addform">
+          <select id="cck-batch-grp" class="tc-input"></select>
           <textarea id="cck-batch" class="tc-input" rows="6" placeholder="每行一个，如：&#10;在家&#10;在公司&#10;在咖啡店"></textarea>
           <button class="ta-add-btn" style="width:100%" id="cck-batch-add">添加到当前分类</button>
         </div>
@@ -4033,8 +4050,9 @@ color: var(--muted);
       <div id="cq-sys-list" style="padding:8px 14px 14px"></div>
     </div>
     <div class="set-group glass" id="cq-mine-panel" hidden>
-      <div class="cal-card-title" style="padding:14px 14px 0">批量输入情话</div>
+      <div class="cal-card-title" style="padding:14px 14px 0;display:flex;align-items:center;justify-content:space-between"><span>批量输入情话</span><button class="cc-tool" id="cq-new-grp" style="padding:4px 8px;font-size:11px">＋ 分组</button></div>
       <div class="tc-addform">
+        <select id="cq-batch-grp" class="tc-input"></select>
         <textarea id="cq-batch" class="tc-input" rows="6" placeholder="每行一句，如：&#10;我偏爱你。&#10;今天也很喜欢你。&#10;你是我的例外。"></textarea>
         <button class="ta-add-btn" style="width:100%" id="cq-batch-add">添加到今日情话</button>
       </div>
@@ -4206,7 +4224,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.91</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.92</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -6765,6 +6783,15 @@ clearTimeout(t._timer);
 t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
 }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+const GRP_KEY = 'quote-cards-groups';
+function getGroups() {
+try {
+const v = JSON.parse(store.get(GRP_KEY) || 'null');
+if (Array.isArray(v)) return v;
+} catch (e) {}
+return [];
+}
+function saveGroups(groups) { store.set(GRP_KEY, JSON.stringify(groups)); }
 function hasCustom() {
 try {
 const v = JSON.parse(store.get(KEY) || 'null');
@@ -6774,20 +6801,23 @@ return Array.isArray(v) && v.length > 0;
 function getQuotes() {
 try {
 const v = JSON.parse(store.get(KEY) || 'null');
-if (Array.isArray(v) && v.length) return v;
+if (Array.isArray(v) && v.length) return v.map(x => typeof x === 'string' ? x : (x && x.t != null ? String(x.t) : null)).filter(Boolean);
 } catch (e) {}
 return DEFAULT_QUOTES.slice();
 }
-window.getQuoteOfDay = function () {
-const useDefault = getUseDefault();
-let custom = [];
+function getCustom() {
 try {
 const v = JSON.parse(store.get(KEY) || 'null');
-if (Array.isArray(v) && v.length) custom = v;
+if (Array.isArray(v)) return v.map(x => typeof x === 'string' ? { t: x } : (x && typeof x === 'object' && x.t != null ? x : null)).filter(Boolean);
 } catch (e) {}
+return [];
+}
+window.getQuoteOfDay = function () {
+const useDefault = getUseDefault();
+const custom = getCustom();
 let quotes = null;
-if (useDefault) quotes = (custom.length ? custom : DEFAULT_QUOTES.filter(q => !isQuoteOff(q))).filter(q => !isQuoteOff(q));
-else quotes = custom.filter(q => !isQuoteOff(q)); // 只用自己的
+if (useDefault) quotes = (custom.length ? custom.map(c => c.t) : DEFAULT_QUOTES.filter(q => !isQuoteOff(q))).filter(q => !isQuoteOff(q));
+else quotes = custom.map(c => c.t).filter(q => !isQuoteOff(q)); // 只用自己的
 if (!quotes.length) return '';
 const d = new Date();
 const today = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
@@ -6797,13 +6827,6 @@ return quotes[hash % quotes.length];
 };
 window.quoteCardCount = function () { return getQuotes().length; };
 function isDefaultQuote(q) { return DEFAULT_QUOTES.indexOf(q) >= 0; }
-function getCustom() {
-try {
-const v = JSON.parse(store.get(KEY) || 'null');
-if (Array.isArray(v)) return v;
-} catch (e) {}
-return [];
-}
 function updateEntryCount() {
 const cnt = document.getElementById('cc-quote-count');
 if (!cnt) return;
@@ -6850,33 +6873,99 @@ el.appendChild(row);
 function renderMineList() {
 const el = document.getElementById('cq-mine-list');
 if (!el) return;
+const groups = getGroups();
 const custom = getCustom();
-el.innerHTML = '';
+let html = '';
+html += '<div class="mg-grp-row"><button class="cc-tool mg-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
 if (!custom.length) {
-const empty = document.createElement('div');
-empty.className = 'ta-empty';
-empty.textContent = '暂未添加自定义情话，可在上方批量输入（每行一句）。';
-el.appendChild(empty);
+html += '<div class="ta-empty">暂未添加自定义情话，可在上方批量输入（每行一句）。</div>';
+el.innerHTML = html;
+bindCqGroupOps();
 return;
 }
-custom.forEach((q, i) => {
-const row = document.createElement('div');
-row.className = 'tc-qrow';
-row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + esc(q) + '</div></div>';
-const del = document.createElement('button');
-del.className = 'ta-del';
-del.textContent = '✕';
-del.addEventListener('click', () => {
+groups.forEach(g => {
+const arr = custom.filter(x => x.grp === g.id);
+html += '<div class="cal-card glass mg-block">' +
+'<div class="cal-card-title mg-title"><span class="mg-name">' + esc(g.name) + '</span><span class="mg-cnt">(' + arr.length + ')</span>' +
+'<span class="mg-ops"><button class="mg-op" data-g="' + esc(g.id) + '" data-op="rn" title="重命名">✎</button><button class="mg-op" data-g="' + esc(g.id) + '" data-op="rm" title="删除分组">✕</button></span></div>' +
+(arr.length ? arr.map(x => cqItemHtml(x, custom.indexOf(x))).join('') : '<div class="ta-empty">这个分组还没有内容</div>') +
+'</div>';
+});
+const ungrouped = custom.filter(x => !x.grp);
+if (ungrouped.length || !groups.length) {
+html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+html += ungrouped.map(x => cqItemHtml(x, custom.indexOf(x))).join('');
+html += '</div>';
+}
+el.innerHTML = html;
+el.querySelectorAll('.ta-del').forEach(b => {
+b.addEventListener('click', () => {
 const list = getCustom();
-list.splice(i, 1);
+list.splice(Number(b.dataset.idx), 1);
 store.set(KEY, JSON.stringify(list));
 renderMineList();
 updateEntryCount();
 toast('已删除');
 });
-row.appendChild(del);
-el.appendChild(row);
 });
+bindCqGroupOps();
+}
+function cqItemHtml(x, idx) {
+return '<div class="tc-qrow"><div class="tc-qmain"><div class="tc-qtext">' + esc(x.t) + '</div></div>' +
+'<button class="ta-del" data-idx="' + idx + '">✕</button></div>';
+}
+function bindCqGroupOps() {
+const wrap = document.getElementById('cq-mine-list');
+if (!wrap) return;
+wrap.querySelectorAll('.mg-grp-add').forEach(b => {
+if (b.__bound) return;
+b.__bound = true;
+b.addEventListener('click', () => {
+window.cardGroups.addFlow(getGroups(), g => {
+if (!g) return;
+saveGroups(getGroups());
+refreshGrpSelect();
+renderMineList();
+toast('已新建分组「' + g.name + '」');
+});
+});
+});
+wrap.querySelectorAll('.mg-op').forEach(b => {
+if (b.__bound) return;
+b.__bound = true;
+b.addEventListener('click', () => {
+const groups = getGroups();
+const gid = b.dataset.g;
+const g = groups.find(x => x.id === gid);
+if (!g) return;
+if (b.dataset.op === 'rn') {
+window.cardGroups.renameFlow(g, groups, name => {
+if (!name) return;
+saveGroups(groups);
+refreshGrpSelect();
+renderMineList();
+toast('分组已重命名');
+});
+} else if (b.dataset.op === 'rm') {
+window.cardGroups.removeFlow(g.name, ok => {
+if (!ok) return;
+const list = getCustom();
+list.forEach(x => { if (x.grp === gid) x.grp = ''; });
+store.set(KEY, JSON.stringify(list));
+saveGroups(groups.filter(x => x.id !== gid));
+refreshGrpSelect();
+renderMineList();
+toast('已删除分组「' + g.name + '」');
+});
+}
+});
+});
+}
+function refreshGrpSelect() {
+const grpSel = document.getElementById('cq-batch-grp');
+if (!grpSel) return;
+grpSel.innerHTML = window.cardGroups.grpOnlyOptsHtml(getGroups(), grpSel.value);
+window.cardGroups.bindNewGrp(grpSel, getGroups(), function () { saveGroups(getGroups()); });
 }
 let curTab = 'sys';
 function switchTab(tab) {
@@ -6891,18 +6980,38 @@ if (tab === 'sys') renderSysList(); else renderMineList();
 }
 const batchAdd = document.getElementById('cq-batch-add');
 if (batchAdd) {
+refreshGrpSelect();
 batchAdd.addEventListener('click', () => {
 const ta = document.getElementById('cq-batch');
 const raw = ta ? ta.value : '';
 const items = raw.split('\n').map(s => s.trim()).filter(Boolean);
 if (!items.length) { toast('请输入内容，每行一句'); return; }
+const grpSel = document.getElementById('cq-batch-grp');
+const parsed = window.cardGroups.parseCatVal(grpSel ? grpSel.value : '');
+if (!parsed) { toast('请先选择分组'); return; }
 const list = getCustom();
-items.forEach(it => list.push(it));
+items.forEach(it => {
+const x = { t: it };
+if (parsed.grp) x.grp = parsed.grp;
+list.push(x);
+});
 store.set(KEY, JSON.stringify(list));
 if (ta) ta.value = '';
 renderMineList();
 updateEntryCount();
 toast('已添加 ' + items.length + ' 句今日情话');
+});
+}
+const cqNewGrp = document.getElementById('cq-new-grp');
+if (cqNewGrp) {
+cqNewGrp.addEventListener('click', () => {
+window.cardGroups.addFlow(getGroups(), g => {
+if (!g) return;
+saveGroups(getGroups());
+refreshGrpSelect();
+renderMineList();
+toast('已新建分组「' + g.name + '」');
+});
 });
 }
 const cqDefault = document.getElementById('cq-default');
@@ -6947,6 +7056,13 @@ const uid = window.activePrefix();
 const store = window.activeStore();
 const DESK_IMG_SIZES = { s: 40, m: 70, l: 100 };
 let viewerBound = false;
+const syncPageHint = (slide) => {
+if (!slide) return;
+const hint = slide.querySelector('.desk-page-hint');
+if (!hint) return;
+const hasContent = !!slide.querySelector('[data-desk-widget], [data-desk-image]');
+hint.style.display = hasContent ? 'none' : '';
+};
 function compressImage(dataUrl, maxSide) {
 return new Promise((resolve) => {
 if (typeof dataUrl === 'string' && dataUrl.length > 8 * 1024 * 1024) {
@@ -8282,8 +8398,10 @@ pills: [{ label: '恢复默认', value: '__reset__' }],
 } else if (v === 'up') moveWidget('up');
 else if (v === 'down') moveWidget('down');
 else if (v === 'out') {
+const fromSlide = widgetEl.closest('.page-slide');
 ensureWidgetPool().appendChild(widgetEl);
 saveDeskLayout();
+syncPageHint(fromSlide);
 toast('已移出此页（可在其他页「添加卡片」找回）');
 }
 }, {
@@ -8535,10 +8653,9 @@ if (node && node.parentNode !== slide) {
 const addBtn = slide.querySelector('.desk-page-add');
 if (addBtn) slide.insertBefore(node, addBtn);
 else slide.appendChild(node);
-const hint = slide.querySelector('.desk-page-hint');
-if (hint) hint.style.display = 'none';
 }
 });
+syncPageHint(slide);
 });
 const pool = ensureWidgetPool();
 WIDGET_IDS.forEach(wid => {
@@ -8584,8 +8701,7 @@ if (!node) return;
 const addBtn = pageSlide.querySelector('.desk-page-add');
 if (addBtn) pageSlide.insertBefore(node, addBtn);
 else pageSlide.appendChild(node);
-const hint = pageSlide.querySelector('.desk-page-hint');
-if (hint) hint.style.display = 'none';
+syncPageHint(pageSlide);
 saveDeskLayout();
 if (window.deskRebuild) window.deskRebuild();
 lib.remove();
@@ -8631,7 +8747,7 @@ node.dataset.deskImage = m.id;
 const w = DESK_IMG_SIZES.l;
 const wv = (m.w === DESK_IMG_SIZES.s || m.w === DESK_IMG_SIZES.m) ? m.w : w;
 node.style.width = wv + '%';
-if (wv < 100) node.style.alignSelf = 'flex-start';
+if (wv < 100) node.style.alignSelf = m.align === 'c' ? 'center' : (m.align === 'r' ? 'flex-end' : 'flex-start');
 const img = document.createElement('img');
 node.appendChild(img);
 const addBtn = slide.querySelector('.desk-page-add');
@@ -8644,6 +8760,27 @@ const src = store.get('desk-image-src-' + m.id);
 if (src) img.src = src;
 }
 });
+for (let i = 0; i < slides.length; i++) syncPageHint(slides[i]);
+}
+function moveDeskImage(id, dir) {
+const meta = loadDeskImagesMeta();
+const idx = meta.findIndex(x => x.id === id);
+if (idx < 0) return;
+const same = [];
+meta.forEach((x, i) => { if (x.page === meta[idx].page) same.push(i); });
+const pos = same.indexOf(idx);
+if (dir === 'up' && pos > 0) {
+const a = same[pos - 1];
+const t = meta[a]; meta[a] = meta[idx]; meta[idx] = t;
+} else if (dir === 'down' && pos < same.length - 1) {
+const a = same[pos + 1];
+const t = meta[a]; meta[a] = meta[idx]; meta[idx] = t;
+} else {
+return;
+}
+saveDeskImagesMeta(meta);
+renderDeskImages();
+toast(dir === 'up' ? '已上移' : '已下移');
 }
 function addDeskImage(pageIdx) {
 const input = document.createElement('input');
@@ -8720,9 +8857,38 @@ e.stopPropagation();
 if (!window.openModal) return;
 const cur = (loadDeskImagesMeta().find(x => x.id === id) || {}).w || DESK_IMG_SIZES.l;
 const sizePill = (label, val, w) => ({ label: label + (cur === w ? ' ✓' : ''), value: val });
+const openMoveMenu = () => {
+const m = loadDeskImagesMeta().find(x => x.id === id) || {};
+const al = m.align || 'l';
+const alPill = (label, val) => ({ label: label + (al === val ? ' ✓' : ''), value: val });
+const opts = {
+noInput: true,
+pills: [
+{ label: '上移', value: 'up' },
+{ label: '下移', value: 'down' },
+alPill('靠左', 'al'),
+alPill('居中', 'ac'),
+alPill('靠右', 'ar'),
+],
+};
+setTimeout(() => { if (window.openModal) window.openModal('图片移动', '', (v2) => {
+if (v2 === 'up' || v2 === 'down') moveDeskImage(id, v2);
+else if (v2 === 'al' || v2 === 'ac' || v2 === 'ar') {
+const meta = loadDeskImagesMeta();
+const mm = meta.find(x => x.id === id);
+if (mm) {
+mm.align = v2 === 'ac' ? 'c' : v2 === 'ar' ? 'r' : 'l';
+saveDeskImagesMeta(meta);
+renderDeskImages();
+toast(v2 === 'al' ? '已靠左' : v2 === 'ac' ? '已居中' : '已靠右');
+}
+}
+}, opts); }, 0);
+};
 window.openModal('图片组件', '', (v) => {
 if (v === '1') changeDeskImage(id);
 else if (v === '2') removeDeskImage(id);
+else if (v === 'move') openMoveMenu();
 else if (v === 's' || v === 'm' || v === 'l') {
 const w = DESK_IMG_SIZES[v];
 const meta = loadDeskImagesMeta();
@@ -8741,6 +8907,7 @@ pills: [
 sizePill('尺寸：小', 's', DESK_IMG_SIZES.s),
 sizePill('尺寸：中', 'm', DESK_IMG_SIZES.m),
 sizePill('尺寸：大', 'l', DESK_IMG_SIZES.l),
+{ label: '移动', value: 'move' },
 { label: '删除图片', value: '2' },
 ],
 });
@@ -18034,6 +18201,90 @@ store.set('avatar-me-lib', v);
 const uid = window.activePrefix();
 const store = window.activeStore();
 const KEY = 'ta-ask';
+function grpToast(msg) {
+let t = document.getElementById('cc-toast');
+if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
+t.textContent = msg;
+t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
+clearTimeout(t._timer);
+t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
+}
+function escG(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+window.cardGroups = {
+genId: function () { return 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); },
+toast: grpToast,
+esc: escG,
+dup: function (groups, name, ignoreId) { return groups.some(function (g) { return g.name === name && g.id !== ignoreId; }); },
+addFlow: function (groups, cb) {
+if (!window.openModal) { cb(null); return; }
+window.openModal('新建分组', '', function (v) {
+const name = String(v || '').trim();
+if (!name) { cb(null); return; }
+if (window.cardGroups.dup(groups, name)) { grpToast('分组「' + name + '」已存在'); cb(null); return; }
+const g = { id: window.cardGroups.genId(), name: name };
+groups.push(g);
+cb(g);
+});
+},
+renameFlow: function (g, groups, cb) {
+if (!window.openModal) { cb(null); return; }
+window.openModal('重命名分组', g.name, function (v) {
+const name = String(v || '').trim();
+if (!name) { cb(null); return; }
+if (window.cardGroups.dup(groups, name, g.id)) { grpToast('分组「' + name + '」已存在'); cb(null); return; }
+cb(name);
+});
+},
+removeFlow: function (name, cb) {
+if (!window.openModal) { cb(true); return; }
+window.openModal('删除分组', '', function () { cb(true); }, { noInput: true, staticText: '删除分组「' + name + '」？组内字卡不会丢失，会回到「未分组」。' });
+},
+catOptsHtml: function (catList, groups, cur) {
+let h = '';
+catList.forEach(function (c) {
+h += '<option value="' + c[0] + '"' + (cur === c[0] ? ' selected' : '') + '>' + escG(c[1]) + '</option>';
+});
+if (groups.length) {
+h += '<optgroup label="我的分组">';
+groups.forEach(function (g) { h += '<option value="grp:' + g.id + '"' + (cur === 'grp:' + g.id ? ' selected' : '') + '>' + escG(g.name) + '</option>'; });
+h += '</optgroup>';
+}
+h += '<option value="__newgrp">＋ 新建分组…</option>';
+return h;
+},
+grpOnlyOptsHtml: function (groups, cur) {
+let h = '<option value="">未分组</option>';
+groups.forEach(function (g) { h += '<option value="grp:' + g.id + '"' + (cur === 'grp:' + g.id ? ' selected' : '') + '>' + escG(g.name) + '</option>'; });
+h += '<option value="__newgrp">＋ 新建分组…</option>';
+return h;
+},
+parseCatVal: function (v) {
+if (typeof v === 'string' && v.indexOf('grp:') === 0) return { cat: null, grp: v.slice(4) };
+if (v === '__newgrp') return null;
+return { cat: v || 'daily', grp: null };
+},
+bindNewGrp: function (sel, groups, onChanged) {
+sel.__grpGroups = groups;
+sel.__grpOnChanged = onChanged;
+if (sel.__grpBound) return;
+sel.__grpBound = true;
+sel.addEventListener('change', function () {
+if (sel.value !== '__newgrp') return;
+window.cardGroups.addFlow(sel.__grpGroups || [], function (g) {
+const first = sel.querySelector('option');
+if (!g) { if (first) sel.value = first.value; return; }
+if (sel.__grpOnChanged) sel.__grpOnChanged(g);
+const opt = document.createElement('option');
+opt.value = 'grp:' + g.id;
+opt.textContent = g.name;
+const nopt = sel.querySelector('option[value="__newgrp"]');
+sel.insertBefore(opt, nopt);
+sel.value = 'grp:' + g.id;
+grpToast('已新建分组「' + g.name + '」');
+});
+});
+}
+};
 const DEFAULT_QUESTIONS = [
 { id: 'q_d1', text: '你吃饭了吗？', cat: 'daily', enabled: true },
 { id: 'q_d2', text: '现在在做什么？', cat: 'daily', enabled: true },
@@ -18139,6 +18390,7 @@ if (!isNew) { try { store.set(KEY, JSON.stringify(d)); } catch (e) {} }
 if (taAskMerge(d)) { try { store.set(KEY, JSON.stringify(d)); } catch (e) {} }
 }
 if (!Array.isArray(d.history)) d.history = [];
+if (!Array.isArray(d.groups)) d.groups = [];
 return d;
 }
 function taAskSave(d) {
@@ -18304,20 +18556,36 @@ renderAskSettings();
 const batchCatEl = document.getElementById('ta-ask-batch-cat');
 const batchTextEl = document.getElementById('ta-ask-batch');
 const batchAddBtn = document.getElementById('ta-ask-batch-add');
+function rebuildAskBatchCatSelect() {
+if (!batchCatEl) return;
+const d0 = taAskLoad();
+batchCatEl.innerHTML = window.cardGroups.catOptsHtml(CATS, d0.groups || [], batchCatEl.value);
+window.cardGroups.bindNewGrp(batchCatEl, d0.groups, function () { taAskSave(d0); });
+}
 if (batchCatEl && batchTextEl && batchAddBtn) {
+rebuildAskBatchCatSelect();
 batchAddBtn.addEventListener('click', () => {
-const cat = batchCatEl.value;
+const parsed = window.cardGroups.parseCatVal(batchCatEl.value);
+if (!parsed) { toast('请先选择要导入的分类或分组'); return; }
 const lines = (batchTextEl.value || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 if (!lines.length) { toast('请先输入问题，每行一个'); return; }
 const d2 = taAskLoad();
 lines.forEach(t => {
-d2.questions.push({ id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), text: t, cat: cat, enabled: true, isPreset: false });
+const q = { id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), text: t, cat: parsed.cat || 'daily', enabled: true, isPreset: false };
+if (parsed.grp) q.grp = parsed.grp;
+d2.questions.push(q);
 });
 taAskSave(d2);
-const label = (CATS.find(c => c[0] === cat) || [cat])[1] || cat;
+let label;
+if (parsed.grp) {
+const g = (d2.groups || []).find(x => x.id === parsed.grp);
+label = '分组「' + (g ? g.name : '未知') + '」';
+} else {
+label = (CATS.find(c => c[0] === parsed.cat) || [])[1] || parsed.cat;
+}
 batchTextEl.value = '';
 renderAskMineWithForms();
-toast('已导入 ' + lines.length + ' 个问题到「' + label + '」');
+toast('已导入 ' + lines.length + ' 个问题到' + label);
 });
 }
 const backBtn = document.getElementById('ta-ask-back');
@@ -18373,33 +18641,59 @@ renderAskCatsInto(container, false);
 });
 });
 }
-function renderAskMineWithForms() {
-if (!mineCatsEl) return;
-const d = taAskLoad();
-let html = '';
-CATS.forEach(([k, label]) => {
-const arr = d.questions.filter(q => q.cat === k && q.isPreset !== true);
-html += '<div class="cal-card glass"><div class="cal-card-title">' + label + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
-if (!arr.length) html += '<div class="ta-empty">暂无</div>';
-arr.forEach(q => {
-const idx = d.questions.indexOf(q);
-html += '<div class="ta-row">' +
+function askItemHtml(q, idx) {
+return '<div class="ta-row">' +
 '<label class="toggle"><input type="checkbox"' + (q.enabled !== false ? ' checked' : '') + ' data-idx="' + idx + '"><span class="tk"></span></label>' +
-'<span class="ta-txt">' + q.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (q.type === 'single' ? ' <span class="tc-known">单选·' + (q.options ? q.options.length : 0) + '选项</span>' : '') + '</span>' +
+'<span class="ta-txt">' + escG(q.text) + (q.type === 'single' ? ' <span class="tc-known">单选·' + (q.options ? q.options.length : 0) + '选项</span>' : '') + '</span>' +
 '<button class="ta-del" data-idx="' + idx + '">✕</button>' +
 '</div>';
-});
-html += '<div class="ta-add">' +
-'<select class="ta-type tc-input" data-cat="' + k + '">' +
+}
+function askAddFormHtml(blockKey, grp, cat) {
+return '<div class="ta-add">' +
+'<select class="ta-type tc-input" data-key="' + blockKey + '">' +
 '<option value="text">文字回复</option>' +
 '<option value="single">单选题</option>' +
 '</select>' +
-'<input id="ta-new-' + k + '" type="text" placeholder="添加问题…">' +
-'<button class="ta-add-btn" data-cat="' + k + '">添加</button>' +
-'<textarea id="ta-opts-' + k + '" class="ta-opts tc-input" rows="3" placeholder="单选题选项：每行一个；可写 选项~TA回应，TA会用该回应回复" hidden></textarea>' +
+'<input id="ta-new-' + blockKey + '" type="text" placeholder="添加问题…">' +
+'<button class="ta-add-btn" data-key="' + blockKey + '" data-cat="' + (cat || 'daily') + '" data-grp="' + (grp || '') + '">添加</button>' +
+'<textarea id="ta-opts-' + blockKey + '" class="ta-opts tc-input" rows="3" placeholder="单选题选项：每行一个；可写 选项~TA回应，TA会用该回应回复" hidden></textarea>' +
 '</div>';
+}
+function renderAskMineWithForms() {
+if (!mineCatsEl) return;
+const d = taAskLoad();
+const groups = Array.isArray(d.groups) ? d.groups : [];
+const mineQs = d.questions.filter(q => q.isPreset !== true);
+let html = '';
+html += '<div class="mg-grp-row"><button class="cc-tool" id="ask-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
+if (!mineQs.length) {
+html += '<div class="ta-empty" style="padding:14px">暂未添加自定义问题，可在上方批量导入或下方添加</div>';
+mineCatsEl.innerHTML = html;
+bindAskGroupOps();
+return;
+}
+groups.forEach(g => {
+const arr = mineQs.filter(q => q.grp === g.id);
+html += '<div class="cal-card glass mg-block">' +
+'<div class="cal-card-title mg-title"><span class="mg-name">' + escG(g.name) + '</span><span class="mg-cnt">(' + arr.length + ')</span>' +
+'<span class="mg-ops"><button class="mg-op" data-askg="' + escG(g.id) + '" data-op="rn" title="重命名">✎</button><button class="mg-op" data-askg="' + escG(g.id) + '" data-op="rm" title="删除分组">✕</button></span></div>';
+if (!arr.length) html += '<div class="ta-empty">这个分组还没有内容，可在下方直接添加</div>';
+arr.forEach(q => { html += askItemHtml(q, d.questions.indexOf(q)); });
+html += askAddFormHtml('g' + g.id, g.id, 'daily');
 html += '</div>';
 });
+const ungrouped = mineQs.filter(q => !q.grp);
+if (ungrouped.length || !groups.length) {
+html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组 · 按系统分类</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+CATS.forEach(([k, label]) => {
+const arr = ungrouped.filter(q => q.cat === k);
+if (!arr.length) return;
+html += '<div class="mg-subcat">' + label + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
+arr.forEach(q => { html += askItemHtml(q, d.questions.indexOf(q)); });
+html += askAddFormHtml('c' + k, '', k);
+});
+html += '</div>';
+}
 mineCatsEl.innerHTML = html;
 mineCatsEl.querySelectorAll('input[data-idx]').forEach(cb => {
 cb.addEventListener('change', () => {
@@ -18421,7 +18715,7 @@ renderAskMineWithForms();
 });
 mineCatsEl.querySelectorAll('.ta-type').forEach(sel => {
 const toggleOpts = () => {
-const o = document.getElementById('ta-opts-' + sel.dataset.cat);
+const o = document.getElementById('ta-opts-' + sel.dataset.key);
 if (!o) return;
 o.hidden = sel.value !== 'single';
 if (o.__ceBox) o.__ceBox.hidden = o.hidden;
@@ -18432,15 +18726,17 @@ toggleOpts();
 });
 mineCatsEl.querySelectorAll('.ta-add-btn').forEach(b => {
 b.addEventListener('click', () => {
-const inp = document.getElementById('ta-new-' + b.dataset.cat);
+const key = b.dataset.key;
+const inp = document.getElementById('ta-new-' + key);
 const v = inp ? inp.value.trim() : '';
 if (!v) { toast('请输入问题'); return; }
 const typeSel = b.parentElement.querySelector('.ta-type');
 const type = typeSel ? typeSel.value : 'text';
 const d2 = taAskLoad();
-const q = { id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 999), text: v, cat: b.dataset.cat, enabled: true, isPreset: false };
+const q = { id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 999), text: v, cat: b.dataset.cat || 'daily', enabled: true, isPreset: false };
+if (b.dataset.grp) q.grp = b.dataset.grp;
 if (type === 'single') {
-const optsEl = document.getElementById('ta-opts-' + b.dataset.cat);
+const optsEl = document.getElementById('ta-opts-' + key);
 const opts = (optsEl ? optsEl.value : '').split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(line => {
 const i = line.indexOf('~');
 return i >= 0 ? { t: line.slice(0, i).trim(), reply: line.slice(i + 1).trim() } : { t: line, reply: '' };
@@ -18452,6 +18748,55 @@ q.options = opts;
 d2.questions.push(q);
 taAskSave(d2);
 renderAskMineWithForms();
+});
+});
+bindAskGroupOps();
+}
+function bindAskGroupOps() {
+const grpAdd = document.getElementById('ask-grp-add');
+if (grpAdd && !grpAdd.__bound) {
+grpAdd.__bound = true;
+grpAdd.addEventListener('click', () => {
+const d2 = taAskLoad();
+window.cardGroups.addFlow(d2.groups, g => {
+if (!g) return;
+taAskSave(d2);
+rebuildAskBatchCatSelect();
+renderAskMineWithForms();
+toast('已新建分组「' + g.name + '」');
+});
+});
+}
+const wrap = document.getElementById('ta-ask-mine-cats');
+if (!wrap) return;
+wrap.querySelectorAll('.mg-op').forEach(b => {
+if (b.__bound) return;
+b.__bound = true;
+b.addEventListener('click', () => {
+const d2 = taAskLoad();
+const gid = b.dataset.askg;
+const g = (d2.groups || []).find(x => x.id === gid);
+if (!g) return;
+if (b.dataset.op === 'rn') {
+window.cardGroups.renameFlow(g, d2.groups, name => {
+if (!name) return;
+g.name = name;
+taAskSave(d2);
+rebuildAskBatchCatSelect();
+renderAskMineWithForms();
+toast('分组已重命名');
+});
+} else if (b.dataset.op === 'rm') {
+window.cardGroups.removeFlow(g.name, ok => {
+if (!ok) return;
+d2.questions.forEach(q => { if (q.grp === gid) q.grp = ''; });
+d2.groups = d2.groups.filter(x => x.id !== gid);
+taAskSave(d2);
+rebuildAskBatchCatSelect();
+renderAskMineWithForms();
+toast('已删除分组「' + g.name + '」');
+});
+}
 });
 });
 }
@@ -18625,6 +18970,7 @@ if (tcMerge(d)) { try { store.set(KEY2, JSON.stringify(d)); } catch (e) {} }
 }
 if (!Array.isArray(d.history)) d.history = [];
 if (!Array.isArray(d.favs)) d.favs = [];
+if (!Array.isArray(d.groups)) d.groups = [];
 return d;
 }
 function tcSave(d) { try { store.set(KEY2, JSON.stringify(d)); } catch (e) {} }
@@ -18843,6 +19189,112 @@ renderTCCatsInto(container, false);
 });
 });
 }
+function renderMineGroupsInto(container, opt) {
+if (!container) return;
+const d = opt.load();
+const groups = Array.isArray(d.groups) ? d.groups : [];
+const items = d.questions.filter(q => q.isPreset !== true);
+let html = '';
+html += '<div class="mg-grp-row"><button class="cc-tool mg-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
+if (!items.length) {
+html += '<div class="ta-empty">' + opt.emptyTip + '</div>';
+container.innerHTML = html;
+bindMineGroups(container, opt);
+return;
+}
+groups.forEach(g => {
+const arr = items.filter(q => q.grp === g.id);
+html += '<div class="cal-card glass mg-block">' +
+'<div class="cal-card-title mg-title"><span class="mg-name">' + escG(g.name) + '</span><span class="mg-cnt">(' + arr.length + ')</span>' +
+'<span class="mg-ops"><button class="mg-op" data-g="' + escG(g.id) + '" data-op="rn" title="重命名">✎</button><button class="mg-op" data-g="' + escG(g.id) + '" data-op="rm" title="删除分组">✕</button></span></div>' +
+(arr.length ? arr.map(q => opt.rowHtml(q, d.questions.indexOf(q))).join('') : '<div class="ta-empty">这个分组还没有内容</div>') +
+'</div>';
+});
+const ungrouped = items.filter(q => !q.grp);
+if (ungrouped.length || !groups.length) {
+html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组 · 按系统分类</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+opt.order.forEach(k => {
+const arr = ungrouped.filter(q => q.cat === k);
+if (!arr.length) return;
+html += '<div class="mg-subcat">' + escG(opt.label[k] || k) + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
+html += arr.map(q => opt.rowHtml(q, d.questions.indexOf(q))).join('');
+});
+html += '</div>';
+}
+container.innerHTML = html;
+container.querySelectorAll('input[data-idx]').forEach(cb => {
+cb.addEventListener('change', () => {
+const d2 = opt.load();
+const q = d2.questions[Number(cb.dataset.idx)];
+if (q) q.enabled = cb.checked;
+opt.save(d2);
+});
+});
+container.querySelectorAll('.ta-del').forEach(b => {
+b.addEventListener('click', () => {
+const d2 = opt.load();
+const q = d2.questions[Number(b.dataset.idx)];
+if (q && q.isPreset === true) { toast('系统预设问题不可删除'); return; }
+d2.questions.splice(Number(b.dataset.idx), 1);
+opt.save(d2);
+renderMineGroupsInto(container, opt);
+});
+});
+bindMineGroups(container, opt);
+}
+function bindMineGroups(container, opt) {
+container.querySelectorAll('.mg-grp-add').forEach(b => {
+if (b.__bound) return;
+b.__bound = true;
+b.addEventListener('click', () => {
+const d2 = opt.load();
+window.cardGroups.addFlow(d2.groups, g => {
+if (!g) return;
+opt.save(d2);
+renderMineGroupsInto(container, opt);
+toast('已新建分组「' + g.name + '」');
+});
+});
+});
+container.querySelectorAll('.mg-op').forEach(b => {
+if (b.__bound) return;
+b.__bound = true;
+b.addEventListener('click', () => {
+const d2 = opt.load();
+const gid = b.dataset.g;
+const g = (d2.groups || []).find(x => x.id === gid);
+if (!g) return;
+if (b.dataset.op === 'rn') {
+window.cardGroups.renameFlow(g, d2.groups, name => {
+if (!name) return;
+opt.save(d2);
+renderMineGroupsInto(container, opt);
+toast('分组已重命名');
+});
+} else if (b.dataset.op === 'rm') {
+window.cardGroups.removeFlow(g.name, ok => {
+if (!ok) return;
+d2.questions.forEach(q => { if (q.grp === gid) q.grp = ''; });
+d2.groups = d2.groups.filter(x => x.id !== gid);
+opt.save(d2);
+renderMineGroupsInto(container, opt);
+toast('已删除分组「' + g.name + '」');
+});
+}
+});
+});
+}
+const tcMineOpt = {
+load: tcLoad, save: tcSave, order: TC_CAT_ORDER, label: TC_CAT_LABEL,
+emptyTip: '暂未添加自定义问题，可在上方添加',
+rowHtml: function (q, idx) {
+return '<div class="tc-qrow' + (q.enabled === false ? ' off' : '') + '">' +
+'<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
+'<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + '</div>' +
+'<div class="tc-qopts">选项：' + q.options.map(o => escT(o.t)).join(' / ') + '</div></div>' +
+'<button class="ta-del" data-idx="' + idx + '">✕</button></div>';
+}
+};
 function switchTCTab(tab) {
 tcTab = tab;
 renderTCSettings();
@@ -18853,7 +19305,7 @@ const minePanel = document.getElementById('tc-mine-panel');
 if (sysPanel) sysPanel.hidden = tab !== 'sys';
 if (minePanel) minePanel.hidden = tab !== 'mine';
 if (tab === 'sys') renderTCCatsInto(document.getElementById('tc-sys-cats'), true);
-else renderTCCatsInto(document.getElementById('tc-mine-cats'), false);
+else renderMineGroupsInto(document.getElementById('tc-mine-cats'), tcMineOpt);
 }
 const tcTabsWrap = document.getElementById('tc-tabs');
 if (tcTabsWrap) {
@@ -18904,13 +19356,21 @@ toast('弹窗概率已设为 ' + tcPopup.value + '%');
 }
 const tcNewAdd = document.getElementById('tc-new-add');
 if (tcNewAdd) {
+(function rebuildTCSelect() {
+const catEl = document.getElementById('tc-new-cat');
+if (!catEl) return;
+const d0 = tcLoad();
+catEl.innerHTML = window.cardGroups.catOptsHtml(TC_CAT_ORDER.map(k => [k, TC_CAT_LABEL[k]]), d0.groups || [], catEl.value);
+window.cardGroups.bindNewGrp(catEl, d0.groups, function () { tcSave(d0); });
+})();
 tcNewAdd.addEventListener('click', () => {
 const catEl = document.getElementById('tc-new-cat');
 const textEl = document.getElementById('tc-new-text');
 const optsEl = document.getElementById('tc-new-opts');
 const text = textEl ? textEl.value.trim() : '';
 const optsRaw = optsEl ? optsEl.value.trim() : '';
-const cat = catEl ? catEl.value : 'daily';
+const parsed = window.cardGroups.parseCatVal(catEl ? catEl.value : 'daily');
+if (!parsed) { toast('请先选择分类或分组'); return; }
 if (!text) { toast('请输入问题内容'); return; }
 const parts = optsRaw.split('|').map(s => s.trim()).filter(Boolean);
 if (parts.length < 2) { toast('请至少输入 2 个选项，用 | 分隔'); return; }
@@ -18925,12 +19385,33 @@ return { t: t, reply: reply, liked: false };
 }).filter(Boolean);
 if (options.length < 2) { toast('选项格式有误，请用 | 分隔'); return; }
 const d = tcLoad();
-d.questions.push({ id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: cat, text: text, pref: Math.floor(Math.random() * options.length), options: options, enabled: true, isPreset: false });
+const q = { id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: parsed.cat || 'daily', text: text, pref: Math.floor(Math.random() * options.length), options: options, enabled: true, isPreset: false };
+if (parsed.grp) q.grp = parsed.grp;
+d.questions.push(q);
 tcSave(d);
 if (textEl) textEl.value = '';
 if (optsEl) optsEl.value = '';
-renderTCCatsInto(document.getElementById('tc-mine-cats'), false);
+renderMineGroupsInto(document.getElementById('tc-mine-cats'), tcMineOpt);
 toast('已添加问题');
+});
+}
+const tcNewGrp = document.getElementById('tc-new-grp');
+if (tcNewGrp) {
+tcNewGrp.addEventListener('click', () => {
+const d = tcLoad();
+window.cardGroups.addFlow(d.groups, g => {
+if (!g) return;
+tcSave(d);
+(function refreshTCSelect() {
+const catEl = document.getElementById('tc-new-cat');
+if (catEl) {
+catEl.innerHTML = window.cardGroups.catOptsHtml(TC_CAT_ORDER.map(k => [k, TC_CAT_LABEL[k]]), d.groups, catEl.value);
+window.cardGroups.bindNewGrp(catEl, d.groups);
+}
+})();
+if (tcTab === 'mine') renderMineGroupsInto(document.getElementById('tc-mine-cats'), tcMineOpt);
+toast('已新建分组「' + g.name + '」');
+});
 });
 }
 window.triggerTaChooseNow = function () {
@@ -19074,6 +19555,7 @@ if (tcuMerge(d)) { try { store.set(KEY3, JSON.stringify(d)); } catch (e) {} }
 }
 if (!Array.isArray(d.history)) d.history = [];
 if (!d.known || typeof d.known !== 'object') d.known = {};
+if (!Array.isArray(d.groups)) d.groups = [];
 return d;
 }
 function tcuSave(d) { try { store.set(KEY3, JSON.stringify(d)); } catch (e) {} }
@@ -19262,6 +19744,19 @@ renderTCUCatsInto(container, false);
 });
 });
 }
+const tcuMineOpt = {
+load: tcuLoad, save: tcuSave, order: TCU_CAT_ORDER, label: TCU_CAT_LABEL,
+emptyTip: '暂未添加自定义问题，可在上方添加',
+rowHtml: function (q, idx) {
+const known = q.id && (tcuLoad().known || {})[q.id];
+return '<div class="tc-qrow' + (q.enabled === false ? ' off' : '') + '">' +
+'<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
+'<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + (known ? ' <span class="tc-known">✓已了解</span>' : '') + '</div>' +
+(q.quick && q.quick.length ? '<div class="tc-qopts">快捷：' + q.quick.map(escT).join(' / ') + '</div>' : '') +
+'</div>' +
+'<button class="ta-del" data-idx="' + idx + '">✕</button></div>';
+}
+};
 function switchTCUTab(tab) {
 tcuTab = tab;
 renderTCUSettings();
@@ -19272,7 +19767,7 @@ const minePanel = document.getElementById('tcu-mine-panel');
 if (sysPanel) sysPanel.hidden = tab !== 'sys';
 if (minePanel) minePanel.hidden = tab !== 'mine';
 if (tab === 'sys') renderTCUCatsInto(document.getElementById('tcu-sys-cats'), true);
-else renderTCUCatsInto(document.getElementById('tcu-mine-cats'), false);
+else renderMineGroupsInto(document.getElementById('tcu-mine-cats'), tcuMineOpt);
 }
 const tcuTabsWrap = document.getElementById('tcu-tabs');
 if (tcuTabsWrap) {
@@ -19321,6 +19816,13 @@ const tcuFu = document.getElementById('tcu-followup');
 if (tcuFu) tcuFu.addEventListener('change', () => { const d = tcuLoad(); d.settings.followup = tcuFu.checked; tcuSave(d); toast(tcuFu.checked ? 'TA 偶尔会自然追问' : 'TA 不再追问'); });
 const tcuAdd = document.getElementById('tcu-new-add');
 if (tcuAdd) {
+(function rebuildTCUSelect() {
+const catEl = document.getElementById('tcu-new-cat');
+if (!catEl) return;
+const d0 = tcuLoad();
+catEl.innerHTML = window.cardGroups.catOptsHtml(TCU_CAT_ORDER.map(k => [k, TCU_CAT_LABEL[k]]), d0.groups || [], catEl.value);
+window.cardGroups.bindNewGrp(catEl, d0.groups, function () { tcuSave(d0); });
+})();
 tcuAdd.addEventListener('click', () => {
 const catEl = document.getElementById('tcu-new-cat');
 const textEl = document.getElementById('tcu-new-text');
@@ -19329,16 +19831,39 @@ const repliesEl = document.getElementById('tcu-new-replies');
 const followupEl = document.getElementById('tcu-new-followup');
 const text = textEl ? textEl.value.trim() : '';
 if (!text) { toast('请输入问题内容'); return; }
+const parsed = window.cardGroups.parseCatVal(catEl ? catEl.value : 'you');
+if (!parsed) { toast('请先选择分类或分组'); return; }
 const quick = (quickEl ? quickEl.value : '').split('|').map(s => s.trim()).filter(Boolean).slice(0, 4);
 let replies = (repliesEl ? repliesEl.value : '').split('|').map(s => s.trim()).filter(Boolean).slice(0, 4);
 if (!replies.length) replies = TCU_FALLBACK.slice(0, 2);
 const followup = followupEl ? followupEl.value.trim() : '';
 const d = tcuLoad();
-d.questions.push({ id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: catEl ? catEl.value : 'you', text: text, quick: quick, replies: replies, followup: followup, enabled: true, isPreset: false });
+const q = { id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: parsed.cat || 'you', text: text, quick: quick, replies: replies, followup: followup, enabled: true, isPreset: false };
+if (parsed.grp) q.grp = parsed.grp;
+d.questions.push(q);
 tcuSave(d);
 [textEl, quickEl, repliesEl, followupEl].forEach(el => { if (el) el.value = ''; });
-renderTCUCatsInto(document.getElementById('tcu-mine-cats'), false);
+renderMineGroupsInto(document.getElementById('tcu-mine-cats'), tcuMineOpt);
 toast('已添加问题');
+});
+}
+const tcuNewGrp = document.getElementById('tcu-new-grp');
+if (tcuNewGrp) {
+tcuNewGrp.addEventListener('click', () => {
+const d = tcuLoad();
+window.cardGroups.addFlow(d.groups, g => {
+if (!g) return;
+tcuSave(d);
+(function refreshTCUSelect() {
+const catEl = document.getElementById('tcu-new-cat');
+if (catEl) {
+catEl.innerHTML = window.cardGroups.catOptsHtml(TCU_CAT_ORDER.map(k => [k, TCU_CAT_LABEL[k]]), d.groups, catEl.value);
+window.cardGroups.bindNewGrp(catEl, d.groups);
+}
+})();
+if (tcuTab === 'mine') renderMineGroupsInto(document.getElementById('tcu-mine-cats'), tcuMineOpt);
+toast('已新建分组「' + g.name + '」');
+});
 });
 }
 window.triggerTaCuriousNow = function () {
@@ -19429,6 +19954,7 @@ if (!isNew) { try { store.set(KEY4, JSON.stringify(d)); } catch (e) {} }
 if (trMerge(d)) { try { store.set(KEY4, JSON.stringify(d)); } catch (e) {} }
 }
 if (!Array.isArray(d.history)) d.history = [];
+if (!Array.isArray(d.groups)) d.groups = [];
 return d;
 }
 function trSave(d) { try { store.set(KEY4, JSON.stringify(d)); } catch (e) {} }
@@ -19606,6 +20132,18 @@ renderTRCatsInto(container, false);
 });
 });
 }
+const trMineOpt = {
+load: trLoad, save: trSave, order: TR_CAT_ORDER, label: TR_CAT_LABEL,
+emptyTip: '暂未添加自定义字卡，可在上方添加',
+rowHtml: function (q, idx) {
+return '<div class="tc-qrow' + (q.enabled === false ? ' off' : '') + '">' +
+'<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
+'<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + '</div>' +
+(q.match && q.match.length ? '<div class="tc-qopts">触发：' + q.match.map(escT).join(' / ') + '</div>' : '') +
+'</div>' +
+'<button class="ta-del" data-idx="' + idx + '">✕</button></div>';
+}
+};
 function switchTRTab(tab) {
 trTab = tab;
 renderTRSettings();
@@ -19616,7 +20154,7 @@ const minePanel = document.getElementById('tr-mine-panel');
 if (sysPanel) sysPanel.hidden = tab !== 'sys';
 if (minePanel) minePanel.hidden = tab !== 'mine';
 if (tab === 'sys') renderTRCatsInto(document.getElementById('tr-sys-cats'), true);
-else renderTRCatsInto(document.getElementById('tr-mine-cats'), false);
+else renderMineGroupsInto(document.getElementById('tr-mine-cats'), trMineOpt);
 }
 const trTabsWrap = document.getElementById('tr-tabs');
 if (trTabsWrap) {
@@ -19663,20 +20201,50 @@ toast('弹窗概率已设为 ' + trPopup.value + '%');
 });
 const trAdd = document.getElementById('tr-new-add');
 if (trAdd) {
+(function rebuildTRSelect() {
+const catEl = document.getElementById('tr-new-cat');
+if (!catEl) return;
+const d0 = trLoad();
+catEl.innerHTML = window.cardGroups.catOptsHtml(TR_CAT_ORDER.map(k => [k, TR_CAT_LABEL[k]]), d0.groups || [], catEl.value);
+window.cardGroups.bindNewGrp(catEl, d0.groups, function () { trSave(d0); });
+})();
 trAdd.addEventListener('click', () => {
 const catEl = document.getElementById('tr-new-cat');
 const textEl = document.getElementById('tr-new-text');
 const matchEl = document.getElementById('tr-new-match');
 const text = textEl ? textEl.value.trim() : '';
 if (!text) { toast('请输入吐槽内容'); return; }
+const parsed = window.cardGroups.parseCatVal(catEl ? catEl.value : 'light');
+if (!parsed) { toast('请先选择分类或分组'); return; }
 const match = (matchEl ? matchEl.value : '').split('|').map(s => s.trim()).filter(Boolean).slice(0, 4);
 const d = trLoad();
-d.questions.push({ id: 'r_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: catEl ? catEl.value : 'light', text: text, match: match, enabled: true, isPreset: false });
+const q = { id: 'r_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: parsed.cat || 'light', text: text, match: match, enabled: true, isPreset: false };
+if (parsed.grp) q.grp = parsed.grp;
+d.questions.push(q);
 trSave(d);
 if (textEl) textEl.value = '';
 if (matchEl) matchEl.value = '';
-renderTRCatsInto(document.getElementById('tr-mine-cats'), false);
+renderMineGroupsInto(document.getElementById('tr-mine-cats'), trMineOpt);
 toast('已添加吐槽字卡');
+});
+}
+const trNewGrp = document.getElementById('tr-new-grp');
+if (trNewGrp) {
+trNewGrp.addEventListener('click', () => {
+const d = trLoad();
+window.cardGroups.addFlow(d.groups, g => {
+if (!g) return;
+trSave(d);
+(function refreshTRSelect() {
+const catEl = document.getElementById('tr-new-cat');
+if (catEl) {
+catEl.innerHTML = window.cardGroups.catOptsHtml(TR_CAT_ORDER.map(k => [k, TR_CAT_LABEL[k]]), d.groups, catEl.value);
+window.cardGroups.bindNewGrp(catEl, d.groups);
+}
+})();
+if (trTab === 'mine') renderMineGroupsInto(document.getElementById('tr-mine-cats'), trMineOpt);
+toast('已新建分组「' + g.name + '」');
+});
 });
 }
 window.triggerTaRoastNow = function () {
@@ -23001,23 +23569,39 @@ if (Array.isArray(v)) return v;
 } catch (e) {}
 return [];
 }
+function ckItems(k) {
+try {
+const v = JSON.parse(store.get('checkin-cards-' + k) || 'null');
+if (Array.isArray(v)) return v.map(x => typeof x === 'string' ? { t: x } : (x && typeof x === 'object' && x.t != null ? x : null)).filter(Boolean);
+} catch (e) {}
+return [];
+}
+function ckSaveItems(k, items) { store.set('checkin-cards-' + k, JSON.stringify(items)); }
+function ckGroups(k) {
+try {
+const v = JSON.parse(store.get('checkin-cards-groups-' + k) || 'null');
+if (Array.isArray(v)) return v;
+} catch (e) {}
+return [];
+}
+function ckSaveGroups(k, groups) { store.set('checkin-cards-groups-' + k, JSON.stringify(groups)); }
 function isCkCardOff(k, x) { return store.get('ck-off-' + k + ':' + x) === '1'; }
 function setCkCardOff(k, x, off) { store.set('ck-off-' + k + ':' + x, off ? '1' : '0'); }
 function genCheckin() {
 const useDefault = getCkDefault();
-const places = ckList('place', DEF_PLACES);
-const actions = ckList('action', DEF_ACTIONS);
-const msgs = ckList('msg', DEF_CHECK_MSGS);
+const places = ckItems('place');
+const actions = ckItems('action');
+const msgs = ckItems('msg');
 const out = {};
-let place = useDefault ? places.filter(p => !isCkCardOff('place', p)) : places.filter(p => DEF_PLACES.indexOf(p) < 0 && !isCkCardOff('place', p));
-let action = useDefault ? actions.filter(a => !isCkCardOff('action', a)) : actions.filter(a => DEF_ACTIONS.indexOf(a) < 0 && !isCkCardOff('action', a));
-let msg = useDefault ? msgs.filter(m => !isCkCardOff('msg', m)) : msgs.filter(m => DEF_CHECK_MSGS.indexOf(m) < 0 && !isCkCardOff('msg', m));
+let place = useDefault ? places.filter(p => !isCkCardOff('place', p.t)) : places.filter(p => DEF_PLACES.indexOf(p.t) < 0 && !isCkCardOff('place', p.t));
+let action = useDefault ? actions.filter(a => !isCkCardOff('action', a.t)) : actions.filter(a => DEF_ACTIONS.indexOf(a.t) < 0 && !isCkCardOff('action', a.t));
+let msg = useDefault ? msgs.filter(m => !isCkCardOff('msg', m.t)) : msgs.filter(m => DEF_CHECK_MSGS.indexOf(m.t) < 0 && !isCkCardOff('msg', m.t));
 if (!place.length && !action.length && !msg.length) {
 place = places; action = actions; msg = msgs;
 }
-if (place.length) out.place = place[Math.floor(Math.random() * place.length)];
-if (action.length) out.action = action[Math.floor(Math.random() * action.length)];
-if (msg.length) out.msg = msg[Math.floor(Math.random() * msg.length)];
+if (place.length) out.place = place[Math.floor(Math.random() * place.length)].t;
+if (action.length) out.action = action[Math.floor(Math.random() * action.length)].t;
+if (msg.length) out.msg = msg[Math.floor(Math.random() * msg.length)].t;
 return out;
 }
 function renderCheckinHistory() {
@@ -23239,30 +23823,100 @@ const listEl = document.getElementById('cck-mine-list');
 const titleEl = document.getElementById('cck-mine-title');
 if (titleEl) titleEl.textContent = CK_LABEL[ckTab] || '';
 if (!listEl) return;
-const custom = ckCustomList(ckTab);
-listEl.innerHTML = '';
+const custom = ckItems(ckTab);
+const groups = ckGroups(ckTab);
+let html = '';
+html += '<div class="mg-grp-row"><button class="cc-tool mg-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
 if (!custom.length) {
-listEl.innerHTML = '<div class="ta-empty">暂未添加自定义字卡，可在上方批量输入（每行一个）。</div>';
+listEl.innerHTML = html + '<div class="ta-empty">暂未添加自定义字卡，可在上方批量输入（每行一个）。</div>';
+bindCkGroupOps();
 return;
 }
-custom.forEach((x, i) => {
-const row = document.createElement('div');
-row.className = 'tc-qrow';
-row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + escCk(x) + '</div></div>';
-const del = document.createElement('button');
-del.className = 'ta-del';
-del.textContent = '✕';
-del.addEventListener('click', () => {
-const l = ckCustomList(ckTab);
-l.splice(i, 1);
-ckSaveList(ckTab, l);
+groups.forEach(g => {
+const arr = custom.filter(x => x.grp === g.id);
+html += '<div class="cal-card glass mg-block">' +
+'<div class="cal-card-title mg-title"><span class="mg-name">' + escCk(g.name) + '</span><span class="mg-cnt">(' + arr.length + ')</span>' +
+'<span class="mg-ops"><button class="mg-op" data-g="' + escCk(g.id) + '" data-op="rn" title="重命名">✎</button><button class="mg-op" data-g="' + escCk(g.id) + '" data-op="rm" title="删除分组">✕</button></span></div>' +
+(arr.length ? arr.map(x => ckMineItemHtml(x, custom.indexOf(x))).join('') : '<div class="ta-empty">这个分组还没有内容</div>') +
+'</div>';
+});
+const ungrouped = custom.filter(x => !x.grp);
+if (ungrouped.length || !groups.length) {
+html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+html += ungrouped.map(x => ckMineItemHtml(x, custom.indexOf(x))).join('');
+html += '</div>';
+}
+listEl.innerHTML = html;
+listEl.querySelectorAll('.ta-del').forEach(b => {
+b.addEventListener('click', () => {
+const l = ckItems(ckTab);
+l.splice(Number(b.dataset.idx), 1);
+ckSaveItems(ckTab, l);
 renderCkMineList();
 updateCkCount();
 toast('已删除');
 });
-row.appendChild(del);
-listEl.appendChild(row);
 });
+bindCkGroupOps();
+}
+function ckMineItemHtml(x, idx) {
+return '<div class="tc-qrow"><div class="tc-qmain"><div class="tc-qtext">' + escCk(x.t) + '</div></div>' +
+'<button class="ta-del" data-idx="' + idx + '">✕</button></div>';
+}
+function bindCkGroupOps() {
+const wrap = document.getElementById('cck-mine-list');
+if (!wrap) return;
+wrap.querySelectorAll('.mg-grp-add').forEach(b => {
+if (b.__bound) return;
+b.__bound = true;
+b.addEventListener('click', () => {
+const groups = ckGroups(ckTab);
+window.cardGroups.addFlow(groups, g => {
+if (!g) return;
+ckSaveGroups(ckTab, groups);
+refreshCkGrpSelect();
+renderCkMineList();
+toast('已新建分组「' + g.name + '」');
+});
+});
+});
+wrap.querySelectorAll('.mg-op').forEach(b => {
+if (b.__bound) return;
+b.__bound = true;
+b.addEventListener('click', () => {
+const groups = ckGroups(ckTab);
+const gid = b.dataset.g;
+const g = groups.find(x => x.id === gid);
+if (!g) return;
+if (b.dataset.op === 'rn') {
+window.cardGroups.renameFlow(g, groups, name => {
+if (!name) return;
+ckSaveGroups(ckTab, groups);
+refreshCkGrpSelect();
+renderCkMineList();
+toast('分组已重命名');
+});
+} else if (b.dataset.op === 'rm') {
+window.cardGroups.removeFlow(g.name, ok => {
+if (!ok) return;
+const l = ckItems(ckTab);
+l.forEach(x => { if (x.grp === gid) x.grp = ''; });
+ckSaveItems(ckTab, l);
+ckSaveGroups(ckTab, groups.filter(x => x.id !== gid));
+refreshCkGrpSelect();
+renderCkMineList();
+toast('已删除分组「' + g.name + '」');
+});
+}
+});
+});
+}
+function refreshCkGrpSelect() {
+const grpSel = document.getElementById('cck-batch-grp');
+if (!grpSel) return;
+const groups = ckGroups(ckTab);
+grpSel.innerHTML = window.cardGroups.grpOnlyOptsHtml(groups, grpSel.value);
+window.cardGroups.bindNewGrp(grpSel, groups, function () { ckSaveGroups(ckTab, groups); });
 }
 function updateCkCount() {
 const useDefault = getCkDefault();
@@ -23291,6 +23945,7 @@ tab.classList.toggle('sel', tab.dataset.cktab === ckTab);
 const useDefault = getCkDefault();
 const defEl = document.getElementById('ck-default');
 if (defEl) defEl.checked = useDefault;
+refreshCkGrpSelect(); // v3.7.x：切换分类时刷新该分类的分组下拉
 switchCkTab2(ckTab2);
 updateCkCount();
 }
@@ -23316,18 +23971,39 @@ tab.addEventListener('click', () => { ckTab2 = tab.dataset.tab; switchCkTab2(ckT
 }
 const batchAdd = document.getElementById('cck-batch-add');
 if (batchAdd) {
+refreshCkGrpSelect();
 batchAdd.addEventListener('click', () => {
 const ta = document.getElementById('cck-batch');
 const raw = ta ? ta.value : '';
 const items = raw.split('\n').map(s => s.trim()).filter(Boolean);
 if (!items.length) { toast('请输入内容，每行一个'); return; }
-const list = ckCustomList(ckTab);
-items.forEach(it => list.push(it));
-ckSaveList(ckTab, list);
+const grpSel = document.getElementById('cck-batch-grp');
+const parsed = window.cardGroups.parseCatVal(grpSel ? grpSel.value : '');
+if (!parsed) { toast('请先选择分组'); return; }
+const list = ckItems(ckTab);
+items.forEach(it => {
+const x = { t: it };
+if (parsed.grp) x.grp = parsed.grp;
+list.push(x);
+});
+ckSaveItems(ckTab, list);
 if (ta) ta.value = '';
 renderCkMineList();
 updateCkCount();
 toast('已添加 ' + items.length + ' 条到「' + (CK_LABEL[ckTab] || ckTab) + '」');
+});
+}
+const ckNewGrp = document.getElementById('ck-new-grp');
+if (ckNewGrp) {
+ckNewGrp.addEventListener('click', () => {
+const groups = ckGroups(ckTab);
+window.cardGroups.addFlow(groups, g => {
+if (!g) return;
+ckSaveGroups(ckTab, groups);
+refreshCkGrpSelect();
+if (ckTab2 === 'mine') renderCkMineList();
+toast('已新建分组「' + g.name + '」');
+});
 });
 }
 const liCK = document.getElementById('li-checkin-cards');

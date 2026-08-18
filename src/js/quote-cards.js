@@ -42,6 +42,17 @@
   // v3.6.x：完整 HTML 转义（只转 < 可被 `&lt;…&gt;` 实体绕过注入）
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
+  // v3.7.x：自定义分组——用户添加的情话可归入自定义分组（只用于管理页整理，抽取不分组）
+  const GRP_KEY = 'quote-cards-groups';
+  function getGroups() {
+    try {
+      const v = JSON.parse(store.get(GRP_KEY) || 'null');
+      if (Array.isArray(v)) return v;
+    } catch (e) {}
+    return [];
+  }
+  function saveGroups(groups) { store.set(GRP_KEY, JSON.stringify(groups)); }
+
   // 自定义情话库（空则用默认）
   // v3.6.x：hasCustom 区分「是否有用户自定义库」——管理页不再把默认 46 句当
   //   可删除条目展示（删除默认句会把它固化进 localStorage，等于把默认库"转正"）
@@ -51,26 +62,31 @@
       return Array.isArray(v) && v.length > 0;
     } catch (e) { return false; }
   }
+  // 统一返回字符串数组（v3.7.x 条目可为 {t,grp} 对象，抽取/单卡开关只认字符串）
   function getQuotes() {
     try {
       const v = JSON.parse(store.get(KEY) || 'null');
-      if (Array.isArray(v) && v.length) return v;
+      if (Array.isArray(v) && v.length) return v.map(x => typeof x === 'string' ? x : (x && x.t != null ? String(x.t) : null)).filter(Boolean);
     } catch (e) {}
     return DEFAULT_QUOTES.slice();
+  }
+  // 返回对象数组 [{t, grp}]（旧字符串数据自动转对象），管理页/批量添加用
+  function getCustom() {
+    try {
+      const v = JSON.parse(store.get(KEY) || 'null');
+      if (Array.isArray(v)) return v.map(x => typeof x === 'string' ? { t: x } : (x && typeof x === 'object' && x.t != null ? x : null)).filter(Boolean);
+    } catch (e) {}
+    return [];
   }
   // 供桌面「今日情话」使用：当天固定一条（自定义库优先）
   // v3.6.x：关闭「使用系统预设」后只从用户添加的情话里抽；没有用户自定义则返回空（桌面显示默认兜底文案）
   // v3.6.x：单卡开关过滤——用户关闭的预设句（quote-off:*）不参与抽取
   window.getQuoteOfDay = function () {
     const useDefault = getUseDefault();
-    let custom = [];
-    try {
-      const v = JSON.parse(store.get(KEY) || 'null');
-      if (Array.isArray(v) && v.length) custom = v;
-    } catch (e) {}
+    const custom = getCustom();
     let quotes = null;
-    if (useDefault) quotes = (custom.length ? custom : DEFAULT_QUOTES.filter(q => !isQuoteOff(q))).filter(q => !isQuoteOff(q));
-    else quotes = custom.filter(q => !isQuoteOff(q)); // 只用自己的
+    if (useDefault) quotes = (custom.length ? custom.map(c => c.t) : DEFAULT_QUOTES.filter(q => !isQuoteOff(q))).filter(q => !isQuoteOff(q));
+    else quotes = custom.map(c => c.t).filter(q => !isQuoteOff(q)); // 只用自己的
     if (!quotes.length) return '';
     const d = new Date();
     const today = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
@@ -82,13 +98,6 @@
 
   // v3.6.x：顶部双分类 tab——系统预设 / 我的添加，数据分开渲染互不干扰
   function isDefaultQuote(q) { return DEFAULT_QUOTES.indexOf(q) >= 0; }
-  function getCustom() {
-    try {
-      const v = JSON.parse(store.get(KEY) || 'null');
-      if (Array.isArray(v)) return v;
-    } catch (e) {}
-    return [];
-  }
   // 入口处计数：可用情话总数（系统开启的 + 用户添加的）
   function updateEntryCount() {
     const cnt = document.getElementById('cc-quote-count');
@@ -134,37 +143,105 @@
       el.appendChild(row);
     });
   }
-  // 渲染【我的添加】tab：用户自定义情话，每条带删除按钮
+  // 渲染【我的添加】tab：v3.7.x 自定义分组模式——自定义分组区块置顶，未分组放在下面（与系统预设隔开）
   function renderMineList() {
     const el = document.getElementById('cq-mine-list');
     if (!el) return;
+    const groups = getGroups();
     const custom = getCustom();
-    el.innerHTML = '';
+    let html = '';
+    html += '<div class="mg-grp-row"><button class="cc-tool mg-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
     if (!custom.length) {
-      const empty = document.createElement('div');
-      empty.className = 'ta-empty';
-      empty.textContent = '暂未添加自定义情话，可在上方批量输入（每行一句）。';
-      el.appendChild(empty);
+      html += '<div class="ta-empty">暂未添加自定义情话，可在上方批量输入（每行一句）。</div>';
+      el.innerHTML = html;
+      bindCqGroupOps();
       return;
     }
-    custom.forEach((q, i) => {
-      const row = document.createElement('div');
-      row.className = 'tc-qrow';
-      row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + esc(q) + '</div></div>';
-      const del = document.createElement('button');
-      del.className = 'ta-del';
-      del.textContent = '✕';
-      del.addEventListener('click', () => {
+    groups.forEach(g => {
+      const arr = custom.filter(x => x.grp === g.id);
+      html += '<div class="cal-card glass mg-block">' +
+        '<div class="cal-card-title mg-title"><span class="mg-name">' + esc(g.name) + '</span><span class="mg-cnt">(' + arr.length + ')</span>' +
+        '<span class="mg-ops"><button class="mg-op" data-g="' + esc(g.id) + '" data-op="rn" title="重命名">✎</button><button class="mg-op" data-g="' + esc(g.id) + '" data-op="rm" title="删除分组">✕</button></span></div>' +
+        (arr.length ? arr.map(x => cqItemHtml(x, custom.indexOf(x))).join('') : '<div class="ta-empty">这个分组还没有内容</div>') +
+        '</div>';
+    });
+    const ungrouped = custom.filter(x => !x.grp);
+    if (ungrouped.length || !groups.length) {
+      html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+      html += ungrouped.map(x => cqItemHtml(x, custom.indexOf(x))).join('');
+      html += '</div>';
+    }
+    el.innerHTML = html;
+    el.querySelectorAll('.ta-del').forEach(b => {
+      b.addEventListener('click', () => {
         const list = getCustom();
-        list.splice(i, 1);
+        list.splice(Number(b.dataset.idx), 1);
         store.set(KEY, JSON.stringify(list));
         renderMineList();
         updateEntryCount();
         toast('已删除');
       });
-      row.appendChild(del);
-      el.appendChild(row);
     });
+    bindCqGroupOps();
+  }
+  function cqItemHtml(x, idx) {
+    return '<div class="tc-qrow"><div class="tc-qmain"><div class="tc-qtext">' + esc(x.t) + '</div></div>' +
+      '<button class="ta-del" data-idx="' + idx + '">✕</button></div>';
+  }
+  // 今日情话 分组管理事件（新建 / 重命名 / 删除）
+  function bindCqGroupOps() {
+    const wrap = document.getElementById('cq-mine-list');
+    if (!wrap) return;
+    wrap.querySelectorAll('.mg-grp-add').forEach(b => {
+      if (b.__bound) return;
+      b.__bound = true;
+      b.addEventListener('click', () => {
+        window.cardGroups.addFlow(getGroups(), g => {
+          if (!g) return;
+          saveGroups(getGroups());
+          refreshGrpSelect();
+          renderMineList();
+          toast('已新建分组「' + g.name + '」');
+        });
+      });
+    });
+    wrap.querySelectorAll('.mg-op').forEach(b => {
+      if (b.__bound) return;
+      b.__bound = true;
+      b.addEventListener('click', () => {
+        const groups = getGroups();
+        const gid = b.dataset.g;
+        const g = groups.find(x => x.id === gid);
+        if (!g) return;
+        if (b.dataset.op === 'rn') {
+          window.cardGroups.renameFlow(g, groups, name => {
+            if (!name) return;
+            saveGroups(groups);
+            refreshGrpSelect();
+            renderMineList();
+            toast('分组已重命名');
+          });
+        } else if (b.dataset.op === 'rm') {
+          window.cardGroups.removeFlow(g.name, ok => {
+            if (!ok) return;
+            const list = getCustom();
+            list.forEach(x => { if (x.grp === gid) x.grp = ''; });
+            store.set(KEY, JSON.stringify(list));
+            saveGroups(groups.filter(x => x.id !== gid));
+            refreshGrpSelect();
+            renderMineList();
+            toast('已删除分组「' + g.name + '」');
+          });
+        }
+      });
+    });
+  }
+  // 刷新批量输入的分组下拉
+  function refreshGrpSelect() {
+    const grpSel = document.getElementById('cq-batch-grp');
+    if (!grpSel) return;
+    grpSel.innerHTML = window.cardGroups.grpOnlyOptsHtml(getGroups(), grpSel.value);
+    window.cardGroups.bindNewGrp(grpSel, getGroups(), function () { saveGroups(getGroups()); });
   }
   let curTab = 'sys';
   function switchTab(tab) {
@@ -177,21 +254,42 @@
     if (minePanel) minePanel.hidden = tab !== 'mine';
     if (tab === 'sys') renderSysList(); else renderMineList();
   }
-  // 批量添加（只追加到用户自定义库，不污染系统预设）
+  // 批量添加（只追加到用户自定义库，不污染系统预设；v3.7.x 可选归入自定义分组）
   const batchAdd = document.getElementById('cq-batch-add');
   if (batchAdd) {
+    refreshGrpSelect();
     batchAdd.addEventListener('click', () => {
       const ta = document.getElementById('cq-batch');
       const raw = ta ? ta.value : '';
       const items = raw.split('\n').map(s => s.trim()).filter(Boolean);
       if (!items.length) { toast('请输入内容，每行一句'); return; }
+      const grpSel = document.getElementById('cq-batch-grp');
+      const parsed = window.cardGroups.parseCatVal(grpSel ? grpSel.value : '');
+      if (!parsed) { toast('请先选择分组'); return; }
       const list = getCustom();
-      items.forEach(it => list.push(it));
+      items.forEach(it => {
+        const x = { t: it };
+        if (parsed.grp) x.grp = parsed.grp;
+        list.push(x);
+      });
       store.set(KEY, JSON.stringify(list));
       if (ta) ta.value = '';
       renderMineList();
       updateEntryCount();
       toast('已添加 ' + items.length + ' 句今日情话');
+    });
+  }
+  // v3.7.x：「＋分组」按钮（我添加的情话卡片标题行）
+  const cqNewGrp = document.getElementById('cq-new-grp');
+  if (cqNewGrp) {
+    cqNewGrp.addEventListener('click', () => {
+      window.cardGroups.addFlow(getGroups(), g => {
+        if (!g) return;
+        saveGroups(getGroups());
+        refreshGrpSelect();
+        renderMineList();
+        toast('已新建分组「' + g.name + '」');
+      });
     });
   }
   // v3.6.x：使用系统预设情话开关（默认开启；关闭后桌面今日情话只从用户添加的情话里抽）

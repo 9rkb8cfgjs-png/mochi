@@ -278,27 +278,47 @@ function ckList(k, def) {
     } catch (e) {}
     return [];
   }
+  // v3.7.x：查岗字卡统一返回对象数组 [{t, grp}]（旧字符串数据自动转对象）——管理页/批量添加用
+  function ckItems(k) {
+    try {
+      const v = JSON.parse(store.get('checkin-cards-' + k) || 'null');
+      if (Array.isArray(v)) return v.map(x => typeof x === 'string' ? { t: x } : (x && typeof x === 'object' && x.t != null ? x : null)).filter(Boolean);
+    } catch (e) {}
+    return [];
+  }
+  // v3.7.x：查岗字卡保存（统一对象数组）
+  function ckSaveItems(k, items) { store.set('checkin-cards-' + k, JSON.stringify(items)); }
+  // v3.7.x：查岗自定义分组（按 地点/在做什么/说的话 分类各自独立）——只用于管理页整理，抽取不分组
+  function ckGroups(k) {
+    try {
+      const v = JSON.parse(store.get('checkin-cards-groups-' + k) || 'null');
+      if (Array.isArray(v)) return v;
+    } catch (e) {}
+    return [];
+  }
+  function ckSaveGroups(k, groups) { store.set('checkin-cards-groups-' + k, JSON.stringify(groups)); }
 // v3.6.x：查岗系统预设字卡单卡开关——逐张开启/关闭（关闭后查岗不再抽取该条）
 function isCkCardOff(k, x) { return store.get('ck-off-' + k + ':' + x) === '1'; }
 function setCkCardOff(k, x, off) { store.set('ck-off-' + k + ':' + x, off ? '1' : '0'); }
 function genCheckin() {
   const useDefault = getCkDefault();
-  const places = ckList('place', DEF_PLACES);
-  const actions = ckList('action', DEF_ACTIONS);
-  const msgs = ckList('msg', DEF_CHECK_MSGS);
+  // v3.7.x：字卡可为 {t, grp} 对象——统一用 ckItems 取 .t
+  const places = ckItems('place');
+  const actions = ckItems('action');
+  const msgs = ckItems('msg');
   const out = {};
   // 关闭「使用系统预设」时：只从用户添加的字卡里抽；某分类没有用户自定义则跳过该字段
   // v3.6.x：单卡开关过滤——用户关闭的字卡（ck-off-*）不参与抽取
-  let place = useDefault ? places.filter(p => !isCkCardOff('place', p)) : places.filter(p => DEF_PLACES.indexOf(p) < 0 && !isCkCardOff('place', p));
-  let action = useDefault ? actions.filter(a => !isCkCardOff('action', a)) : actions.filter(a => DEF_ACTIONS.indexOf(a) < 0 && !isCkCardOff('action', a));
-  let msg = useDefault ? msgs.filter(m => !isCkCardOff('msg', m)) : msgs.filter(m => DEF_CHECK_MSGS.indexOf(m) < 0 && !isCkCardOff('msg', m));
+  let place = useDefault ? places.filter(p => !isCkCardOff('place', p.t)) : places.filter(p => DEF_PLACES.indexOf(p.t) < 0 && !isCkCardOff('place', p.t));
+  let action = useDefault ? actions.filter(a => !isCkCardOff('action', a.t)) : actions.filter(a => DEF_ACTIONS.indexOf(a.t) < 0 && !isCkCardOff('action', a.t));
+  let msg = useDefault ? msgs.filter(m => !isCkCardOff('msg', m.t)) : msgs.filter(m => DEF_CHECK_MSGS.indexOf(m.t) < 0 && !isCkCardOff('msg', m.t));
   // 兜底：关闭预设且完全没有用户自定义时回退使用系统预设（避免查岗空白/undefined）
   if (!place.length && !action.length && !msg.length) {
     place = places; action = actions; msg = msgs;
   }
-  if (place.length) out.place = place[Math.floor(Math.random() * place.length)];
-  if (action.length) out.action = action[Math.floor(Math.random() * action.length)];
-  if (msg.length) out.msg = msg[Math.floor(Math.random() * msg.length)];
+  if (place.length) out.place = place[Math.floor(Math.random() * place.length)].t;
+  if (action.length) out.action = action[Math.floor(Math.random() * action.length)].t;
+  if (msg.length) out.msg = msg[Math.floor(Math.random() * msg.length)].t;
   return out;
 }
 function renderCheckinHistory() {
@@ -550,30 +570,103 @@ if (ckRefresh) {
     const titleEl = document.getElementById('cck-mine-title');
     if (titleEl) titleEl.textContent = CK_LABEL[ckTab] || '';
     if (!listEl) return;
-    const custom = ckCustomList(ckTab);
-    listEl.innerHTML = '';
+    const custom = ckItems(ckTab);
+    const groups = ckGroups(ckTab);
+    let html = '';
+    html += '<div class="mg-grp-row"><button class="cc-tool mg-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
     if (!custom.length) {
-      listEl.innerHTML = '<div class="ta-empty">暂未添加自定义字卡，可在上方批量输入（每行一个）。</div>';
+      listEl.innerHTML = html + '<div class="ta-empty">暂未添加自定义字卡，可在上方批量输入（每行一个）。</div>';
+      bindCkGroupOps();
       return;
     }
-    custom.forEach((x, i) => {
-      const row = document.createElement('div');
-      row.className = 'tc-qrow';
-      row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + escCk(x) + '</div></div>';
-      const del = document.createElement('button');
-      del.className = 'ta-del';
-      del.textContent = '✕';
-      del.addEventListener('click', () => {
-        const l = ckCustomList(ckTab);
-        l.splice(i, 1);
-        ckSaveList(ckTab, l);
+    // 自定义分组区块（置顶，与系统预设隔开）
+    groups.forEach(g => {
+      const arr = custom.filter(x => x.grp === g.id);
+      html += '<div class="cal-card glass mg-block">' +
+        '<div class="cal-card-title mg-title"><span class="mg-name">' + escCk(g.name) + '</span><span class="mg-cnt">(' + arr.length + ')</span>' +
+        '<span class="mg-ops"><button class="mg-op" data-g="' + escCk(g.id) + '" data-op="rn" title="重命名">✎</button><button class="mg-op" data-g="' + escCk(g.id) + '" data-op="rm" title="删除分组">✕</button></span></div>' +
+        (arr.length ? arr.map(x => ckMineItemHtml(x, custom.indexOf(x))).join('') : '<div class="ta-empty">这个分组还没有内容</div>') +
+        '</div>';
+    });
+    const ungrouped = custom.filter(x => !x.grp);
+    if (ungrouped.length || !groups.length) {
+      html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+      html += ungrouped.map(x => ckMineItemHtml(x, custom.indexOf(x))).join('');
+      html += '</div>';
+    }
+    listEl.innerHTML = html;
+    listEl.querySelectorAll('.ta-del').forEach(b => {
+      b.addEventListener('click', () => {
+        const l = ckItems(ckTab);
+        l.splice(Number(b.dataset.idx), 1);
+        ckSaveItems(ckTab, l);
         renderCkMineList();
         updateCkCount();
         toast('已删除');
       });
-      row.appendChild(del);
-      listEl.appendChild(row);
     });
+    bindCkGroupOps();
+  }
+  function ckMineItemHtml(x, idx) {
+    return '<div class="tc-qrow"><div class="tc-qmain"><div class="tc-qtext">' + escCk(x.t) + '</div></div>' +
+      '<button class="ta-del" data-idx="' + idx + '">✕</button></div>';
+  }
+  // 查岗 分组管理事件（新建 / 重命名 / 删除，按当前分类独立）
+  function bindCkGroupOps() {
+    const wrap = document.getElementById('cck-mine-list');
+    if (!wrap) return;
+    wrap.querySelectorAll('.mg-grp-add').forEach(b => {
+      if (b.__bound) return;
+      b.__bound = true;
+      b.addEventListener('click', () => {
+        const groups = ckGroups(ckTab);
+        window.cardGroups.addFlow(groups, g => {
+          if (!g) return;
+          ckSaveGroups(ckTab, groups);
+          refreshCkGrpSelect();
+          renderCkMineList();
+          toast('已新建分组「' + g.name + '」');
+        });
+      });
+    });
+    wrap.querySelectorAll('.mg-op').forEach(b => {
+      if (b.__bound) return;
+      b.__bound = true;
+      b.addEventListener('click', () => {
+        const groups = ckGroups(ckTab);
+        const gid = b.dataset.g;
+        const g = groups.find(x => x.id === gid);
+        if (!g) return;
+        if (b.dataset.op === 'rn') {
+          window.cardGroups.renameFlow(g, groups, name => {
+            if (!name) return;
+            ckSaveGroups(ckTab, groups);
+            refreshCkGrpSelect();
+            renderCkMineList();
+            toast('分组已重命名');
+          });
+        } else if (b.dataset.op === 'rm') {
+          window.cardGroups.removeFlow(g.name, ok => {
+            if (!ok) return;
+            const l = ckItems(ckTab);
+            l.forEach(x => { if (x.grp === gid) x.grp = ''; });
+            ckSaveItems(ckTab, l);
+            ckSaveGroups(ckTab, groups.filter(x => x.id !== gid));
+            refreshCkGrpSelect();
+            renderCkMineList();
+            toast('已删除分组「' + g.name + '」');
+          });
+        }
+      });
+    });
+  }
+  // 刷新批量输入的分组下拉（按当前分类）
+  function refreshCkGrpSelect() {
+    const grpSel = document.getElementById('cck-batch-grp');
+    if (!grpSel) return;
+    const groups = ckGroups(ckTab);
+    grpSel.innerHTML = window.cardGroups.grpOnlyOptsHtml(groups, grpSel.value);
+    window.cardGroups.bindNewGrp(grpSel, groups, function () { ckSaveGroups(ckTab, groups); });
   }
   function updateCkCount() {
     const useDefault = getCkDefault();
@@ -603,6 +696,7 @@ if (ckRefresh) {
     const useDefault = getCkDefault();
     const defEl = document.getElementById('ck-default');
     if (defEl) defEl.checked = useDefault;
+    refreshCkGrpSelect(); // v3.7.x：切换分类时刷新该分类的分组下拉
     switchCkTab2(ckTab2);
     updateCkCount();
   }
@@ -629,21 +723,43 @@ if (ckRefresh) {
       tab.addEventListener('click', () => { ckTab2 = tab.dataset.tab; switchCkTab2(ckTab2); });
     });
   }
-  // 批量输入：每行一个，添加到当前分类（只追加到用户自定义库，不污染系统预设）
+  // 批量输入：每行一个，添加到当前分类（只追加到用户自定义库，不污染系统预设；v3.7.x 可选归入自定义分组）
   const batchAdd = document.getElementById('cck-batch-add');
   if (batchAdd) {
+    refreshCkGrpSelect();
     batchAdd.addEventListener('click', () => {
       const ta = document.getElementById('cck-batch');
       const raw = ta ? ta.value : '';
       const items = raw.split('\n').map(s => s.trim()).filter(Boolean);
       if (!items.length) { toast('请输入内容，每行一个'); return; }
-      const list = ckCustomList(ckTab);
-      items.forEach(it => list.push(it));
-      ckSaveList(ckTab, list);
+      const grpSel = document.getElementById('cck-batch-grp');
+      const parsed = window.cardGroups.parseCatVal(grpSel ? grpSel.value : '');
+      if (!parsed) { toast('请先选择分组'); return; }
+      const list = ckItems(ckTab);
+      items.forEach(it => {
+        const x = { t: it };
+        if (parsed.grp) x.grp = parsed.grp;
+        list.push(x);
+      });
+      ckSaveItems(ckTab, list);
       if (ta) ta.value = '';
       renderCkMineList();
       updateCkCount();
       toast('已添加 ' + items.length + ' 条到「' + (CK_LABEL[ckTab] || ckTab) + '」');
+    });
+  }
+  // v3.7.x：「＋分组」按钮（批量输入卡片标题行）
+  const ckNewGrp = document.getElementById('ck-new-grp');
+  if (ckNewGrp) {
+    ckNewGrp.addEventListener('click', () => {
+      const groups = ckGroups(ckTab);
+      window.cardGroups.addFlow(groups, g => {
+        if (!g) return;
+        ckSaveGroups(ckTab, groups);
+        refreshCkGrpSelect();
+        if (ckTab2 === 'mine') renderCkMineList();
+        toast('已新建分组「' + g.name + '」');
+      });
     });
   }
   // 入口：字卡库「查岗日常字卡」→ 管理页

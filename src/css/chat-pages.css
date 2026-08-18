@@ -958,6 +958,20 @@
 
 /* 管理页：分类卡 */
 .ta-empty { text-align:center; color:#c0c0c0; font-size:12px; padding:10px 0; }
+/* v3.7.x：我的添加自定义分组区块（ta的询问/小问题/好奇/吐槽、查岗、今日情话共用）
+   ——自定义分组与系统预设分类分开展示：分组区块置顶（mg-block），未分组按系统分类在下方 */
+.mg-grp-row { display:flex; align-items:center; gap:8px; margin:2px 0 10px; }
+.mg-grp-row .cc-tool { padding:7px 12px; font-size:12px; }
+.mg-block { margin-bottom:12px; }
+.mg-block .mg-title { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.mg-title .mg-name { font-size:14px; font-weight:700; }
+.mg-title .mg-cnt { font-size:11px; color:var(--muted); font-weight:400; }
+.mg-title .mg-ops { margin-left:auto; display:flex; gap:6px; }
+.mg-op { width:26px; height:26px; border-radius:50%; border:1px solid rgba(0,0,0,.12); background:transparent; color:#888; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.mg-op:active { background:rgba(0,0,0,.06); color:#111; }
+.mg-ungrouped .mg-title .mg-name { font-weight:600; color:var(--muted); }
+.mg-subcat { font-size:12px; font-weight:700; color:#888; margin:10px 0 4px; padding-top:6px; border-top:1px dashed rgba(0,0,0,.08); }
+.mg-subcat:first-of-type { margin-top:0; padding-top:0; border-top:none; }
 /* 主页每日摸鱼值：顶部累计 */
 .fish-total {
   display:flex; gap:8px; margin-bottom:12px;

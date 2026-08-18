@@ -9,6 +9,16 @@
   // v3.6.x：桌面图片查看器关闭监听幂等守卫——setupDeskImageViewerClose 启动时就会被调用，
   // let 声明同样必须放顶部，否则 TDZ 报错（会把 personalize 整个 IIFE 中断）
   let viewerBound = false;
+  // v3.6.x：空白页提示显隐——有组件/图片的页内联隐藏（盖掉装修态 CSS 的 display:block），
+  // 空页恢复为空（由 CSS 决定：仅装修模式显示，退出装修后空白页保持干净）。
+  // 启动阶段 renderDeskImages/applyDeskLayout 就会调用它，声明必须放顶部（TDZ）
+  const syncPageHint = (slide) => {
+    if (!slide) return;
+    const hint = slide.querySelector('.desk-page-hint');
+    if (!hint) return;
+    const hasContent = !!slide.querySelector('[data-desk-widget], [data-desk-image]');
+    hint.style.display = hasContent ? 'none' : '';
+  };
 
   // 图片压缩后再存储：大幅缩小体积，本地存储容量更宽松（头像/图标 256px，背景/照片 1000px）
   // v3.6.x：失败/超大图不再回退存原图——iOS Safari 对超大 dataURL（48MP/ProRAW 级别）
@@ -1503,8 +1513,11 @@
       } else if (v === 'up') moveWidget('up');
       else if (v === 'down') moveWidget('down');
       else if (v === 'out') {
+        // v3.6.x：移出前记住来源页，移出后同步空白页提示（空页在装修模式重新显示提示）
+        const fromSlide = widgetEl.closest('.page-slide');
         ensureWidgetPool().appendChild(widgetEl);
         saveDeskLayout();
+        syncPageHint(fromSlide);
         toast('已移出此页（可在其他页「添加卡片」找回）');
       }
     }, {
@@ -1773,6 +1786,9 @@
     store.set('desk-layout', JSON.stringify(lay));
     return lay;
   };
+  // v3.6.x：空白页提示显隐——有组件/图片的页内联隐藏（盖掉装修态 CSS 的 display:block），
+  // 空页恢复为空（由 CSS 决定：仅装修模式显示，退出装修后空白页保持干净）。
+  // 注：syncPageHint 声明在 IIFE 顶部（启动阶段 applyDeskLayout 会调用）
   // 按布局重建：把组件节点移动到对应页（默认布局保持 DOM 原状，不写布局）
   const applyDeskLayout = () => {
     const lay = deskLayout();
@@ -1784,14 +1800,13 @@
       (pageWidgets || []).forEach(wid => {
         const node = document.querySelector('[data-desk-widget="' + wid + '"]');
         if (node && node.parentNode !== slide) {
-          // 插入到「+ 添加卡片」按钮之前；隐藏空白页提示
+          // 插入到「+ 添加卡片」按钮之前
           const addBtn = slide.querySelector('.desk-page-add');
           if (addBtn) slide.insertBefore(node, addBtn);
           else slide.appendChild(node);
-          const hint = slide.querySelector('.desk-page-hint');
-          if (hint) hint.style.display = 'none';
         }
       });
+      syncPageHint(slide);
     });
     // 布局外的组件 → 隐藏池
     const pool = ensureWidgetPool();
@@ -1837,12 +1852,11 @@
       btn.disabled = curPage === pageIdx;
       btn.addEventListener('click', () => {
         if (!node) return;
-        // 插入到「+ 添加卡片」按钮之前；隐藏空白页提示
+        // 插入到「+ 添加卡片」按钮之前
         const addBtn = pageSlide.querySelector('.desk-page-add');
         if (addBtn) pageSlide.insertBefore(node, addBtn);
         else pageSlide.appendChild(node);
-        const hint = pageSlide.querySelector('.desk-page-hint');
-        if (hint) hint.style.display = 'none';
+        syncPageHint(pageSlide);
         saveDeskLayout();
         if (window.deskRebuild) window.deskRebuild();
         lib.remove();
@@ -1897,7 +1911,8 @@
       const w = DESK_IMG_SIZES.l;
       const wv = (m.w === DESK_IMG_SIZES.s || m.w === DESK_IMG_SIZES.m) ? m.w : w;
       node.style.width = wv + '%';
-      if (wv < 100) node.style.alignSelf = 'flex-start';
+      // v3.6.x：左右位置——窄图可 靠左(默认)/居中/靠右；满宽图无对齐效果
+      if (wv < 100) node.style.alignSelf = m.align === 'c' ? 'center' : (m.align === 'r' ? 'flex-end' : 'flex-start');
       const img = document.createElement('img');
       node.appendChild(img);
       const addBtn = slide.querySelector('.desk-page-add');
@@ -1910,6 +1925,29 @@
         if (src) img.src = src;
       }
     });
+    // v3.6.x：图片也算页面内容——有图页隐藏空白提示，空页恢复（装修模式才显示）
+    for (let i = 0; i < slides.length; i++) syncPageHint(slides[i]);
+  }
+  // v3.6.x：图片组件上移/下移——只与同页相邻图片交换顺序，持久化到 meta
+  function moveDeskImage(id, dir) {
+    const meta = loadDeskImagesMeta();
+    const idx = meta.findIndex(x => x.id === id);
+    if (idx < 0) return;
+    const same = [];
+    meta.forEach((x, i) => { if (x.page === meta[idx].page) same.push(i); });
+    const pos = same.indexOf(idx);
+    if (dir === 'up' && pos > 0) {
+      const a = same[pos - 1];
+      const t = meta[a]; meta[a] = meta[idx]; meta[idx] = t;
+    } else if (dir === 'down' && pos < same.length - 1) {
+      const a = same[pos + 1];
+      const t = meta[a]; meta[a] = meta[idx]; meta[idx] = t;
+    } else {
+      return;
+    }
+    saveDeskImagesMeta(meta);
+    renderDeskImages();
+    toast(dir === 'up' ? '已上移' : '已下移');
   }
   // 上传新图片到指定页
   function addDeskImage(pageIdx) {
@@ -1992,9 +2030,42 @@
         // v3.6.x：菜单加尺寸选项（小/中/大），当前尺寸打 ✓——不同图片可设不同大小
         const cur = (loadDeskImagesMeta().find(x => x.id === id) || {}).w || DESK_IMG_SIZES.l;
         const sizePill = (label, val, w) => ({ label: label + (cur === w ? ' ✓' : ''), value: val });
+        // v3.6.x：移动子菜单——上移/下移换顺序，靠左/居中/靠右调水平位置（窄图才有效果）
+        // 嵌套弹窗必须延迟到当前弹窗关闭后再开（okBtn 的 finally close() 会立刻关掉当前
+        // openModal 并清空 cb，同步嵌套必然闪关）——openCardBgMenu 内的 openCardMenuNext
+        // 是它的局部变量，这里不能引用，直接内联同样的 setTimeout 模式
+        const openMoveMenu = () => {
+          const m = loadDeskImagesMeta().find(x => x.id === id) || {};
+          const al = m.align || 'l';
+          const alPill = (label, val) => ({ label: label + (al === val ? ' ✓' : ''), value: val });
+          const opts = {
+            noInput: true,
+            pills: [
+              { label: '上移', value: 'up' },
+              { label: '下移', value: 'down' },
+              alPill('靠左', 'al'),
+              alPill('居中', 'ac'),
+              alPill('靠右', 'ar'),
+            ],
+          };
+          setTimeout(() => { if (window.openModal) window.openModal('图片移动', '', (v2) => {
+            if (v2 === 'up' || v2 === 'down') moveDeskImage(id, v2);
+            else if (v2 === 'al' || v2 === 'ac' || v2 === 'ar') {
+              const meta = loadDeskImagesMeta();
+              const mm = meta.find(x => x.id === id);
+              if (mm) {
+                mm.align = v2 === 'ac' ? 'c' : v2 === 'ar' ? 'r' : 'l';
+                saveDeskImagesMeta(meta);
+                renderDeskImages();
+                toast(v2 === 'al' ? '已靠左' : v2 === 'ac' ? '已居中' : '已靠右');
+              }
+            }
+          }, opts); }, 0);
+        };
         window.openModal('图片组件', '', (v) => {
           if (v === '1') changeDeskImage(id);
           else if (v === '2') removeDeskImage(id);
+          else if (v === 'move') openMoveMenu();
           else if (v === 's' || v === 'm' || v === 'l') {
             const w = DESK_IMG_SIZES[v];
             const meta = loadDeskImagesMeta();
@@ -2013,6 +2084,7 @@
             sizePill('尺寸：小', 's', DESK_IMG_SIZES.s),
             sizePill('尺寸：中', 'm', DESK_IMG_SIZES.m),
             sizePill('尺寸：大', 'l', DESK_IMG_SIZES.l),
+            { label: '移动', value: 'move' },
             { label: '删除图片', value: '2' },
           ],
         });

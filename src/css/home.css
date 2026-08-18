@@ -222,8 +222,10 @@
 .page-slide.desk-page {
   display:flex; flex-direction:column;
 }
+/* v3.6.x：提示与「添加卡片」默认隐藏，仅装修模式显示——退出装修后空白页保持干净
+   （JS 对有内容的页会内联 display:none 盖掉装饰态，见 personalize.js syncPageHint） */
 .desk-page-hint {
-  margin:auto; text-align:center; color:var(--muted);
+  display:none; margin:auto; text-align:center; color:var(--muted);
   font-size:12px; letter-spacing:1px; padding:40px 20px;
 }
 .desk-page-add {
@@ -232,7 +234,8 @@
   color:var(--ink); font-size:13px; font-weight:600; cursor:pointer;
   display:none; align-items:center; gap:6px;
 }
-.page-slide.desk-page .desk-page-add { display:inline-flex; }
+.decor-on .page-slide.desk-page .desk-page-hint { display:block; }
+.decor-on .page-slide.desk-page .desk-page-add { display:inline-flex; }
 
 /* v3.6.x：卡片摆放操作已收进点卡片设置菜单（上移/下移/移出），不再使用悬浮操作条 */
 .desk-widget, [data-desk-widget] {

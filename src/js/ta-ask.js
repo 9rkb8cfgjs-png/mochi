@@ -9,6 +9,104 @@
   const store = window.activeStore();
   const KEY = 'ta-ask';
 
+  // ================= 我的添加：自定义分组通用工具（TA的询问/小问题/好奇/吐槽、查岗、今日情话共用） =================
+  // 数据模型：groups=[{id,name}]（存各模块数据对象或独立键）；条目可选 grp=分组id（缺省=未分组）
+  // 分组只用于管理页整理展示，不影响自动抽取逻辑（抽取仍按 isPreset/enabled/useDefault）
+  function grpToast(msg) {
+    let t = document.getElementById('cc-toast');
+    if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
+  }
+  function escG(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  window.cardGroups = {
+    genId: function () { return 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); },
+    toast: grpToast,
+    esc: escG,
+    dup: function (groups, name, ignoreId) { return groups.some(function (g) { return g.name === name && g.id !== ignoreId; }); },
+    // 新建分组弹窗 → cb(新分组对象|null)
+    addFlow: function (groups, cb) {
+      if (!window.openModal) { cb(null); return; }
+      window.openModal('新建分组', '', function (v) {
+        const name = String(v || '').trim();
+        if (!name) { cb(null); return; }
+        if (window.cardGroups.dup(groups, name)) { grpToast('分组「' + name + '」已存在'); cb(null); return; }
+        const g = { id: window.cardGroups.genId(), name: name };
+        groups.push(g);
+        cb(g);
+      });
+    },
+    // 重命名分组弹窗 → cb(newName|null)
+    renameFlow: function (g, groups, cb) {
+      if (!window.openModal) { cb(null); return; }
+      window.openModal('重命名分组', g.name, function (v) {
+        const name = String(v || '').trim();
+        if (!name) { cb(null); return; }
+        if (window.cardGroups.dup(groups, name, g.id)) { grpToast('分组「' + name + '」已存在'); cb(null); return; }
+        cb(name);
+      });
+    },
+    // 删除分组确认弹窗（noInput，确定即删；组内字卡回到未分组）→ cb(true/false)
+    removeFlow: function (name, cb) {
+      if (!window.openModal) { cb(true); return; }
+      window.openModal('删除分组', '', function () { cb(true); }, { noInput: true, staticText: '删除分组「' + name + '」？组内字卡不会丢失，会回到「未分组」。' });
+    },
+    // 系统分类 + 我的分组 合并 select options（添加/批量导入下拉共用）
+    // catList: [[k,label],...]；groups: [{id,name}]；cur: 当前选中原始值
+    catOptsHtml: function (catList, groups, cur) {
+      let h = '';
+      catList.forEach(function (c) {
+        h += '<option value="' + c[0] + '"' + (cur === c[0] ? ' selected' : '') + '>' + escG(c[1]) + '</option>';
+      });
+      if (groups.length) {
+        h += '<optgroup label="我的分组">';
+        groups.forEach(function (g) { h += '<option value="grp:' + g.id + '"' + (cur === 'grp:' + g.id ? ' selected' : '') + '>' + escG(g.name) + '</option>'; });
+        h += '</optgroup>';
+      }
+      h += '<option value="__newgrp">＋ 新建分组…</option>';
+      return h;
+    },
+    // 纯「我的分组」select options（无系统分类的模块用：查岗/今日情话）+ 新建分组选项
+    grpOnlyOptsHtml: function (groups, cur) {
+      let h = '<option value="">未分组</option>';
+      groups.forEach(function (g) { h += '<option value="grp:' + g.id + '"' + (cur === 'grp:' + g.id ? ' selected' : '') + '>' + escG(g.name) + '</option>'; });
+      h += '<option value="__newgrp">＋ 新建分组…</option>';
+      return h;
+    },
+    // 解析下拉值 → {cat, grp}（系统分类值原样返回；grp:xxx → grp；__newgrp → 返回 null 需先建组）
+    parseCatVal: function (v) {
+      if (typeof v === 'string' && v.indexOf('grp:') === 0) return { cat: null, grp: v.slice(4) };
+      if (v === '__newgrp') return null;
+      return { cat: v || 'daily', grp: null };
+    },
+    // 给 select 绑定「＋ 新建分组…」option：change 到 __newgrp 时弹窗建组，建好后选中新组
+    // 多次调用只绑定一次（防重复弹窗），groups/onChanged 取最新值（刷新下拉后更新）
+    // onChanged(g) 可选——需要额外持久化 groups 的模块（查岗/情话）在此保存
+    bindNewGrp: function (sel, groups, onChanged) {
+      sel.__grpGroups = groups;
+      sel.__grpOnChanged = onChanged;
+      if (sel.__grpBound) return;
+      sel.__grpBound = true;
+      sel.addEventListener('change', function () {
+        if (sel.value !== '__newgrp') return;
+        window.cardGroups.addFlow(sel.__grpGroups || [], function (g) {
+          const first = sel.querySelector('option');
+          if (!g) { if (first) sel.value = first.value; return; }
+          if (sel.__grpOnChanged) sel.__grpOnChanged(g);
+          const opt = document.createElement('option');
+          opt.value = 'grp:' + g.id;
+          opt.textContent = g.name;
+          const nopt = sel.querySelector('option[value="__newgrp"]');
+          sel.insertBefore(opt, nopt);
+          sel.value = 'grp:' + g.id;
+          grpToast('已新建分组「' + g.name + '」');
+        });
+      });
+    }
+  };
+
   // 默认题库（4 分类，与星言一致 + 两个世界）
   const DEFAULT_QUESTIONS = [
     { id: 'q_d1', text: '你吃饭了吗？', cat: 'daily', enabled: true },
@@ -145,6 +243,8 @@
       if (taAskMerge(d)) { try { store.set(KEY, JSON.stringify(d)); } catch (e) {} }
     }
     if (!Array.isArray(d.history)) d.history = [];
+    // v3.7.x：我的添加自定义分组
+    if (!Array.isArray(d.groups)) d.groups = [];
     return d;
   }
   function taAskSave(d) {
@@ -345,20 +445,37 @@
   const batchCatEl = document.getElementById('ta-ask-batch-cat');
   const batchTextEl = document.getElementById('ta-ask-batch');
   const batchAddBtn = document.getElementById('ta-ask-batch-add');
+  // v3.7.x：批量导入下拉注入「我的分组」+「＋ 新建分组…」——批量导入可导入到自定义分组
+  function rebuildAskBatchCatSelect() {
+    if (!batchCatEl) return;
+    const d0 = taAskLoad();
+    batchCatEl.innerHTML = window.cardGroups.catOptsHtml(CATS, d0.groups || [], batchCatEl.value);
+    window.cardGroups.bindNewGrp(batchCatEl, d0.groups, function () { taAskSave(d0); });
+  }
   if (batchCatEl && batchTextEl && batchAddBtn) {
+    rebuildAskBatchCatSelect();
     batchAddBtn.addEventListener('click', () => {
-      const cat = batchCatEl.value;
+      const parsed = window.cardGroups.parseCatVal(batchCatEl.value);
+      if (!parsed) { toast('请先选择要导入的分类或分组'); return; }
       const lines = (batchTextEl.value || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
       if (!lines.length) { toast('请先输入问题，每行一个'); return; }
       const d2 = taAskLoad();
       lines.forEach(t => {
-        d2.questions.push({ id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), text: t, cat: cat, enabled: true, isPreset: false });
+        const q = { id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), text: t, cat: parsed.cat || 'daily', enabled: true, isPreset: false };
+        if (parsed.grp) q.grp = parsed.grp;
+        d2.questions.push(q);
       });
       taAskSave(d2);
-      const label = (CATS.find(c => c[0] === cat) || [cat])[1] || cat;
+      let label;
+      if (parsed.grp) {
+        const g = (d2.groups || []).find(x => x.id === parsed.grp);
+        label = '分组「' + (g ? g.name : '未知') + '」';
+      } else {
+        label = (CATS.find(c => c[0] === parsed.cat) || [])[1] || parsed.cat;
+      }
       batchTextEl.value = '';
       renderAskMineWithForms();
-      toast('已导入 ' + lines.length + ' 个问题到「' + label + '」');
+      toast('已导入 ' + lines.length + ' 个问题到' + label);
     });
   }
 
@@ -417,34 +534,64 @@
       });
     });
   }
-  // 我的添加 tab：每个分类带内联添加表单
+  // 我的添加 tab：v3.7.x 自定义分组模式——
+  // 自定义分组区块置顶（各自独立卡片），未分组内容按系统分类放在下面（与系统预设 tab 的分组体系隔开）
+  function askItemHtml(q, idx) {
+    return '<div class="ta-row">' +
+      '<label class="toggle"><input type="checkbox"' + (q.enabled !== false ? ' checked' : '') + ' data-idx="' + idx + '"><span class="tk"></span></label>' +
+      '<span class="ta-txt">' + escG(q.text) + (q.type === 'single' ? ' <span class="tc-known">单选·' + (q.options ? q.options.length : 0) + '选项</span>' : '') + '</span>' +
+      '<button class="ta-del" data-idx="' + idx + '">✕</button>' +
+      '</div>';
+  }
+  // 内联添加表单（blockKey 唯一用于输入框 id；grp 可选=添加后归入该分组；cat 为条目的系统分类）
+  function askAddFormHtml(blockKey, grp, cat) {
+    return '<div class="ta-add">' +
+      '<select class="ta-type tc-input" data-key="' + blockKey + '">' +
+      '<option value="text">文字回复</option>' +
+      '<option value="single">单选题</option>' +
+      '</select>' +
+      '<input id="ta-new-' + blockKey + '" type="text" placeholder="添加问题…">' +
+      '<button class="ta-add-btn" data-key="' + blockKey + '" data-cat="' + (cat || 'daily') + '" data-grp="' + (grp || '') + '">添加</button>' +
+      '<textarea id="ta-opts-' + blockKey + '" class="ta-opts tc-input" rows="3" placeholder="单选题选项：每行一个；可写 选项~TA回应，TA会用该回应回复" hidden></textarea>' +
+      '</div>';
+  }
   function renderAskMineWithForms() {
     if (!mineCatsEl) return;
     const d = taAskLoad();
+    const groups = Array.isArray(d.groups) ? d.groups : [];
+    const mineQs = d.questions.filter(q => q.isPreset !== true);
     let html = '';
-    CATS.forEach(([k, label]) => {
-      const arr = d.questions.filter(q => q.cat === k && q.isPreset !== true);
-      html += '<div class="cal-card glass"><div class="cal-card-title">' + label + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
-      if (!arr.length) html += '<div class="ta-empty">暂无</div>';
-      arr.forEach(q => {
-        const idx = d.questions.indexOf(q);
-        html += '<div class="ta-row">' +
-          '<label class="toggle"><input type="checkbox"' + (q.enabled !== false ? ' checked' : '') + ' data-idx="' + idx + '"><span class="tk"></span></label>' +
-          '<span class="ta-txt">' + q.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (q.type === 'single' ? ' <span class="tc-known">单选·' + (q.options ? q.options.length : 0) + '选项</span>' : '') + '</span>' +
-          '<button class="ta-del" data-idx="' + idx + '">✕</button>' +
-          '</div>';
-      });
-      html += '<div class="ta-add">' +
-        '<select class="ta-type tc-input" data-cat="' + k + '">' +
-        '<option value="text">文字回复</option>' +
-        '<option value="single">单选题</option>' +
-        '</select>' +
-        '<input id="ta-new-' + k + '" type="text" placeholder="添加问题…">' +
-        '<button class="ta-add-btn" data-cat="' + k + '">添加</button>' +
-        '<textarea id="ta-opts-' + k + '" class="ta-opts tc-input" rows="3" placeholder="单选题选项：每行一个；可写 选项~TA回应，TA会用该回应回复" hidden></textarea>' +
-        '</div>';
+    html += '<div class="mg-grp-row"><button class="cc-tool" id="ask-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
+    if (!mineQs.length) {
+      html += '<div class="ta-empty" style="padding:14px">暂未添加自定义问题，可在上方批量导入或下方添加</div>';
+      mineCatsEl.innerHTML = html;
+      bindAskGroupOps();
+      return;
+    }
+    // 自定义分组区块（置顶，与系统分类隔开）
+    groups.forEach(g => {
+      const arr = mineQs.filter(q => q.grp === g.id);
+      html += '<div class="cal-card glass mg-block">' +
+        '<div class="cal-card-title mg-title"><span class="mg-name">' + escG(g.name) + '</span><span class="mg-cnt">(' + arr.length + ')</span>' +
+        '<span class="mg-ops"><button class="mg-op" data-askg="' + escG(g.id) + '" data-op="rn" title="重命名">✎</button><button class="mg-op" data-askg="' + escG(g.id) + '" data-op="rm" title="删除分组">✕</button></span></div>';
+      if (!arr.length) html += '<div class="ta-empty">这个分组还没有内容，可在下方直接添加</div>';
+      arr.forEach(q => { html += askItemHtml(q, d.questions.indexOf(q)); });
+      html += askAddFormHtml('g' + g.id, g.id, 'daily');
       html += '</div>';
     });
+    // 未分组区块（按系统分类小节）
+    const ungrouped = mineQs.filter(q => !q.grp);
+    if (ungrouped.length || !groups.length) {
+      html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组 · 按系统分类</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+      CATS.forEach(([k, label]) => {
+        const arr = ungrouped.filter(q => q.cat === k);
+        if (!arr.length) return;
+        html += '<div class="mg-subcat">' + label + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
+        arr.forEach(q => { html += askItemHtml(q, d.questions.indexOf(q)); });
+        html += askAddFormHtml('c' + k, '', k);
+      });
+      html += '</div>';
+    }
     mineCatsEl.innerHTML = html;
     mineCatsEl.querySelectorAll('input[data-idx]').forEach(cb => {
       cb.addEventListener('change', () => {
@@ -466,7 +613,7 @@
     });
     mineCatsEl.querySelectorAll('.ta-type').forEach(sel => {
       const toggleOpts = () => {
-        const o = document.getElementById('ta-opts-' + sel.dataset.cat);
+        const o = document.getElementById('ta-opts-' + sel.dataset.key);
         if (!o) return;
         o.hidden = sel.value !== 'single';
         if (o.__ceBox) o.__ceBox.hidden = o.hidden;
@@ -477,15 +624,17 @@
     });
     mineCatsEl.querySelectorAll('.ta-add-btn').forEach(b => {
       b.addEventListener('click', () => {
-        const inp = document.getElementById('ta-new-' + b.dataset.cat);
+        const key = b.dataset.key;
+        const inp = document.getElementById('ta-new-' + key);
         const v = inp ? inp.value.trim() : '';
         if (!v) { toast('请输入问题'); return; }
         const typeSel = b.parentElement.querySelector('.ta-type');
         const type = typeSel ? typeSel.value : 'text';
         const d2 = taAskLoad();
-        const q = { id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 999), text: v, cat: b.dataset.cat, enabled: true, isPreset: false };
+        const q = { id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 999), text: v, cat: b.dataset.cat || 'daily', enabled: true, isPreset: false };
+        if (b.dataset.grp) q.grp = b.dataset.grp;
         if (type === 'single') {
-          const optsEl = document.getElementById('ta-opts-' + b.dataset.cat);
+          const optsEl = document.getElementById('ta-opts-' + key);
           const opts = (optsEl ? optsEl.value : '').split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(line => {
             const i = line.indexOf('~');
             return i >= 0 ? { t: line.slice(0, i).trim(), reply: line.slice(i + 1).trim() } : { t: line, reply: '' };
@@ -497,6 +646,56 @@
         d2.questions.push(q);
         taAskSave(d2);
         renderAskMineWithForms();
+      });
+    });
+    bindAskGroupOps();
+  }
+  // 我的添加 tab 的分组管理：新建 / 重命名 / 删除
+  function bindAskGroupOps() {
+    const grpAdd = document.getElementById('ask-grp-add');
+    if (grpAdd && !grpAdd.__bound) {
+      grpAdd.__bound = true;
+      grpAdd.addEventListener('click', () => {
+        const d2 = taAskLoad();
+        window.cardGroups.addFlow(d2.groups, g => {
+          if (!g) return;
+          taAskSave(d2);
+          rebuildAskBatchCatSelect();
+          renderAskMineWithForms();
+          toast('已新建分组「' + g.name + '」');
+        });
+      });
+    }
+    const wrap = document.getElementById('ta-ask-mine-cats');
+    if (!wrap) return;
+    wrap.querySelectorAll('.mg-op').forEach(b => {
+      if (b.__bound) return;
+      b.__bound = true;
+      b.addEventListener('click', () => {
+        const d2 = taAskLoad();
+        const gid = b.dataset.askg;
+        const g = (d2.groups || []).find(x => x.id === gid);
+        if (!g) return;
+        if (b.dataset.op === 'rn') {
+          window.cardGroups.renameFlow(g, d2.groups, name => {
+            if (!name) return;
+            g.name = name;
+            taAskSave(d2);
+            rebuildAskBatchCatSelect();
+            renderAskMineWithForms();
+            toast('分组已重命名');
+          });
+        } else if (b.dataset.op === 'rm') {
+          window.cardGroups.removeFlow(g.name, ok => {
+            if (!ok) return;
+            d2.questions.forEach(q => { if (q.grp === gid) q.grp = ''; });
+            d2.groups = d2.groups.filter(x => x.id !== gid);
+            taAskSave(d2);
+            rebuildAskBatchCatSelect();
+            renderAskMineWithForms();
+            toast('已删除分组「' + g.name + '」');
+          });
+        }
       });
     });
   }
@@ -683,6 +882,8 @@
     }
     if (!Array.isArray(d.history)) d.history = [];
     if (!Array.isArray(d.favs)) d.favs = [];
+    // v3.7.x：我的添加自定义分组
+    if (!Array.isArray(d.groups)) d.groups = [];
     return d;
   }
   function tcSave(d) { try { store.set(KEY2, JSON.stringify(d)); } catch (e) {} }
@@ -923,6 +1124,117 @@ window.openTCPanel = openTCPanel;
       });
     });
   }
+  // ===== v3.7.x 通用：我的添加 tab 分组模式渲染（tc/tcu/tr 共用） =====
+  // opt: { load, save, order, label, emptyTip, rowHtml(q,idx) }
+  // 自定义分组区块置顶（与系统预设分类隔开），未分组内容按系统分类放在下方
+  function renderMineGroupsInto(container, opt) {
+    if (!container) return;
+    const d = opt.load();
+    const groups = Array.isArray(d.groups) ? d.groups : [];
+    const items = d.questions.filter(q => q.isPreset !== true);
+    let html = '';
+    html += '<div class="mg-grp-row"><button class="cc-tool mg-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
+    if (!items.length) {
+      html += '<div class="ta-empty">' + opt.emptyTip + '</div>';
+      container.innerHTML = html;
+      bindMineGroups(container, opt);
+      return;
+    }
+    groups.forEach(g => {
+      const arr = items.filter(q => q.grp === g.id);
+      html += '<div class="cal-card glass mg-block">' +
+        '<div class="cal-card-title mg-title"><span class="mg-name">' + escG(g.name) + '</span><span class="mg-cnt">(' + arr.length + ')</span>' +
+        '<span class="mg-ops"><button class="mg-op" data-g="' + escG(g.id) + '" data-op="rn" title="重命名">✎</button><button class="mg-op" data-g="' + escG(g.id) + '" data-op="rm" title="删除分组">✕</button></span></div>' +
+        (arr.length ? arr.map(q => opt.rowHtml(q, d.questions.indexOf(q))).join('') : '<div class="ta-empty">这个分组还没有内容</div>') +
+        '</div>';
+    });
+    const ungrouped = items.filter(q => !q.grp);
+    if (ungrouped.length || !groups.length) {
+      html += '<div class="cal-card glass mg-block mg-ungrouped"><div class="cal-card-title mg-title"><span class="mg-name">未分组 · 按系统分类</span><span class="mg-cnt">(' + ungrouped.length + ')</span></div>';
+      opt.order.forEach(k => {
+        const arr = ungrouped.filter(q => q.cat === k);
+        if (!arr.length) return;
+        html += '<div class="mg-subcat">' + escG(opt.label[k] || k) + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
+        html += arr.map(q => opt.rowHtml(q, d.questions.indexOf(q))).join('');
+      });
+      html += '</div>';
+    }
+    container.innerHTML = html;
+    container.querySelectorAll('input[data-idx]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const d2 = opt.load();
+        const q = d2.questions[Number(cb.dataset.idx)];
+        if (q) q.enabled = cb.checked;
+        opt.save(d2);
+      });
+    });
+    container.querySelectorAll('.ta-del').forEach(b => {
+      b.addEventListener('click', () => {
+        const d2 = opt.load();
+        const q = d2.questions[Number(b.dataset.idx)];
+        if (q && q.isPreset === true) { toast('系统预设问题不可删除'); return; }
+        d2.questions.splice(Number(b.dataset.idx), 1);
+        opt.save(d2);
+        renderMineGroupsInto(container, opt);
+      });
+    });
+    bindMineGroups(container, opt);
+  }
+  // 通用：分组管理事件（新建 / 重命名 / 删除）
+  function bindMineGroups(container, opt) {
+    container.querySelectorAll('.mg-grp-add').forEach(b => {
+      if (b.__bound) return;
+      b.__bound = true;
+      b.addEventListener('click', () => {
+        const d2 = opt.load();
+        window.cardGroups.addFlow(d2.groups, g => {
+          if (!g) return;
+          opt.save(d2);
+          renderMineGroupsInto(container, opt);
+          toast('已新建分组「' + g.name + '」');
+        });
+      });
+    });
+    container.querySelectorAll('.mg-op').forEach(b => {
+      if (b.__bound) return;
+      b.__bound = true;
+      b.addEventListener('click', () => {
+        const d2 = opt.load();
+        const gid = b.dataset.g;
+        const g = (d2.groups || []).find(x => x.id === gid);
+        if (!g) return;
+        if (b.dataset.op === 'rn') {
+          window.cardGroups.renameFlow(g, d2.groups, name => {
+            if (!name) return;
+            opt.save(d2);
+            renderMineGroupsInto(container, opt);
+            toast('分组已重命名');
+          });
+        } else if (b.dataset.op === 'rm') {
+          window.cardGroups.removeFlow(g.name, ok => {
+            if (!ok) return;
+            d2.questions.forEach(q => { if (q.grp === gid) q.grp = ''; });
+            d2.groups = d2.groups.filter(x => x.id !== gid);
+            opt.save(d2);
+            renderMineGroupsInto(container, opt);
+            toast('已删除分组「' + g.name + '」');
+          });
+        }
+      });
+    });
+  }
+  // TA的小问题 我的添加渲染配置
+  const tcMineOpt = {
+    load: tcLoad, save: tcSave, order: TC_CAT_ORDER, label: TC_CAT_LABEL,
+    emptyTip: '暂未添加自定义问题，可在上方添加',
+    rowHtml: function (q, idx) {
+      return '<div class="tc-qrow' + (q.enabled === false ? ' off' : '') + '">' +
+        '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
+        '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + '</div>' +
+        '<div class="tc-qopts">选项：' + q.options.map(o => escT(o.t)).join(' / ') + '</div></div>' +
+        '<button class="ta-del" data-idx="' + idx + '">✕</button></div>';
+    }
+  };
   function switchTCTab(tab) {
     tcTab = tab;
     renderTCSettings();
@@ -933,7 +1245,7 @@ window.openTCPanel = openTCPanel;
     if (sysPanel) sysPanel.hidden = tab !== 'sys';
     if (minePanel) minePanel.hidden = tab !== 'mine';
     if (tab === 'sys') renderTCCatsInto(document.getElementById('tc-sys-cats'), true);
-    else renderTCCatsInto(document.getElementById('tc-mine-cats'), false);
+    else renderMineGroupsInto(document.getElementById('tc-mine-cats'), tcMineOpt);
   }
   const tcTabsWrap = document.getElementById('tc-tabs');
   if (tcTabsWrap) {
@@ -984,13 +1296,22 @@ window.openTCPanel = openTCPanel;
   }
   const tcNewAdd = document.getElementById('tc-new-add');
   if (tcNewAdd) {
+    // v3.7.x：分类下拉注入「我的分组」+「＋ 新建分组…」
+    (function rebuildTCSelect() {
+      const catEl = document.getElementById('tc-new-cat');
+      if (!catEl) return;
+      const d0 = tcLoad();
+      catEl.innerHTML = window.cardGroups.catOptsHtml(TC_CAT_ORDER.map(k => [k, TC_CAT_LABEL[k]]), d0.groups || [], catEl.value);
+      window.cardGroups.bindNewGrp(catEl, d0.groups, function () { tcSave(d0); });
+    })();
     tcNewAdd.addEventListener('click', () => {
       const catEl = document.getElementById('tc-new-cat');
       const textEl = document.getElementById('tc-new-text');
       const optsEl = document.getElementById('tc-new-opts');
       const text = textEl ? textEl.value.trim() : '';
       const optsRaw = optsEl ? optsEl.value.trim() : '';
-      const cat = catEl ? catEl.value : 'daily';
+      const parsed = window.cardGroups.parseCatVal(catEl ? catEl.value : 'daily');
+      if (!parsed) { toast('请先选择分类或分组'); return; }
       if (!text) { toast('请输入问题内容'); return; }
       const parts = optsRaw.split('|').map(s => s.trim()).filter(Boolean);
       if (parts.length < 2) { toast('请至少输入 2 个选项，用 | 分隔'); return; }
@@ -1005,12 +1326,34 @@ window.openTCPanel = openTCPanel;
       }).filter(Boolean);
       if (options.length < 2) { toast('选项格式有误，请用 | 分隔'); return; }
       const d = tcLoad();
-      d.questions.push({ id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: cat, text: text, pref: Math.floor(Math.random() * options.length), options: options, enabled: true, isPreset: false });
+      const q = { id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: parsed.cat || 'daily', text: text, pref: Math.floor(Math.random() * options.length), options: options, enabled: true, isPreset: false };
+      if (parsed.grp) q.grp = parsed.grp;
+      d.questions.push(q);
       tcSave(d);
       if (textEl) textEl.value = '';
       if (optsEl) optsEl.value = '';
-      renderTCCatsInto(document.getElementById('tc-mine-cats'), false);
+      renderMineGroupsInto(document.getElementById('tc-mine-cats'), tcMineOpt);
       toast('已添加问题');
+    });
+  }
+  // v3.7.x：「＋分组」按钮（添加问题卡片标题行）——新建分组后刷新我的添加列表
+  const tcNewGrp = document.getElementById('tc-new-grp');
+  if (tcNewGrp) {
+    tcNewGrp.addEventListener('click', () => {
+      const d = tcLoad();
+      window.cardGroups.addFlow(d.groups, g => {
+        if (!g) return;
+        tcSave(d);
+        (function refreshTCSelect() {
+          const catEl = document.getElementById('tc-new-cat');
+          if (catEl) {
+            catEl.innerHTML = window.cardGroups.catOptsHtml(TC_CAT_ORDER.map(k => [k, TC_CAT_LABEL[k]]), d.groups, catEl.value);
+            window.cardGroups.bindNewGrp(catEl, d.groups);
+          }
+        })();
+        if (tcTab === 'mine') renderMineGroupsInto(document.getElementById('tc-mine-cats'), tcMineOpt);
+        toast('已新建分组「' + g.name + '」');
+      });
     });
   }
   // 触发一次小问题（供管理页按钮 / 更多功能面板共用）
@@ -1166,6 +1509,8 @@ window.openTCPanel = openTCPanel;
     }
     if (!Array.isArray(d.history)) d.history = [];
     if (!d.known || typeof d.known !== 'object') d.known = {};
+    // v3.7.x：我的添加自定义分组
+    if (!Array.isArray(d.groups)) d.groups = [];
     return d;
   }
   function tcuSave(d) { try { store.set(KEY3, JSON.stringify(d)); } catch (e) {} }
@@ -1369,6 +1714,20 @@ window.openTCPanel = openTCPanel;
       });
     });
   }
+  // Ta的好奇 我的添加渲染配置
+  const tcuMineOpt = {
+    load: tcuLoad, save: tcuSave, order: TCU_CAT_ORDER, label: TCU_CAT_LABEL,
+    emptyTip: '暂未添加自定义问题，可在上方添加',
+    rowHtml: function (q, idx) {
+      const known = q.id && (tcuLoad().known || {})[q.id];
+      return '<div class="tc-qrow' + (q.enabled === false ? ' off' : '') + '">' +
+        '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
+        '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + (known ? ' <span class="tc-known">✓已了解</span>' : '') + '</div>' +
+        (q.quick && q.quick.length ? '<div class="tc-qopts">快捷：' + q.quick.map(escT).join(' / ') + '</div>' : '') +
+        '</div>' +
+        '<button class="ta-del" data-idx="' + idx + '">✕</button></div>';
+    }
+  };
   function switchTCUTab(tab) {
     tcuTab = tab;
     renderTCUSettings();
@@ -1379,7 +1738,7 @@ window.openTCPanel = openTCPanel;
     if (sysPanel) sysPanel.hidden = tab !== 'sys';
     if (minePanel) minePanel.hidden = tab !== 'mine';
     if (tab === 'sys') renderTCUCatsInto(document.getElementById('tcu-sys-cats'), true);
-    else renderTCUCatsInto(document.getElementById('tcu-mine-cats'), false);
+    else renderMineGroupsInto(document.getElementById('tcu-mine-cats'), tcuMineOpt);
   }
   const tcuTabsWrap = document.getElementById('tcu-tabs');
   if (tcuTabsWrap) {
@@ -1429,6 +1788,14 @@ window.openTCPanel = openTCPanel;
   if (tcuFu) tcuFu.addEventListener('change', () => { const d = tcuLoad(); d.settings.followup = tcuFu.checked; tcuSave(d); toast(tcuFu.checked ? 'TA 偶尔会自然追问' : 'TA 不再追问'); });
   const tcuAdd = document.getElementById('tcu-new-add');
   if (tcuAdd) {
+    // v3.7.x：分类下拉注入「我的分组」+「＋ 新建分组…」
+    (function rebuildTCUSelect() {
+      const catEl = document.getElementById('tcu-new-cat');
+      if (!catEl) return;
+      const d0 = tcuLoad();
+      catEl.innerHTML = window.cardGroups.catOptsHtml(TCU_CAT_ORDER.map(k => [k, TCU_CAT_LABEL[k]]), d0.groups || [], catEl.value);
+      window.cardGroups.bindNewGrp(catEl, d0.groups, function () { tcuSave(d0); });
+    })();
     tcuAdd.addEventListener('click', () => {
       const catEl = document.getElementById('tcu-new-cat');
       const textEl = document.getElementById('tcu-new-text');
@@ -1437,16 +1804,40 @@ window.openTCPanel = openTCPanel;
       const followupEl = document.getElementById('tcu-new-followup');
       const text = textEl ? textEl.value.trim() : '';
       if (!text) { toast('请输入问题内容'); return; }
+      const parsed = window.cardGroups.parseCatVal(catEl ? catEl.value : 'you');
+      if (!parsed) { toast('请先选择分类或分组'); return; }
       const quick = (quickEl ? quickEl.value : '').split('|').map(s => s.trim()).filter(Boolean).slice(0, 4);
       let replies = (repliesEl ? repliesEl.value : '').split('|').map(s => s.trim()).filter(Boolean).slice(0, 4);
       if (!replies.length) replies = TCU_FALLBACK.slice(0, 2);
       const followup = followupEl ? followupEl.value.trim() : '';
       const d = tcuLoad();
-      d.questions.push({ id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: catEl ? catEl.value : 'you', text: text, quick: quick, replies: replies, followup: followup, enabled: true, isPreset: false });
+      const q = { id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: parsed.cat || 'you', text: text, quick: quick, replies: replies, followup: followup, enabled: true, isPreset: false };
+      if (parsed.grp) q.grp = parsed.grp;
+      d.questions.push(q);
       tcuSave(d);
       [textEl, quickEl, repliesEl, followupEl].forEach(el => { if (el) el.value = ''; });
-      renderTCUCatsInto(document.getElementById('tcu-mine-cats'), false);
+      renderMineGroupsInto(document.getElementById('tcu-mine-cats'), tcuMineOpt);
       toast('已添加问题');
+    });
+  }
+  // v3.7.x：「＋分组」按钮（添加问题卡片标题行）
+  const tcuNewGrp = document.getElementById('tcu-new-grp');
+  if (tcuNewGrp) {
+    tcuNewGrp.addEventListener('click', () => {
+      const d = tcuLoad();
+      window.cardGroups.addFlow(d.groups, g => {
+        if (!g) return;
+        tcuSave(d);
+        (function refreshTCUSelect() {
+          const catEl = document.getElementById('tcu-new-cat');
+          if (catEl) {
+            catEl.innerHTML = window.cardGroups.catOptsHtml(TCU_CAT_ORDER.map(k => [k, TCU_CAT_LABEL[k]]), d.groups, catEl.value);
+            window.cardGroups.bindNewGrp(catEl, d.groups);
+          }
+        })();
+        if (tcuTab === 'mine') renderMineGroupsInto(document.getElementById('tcu-mine-cats'), tcuMineOpt);
+        toast('已新建分组「' + g.name + '」');
+      });
     });
   }
   // 触发一次好奇（供管理页按钮 / 更多功能面板共用）
@@ -1548,6 +1939,8 @@ window.openTCPanel = openTCPanel;
       if (trMerge(d)) { try { store.set(KEY4, JSON.stringify(d)); } catch (e) {} }
     }
     if (!Array.isArray(d.history)) d.history = [];
+    // v3.7.x：我的添加自定义分组
+    if (!Array.isArray(d.groups)) d.groups = [];
     return d;
   }
   function trSave(d) { try { store.set(KEY4, JSON.stringify(d)); } catch (e) {} }
@@ -1739,6 +2132,19 @@ window.openTCPanel = openTCPanel;
       });
     });
   }
+  // Ta的吐槽 我的添加渲染配置
+  const trMineOpt = {
+    load: trLoad, save: trSave, order: TR_CAT_ORDER, label: TR_CAT_LABEL,
+    emptyTip: '暂未添加自定义字卡，可在上方添加',
+    rowHtml: function (q, idx) {
+      return '<div class="tc-qrow' + (q.enabled === false ? ' off' : '') + '">' +
+        '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
+        '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + '</div>' +
+        (q.match && q.match.length ? '<div class="tc-qopts">触发：' + q.match.map(escT).join(' / ') + '</div>' : '') +
+        '</div>' +
+        '<button class="ta-del" data-idx="' + idx + '">✕</button></div>';
+    }
+  };
   function switchTRTab(tab) {
     trTab = tab;
     renderTRSettings();
@@ -1749,7 +2155,7 @@ window.openTCPanel = openTCPanel;
     if (sysPanel) sysPanel.hidden = tab !== 'sys';
     if (minePanel) minePanel.hidden = tab !== 'mine';
     if (tab === 'sys') renderTRCatsInto(document.getElementById('tr-sys-cats'), true);
-    else renderTRCatsInto(document.getElementById('tr-mine-cats'), false);
+    else renderMineGroupsInto(document.getElementById('tr-mine-cats'), trMineOpt);
   }
   const trTabsWrap = document.getElementById('tr-tabs');
   if (trTabsWrap) {
@@ -1797,20 +2203,52 @@ window.openTCPanel = openTCPanel;
   });
   const trAdd = document.getElementById('tr-new-add');
   if (trAdd) {
+    // v3.7.x：分类下拉注入「我的分组」+「＋ 新建分组…」
+    (function rebuildTRSelect() {
+      const catEl = document.getElementById('tr-new-cat');
+      if (!catEl) return;
+      const d0 = trLoad();
+      catEl.innerHTML = window.cardGroups.catOptsHtml(TR_CAT_ORDER.map(k => [k, TR_CAT_LABEL[k]]), d0.groups || [], catEl.value);
+      window.cardGroups.bindNewGrp(catEl, d0.groups, function () { trSave(d0); });
+    })();
     trAdd.addEventListener('click', () => {
       const catEl = document.getElementById('tr-new-cat');
       const textEl = document.getElementById('tr-new-text');
       const matchEl = document.getElementById('tr-new-match');
       const text = textEl ? textEl.value.trim() : '';
       if (!text) { toast('请输入吐槽内容'); return; }
+      const parsed = window.cardGroups.parseCatVal(catEl ? catEl.value : 'light');
+      if (!parsed) { toast('请先选择分类或分组'); return; }
       const match = (matchEl ? matchEl.value : '').split('|').map(s => s.trim()).filter(Boolean).slice(0, 4);
       const d = trLoad();
-      d.questions.push({ id: 'r_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: catEl ? catEl.value : 'light', text: text, match: match, enabled: true, isPreset: false });
+      const q = { id: 'r_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: parsed.cat || 'light', text: text, match: match, enabled: true, isPreset: false };
+      if (parsed.grp) q.grp = parsed.grp;
+      d.questions.push(q);
       trSave(d);
       if (textEl) textEl.value = '';
       if (matchEl) matchEl.value = '';
-      renderTRCatsInto(document.getElementById('tr-mine-cats'), false);
+      renderMineGroupsInto(document.getElementById('tr-mine-cats'), trMineOpt);
       toast('已添加吐槽字卡');
+    });
+  }
+  // v3.7.x：「＋分组」按钮（添加字卡卡片标题行）
+  const trNewGrp = document.getElementById('tr-new-grp');
+  if (trNewGrp) {
+    trNewGrp.addEventListener('click', () => {
+      const d = trLoad();
+      window.cardGroups.addFlow(d.groups, g => {
+        if (!g) return;
+        trSave(d);
+        (function refreshTRSelect() {
+          const catEl = document.getElementById('tr-new-cat');
+          if (catEl) {
+            catEl.innerHTML = window.cardGroups.catOptsHtml(TR_CAT_ORDER.map(k => [k, TR_CAT_LABEL[k]]), d.groups, catEl.value);
+            window.cardGroups.bindNewGrp(catEl, d.groups);
+          }
+        })();
+        if (trTab === 'mine') renderMineGroupsInto(document.getElementById('tr-mine-cats'), trMineOpt);
+        toast('已新建分组「' + g.name + '」');
+      });
     });
   }
   // 触发一次吐槽（供管理页按钮 / 更多功能面板共用）

@@ -304,6 +304,11 @@
     background: var(--dark-hover);
   }
 
+  /* v3.7.x：我的添加自定义分组区块深色适配 */
+  .mg-op { border-color: var(--dark-border-12); color: var(--muted); }
+  .mg-op:active { background: var(--dark-hover); color: var(--ink); }
+  .mg-subcat { border-top-color: var(--dark-border-12); }
+
   /* ---- tabbar.css ---- */
   /* v3.6.x：tabbar 硬编码白色背景在深色页面上形成突兀白条 + 间隙露出深色背景，
      视觉上"底部导航栏多出一块灰色长方形遮挡上方文字"——补深色覆盖。
