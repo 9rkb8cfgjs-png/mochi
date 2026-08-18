@@ -645,6 +645,22 @@
     });
   };
   restoreAppIconOrder();
+  // v3.6.x：图标隐藏/恢复——装修模式下可隐藏图标，清空桌面后自定义布局
+  const getHiddenIcons = () => {
+    try { return JSON.parse(store.get('hidden-icons') || '[]'); } catch (e) { return []; }
+  };
+  const setHiddenIcons = (arr) => {
+    store.set('hidden-icons', JSON.stringify(arr));
+  };
+  const applyHiddenIcons = () => {
+    const hidden = getHiddenIcons();
+    document.querySelectorAll('.app').forEach(app => {
+      const key = app.dataset.app;
+      if (hidden.indexOf(key) >= 0) app.style.display = 'none';
+      else app.style.display = '';
+    });
+  };
+  applyHiddenIcons();
   // v3.5.95：自定义图标大键可能只存在 IndexedDB（压缩失败兜底会存原始大图）→ 补读后重新恢复图标
   try {
     if (window.idbGetAllKeys) {
@@ -709,12 +725,13 @@
         store.set('app-icon-order-' + grid.dataset.app, JSON.stringify(order));
         toast(dir === 'up' ? '已上移' : '已下移');
       };
-      // 组装菜单：更换/清除（有自定义图时）+ 上移/下移
+      // 组装菜单：更换/清除（有自定义图时）+ 上移/下移 + 隐藏
       const pills = [];
       pills.push({ label: hasCustom ? '更换图片' : '上传图片', value: '1' });
       if (hasCustom) pills.push({ label: '清除图片', value: '2' });
       pills.push({ label: '上移', value: 'up' });
       pills.push({ label: '下移', value: 'down' });
+      pills.push({ label: '隐藏图标', value: 'hide' });
       if (window.openModal) {
         window.openModal('图标设置', '', (v) => {
           if (v === '1') pickFile();
@@ -724,6 +741,13 @@
             toast('已恢复默认图标');
           } else if (v === 'up') moveApp('up');
           else if (v === 'down') moveApp('down');
+          else if (v === 'hide') {
+            const hidden = getHiddenIcons();
+            if (hidden.indexOf(key) < 0) hidden.push(key);
+            setHiddenIcons(hidden);
+            app.style.display = 'none';
+            toast('已隐藏，可在装修栏恢复');
+          }
         }, { noInput: true, pills: pills });
       } else {
         pickFile();
@@ -1808,6 +1832,41 @@
   if (decorDone) {
     decorDone.addEventListener('click', exitDecor);
   }
+  // v3.6.x：恢复隐藏图标——装修栏"恢复图标"按钮，弹窗列出已隐藏图标，点击恢复
+  const decorRestoreIcon = document.getElementById('decor-restore-icon');
+  if (decorRestoreIcon) {
+    decorRestoreIcon.addEventListener('click', () => {
+      const hidden = getHiddenIcons();
+      if (!hidden.length) { toast('没有已隐藏的图标'); return; }
+      if (!window.openModal) return;
+      // 收集隐藏图标的标签
+      const items = [];
+      document.querySelectorAll('.app').forEach(app => {
+        if (hidden.indexOf(app.dataset.app) >= 0) {
+          const lbl = app.querySelector('.app-name');
+          items.push({ key: app.dataset.app, label: lbl ? lbl.textContent : app.dataset.app });
+        }
+      });
+      if (!items.length) { toast('没有已隐藏的图标'); return; }
+      const pills = items.map(it => ({ label: '恢复「' + it.label + '」', value: it.key }));
+      pills.push({ label: '全部恢复', value: '__all__' });
+      window.openModal('恢复隐藏图标', '', (v) => {
+        if (!v) return;
+        if (v === '__all__') {
+          setHiddenIcons([]);
+          applyHiddenIcons();
+          toast('已恢复全部图标');
+          return;
+        }
+        const arr = getHiddenIcons().filter(k => k !== v);
+        setHiddenIcons(arr);
+        applyHiddenIcons();
+        toast('已恢复');
+      }, { noInput: true, pills: pills });
+    });
+  }
+  // contact-switched 时重应用隐藏状态
+  document.addEventListener('contact-switched', applyHiddenIcons);
 
   // 点击底部 tab 切换页面时退出图标编辑模式
   const tabbar = document.querySelector('.tabbar');

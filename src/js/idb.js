@@ -197,6 +197,17 @@
     };
   };
 
+  // v3.6.x：聊天记录键判定——旧顶层键 xy-home-v2:chat-msgs + 各联系人命名空间键
+  // xy-home-v2:default:chat-msgs / xy-home-v2:cxxx:chat-msgs。聊天记录有独立的 LS
+  // 兜底快照机制（chat.js writeLsSnapshot ≤2MB，专属 chat.js 管理），idbRestore
+  // 与大键迁移都不得动它，否则聊天记录失去唯一 LS 备份。
+  function isChatMsgsKey(k) {
+    if (!k || typeof k !== 'string') return false;
+    if (k.indexOf('xy-home-v2:') !== 0) return false;
+    const tail = k.slice('xy-home-v2:'.length);
+    return tail === 'chat-msgs' || /^[^:]+:chat-msgs$/.test(tail);
+  }
+
   // 恢复：从 IndexedDB 读回 localStorage 缺失的键（初始化时调用）
   window.idbRestore = function (uidPrefix) {
     // v3.5.116：所有路径都设置就绪标志（空数据/无 IDB 也算就绪），
@@ -233,8 +244,11 @@
         k.indexOf(uidPrefix + 'music-file:') !== 0 &&
         // v3.6.x：聊天记录不回填 localStorage——chat.js 已改为只写 IndexedDB，
         // 恢复到这里会重新占满 5MB 配额（几千条带图记录是几十 MB），且读取
-        // 路径已不依赖 LS 快照（loadMsgs 直接 IDB 权威读）
-        k.indexOf(uidPrefix + 'chat-msgs') !== 0);
+        // 路径已不依赖 LS 快照（loadMsgs 直接 IDB 权威读）。
+        // 修复：原 `indexOf(uidPrefix+'chat-msgs')!==0` 匹配不到命名空间键
+        //（xy-home-v2:default:chat-msgs），改用 isChatMsgsKey 同时排除旧顶层键
+        // 与各联系人命名空间键
+        !isChatMsgsKey(k));
       if (!need.length) { finish(); return; }
       // v3.5.122：分批恢复（每批 8 个键，批间让出主线程）——v3.5.117 的单事务
       //   idbGetMany 会把几百个键（含几十 MB 大图）一次性读进内存，低端手机
@@ -289,6 +303,11 @@
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (!k || k.indexOf('xy-home-v2:') !== 0) continue;
+        // v3.6.x：聊天记录 LS 兜底快照（200KB~2MB 常见）绝不能当大键搬进 IDB 后
+        // 删 LS——否则 Edge 等浏览器杀后台/强制关闭时丢 IndexedDB 数据，聊天记录
+        // 连唯一备份都没了（vivo S16 Edge 实测：收藏/音乐/字卡/信/朋友圈都在
+        //（LS+IDB 双写），唯独聊天记录整体消失——聊天是唯一只写 IDB 的数据）
+        if (isChatMsgsKey(k)) continue;
         const v = localStorage.getItem(k);
         if (v && v.length > LS_BIG_LIMIT) bigKeys.push(k);
       }

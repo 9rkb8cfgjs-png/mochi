@@ -3,46 +3,49 @@
 /* 已用 var(--ink)/var(--muted)/var(--widget-bg) 等变量的元素由 base.css [data-theme=dark] 自动切换，此处不重复 */
 
 [data-theme="dark"] {
+  /* 通用色 */
+  --dark-card: #1e1e1e;
+  --dark-card-92: rgba(30,30,30,.92);
+  --dark-card-97: rgba(30,30,30,.97);
+  --dark-input: #2a2a2a;
+  --dark-border: rgba(255,255,255,.1);
+  --dark-border-12: rgba(255,255,255,.12);
+  --dark-soft: #aaa;
+  --dark-hover: rgba(255,255,255,.06);
 
   /* ---- home.css ---- */
-  .deco-avatar .ring { background:#2a2a2a; border-color:rgba(255,255,255,.1); }
-  .deco-avatar .lbl { color:#aaa; background:#1e1e1e; border-color:rgba(255,255,255,.12); }
-  .deco-avatar .lbl:hover { background:rgba(255,255,255,.06); }
+  .deco-avatar .ring { background:#2a2a2a; border-color:var(--dark-border); }
+  .deco-avatar .lbl { color:#aaa; background:var(--dark-card); border-color:var(--dark-border-12); }
+  .deco-avatar .lbl:hover { background:var(--dark-hover); }
   .deco-heart { color:#f0f0f0; }
-  .deco-love { border-top-color:rgba(255,255,255,.1); }
-
+  .deco-love { border-top-color:var(--dark-border); }
   .ck-txt { color:#aaa; }
   .ck-btn.done { background:#333; color:#777; }
-
   .we-ta { color:#aaa; }
   .we-sep { color:#555; }
-
-  .app .app-ico { background:rgba(40,40,40,.92); border-color:rgba(255,255,255,.1); }
-  .app-badge { background:#1e1e1e; color:#ccc; border-color:rgba(255,255,255,.2); }
+  .app .app-ico { background:rgba(40,40,40,.92); border-color:var(--dark-border); }
+  .app-badge { background:var(--dark-card); color:#ccc; border-color:rgba(255,255,255,.2); }
   .dot { background:rgba(255,255,255,.2); }
   .dot.active { background:var(--ink); }
   .desk-page-add { border-color:rgba(255,255,255,.2); background:rgba(30,30,30,.6); }
   .desk-lib { background:rgba(0,0,0,.6); }
-  .desk-lib-box { background:#1e1e1e; }
+  .desk-lib-box { background:var(--dark-card); }
   .desk-lib-sub { color:#888; }
   .desk-lib-item { border-color:#3a3a3a; }
   .desk-lib-item .dl-where { color:#777; }
   .desk-lib-item .dl-btn { background:#f0f0f0; color:#111; }
   .desk-lib-item .dl-btn:disabled { background:#333; color:#777; }
-
   .mw-bar { background:#3a3a3a; }
   .mw-fill { background:linear-gradient(90deg,#aaa,#f0f0f0); }
   .mw-knob { background:#f0f0f0; }
-  .mw-play { background:#2a2a2a; color:#f0f0f0; border-color:rgba(255,255,255,.1); }
+  .mw-play { background:#2a2a2a; color:#f0f0f0; border-color:var(--dark-border); }
   .mw-play svg { fill:#f0f0f0; }
   #mw-cover { background:#2a2a2a; border-color:rgba(255,255,255,.08); }
   #mw-cover .mw-cover-ico { color:#666; }
-
-  .week-day { background:rgba(255,255,255,.06); }
+  .week-day { background:var(--dark-hover); }
   .week-day.today { background:var(--ink); color:#111; }
   .week-day.today b { color:#111; }
-
-  .desk-msg { background:rgba(30,30,30,.96); border-color:rgba(255,255,255,.1); }
+  .desk-msg { background:rgba(30,30,30,.96); border-color:var(--dark-border); }
   .desk-msg-av { background:#2a2a2a; }
   .desk-msg-av svg { stroke:#777; }
 
@@ -54,168 +57,271 @@
   .ver { color:#666; }
   .ver-credit { color:#555; }
   .gs-row { border-bottom-color:rgba(255,255,255,.05); }
-  .stp-min, .stp-max { background:rgba(255,255,255,.08); color:#aaa; }
+  .stp-min, .stp-max { background:var(--dark-hover); color:#aaa; }
   .stp-min:active, .stp-max:active { background:var(--ink); color:#111; }
   .stp-val { border-bottom-color:rgba(255,255,255,.25); }
   .tk { background:#444; }
   .tk::before { background:#f0f0f0; }
   .toggle input:checked + .tk { background:var(--ink); }
-  .bg-notify-test { border-color:rgba(255,255,255,.15); background:#1e1e1e; color:#ccc; }
-  .bg-notify-test:active { background:rgba(255,255,255,.06); }
+  .bg-notify-test { border-color:rgba(255,255,255,.15); background:var(--dark-card); color:#ccc; }
+  .bg-notify-test:active { background:var(--dark-hover); }
 
-  /* ---- chat-main.css ---- */
-  .chat-head { background:transparent; }
+  /* ---- chat-main.css 全面覆盖 ---- */
+  .chat-head { background:var(--dark-card-92); border-bottom-color:var(--dark-border); }
   .msg-av { background:#2a2a2a; }
-  .chat-search-new { background:rgba(255,255,255,.06); }
+  .msg-bubble { border-color:var(--dark-border); }
+  .msg-in .msg-bubble { background:var(--msg-in-bg, var(--dark-card)); }
+  .msg-out .msg-bubble { color:var(--msg-out-ink, #f0f0f0); }
+  .msg-time, .msg-date-sep { color:var(--muted); }
+  .msg-date-sep span { background:var(--dark-card-92); color:var(--muted); }
+  .chat-search-new { background:var(--dark-hover); }
   .chat-search-new:active { background:rgba(255,255,255,.1); }
-  .chat-search-bar { background:var(--input-bg); border-color:var(--input-border); }
-  .chat-search-input { background:transparent; border-color:var(--input-border); color:var(--ink); }
-  .chat-search-input:focus { border-color:var(--ink); background:var(--input-bg); }
+  .chat-search-bar { background:var(--dark-input); border-color:var(--dark-border-12); }
+  .chat-search-input { background:#f6f6f6; border-color:var(--dark-border-12); color:var(--ink); }
+  .chat-search-input:focus { border-color:var(--ink); background:var(--dark-card); }
   .chat-search-go { background:var(--btn-bg); color:var(--btn-ink); }
-  .chat-search-results .tc-listitem:active { background:rgba(255,255,255,.05); }
+  .chat-search-results .tc-listitem:active { background:var(--dark-hover); }
   .chat-search-hl { background:#7a6a1f; color:#fff; }
   .chat-search-empty { color:#666; }
-  .chat-ask-input { background:var(--input-bg); border-color:var(--input-border); color:var(--ink); }
-  .chat-ask-type-btn { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
+  .chat-ask-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .chat-ask-input:focus { border-color:var(--ink); }
+  .chat-ask-type-btn { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--dark-soft); }
   .chat-ask-type-btn.sel { background:var(--ink); color:#111; border-color:var(--ink); }
-  .chat-ask-opts { background:var(--input-bg); border-color:var(--input-border); color:var(--ink); }
-  .chat-input-row { background:var(--glass-bg); border-color:var(--card-border); }
+  .chat-ask-opts { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .chat-ask-opts:focus { border-color:var(--ink); }
+  .chat-input-row { background:var(--dark-card-92); border-color:var(--dark-border); }
   .chat-input { color:var(--ink); }
   .chat-input:empty::before { color:var(--hint-ink); }
+  .chat-send { background:var(--send-bg, var(--btn-bg)); color:var(--send-ink, var(--btn-ink)); }
+  .chat-plus-btn { background:var(--dark-card-92); border-color:var(--dark-border); color:var(--ink); }
+  .more-panel { background:var(--dark-card-97); border-color:var(--dark-border); }
+  .more-tab { background:var(--dark-card-92); color:var(--dark-soft); border-color:var(--dark-border); }
+  .more-tab.sel { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
+  .more-tab:active { background:var(--dark-hover); }
 
-  .poke-card { background:var(--card-bg); border-color:var(--card-border); }
-  .poke-card-head { border-bottom-color:var(--card-border); }
-  .poke-card-close { background:rgba(255,255,255,.06); color:var(--ink); }
-  .poke-big { background:rgba(255,255,255,.06); }
+  .poke-card { background:var(--dark-card-97); border-color:var(--dark-border); }
+  .poke-card-head { border-bottom-color:var(--dark-border); }
+  .poke-card-close { background:var(--dark-hover); color:var(--ink); }
+  .poke-big { background:var(--dark-hover); }
   .poke-big:active { background:rgba(255,255,255,.1); }
-  .poke-groups .emoji-g-chip { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
-  .poke-groups .emoji-g-chip.sel { background:var(--ink); color:#111; border-color:var(--ink); }
-  .poke-input { background:var(--input-bg); border-color:var(--input-border); color:var(--ink); }
-  .poke-input:focus { border-color:var(--ink); background:var(--input-bg); }
+  .poke-groups .emoji-g-chip { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
+  .poke-groups .emoji-g-chip.sel { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
+  .poke-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .poke-input:focus { border-color:var(--ink); background:var(--dark-card); }
   .poke-input-go { background:var(--btn-bg); color:var(--btn-ink); }
 
-  .emoji-card { background:var(--card-bg); border-color:var(--card-border); }
-  .emoji-g-chip { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
-  .emoji-g-chip.sel { background:var(--ink); color:#111; border-color:var(--ink); }
-  .emoji-tab { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
+  .emoji-card { background:var(--dark-card-97); border-color:var(--dark-border); }
+  .emoji-g-chip { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
+  .emoji-g-chip.sel { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
+  .emoji-tab { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
   .emoji-tab.sel { background:var(--ink); color:#111; border-color:var(--ink); }
-  .emoji-tool { background:rgba(255,255,255,.06); color:var(--soft-ink); }
+  .emoji-tool { background:var(--dark-hover); color:var(--dark-soft); }
   .emoji-tool:active { background:rgba(255,255,255,.1); }
-  .emoji-batch { background:var(--card-bg); border-color:var(--card-border); }
-  .emoji-batch-btn { border-color:var(--pill-border); color:var(--soft-ink); }
-  .emoji-batch-btn:active { background:rgba(255,255,255,.05); }
+  .emoji-batch { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .emoji-batch-btn { border-color:var(--dark-border-12); color:var(--dark-soft); }
+  .emoji-batch-btn:active { background:var(--dark-hover); }
   .emoji-item { border-color:rgba(255,255,255,.06); }
-  .emoji-item:active { background:rgba(255,255,255,.05); }
+  .emoji-item:active { background:var(--dark-hover); }
   .emoji-item.sel { background:rgba(255,255,255,.08); }
   .emoji-empty { color:#666; }
+  .emoji-check { background:var(--btn-bg); color:var(--btn-ink); }
 
-  /* ---- chat-pages.css ---- */
+  .msg-voice-play { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .msg-voice-play.playing { background:var(--ink); color:#111; border-color:var(--ink); }
+  .msg-reactions { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .msg-reaction { background:var(--dark-hover); border-color:var(--dark-border-12); }
+  .msg-edit-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .cc-tool-bar { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .cc-tool-btn { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .cc-quote-preview { background:var(--dark-card-92); border-color:var(--dark-border); }
+
+  /* 通话面板 */
+  .call-mask { background:rgba(0,0,0,.7); }
+  .call-panel { background:var(--dark-card-97); border-color:var(--dark-border); }
+  .call-info { color:var(--ink); }
+  .call-name { color:var(--ink); }
+
+  /* ---- chat-pages.css 全面覆盖 ---- */
   .card-tabs { background:transparent; }
-  .card-tab { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
-  .card-tab.sel { background:var(--ink); color:#111; border-color:var(--ink); }
-  .card-search { background:var(--input-bg); border-color:var(--input-border); }
+  .card-tab, .cc-tab { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
+  .card-tab.sel, .cc-tab.sel { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
+  .card-search { background:var(--dark-input); border-color:var(--dark-border-12); }
   .card-search-input { background:transparent; color:var(--ink); }
-  .cc-item { background:var(--card-bg); border-color:var(--card-border); }
-  .cc-item:active { background:rgba(255,255,255,.04); }
+  .card-search-input::placeholder { color:var(--muted); }
+  .cc-item { background:var(--dark-card); border-color:var(--dark-border); }
+  .cc-item:active { background:var(--dark-hover); }
   .cc-item.sel { background:rgba(255,255,255,.06); }
-  .cc-ico { background:rgba(255,255,255,.06); }
-  .cc-tool { background:rgba(255,255,255,.06); color:var(--soft-ink); }
-  .cc-tool:active { background:rgba(255,255,255,.1); }
-  .cc-add { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.1); color:var(--soft-ink); }
+  .cc-ico { background:var(--dark-hover); }
+  .cc-tool { background:var(--dark-hover); color:var(--dark-soft); }
+  .cc-tool:active { background:var(--btn-bg); color:var(--btn-ink); }
+  .cc-tool-danger:active { background:#d64545; color:#fff; }
+  .cc-add { background:var(--dark-hover); border-color:var(--dark-border); color:var(--dark-soft); }
   .cc-empty { color:#666; }
-  .cc-group-header { color:var(--soft-ink); }
+  .cc-group-header { color:var(--dark-soft); }
+  .cc-g-chip { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
+  .cc-g-chip.sel { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
+  .cc-check { background:var(--dark-card); border-color:#555; }
+  .cc-check.on { background:var(--btn-bg); border-color:var(--btn-bg); }
+  .cc-check.on::after { color:var(--btn-ink); }
+  .cc-managing .cc-item::before { background:var(--btn-bg); color:var(--btn-ink); }
 
   .fav-empty { color:#666; }
-  .fav-tab { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
-  .fav-tab.sel { background:var(--ink); color:#111; border-color:var(--ink); }
+  .fav-tab { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
+  .fav-tab.sel { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
 
-  .mem-card { background:var(--card-bg); border-color:var(--card-border); }
-  .mem-tip { background:rgba(255,255,255,.04); }
-  .mem-extra { background:rgba(255,255,255,.04); }
-  .mem-extra .me-del { background:rgba(255,255,255,.06); color:var(--soft-ink); }
-  .mem-add { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.1); color:var(--soft-ink); }
+  .mem-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .mem-tip { background:var(--dark-hover); }
+  .mem-extra { background:var(--dark-hover); }
+  .mem-extra .me-del { background:var(--dark-hover); color:var(--dark-soft); }
+  .mem-extra .me-del:active { background:rgba(224,85,85,.15); color:#e05555; }
+  .mem-add { background:var(--dark-hover); border-color:var(--dark-border); color:var(--dark-soft); }
   .mem-add:active { background:rgba(255,255,255,.08); }
-  .mem-add-input { background:var(--input-bg); border-color:var(--input-border); color:var(--ink); }
-  .mem-cal-btn { background:rgba(255,255,255,.06); color:var(--soft-ink); }
+  .mem-add-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .mem-add-input:focus { border-color:var(--ink); }
+  .mem-cal-btn { background:var(--dark-hover); color:var(--dark-soft); }
   .mem-cal-btn:active { background:var(--ink); color:#111; }
-  .mem-cal-cell { background:rgba(255,255,255,.04); color:var(--soft-ink); }
+  .mem-cal-cell { background:var(--dark-hover); color:var(--dark-soft); }
   .mem-cal-cell:hover { background:rgba(255,255,255,.08); }
   .mem-cal-cell.sel { background:var(--ink); color:#111; }
-  .mem-type-pill { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
+  .mem-type-pill { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
   .mem-type-pill.sel { background:var(--ink); color:#111; border-color:var(--ink); }
-  .mem-add-cancel { border-color:rgba(255,255,255,.12); background:var(--card-bg); color:#aaa; }
+  .mem-add-cancel { border-color:var(--dark-border-12); background:var(--dark-card-92); color:#aaa; }
   .mem-add-ok { background:var(--ink); color:#111; }
 
-  .cal-card { background:var(--card-bg); border-color:var(--card-border); }
-  .cal-cat-tag { background:rgba(255,255,255,.08); color:var(--soft-ink); }
-  .cal-activity { background:rgba(255,255,255,.04); }
-  .cal-message { background:rgba(255,255,255,.04); color:var(--soft-ink); }
-  .cal-month-btn { background:rgba(255,255,255,.06); color:var(--soft-ink); }
+  .cal-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .cal-cat-tag { background:var(--dark-hover); color:var(--dark-soft); }
+  .cal-activity { background:var(--dark-hover); }
+  .cal-message { background:var(--dark-hover); color:var(--dark-soft); }
+  .cal-month-btn { background:var(--dark-hover); color:var(--dark-soft); }
   .cal-month-btn:active { background:var(--ink); color:#111; }
+  .cal-grid .cal-cell { background:var(--dark-hover); color:var(--dark-soft); }
+  .cal-grid .cal-cell.today { background:var(--ink); color:#111; }
+  .cal-edit-btn { background:var(--dark-card-92); color:var(--ink); }
+  .cal-edit-btn:active { background:rgba(255,255,255,.08); }
+  .cal-nav { background:var(--dark-card-92); color:var(--ink); }
 
-  .div-card { background:var(--card-bg); border-color:var(--card-border); }
-  .div-card-meaning { background:rgba(255,255,255,.04); }
+  .div-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .div-card-meaning { background:var(--dark-hover); }
+  .div-mode { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
+  .div-mode.sel { background:var(--ink); color:#111; border-color:var(--ink); }
   .div-btn { background:var(--btn-bg); color:var(--btn-ink); }
+  .div-result { background:var(--dark-card-92); border-color:var(--dark-border); }
 
-  .mail-item { background:var(--card-bg); border-color:var(--card-border); }
-  .mail-item:active { background:rgba(255,255,255,.04); }
+  .mail-item { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .mail-item:active { background:var(--dark-hover); }
   .mail-item.unread { background:rgba(255,255,255,.06); }
-  .mail-write-area { background:var(--input-bg); border-color:var(--input-border); color:var(--ink); }
+  .mail-compose { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .mail-compose .mail-paper { background:var(--dark-card); }
+  .mail-write-area, .mail-write-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .mail-tag.new { color:#fff; background:var(--btn-bg); border-color:var(--btn-bg); }
 
-  .feed-post { background:var(--card-bg); border-color:var(--card-border); }
-  .feed-comment { background:rgba(255,255,255,.04); }
-  .feed-input { background:var(--input-bg); border-color:var(--input-border); color:var(--ink); }
+  .feed-post { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .feed-comment { background:var(--dark-hover); }
+  .feed-input, .feed-write-area { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .feed-cover-edit { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .feed-all-card { background:var(--dark-card-92); border-color:var(--dark-border); }
 
-  .sm-item { background:var(--card-bg); border-color:var(--card-border); }
-  .sm-item:active { background:rgba(255,255,255,.04); }
+  .sm-item { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .sm-item:active { background:var(--dark-hover); }
+  .sm-song.active .sm-song-ico { background:var(--ink); color:#111; }
+  .music-batch { background:var(--dark-card-97); border-color:var(--dark-border); }
+  .music-batch-btn { background:var(--dark-card); color:var(--ink); border-color:var(--dark-border-12); }
+  .music-batch-btn.music-batch-del { background:var(--ink); color:#111; border-color:var(--ink); }
+  .music-upload-area { background:var(--dark-card-92); border-color:var(--dark-border); }
 
-  .stats-card { background:var(--card-bg); border-color:var(--card-border); }
-  .stats-bar-track { background:rgba(255,255,255,.06); }
+  .stats-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .stats-bar-track { background:var(--dark-hover); }
+  .stats-top-name { color:var(--ink); }
 
-  .tc-listitem { background:var(--card-bg); border-color:var(--card-border); }
-  .tc-listitem:active { background:rgba(255,255,255,.04); }
+  .tc-listitem { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .tc-listitem:active { background:var(--dark-hover); }
   .tc-q { color:var(--ink); }
-  .tc-opt { background:rgba(255,255,255,.04); color:var(--soft-ink); }
+  .tc-opt { background:var(--dark-hover); color:var(--dark-soft); }
   .tc-opt:active { background:rgba(255,255,255,.08); }
+  .tc-hint { color:var(--muted); }
+  .tc-li-q { color:var(--ink); }
 
   .qa-mask { background:rgba(0,0,0,.6); }
-  .qa-body { background:var(--card-bg); border-color:var(--card-border); }
+  .qa-body { background:var(--dark-card-97); border-color:var(--dark-border); }
   .qa-q { color:var(--ink); }
-  .qa-opt { background:rgba(255,255,255,.06); border-color:var(--pill-border); color:var(--soft-ink); }
+  .qa-opt { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
   .qa-opt:active { background:rgba(255,255,255,.1); }
 
   .gs-title { color:var(--muted); }
-  .lic-card, .cal-card.lic-card { background:var(--card-bg); border-color:var(--card-border); }
+  .lic-card, .cal-card.lic-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .lic-h, .lic-title { color:var(--ink); }
+  .lic-p, .lic-li { color:var(--dark-soft); }
 
-  /* 通用：白色背景元素兜底 */
+  /* 互动/查岗/决策 */
+  .it-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .it-btn { background:var(--dark-card-92); color:var(--ink); }
+  .it-btn:active { background:rgba(255,255,255,.08); }
+  .ck-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .ck-refresh { background:var(--dark-card-92); color:var(--ink); }
+  .ck-refresh:active { background:rgba(255,255,255,.1); }
+  .dc-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .dc-tab { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
+  .dc-tab.sel { background:var(--ink); color:#111; border-color:var(--ink); }
+
+  /* 头像库 */
+  .avlib-panel { background:var(--dark-card-97); border-color:var(--dark-border); }
+  .avlib-tab { background:var(--dark-hover); color:var(--dark-soft); }
+  .avlib-tab.active { background:var(--ink); color:#111; }
+  .avlib-grid-item { background:var(--dark-hover); }
+
+  /* 装修模式 */
+  .decor-bar { background:rgba(17,17,17,.9); color:#fff; }
+  .decor-add { background:var(--dark-card); color:#111; }
+  .decor-add:active { background:rgba(255,255,255,.15); }
+  .decor-done { background:transparent; color:#fff; }
+
+  /* 通用输入框 */
+  .card-search-input, .chat-search-input, .mail-write-area, .mail-write-input,
+  .feed-input, .feed-write-area, .mem-add-input, .poke-input,
+  .chat-ask-input, .chat-ask-opts, .msg-edit-input {
+    background: var(--dark-card);
+    color: var(--ink);
+  }
+  .card-search-input:focus, .chat-search-input:focus, .poke-input:focus,
+  .mem-add-input:focus, .chat-ask-input:focus, .chat-ask-opts:focus {
+    background: var(--dark-card);
+  }
+
+  /* 通用面板/卡片背景 */
   .cal-card, .div-card, .mail-card, .feed-card, .stats-card,
-  .mem-card, .sm-item, .mail-item, .feed-post, .tc-listitem, .cc-item {
-    background:var(--card-bg);
-  }
-
-  /* SVG stroke 兜底：模板里写死 stroke="#111111" 的图标 */
-  .ch-back svg, .set-row .ico svg, .app .app-ico svg,
-  .chat-search svg, .msg-av svg, .mw-btn, .mw-heart,
-  .cal-month-btn svg, .mem-cal-btn svg {
-    stroke:var(--ink);
-  }
-
-  /* 输入框 placeholder */
-  .card-search-input::placeholder,
-  .chat-search-input::placeholder,
-  .mail-write-area::placeholder,
-  .feed-input::placeholder,
-  .mem-add-input::placeholder,
-  .poke-input::placeholder,
-  .chat-ask-input::placeholder,
-  .chat-ask-opts::placeholder {
-    color:var(--muted);
+  .mem-card, .sm-item, .mail-item, .feed-post, .tc-listitem, .cc-item,
+  .it-card, .ck-card, .dc-card, .avlib-panel {
+    background: var(--dark-card-92);
   }
 
   /* 通用 hover/active 态 */
   .chat-search-new:active, .emoji-tool:active, .emoji-item:active,
   .cc-item:active, .mail-item:active, .sm-item:active, .tc-listitem:active,
-  .mem-cal-cell:hover, .emoji-batch-btn:active, .cc-tool:active {
-    background:rgba(255,255,255,.06);
+  .mem-cal-cell:hover, .emoji-batch-btn:active, .cc-tool:active,
+  .cal-edit-btn:active, .it-btn:active, .ck-refresh:active {
+    background: var(--dark-hover);
+  }
+
+  /* ---- tabbar.css ---- */
+  /* v3.6.x：tabbar 硬编码白色背景在深色页面上形成突兀白条 + 间隙露出深色背景，
+     视觉上"底部导航栏多出一块灰色长方形遮挡上方文字"——补深色覆盖 */
+  .tabbar { background:var(--dark-card-92); border-color:var(--dark-border-12); box-shadow:0 2px 8px rgba(0,0,0,.3); }
+  .tabbar .tab.active { background:var(--dark-hover); }
+
+  /* SVG stroke 兜底 */
+  .ch-back svg, .set-row .ico svg, .app .app-ico svg,
+  .chat-search svg, .msg-av svg, .mw-btn, .mw-heart,
+  .cal-month-btn svg, .mem-cal-btn svg, .more-tab svg {
+    stroke: var(--ink);
+  }
+
+  /* placeholder */
+  .card-search-input::placeholder,
+  .chat-search-input::placeholder,
+  .mail-write-area::placeholder, .mail-write-input::placeholder,
+  .feed-input::placeholder, .feed-write-area::placeholder,
+  .mem-add-input::placeholder, .poke-input::placeholder,
+  .chat-ask-input::placeholder, .chat-ask-opts::placeholder {
+    color: var(--muted);
   }
 }

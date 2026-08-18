@@ -1420,7 +1420,9 @@
     opts = opts || {};
     // v3.5.60：联系人普通消息（非系统提示）播放设置的音效
     if (!opts.special && window.playSfx) window.playSfx('in');
-    return addRec({ side: 'in', text: text, special: opts.special, quote: opts.quote, type: opts.type, img: opts.img, parts: opts.parts, askQuestion: opts.askQuestion, askStatus: opts.askStatus, choiceQuestion: opts.choiceQuestion, choiceOptions: opts.choiceOptions, choicePref: opts.choicePref, choiceCat: opts.choiceCat, choiceStatus: opts.choiceStatus, choiceAnswer: opts.choiceAnswer, choiceReply: opts.choiceReply, choiceMatch: opts.choiceMatch, curiousQuestion: opts.curiousQuestion, curiousQuick: opts.curiousQuick, curiousReplies: opts.curiousReplies, curiousFollowup: opts.curiousFollowup, curiousQid: opts.curiousQid, curiousCat: opts.curiousCat, curiousStatus: opts.curiousStatus, curiousAnswer: opts.curiousAnswer, curiousReply: opts.curiousReply, roastText: opts.roastText, roastCat: opts.roastCat, roastStatus: opts.roastStatus, roastAnswer: opts.roastAnswer, roastReply: opts.roastReply });
+    // v3.6.x：主动发送标识——标记 initiative，渲染时气泡左上角显示小爱心
+    // 注意：必须在此透传给 addRec（曾漏传导致爱心从不显示）
+    return addRec({ side: 'in', text: text, initiative: opts.initiative, special: opts.special, quote: opts.quote, type: opts.type, img: opts.img, parts: opts.parts, askQuestion: opts.askQuestion, askStatus: opts.askStatus, choiceQuestion: opts.choiceQuestion, choiceOptions: opts.choiceOptions, choicePref: opts.choicePref, choiceCat: opts.choiceCat, choiceStatus: opts.choiceStatus, choiceAnswer: opts.choiceAnswer, choiceReply: opts.choiceReply, choiceMatch: opts.choiceMatch, curiousQuestion: opts.curiousQuestion, curiousQuick: opts.curiousQuick, curiousReplies: opts.curiousReplies, curiousFollowup: opts.curiousFollowup, curiousQid: opts.curiousQid, curiousCat: opts.curiousCat, curiousStatus: opts.curiousStatus, curiousAnswer: opts.curiousAnswer, curiousReply: opts.curiousReply, roastText: opts.roastText, roastCat: opts.roastCat, roastStatus: opts.roastStatus, roastAnswer: opts.roastAnswer, roastReply: opts.roastReply });
   }
   function addOut(text) {
     return addRec({ side: 'out', text: text });
@@ -1927,7 +1929,7 @@ function partialRetractMsg(msgEl, side) {
             retractMsg(m, 'in');
             if (hit(c['rc-refix'])) {
               showTyping();
-              setTimeout(() => { hideTyping(); addIn(pick(pool.text) || '…'); }, 600);
+              setTimeout(() => { hideTyping(); addIn(pick(pool.text) || '…', { initiative: true }); }, 600);
             }
           }, 900);
         }

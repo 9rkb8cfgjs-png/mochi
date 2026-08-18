@@ -970,13 +970,29 @@
           if (v === undefined || v === null) {
             const lsV = store.get('music-file:' + m.id);
             if (lsV) { loadLocal(lsV); return; }
+            // v3.6.x：旧数据前缀兼容——联系人数据隔离改造前，本地歌存在
+            // 「xy-home-v2:music-file:<id>」（旧 uid 前缀，无 :default）；新代码
+            // 用 activePrefix 读不到 → 回退旧前缀，旧上传的本地歌仍能播
+            const legacyKey = 'xy-home-v2:music-file:' + m.id;
+            const legacyFallback = (v2) => {
+              if (currentId !== m.id) return;
+              if (v2 !== undefined && v2 !== null && v2 !== '') loadLocal(v2);
+              else failLocal();
+            };
+            const failLocal = () => { toast('音乐文件加载失败，可能已被清理'); currentId = null; updatePlayerBar(); renderLibrary(); };
+            const oldLs = localStorage.getItem(legacyKey);
+            if (oldLs) { legacyFallback(oldLs); return; }
+            if (window.activePrefix() !== 'xy-home-v2') {
+              window.idbGet(legacyKey).then(legacyFallback).catch(() => legacyFallback(null));
+              return;
+            }
             // v3.5.123：刚上传（idbSet 异步未完成）就点播放的竞态——延迟重试一次
             setTimeout(() => {
               if (currentId !== m.id) return; // 已切歌
               window.idbGet(key).then(v2 => {
                 if (currentId !== m.id) return; // 已切歌
                 if (v2 !== undefined && v2 !== null) loadLocal(v2);
-                else { toast('音乐文件加载失败，可能已被清理'); currentId = null; updatePlayerBar(); renderLibrary(); }
+                else failLocal();
               });
             }, 600);
           } else loadLocal(v);

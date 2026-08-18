@@ -11,6 +11,10 @@
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
 
 ### 2026-08-18
+- [本会话] 完成（深色模式 tabbar 覆盖，已构建 verify 10/10 + 深色截图视觉验证，**随本次提交**）：用户反馈字卡库页底部白色 tabbar 上面有一块灰色长方形遮挡上方文字。根因——`src/css/tabbar.css` 的 `.tabbar` 硬编码白底/黑边/浅阴影，而 `src/css/dark.css` 完全没有 `.tabbar` 的 `[data-theme="dark"]` 覆盖（dark.css 有 home/setting/chat-main/chat-pages 覆盖唯独漏 tabbar）。深色页面下 tabbar 仍是突兀白条 + 间隙露出深色背景 = 视觉"多出一块灰色长方形"；active 浅灰底 + svg 在白底上几乎看不见。修复：dark.css 新增 `/* ---- tabbar.css ---- */` 分组（.tabbar → dark-card-92 / dark-border-12 / 深阴影；.tab.active → dark-hover）。浅色模式零影响。深色 CDP 视觉验证通过。
+- [对方改动·本次统一构建随提交] `src/js/idb.js` 聊天记录键判定 `isChatMsgsKey`（修复原 `indexOf(uidPrefix+'chat-msgs')!==0` 不匹配命名空间键 `xy-home-v2:default:chat-msgs` 的 bug + 大键搬移跳过聊天记录保护 Edge 杀后台丢唯一备份）；`src/js/music-player.js` 音乐相关后续完善；`src/js/chat.js` `addIn` 透传 `initiative` 修复（漏传导致主动发送爱心标识从不显示）+ 撤回补发也加 initiative；`src/js/personalize.js` 桌面图标隐藏/恢复（装修模式「隐藏图标」+ 装修栏「恢复图标」按钮配套）；`src/template.html` 装修栏新增 `<button id="decor-restore-icon">` 配套按钮。
+
+### 2026-08-18
 - [本会话] 完成（桌面默认头像矢量图恢复，已构建 verify 10/10 + CDP 冒烟 7/7，**随本次提交**）：用户反馈桌面第一页顶部头像圆圈里没有聊天默认头像那种人形矢量图。根因——`template.html` 的 `.ring` 内本来有默认 SVG，但 `personalize.js` `applyAvatar()` 在「当前联系人未设置头像」时执行 `ring.innerHTML=''`，把模板默认 SVG 一并清掉（v3.6.x 多桌面「不残留旧头像 img」逻辑的副作用）；聊天页 `fillAvatar` 无头像时会主动重建 SVG 所以正常。修复：else 分支改为重建默认人形 SVG（与 template.html 一致 `#111111`）。CDP 7/7：无头像桌面两圈均渲染 SVG / 人形路径 / 有头像渲染 img / 清空恢复 SVG。涉及 `src/js/personalize.js`。
 - [对方改动·本次统一构建随提交] `music-player.js` 自动播放被拒后手势恢复（armAutoResume/disarmAutoResume，失败 toast 提示）+ `src/template.html` 小组件颜色图标换调色板图标（13:17 保存，已重新构建进产物）。
 
