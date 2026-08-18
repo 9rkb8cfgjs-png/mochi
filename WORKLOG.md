@@ -11,6 +11,12 @@
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
 
 ### 2026-08-18
+- [本会话] 完成（用户反馈两处，已构建 verify 10/10 + CDP 端到端 14/14，**随本次提交**）：
+  - **聊天设置里气泡颜色设置不见了**（我的/联系人气泡颜色+双方消息文字颜色）：根因——4 行 DOM（cs-out-bg/cs-out-ink/cs-in-bg/cs-in-ink）在 `src/template.html` 聊天设置页丢失（与 row-contacts 同因：此前模板被 checkout 回退+截断重写），`chat-settings.js` bindBubbleColorRow 匹配不到行静默 return。修复：`src/template.html`「气泡样式」组后新增「气泡颜色」组 4 行（默认值回显与 applySettings 一致）。
+  - **切换桌面后桌面仍显示上一个联系人的昵称**：根因——`personalize.js` bindLabel 只在启动时写一次 lbl-user/lbl-partner，contact-switched 监听器未重读。修复：监听器补刷新（新联系人无昵称回退默认「我 / TA」）。
+  - 涉及 `src/template.html`、`src/js/personalize.js`。已 build+verify+提交推送。
+
+### 2026-08-18
 - [本会话] 完成（主动发送爱心标识，已构建 verify 10/10 + CDP 探测 10/10，**本行记录随本次统一提交**）：需求——联系人主动发送消息的气泡左上角新增一枚极小爱心矢量图作为标识；回复设置→主动发送组新增开关可开/关。① `src/js/chat.js`：tryAutoSend 主动消息 `addIn(..., {initiative:true})`（撤回补发那条同步补 initiative:true）；`renderMsg` 对 `side==='in' && initiative && !retracted` 的消息读 `reply-as-badge`（默认 1）在气泡顶部注入 `.msg-hi-heart` SVG 爱心（Material heart 路径）；② `src/css/chat-main.css`：`.msg-bubble` 加 `position:relative`；`.msg-hi-heart` 绝对定位于气泡左上（top:-4 left:-5，14×14，`#ff4d6a` 粉红，pointer-events:none 不挡点击）；③ `src/template.html`：「免打扰」行后新增「主动发送爱心标识」开关 `as-badge`；④ `src/js/reply-settings.js`：DEFAULTS 加 `'as-badge':1`，开关数组（syncUI/保存/change）三处加 `as-badge`。CDP 10/10：产物含标记/SVG/主动消息爱心 14px 左上角粉红/正文正常/被动无爱心/拍一拍无爱心/关→无/开→恢复/设置页开关默认勾选且位于主动发送分组/点击落库 as-badge=0 且 UI 同步/无 JS 错误。涉及 `src/js/chat.js`、`src/css/chat-main.css`、`src/template.html`、`src/js/reply-settings.js`。已 build+verify+提交推送。
 
 ### 2026-08-18
@@ -18,6 +24,9 @@
 
 ### 2026-08-18
 - [本会话] 完成（深色模式，已构建 verify 10/10 + CDP 探测 15/15，**待提交**）：新增完整深色模式（两档手动开关：浅色/深色，不跟随系统）。① `src/css/base.css` :root 扩充语义变量集（--page-bg/--card-bg/--card-border/--input-bg/--btn-bg/--overlay-bg/--static-bg/--track-bg/--hint-ink/--soft-ink/--pill-border/--glass-bg/--bg-a/--bg-b/--shadow-strong 等）+ [data-theme="dark"] 覆盖块；base.css 通用组件（splash/modal/pwa-install/ce-box/glass/pill/cc-ip 等）硬编码色替换为变量；② 新建 `src/css/dark.css`（加进 build.mjs cssFiles 最后）用 [data-theme="dark"] 选择器覆盖 home/setting/chat-main/chat-pages 中硬编码色（已用 var 的元素由 base.css 自动切换，不重复）；③ `src/template.html` 美化页顶部新增「深色模式」行（row-theme-mode）+ head 加早期内联脚本防 FOUC；④ `src/js/personalize.js` 主题切换逻辑（全局键 xy-home-v2:theme-mode，不按联系人隔离）；⑤ `src/js/contacts.js` EXCLUDE 加 'theme-mode'（防 migrateLegacy 把全局键迁到 default 命名空间）。CDP 15/15：行存在/初始浅色/点击切深色/data-theme=dark/CSS 变量切换/持久化/刷新后仍深色/切回浅色/变量恢复。涉及 `src/css/base.css`、`src/css/dark.css`（新建）、`src/template.html`、`src/js/personalize.js`、`src/js/contacts.js`、`build.mjs`。**未提交**。
+
+  - **内置壁纸预设**（`src/template.html` + `src/js/personalize.js`）：美化页新增「内置壁纸预设」行，8 个 CSS 渐变预设（晨曦/暮色/森林/暖阳/极简/星空/樱花/海洋）+ 清除预设，per-contact 存储 `phone-bg-preset`，与上传图片互斥（选预设清图片、上传图片清预设），contact-switched 重应用。
+  - CDP 25/25 + 10/10：全部功能验证通过。涉及 `src/template.html`、`src/js/personalize.js`、`src/js/contacts.js`、`src/css/base.css`、`src/css/home.css`。**未提交**。
 
 ### 2026-08-18
 - [本会话] 完成（用户反馈「朋友圈联系人主动发布的动态里字卡大量重复一直重复」，已构建 verify 10/10，**待提交**）：根因——`src/js/feed.js` `genPostContent`（TA 动态）与 `genMixedCards`（TA 评论/回复）每张卡都用独立 `rand()` 有放回抽取，字卡池小（尤其自定义字卡少/默认池）而每条动态默认 4~15 张卡时，同一张卡被反复抽中拼成「爱你爱你爱你…」式重复长文。修复：①新增 `makePicker(arr)` 无重复抽取器（洗牌取完一轮再重新洗牌，同轮不抽同一张卡）；②新增 `uniqArr` 去重（字卡库同内容重复条目不再放大重复率）；③两个生成器按类别（文字/颜文字/emoji/表情包/图片/内置兜底池）各自改用 picker，概率逻辑与参数完全不变，仅抽卡方式变无放回；④删除不再使用的 `rand()`。纯逻辑改动不涉及布局/样式。涉及 `src/js/feed.js`。已 `node build.mjs` + `npm run verify` 10/10。**未提交**，等待统一提交/部署。

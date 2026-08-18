@@ -2484,11 +2484,12 @@
     try { renderExtras(); } catch (e) {}
     // v3.6.x：桌面双方昵称（lbl-user / lbl-partner）只在加载时写一次，
     // 切换联系人后必须按新桌面的 store 重新渲染，否则残留上一个联系人的名字
+    // （新联系人未设昵称时回退默认「我 / TA」）
     try {
       const lu = document.getElementById('lbl-user');
-      if (lu) { const v = store.get('lbl-user'); if (v) lu.textContent = v; }
+      if (lu) { const v = store.get('lbl-user'); lu.textContent = v || '我'; }
       const lp = document.getElementById('lbl-partner');
-      if (lp) { const v = store.get('lbl-partner'); if (v) lp.textContent = v; }
+      if (lp) { const v = store.get('lbl-partner'); lp.textContent = v || 'TA'; }
     } catch (e) {}
   });
 })();
