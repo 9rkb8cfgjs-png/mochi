@@ -11,6 +11,9 @@
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
 
 ### 2026-08-18
+- [本会话] 完成（去掉 .phone 背景 radial 黑晕——导航栏形状旁灰彻底消除，已构建 verify 10/10 + 三页 CDP 采样验证，**随本次提交**）：用户反馈"恢复原形状后形状旁边依旧有灰色，字卡库/设置页上下滑动会遮挡"。根因——`src/css/base.css` `.phone` 背景除 linear 渐变外还有三个 radial-gradient 微黑晕（`circle at 30% 90% rgba(0,0,0,.05)` 主体 + `18% 12%` 尾巴，恰好压在页面底部导航栏区域的 .phone padding 区），黑晕叠白 = 淡灰；此前只把 `--bg-b` 改白，radial 仍残留。修复：删除 .phone 背景全部三个 radial-gradient，只留 `linear-gradient(168deg, var(--bg-a), var(--bg-b))`（--bg-b 已 #ffffff → 纯白）。深色模式黑晕本就不可见无影响；壁纸机制（background-image 覆盖）不受影响。CDP 三页验证（主页/字卡库滚动到底/设置页滚动到底）：tabbar 四周采样全部纯白渐变、无灰。涉及 `src/css/base.css`。
+
+### 2026-08-18
 - [本会话] 完成（tabbar 恢复圆角悬浮原形状 + 背景纯白根治去灰，已构建 verify 10/10 + CDP 采样验证，**随本次提交**）：用户反馈"桌面里的底部栏形状变了，和原来不一样"——24c157c 的满宽贴底方形不满足预期。恢复方案：①`src/css/tabbar.css` `.tabbar` 恢复原样（margin-top:10px、border-radius:22px、去负 margin/方形）；②`src/css/base.css` 浅色 `--bg-b` 由 `#f2f2f2` 改 `#ffffff`（.phone 渐变底部变纯白）——tabbar 悬浮卡片的上/下/左右留白与圆角外全部是白色，**形状恢复且无灰，两诉求兼得**（此前去灰靠"满宽贴底方形"改变形状，现改为背景色根治）。深色模式 --bg-b #0e0e0e 不变；聊天页 --page-bg-grad #f6f6f6 不变。CDP 验证：主页/字卡库页 tabbar rect=18,762 354x64、radius=22px、四周白色（--bg-b=#ffffff）。涉及 `src/css/tabbar.css`、`src/css/base.css`。⚠️ 全局视觉变化：浅色模式页面背景从"白→淡灰渐变"变为纯白（更干净），含主页/设置页/字卡库页。
 
 ### 2026-08-18

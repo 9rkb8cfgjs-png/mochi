@@ -138,10 +138,11 @@ html { margin:0; padding:0; }
   border-radius:44px; padding:16px 18px 18px;
   display:flex; flex-direction:column; overflow:hidden;
   box-shadow:0 30px 70px rgba(0,0,0,.1), inset 0 0 0 1px var(--phone-inset);
+  /* v3.6.x：去掉 radial 微黑晕——原三个 radial-gradient（尤其 30% 90% 处
+     rgba(0,0,0,.05)）叠加在渐变上，页面底部（底部导航栏悬浮卡片左右的
+     .phone padding 区 / 下方）形成淡灰，用户反馈"形状旁边有灰色、滑动遮挡"；
+     去掉后浅色背景纯白（--bg-b 已为 #ffffff），深色模式黑晕本就不可见无影响 */
   background:
-    radial-gradient(circle at 18% 12%, rgba(0,0,0,.04), transparent 45%),
-    radial-gradient(circle at 85% 30%, rgba(0,0,0,.03), transparent 50%),
-    radial-gradient(circle at 30% 90%, rgba(0,0,0,.05), transparent 50%),
     linear-gradient(168deg, var(--bg-a, #ffffff) 0%, var(--bg-b, #f2f2f2) 100%);
 }
 
