@@ -540,6 +540,7 @@
 /* 占卜页 */
 .div-scroll { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; padding:0 18px; }
 .div-scroll::-webkit-scrollbar { display:none; }
+.div-setup { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
 .div-hero {
   border-radius:20px; padding:22px 18px; text-align:center; margin-bottom:14px;
   background:rgba(255,255,255,.92);
@@ -568,10 +569,10 @@
 .div-input {
   width:100%; border:1px solid rgba(0,0,0,.1); border-radius:12px;
   padding:12px 14px; font-size:13px; font-family:inherit; outline:none;
-  background:rgba(255,255,255,.92); color:var(--ink);
+  background:rgba(255,255,255,.92); color:var(--ink); margin-bottom:12px; box-sizing:border-box;
 }
-.div-result { min-height:120px; display:flex; flex-direction:column; gap:10px; }
-.div-result-empty { color:#c0c0c0; font-size:12px; text-align:center; padding:30px 0; }
+.div-result { min-height:80px; display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+.div-result-empty { color:#c0c0c0; font-size:12px; text-align:center; padding:20px 0; }
 /* 牌面：灰底正方形框（图标 + 牌名在框内，寓意在框外下方） */
 .div-card-face {
   width:100%; aspect-ratio:1; border-radius:14px;

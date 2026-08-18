@@ -205,10 +205,15 @@
     let lock = false;
     let sliderCfg = null;
     let sliderInitPill = null;
+    // v3.6.x：用户是否真的点过 pill——区分「opts.pill 预设值」与「用户主动选择」。
+    // 修复：今天的心情/字体大小等「pills + 输入框 + pill 预设」弹窗里，用户输入文字点确定时，
+    // fire() 的 pills 分支误把预设的旧 pillVal 传回回调，输入的文本被丢弃（卡片不更新）。
+    let pillClicked = false;
     window.openModal = function (t, v, fn, opts) {
       opts = opts || {};
       pillsOnOk = opts.pillsOnOk || null;
       noInput = !!(opts.noInput);
+      pillClicked = false;
       // v3.6.x：opts.lock——锁定弹窗（换头像邀请等必须做出选择）：
       // 点遮罩不关闭、隐藏取消按钮，只能走确定（含 pills/输入）路径
       lock = !!(opts.lock);
@@ -287,6 +292,7 @@
             Array.prototype.forEach.call(pillsEl.children, c => c.classList.remove('on'));
             b.classList.add('on');
             pillVal = p.value;
+            pillClicked = true;
           });
           pillsEl.appendChild(b);
         });
@@ -364,7 +370,10 @@
         cb(parseInt(sliderRange.value, 10));
         return;
       }
-      if (pillsEl && !pillsEl.hidden && (pillVal !== null || noInput)) {
+      // v3.6.x：pills 分支只在「用户点过 pill」或「纯 pill 弹窗（noInput）」时走——
+      // 用 pillClicked 判断（之前用 pillVal !== null 会被 opts.pill 预设值干扰，
+      // 导致「今天的心情」等弹窗输入文字点确定时旧 pill 值覆盖输入）
+      if (pillsEl && !pillsEl.hidden && (pillClicked || noInput)) {
         if (pillsOnOk) pillsOnOk(pillVal);
         cb(pillVal);
         return;

@@ -3506,7 +3506,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.100 · 部署于 2026-08-18 22:52</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.102 · 部署于 2026-08-18 22:58</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4217,7 +4217,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.100</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.102</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -4966,56 +4966,33 @@ color: var(--muted);
         <span class="ch-name">占卜</span>
       </div>
       <div class="div-scroll">
-        <div class="div-hero glass">
-          <div class="div-hero-ico">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10.3" r="6.6"/><path d="M12 8l.75 1.95 1.95.75-1.95.75L12 13.4l-.75-1.95-1.95-.75 1.95-.75z"/><path d="M9.4 7.9l-.5 1.4"/><path d="M6.4 16.8h11.2M7.8 20.2h8.4"/></svg>
+        <div class="div-setup">
+          <div class="div-modes" id="div-modes">
+            <button class="div-mode sel" data-mode="tarot">塔罗</button>
+            <button class="div-mode" data-mode="lenormand">雷诺曼</button>
           </div>
-          <div class="div-hero-t">占卜</div>
-          <div class="div-hero-s">混合 · 塔罗 · 雷诺曼</div>
-        </div>
-
-        <div class="div-card glass">
-          <div class="div-label">占卜模式</div>
-      <div class="div-modes" id="div-modes">
-        <button class="div-mode sel" data-mode="tarot">塔罗牌</button>
-        <button class="div-mode" data-mode="lenormand">雷诺曼</button>
-      </div>
-        </div>
-
-        <div class="div-card glass">
-          <div class="div-label">张数</div>
           <div class="div-modes div-counts" id="div-counts">
             <button class="div-mode sel" data-count="3">3 张</button>
             <button class="div-mode" data-count="1">1 张</button>
           </div>
-          <div class="div-desc" id="div-mode-desc">塔罗/雷诺曼：1 张（运势/回复）、3 张（过去·现在·未来）</div>
         </div>
 
         <div class="div-card glass">
-          <div class="div-label">心之所问</div>
           <input type="text" class="div-input" id="div-question" placeholder="写下你的问题（可选）">
-        </div>
-
-        <div class="div-card glass">
-          <div class="div-label">发送设置</div>
           <label class="div-switch-row">
-            <span class="div-switch-t">抽牌结果自动发送到聊天</span>
+            <span class="div-switch-t">抽完自动发到聊天</span>
             <span class="div-switch"><input type="checkbox" id="div-auto-send"><span class="div-switch-knob"></span></span>
           </label>
-          <div class="div-desc">开启后，每次抽牌完成会自动把占卜结果发到聊天里（每个联系人独立记忆）</div>
-        </div>
-
-        <div class="div-card glass">
-          <div class="div-label">抽牌结果</div>
-          <div class="div-result" id="div-result">
-            <div class="div-result-empty">点击下方按钮开始抽牌</div>
-          </div>
         </div>
 
         <button class="div-draw" id="div-draw">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
           抽牌
         </button>
+
+        <div class="div-result" id="div-result">
+          <div class="div-result-empty">点击上方按钮开始抽牌</div>
+        </div>
 
         <div class="div-card glass" style="margin-top:14px">
           <div id="div-history"></div>
@@ -7229,10 +7206,12 @@ let selectedGroup = null;
 let lock = false;
 let sliderCfg = null;
 let sliderInitPill = null;
+let pillClicked = false;
 window.openModal = function (t, v, fn, opts) {
 opts = opts || {};
 pillsOnOk = opts.pillsOnOk || null;
 noInput = !!(opts.noInput);
+pillClicked = false;
 lock = !!(opts.lock);
 if (cancelBtn) cancelBtn.hidden = lock;
 title.textContent = t;
@@ -7303,6 +7282,7 @@ b.addEventListener('click', () => {
 Array.prototype.forEach.call(pillsEl.children, c => c.classList.remove('on'));
 b.classList.add('on');
 pillVal = p.value;
+pillClicked = true;
 });
 pillsEl.appendChild(b);
 });
@@ -7371,7 +7351,7 @@ return;
 cb(parseInt(sliderRange.value, 10));
 return;
 }
-if (pillsEl && !pillsEl.hidden && (pillVal !== null || noInput)) {
+if (pillsEl && !pillsEl.hidden && (pillClicked || noInput)) {
 if (pillsOnOk) pillsOnOk(pillVal);
 cb(pillVal);
 return;
@@ -17813,6 +17793,7 @@ const editing = Array.from(document.querySelectorAll('.app-grid')).some(g => g.c
 if (editing) return;
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 page.hidden = false;
+renderHistOnOpen();
 });
 }
 const divBack = document.getElementById('div-back');

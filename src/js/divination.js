@@ -534,6 +534,7 @@
       if (editing) return;
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       page.hidden = false;
+      renderHistOnOpen();
     });
   }
   const divBack = document.getElementById('div-back');
