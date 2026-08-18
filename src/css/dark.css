@@ -304,8 +304,9 @@
 
   /* ---- tabbar.css ---- */
   /* v3.6.x：tabbar 硬编码白色背景在深色页面上形成突兀白条 + 间隙露出深色背景，
-     视觉上"底部导航栏多出一块灰色长方形遮挡上方文字"——补深色覆盖 */
-  .tabbar { background:var(--dark-card-92); border-color:var(--dark-border-12); box-shadow:0 2px 8px rgba(0,0,0,.3); }
+     视觉上"底部导航栏多出一块灰色长方形遮挡上方文字"——补深色覆盖。
+     box-shadow 与浅色模式同步去掉（纯色背景上投影即"灰"，不必要） */
+  .tabbar { background:var(--dark-card-92); border-color:var(--dark-border-12); }
   .tabbar .tab.active { background:var(--dark-hover); }
 
   /* SVG stroke 兜底 */

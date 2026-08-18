@@ -11,7 +11,9 @@
   background:#ffffff;
   border:1px solid rgba(0,0,0,.12);
   border-radius:22px; padding:8px 6px; z-index:2;
-  box-shadow:0 2px 8px rgba(0,0,0,.05);
+  /* v3.6.x：去掉 box-shadow——纯白背景上 0 2px 8px rgba(0,0,0,.05) 投影
+     就是卡片下方一道淡灰（用户反馈"形状旁边还有一点灰色"）；
+     有边框已足够区分，无投影更干净（深色模式 dark.css 覆盖同去） */
 }
 .tabbar .tab {
   display:flex; align-items:center; justify-content:center; flex:1;

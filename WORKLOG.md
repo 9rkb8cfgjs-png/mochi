@@ -11,6 +11,9 @@
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
 
 ### 2026-08-18
+- [本会话] 完成（tabbar 去投影 + 设置页/gs-scroll 底部留白——"还有一点灰/滑动遮挡"收尾，已构建 verify 10/10 + CDP 验证，**随本次提交**）：用户反馈去 radial 后"依旧还是有一点"，且在字卡库/设置页上下滑动遮挡。定位两处残留：①`src/css/tabbar.css` tabbar 自身 `box-shadow:0 2px 8px rgba(0,0,0,.05)`——纯白背景上投影即卡片下方一道淡灰（"形状旁边还有一点灰"），去掉（`dark.css` 深色覆盖同步去）；②设置页 `.page` 直接滚动（无 gs-scroll 容器），滚动到底最后一行距 tabbar 仅 14px（page padding 4px + tabbar margin 10px）视觉"被压住/遮挡"——`setting.css` 给 `#page-setting` 加 `padding-bottom:20px`（滚动到底最后一行距 tabbar 实测 86px）；同时给 `.gs-scroll` 加 `padding-bottom:20px`（日历/占卜等 gs-scroll 页面同样受益）。字卡库页已修（gap 44px）。CDP 验证：tabbar 下方无 shadow、设置页最后一行完整可见。涉及 `src/css/tabbar.css`、`src/css/dark.css`、`src/css/setting.css`。
+
+### 2026-08-18
 - [本会话] 完成（去掉 .phone 背景 radial 黑晕——导航栏形状旁灰彻底消除，已构建 verify 10/10 + 三页 CDP 采样验证，**随本次提交**）：用户反馈"恢复原形状后形状旁边依旧有灰色，字卡库/设置页上下滑动会遮挡"。根因——`src/css/base.css` `.phone` 背景除 linear 渐变外还有三个 radial-gradient 微黑晕（`circle at 30% 90% rgba(0,0,0,.05)` 主体 + `18% 12%` 尾巴，恰好压在页面底部导航栏区域的 .phone padding 区），黑晕叠白 = 淡灰；此前只把 `--bg-b` 改白，radial 仍残留。修复：删除 .phone 背景全部三个 radial-gradient，只留 `linear-gradient(168deg, var(--bg-a), var(--bg-b))`（--bg-b 已 #ffffff → 纯白）。深色模式黑晕本就不可见无影响；壁纸机制（background-image 覆盖）不受影响。CDP 三页验证（主页/字卡库滚动到底/设置页滚动到底）：tabbar 四周采样全部纯白渐变、无灰。涉及 `src/css/base.css`。
 
 ### 2026-08-18

@@ -25,8 +25,16 @@
   padding:0 0 8px;
 }
 
+/* v3.6.x：设置页底部留白——.page 直接滚动（无 gs-scroll 容器），
+   滚动到底最后一行设置项距底部导航栏仅 14px（page padding 4px + tabbar margin 10px），
+   视觉"被压住/遮挡"；补 20px 底部 padding，最后一行完整可见 */
+#page-setting { padding-bottom:20px; }
+
 /* ===== 通用设置页（聊天触发概率） ===== */
-.gs-scroll { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; }
+.gs-scroll { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none;
+  /* v3.6.x：底部留白——滚动到底最后一行设置项不再紧贴底部导航栏
+     （原 0 padding，最后一行距 tabbar 仅 14px，视觉"被压住/遮挡"） */
+  padding-bottom:20px; }
 .gs-scroll::-webkit-scrollbar { display:none; }
 .gs-title {
   font-size:13px; font-weight:700; letter-spacing:1px;
