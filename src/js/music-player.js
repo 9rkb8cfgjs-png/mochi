@@ -323,15 +323,18 @@
   //（CDN 域名支持 https，已实测）。API 直连无 CORS 头，走 allorigins 代理兜底。
   function fetchNeteaseUrl(id, cb) {
     const api = 'https://music.163.com/api/song/enhance/player/url?ids=[' + encodeURIComponent(String(id)) + ']&br=320000';
+    // v3.6.x：多代理候选——allorigins 在中国大陆可能不通，补 codetabs 备选；
+    // 任一返回即可，超时 6 秒逐个尝试
     const sources = [
       api,
-      'https://api.allorigins.win/raw?url=' + encodeURIComponent(api)
+      'https://api.allorigins.win/raw?url=' + encodeURIComponent(api),
+      'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(api)
     ];
     let si = 0;
     const tryFetch = (url, next) => {
       let controller;
       try { controller = new AbortController(); } catch (e) { controller = null; }
-      const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 8000);
+      const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 6000);
       fetch(url, controller ? { signal: controller.signal } : undefined)
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(d => {
@@ -1008,7 +1011,17 @@
         if (audio.currentTime > 0) return;
         if (playRejected) return; // 等手势恢复播放，不误判外链失败
         if (audio.paused) return; // 用户主动暂停，不兜底
-        // v3.6.x：挂起（无 error 无进度）且是网易云歌曲 → 先拉 https 直链重播
+        // v3.6.x：关键修复——「还在加载」不算停滞。Edge 移动端加载网易云外链
+        // （outer/url 302 → CDN）可能需 10~30 秒缓冲，原 12 秒定时器到点时
+        // currentTime 仍为 0，会把「正在缓冲的完整歌曲」误判为失败切到内置旋律。
+        // readyState>0（有元数据）/ buffered 有数据 / networkState=LOADING → 重新计时再等。
+        try {
+          if (audio.readyState > 0 || (audio.buffered && audio.buffered.length > 0) || audio.networkState === 2) {
+            armStallGuard(m);
+            return;
+          }
+        } catch (e) {}
+        // 确认无加载活动（真挂起/被拦）：网易云歌曲先拉 https 直链重播
         if (m && m.neteaseId && !httpsRetrying) {
           if (retryWithHttpsUrl(m)) return;
         }

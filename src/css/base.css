@@ -235,6 +235,12 @@ html { margin:0; padding:0; }
   }
   .phone .page.full .chat-head { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
   .phone .page.full { padding-bottom: 0; }
+  /* v3.6.x：聊天页背景统一为页面渐变底色（浅色 #f6f6f6 / 深色 #1a1a1a）——
+     原 #page-chat 背景透明，透出 .phone 渐变灰底（#f2f2f2 叠加 body #e9e9e9），
+     输入栏（手机通栏贴底 / 桌面悬浮圆角）四周出现突兀灰条灰角（用户反馈
+     "聊天页底部栏之外还有灰色，滑动遮挡消息"）；统一背景后输入栏四周与
+     消息区同色，灰条消失，消息气泡（白/深色）对比正常。全局生效（两种模式） */
+  #page-chat { background: var(--page-bg-grad); }
   /* v3.5.116：键盘弹起适配改由 mobile-adapt.js 统一处理——
      interactive-widget 只在根元素生效，写在 .phone 上无效（死代码）；
      JS 用 visualViewport 锁定 .phone 到可视高度并 fixed 顶对齐，跨设备统一。 */

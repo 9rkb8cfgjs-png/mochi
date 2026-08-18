@@ -1,5 +1,17 @@
 // ===== 功能：PWA（安装到桌面/主屏 + beforeinstallprompt 安装按钮 + 静默更新最新版）=====
 (function () {
+  // v3.6.x：请求持久化存储——iOS Safari / 安卓 Chrome 在设备存储紧张或配额记账异常时
+  // 会直接清掉整个源（origin）的网站数据（localStorage + IndexedDB 一起没，用户表现
+  // 为「每次重新打开都是全新、聊天记录全丢」；WebKit 有同款已知 bug：
+  // bugs.webkit.org/266559——配额未初始化导致所有网站的 localStorage/IDB 周期性被清）。
+  // persist() 获批后该源数据豁免「存储压力清理」，是本应用（数据全在本地）唯一
+  // 的官方防线；iOS Safari 15.4+ 支持，获批失败静默忽略，不影响任何功能。
+  try {
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().catch(function () {});
+    }
+  } catch (e) {}
+
   function toast(msg) {
     let t = document.getElementById('cc-toast');
     if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
@@ -55,6 +67,57 @@
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') checkVersion();
     });
+  })();
+
+  // ================= v3.6.x：定期备份提醒（本地数据只存在浏览器，Safari 可能意外清空） =================
+  // iOS Safari 会因存储压力/系统 bug（WebKit#266559）清掉整个源的 localStorage+IDB，
+  // 用户表现为「每次重开数据全丢」。代码无法阻止系统级清空，唯一防线是定期导出备份文件
+  //（存到 iOS「文件」App，清空后能一键恢复）。距上次成功导出超 7 天且近 7 天未提醒过时，
+  // 在顶部显示提醒条（复用 ver-update-bar 样式，更新提示优先显示时让位）。
+  (function () {
+    const bar = document.getElementById('backup-remind-bar');
+    if (!bar) return;
+    const G = 'xy-home-v2:';
+    const DAY = 86400000;
+    const INTERVAL = 7 * DAY;
+    function ts(key) { try { return Number(localStorage.getItem(G + key)) || 0; } catch (e) { return 0; } }
+    function show(days, everBacked) {
+      // 版本更新提示条优先（两栏同位置 fixed，同时显示会重叠）
+      const upd = document.getElementById('ver-update-bar');
+      if (upd && !upd.hidden) return;
+      const txt = document.getElementById('backup-remind-txt');
+      if (txt) {
+        txt.textContent = everBacked
+          ? '距上次导出备份已 ' + days + ' 天，数据只存本机浏览器，建议导出备份'
+          : '数据只存在本机浏览器里，建议定期导出备份（防浏览器意外清除）';
+      }
+      bar.hidden = false;
+      try { localStorage.setItem(G + '__last-backup-remind', String(Date.now())); } catch (e) {}
+    }
+    function tryShow() {
+      if (window.__resetting) return;
+      const lastBackup = ts('__last-backup');
+      const lastRemind = ts('__last-backup-remind');
+      if (lastRemind && Date.now() - lastRemind < INTERVAL) return; // 近期已提醒过
+      if (lastBackup && Date.now() - lastBackup < INTERVAL) return; // 刚备份过
+      show(lastBackup ? Math.max(Math.floor((Date.now() - lastBackup) / DAY), 7) : 7, !!lastBackup);
+    }
+    function gated() {
+      // 全新安装/数据被清空的空状态不提醒（没有可备份的数据，避免噪音）
+      try { if (!localStorage.getItem(G + 'contacts')) return; } catch (e) {}
+      tryShow();
+    }
+    document.addEventListener('mochi-restore-done', gated);
+    const poll = setInterval(function () {
+      if (window.__mochiDataReady) { clearInterval(poll); gated(); }
+    }, 300);
+    const go = document.getElementById('backup-remind-go');
+    if (go) go.addEventListener('click', function () {
+      bar.hidden = true;
+      try { if (window.runBackupExport) window.runBackupExport(); } catch (e) {}
+    });
+    const close = document.getElementById('backup-remind-close');
+    if (close) close.addEventListener('click', function () { bar.hidden = true; });
   })();
 
   if ('serviceWorker' in navigator) {

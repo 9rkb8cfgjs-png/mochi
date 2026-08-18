@@ -256,8 +256,8 @@
     // 搜索：页内输入框直接过滤（v3.6.x：与自定义聊天字卡一致，不再弹窗，输入即筛，清空即恢复）
     const rcSearchInput = document.getElementById('rc-search-input');
     if (rcSearchInput) {
-      // v3.6.x：预标记 ceDone 让 mobile-adapt.js 跳过 contenteditable 转换（雨见浏览器等敲字不显示）
-      rcSearchInput.dataset.ceDone = '1';
+      // v3.5.138：不再标记 ceDone 跳过 contenteditable 转换——手机 Chrome 对
+      // 原生 input 聚焦弹「自动填充」白条；ce-box 兼容 input 转发 + value 代理
       rcSearchInput.addEventListener('input', () => {
         rcQ = rcSearchInput.value.trim();
         renderReply();
@@ -352,8 +352,8 @@
     // 搜索：页内输入框直接过滤（v3.6.x：与自定义聊天字卡一致，不再弹窗，输入即筛，清空即恢复）
     const mcSearchInput = document.getElementById('mc-search-input');
     if (mcSearchInput) {
-      // v3.6.x：预标记 ceDone 让 mobile-adapt.js 跳过 contenteditable 转换（雨见浏览器等敲字不显示）
-      mcSearchInput.dataset.ceDone = '1';
+      // v3.5.138：不再标记 ceDone 跳过 contenteditable 转换——手机 Chrome 对
+      // 原生 input 聚焦弹「自动填充」白条；ce-box 兼容 input 转发 + value 代理
       mcSearchInput.addEventListener('input', () => {
         mcQ = mcSearchInput.value.trim();
         renderMood();

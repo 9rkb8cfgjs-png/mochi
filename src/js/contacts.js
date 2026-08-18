@@ -165,6 +165,9 @@
   //   restore 列表，大键（头像/壁纸，只存 IDB）刷新后彻底丢失。保留 IDB 旧键后，
   //   restore 每次都能回填它，defaultStore 优先读新键、回退旧键，数据永不丢；
   //   IDB 旧键冗余会在后续写入新键后自然闲置（无副作用）。
+  //   **例外**：chat-msgs 旧键迁移后必须删 IDB——idbRestore 排除 chat-msgs 从不回填，
+  //   保留旧键导致每次刷新重新迁移覆盖新聊天记录（v3.6.x 修复刷新丢聊天记录）。
+  //   幂等检查同时查 IDB 新键（不只 LS/memoryCache），防 idbRestore 未回填时误判为空。
   function migrateLegacy() {
     const old = [];
     // v3.6.x：顺带清理存量双重前缀垃圾键（default:default:*）——旧版迁移误把命名空间键
@@ -203,21 +206,49 @@
       if (i >= old.length) { finish(); return; }
       const k = old[i];
       const rest = k.slice(G.length + 1);
+      const newKey = G + ':default:' + rest;
       const next = function () { step(i + 1); };
+      // v3.6.x：chat-msgs 旧键迁移后必须删 IDB——idbRestore 排除 chat-msgs 从不回填，
+      // 保留旧键导致每次刷新重新迁移覆盖新聊天记录
+      const isChat = (function () {
+        const tail = k.slice(G.length + 1);
+        return tail === 'chat-msgs' || /^[^:]+:chat-msgs$/.test(tail);
+      })();
+      const cleanupOld = function () {
+        try { localStorage.removeItem(k); } catch (e) {}
+        if (isChat && window.idbDelete) { try { window.idbDelete(k); } catch (e) {} }
+      };
       let v = null; try { v = localStorage.getItem(k); } catch (e) {}
       if (v !== null) {
-        // 幂等：default 命名空间已有此键（已迁移过）则不重复写，只删 LS 旧键
-        try { if (!window.xyStore(G + ':default').get(rest)) window.xyStore(G + ':default').set(rest, v); } catch (e) {}
-        try { localStorage.removeItem(k); } catch (e) {}
-        // 不删 IDB 旧键（见文件头注释 ③）：restore 保险丝期间仍需它能回填
-        next();
+        // 幂等：default 命名空间已有此键（LS/memoryCache/IDB）则不重复写
+        const hasNew = window.xyStore(G + ':default').get(rest);
+        if (hasNew) { cleanupOld(); next(); return; }
+        if (window.idbGet) {
+          window.idbGet(newKey).then(function (existing) {
+            if (!existing) { try { window.xyStore(G + ':default').set(rest, v); } catch (e) {} }
+            cleanupOld();
+            next();
+          }).catch(function () { try { window.xyStore(G + ':default').set(rest, v); } catch (e) {} cleanupOld(); next(); });
+        } else {
+          try { window.xyStore(G + ':default').set(rest, v); } catch (e) {}
+          cleanupOld();
+          next();
+        }
       } else if (window.idbGet) {
         window.idbGet(k).then(r => {
           if (r !== undefined && r !== null) {
-            try { if (!window.xyStore(G + ':default').get(rest)) window.xyStore(G + ':default').set(rest, r); } catch (e) {}
+            // 幂等：先查 LS/memoryCache，再查 IDB 新键
+            const hasNew = window.xyStore(G + ':default').get(rest);
+            if (hasNew) { cleanupOld(); next(); return; }
+            window.idbGet(newKey).then(function (existing) {
+              if (!existing) { try { window.xyStore(G + ':default').set(rest, r); } catch (e) {} }
+              cleanupOld();
+              next();
+            }).catch(function () { try { window.xyStore(G + ':default').set(rest, r); } catch (e) {} cleanupOld(); next(); });
+          } else {
+            cleanupOld();
+            next();
           }
-          try { localStorage.removeItem(k); } catch (e) {}
-          next();
         }).catch(next);
       } else next();
     };

@@ -131,6 +131,8 @@
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    // v3.6.x：记录最近一次成功导出时间——备份提醒条（pwa.js）据此判断是否该提醒
+    try { localStorage.setItem('xy-home-v2:__last-backup', String(Date.now())); } catch (e) {}
     toast('数据已导出（' + Math.round(json.length / 1024) + ' KB，全部数据完整）');
   }
 
@@ -412,14 +414,16 @@
   }
 
   // 入口绑定
+  // v3.6.x：备份提醒条（pwa.js「去备份」）与设置页导出共用同一流程
+  window.runBackupExport = function () {
+    toast('正在导出，请稍候…');
+    // v3.5.134：导出前强制落盘——聊天记录有 400ms 防抖，不刷的话备份缺最后几条消息
+    if (window.chatFlushSave) window.chatFlushSave();
+    doExport();
+  };
   const exportRow = document.getElementById('row-export');
   if (exportRow) {
-    exportRow.addEventListener('click', () => {
-      toast('正在导出，请稍候…');
-      // v3.5.134：导出前强制落盘——聊天记录有 400ms 防抖，不刷的话备份缺最后几条消息
-      if (window.chatFlushSave) window.chatFlushSave();
-      doExport();
-    });
+    exportRow.addEventListener('click', () => { window.runBackupExport(); });
   }
   const importRow = document.getElementById('row-import');
   if (importRow) {

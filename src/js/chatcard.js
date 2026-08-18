@@ -317,10 +317,10 @@
   // 搜索：页内输入框直接过滤（v3.6.x：不再弹窗，输入即筛，清空即恢复）
   const searchInput = document.getElementById('cc-search-input');
   if (searchInput) {
-    // v3.6.x：预标记 ceDone 让 mobile-adapt.js 跳过 contenteditable 转换——
-    // 雨见浏览器等部分安卓浏览器对 ce-box 聚焦/输入失效（敲字不显示、无法搜索），
-    // 搜索框保持原生 input 在所有浏览器/输入法上都能直接输入
-    searchInput.dataset.ceDone = '1';
+    // v3.5.138：不再标记 ceDone 跳过 contenteditable 转换——之前为兼容
+    // 雨见浏览器特意保留原生 input，但这手机 Chrome 对原生 input 聚焦仍弹
+    // 「自动填充」白条。ce-box 已兼容 input 事件转发 + value 代理 + Escape
+    // keydown 转发（见 mobile-adapt.js），转接后输入即筛/清空恢复照常工作。
     searchInput.addEventListener('input', () => {
       // 管理模式禁用搜索——搜索过滤会让勾选下标与原始数组错位，
       // 删除/移动会误删别的卡片（数据丢失），输入立即清空

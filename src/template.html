@@ -2312,5 +2312,13 @@
     <span class="vub-act" id="ver-update-refresh">刷新使用新版</span>
     <span class="vub-act vub-close" id="ver-update-close" style="background:transparent;color:#ccc;border:1px solid rgba(255,255,255,.3)">稍后</span>
   </div>
+  <!-- v3.6.x：定期备份提醒条——距上次导出备份超 7 天时由 pwa.js 显示（复用 ver-update-bar 样式），
+       数据只存在本机浏览器里，iOS Safari 可能因存储清理/系统 bug 清空（WebKit#266559），
+       导出备份文件到「文件」App 是唯一能找回数据的办法 -->
+  <div class="ver-update-bar" id="backup-remind-bar" hidden>
+    <span class="vub-txt" id="backup-remind-txt">建议导出数据备份</span>
+    <span class="vub-act" id="backup-remind-go">去备份</span>
+    <span class="vub-act vub-close" id="backup-remind-close" style="background:transparent;color:#ccc;border:1px solid rgba(255,255,255,.3)">稍后</span>
+  </div>
 </body>
 </html>

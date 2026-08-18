@@ -182,6 +182,7 @@ padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
 }
 .phone .page.full .chat-head { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
 .phone .page.full { padding-bottom: 0; }
+#page-chat { background: var(--page-bg-grad); }
 }
 @media (display-mode: fullscreen) {
 .phone .page.full .chat-head { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
@@ -3275,7 +3276,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.61 · 部署于 2026-08-18 14:39</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.62 · 部署于 2026-08-18 15:23</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3927,7 +3928,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.61</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.62</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5914,19 +5915,45 @@ const step = function (i) {
 if (i >= old.length) { finish(); return; }
 const k = old[i];
 const rest = k.slice(G.length + 1);
+const newKey = G + ':default:' + rest;
 const next = function () { step(i + 1); };
+const isChat = (function () {
+const tail = k.slice(G.length + 1);
+return tail === 'chat-msgs' || /^[^:]+:chat-msgs$/.test(tail);
+})();
+const cleanupOld = function () {
+try { localStorage.removeItem(k); } catch (e) {}
+if (isChat && window.idbDelete) { try { window.idbDelete(k); } catch (e) {} }
+};
 let v = null; try { v = localStorage.getItem(k); } catch (e) {}
 if (v !== null) {
-try { if (!window.xyStore(G + ':default').get(rest)) window.xyStore(G + ':default').set(rest, v); } catch (e) {}
-try { localStorage.removeItem(k); } catch (e) {}
+const hasNew = window.xyStore(G + ':default').get(rest);
+if (hasNew) { cleanupOld(); next(); return; }
+if (window.idbGet) {
+window.idbGet(newKey).then(function (existing) {
+if (!existing) { try { window.xyStore(G + ':default').set(rest, v); } catch (e) {} }
+cleanupOld();
 next();
+}).catch(function () { try { window.xyStore(G + ':default').set(rest, v); } catch (e) {} cleanupOld(); next(); });
+} else {
+try { window.xyStore(G + ':default').set(rest, v); } catch (e) {}
+cleanupOld();
+next();
+}
 } else if (window.idbGet) {
 window.idbGet(k).then(r => {
 if (r !== undefined && r !== null) {
-try { if (!window.xyStore(G + ':default').get(rest)) window.xyStore(G + ':default').set(rest, r); } catch (e) {}
-}
-try { localStorage.removeItem(k); } catch (e) {}
+const hasNew = window.xyStore(G + ':default').get(rest);
+if (hasNew) { cleanupOld(); next(); return; }
+window.idbGet(newKey).then(function (existing) {
+if (!existing) { try { window.xyStore(G + ':default').set(rest, r); } catch (e) {} }
+cleanupOld();
 next();
+}).catch(function () { try { window.xyStore(G + ':default').set(rest, r); } catch (e) {} cleanupOld(); next(); });
+} else {
+cleanupOld();
+next();
+}
 }).catch(next);
 } else next();
 };
@@ -11967,7 +11994,6 @@ render();
 });
 const searchInput = document.getElementById('cc-search-input');
 if (searchInput) {
-searchInput.dataset.ceDone = '1';
 searchInput.addEventListener('input', () => {
 if (manageMode) { searchInput.value = ''; return; }
 q = searchInput.value.trim();
@@ -13427,7 +13453,6 @@ render();
 });
 const searchInput = document.getElementById('dc-search-input');
 if (searchInput) {
-searchInput.dataset.ceDone = '1';
 searchInput.addEventListener('input', () => {
 q = searchInput.value.trim();
 render();
@@ -13695,7 +13720,6 @@ renderRCBar();
 renderReply();
 const rcSearchInput = document.getElementById('rc-search-input');
 if (rcSearchInput) {
-rcSearchInput.dataset.ceDone = '1';
 rcSearchInput.addEventListener('input', () => {
 rcQ = rcSearchInput.value.trim();
 renderReply();
@@ -13781,7 +13805,6 @@ renderMCBar();
 renderMood();
 const mcSearchInput = document.getElementById('mc-search-input');
 if (mcSearchInput) {
-mcSearchInput.dataset.ceDone = '1';
 mcSearchInput.addEventListener('input', () => {
 mcQ = mcSearchInput.value.trim();
 renderMood();
@@ -14108,13 +14131,14 @@ function fetchNeteaseUrl(id, cb) {
 const api = 'https://music.163.com/api/song/enhance/player/url?ids=[' + encodeURIComponent(String(id)) + ']&br=320000';
 const sources = [
 api,
-'https://api.allorigins.win/raw?url=' + encodeURIComponent(api)
+'https://api.allorigins.win/raw?url=' + encodeURIComponent(api),
+'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(api)
 ];
 let si = 0;
 const tryFetch = (url, next) => {
 let controller;
 try { controller = new AbortController(); } catch (e) { controller = null; }
-const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 8000);
+const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 6000);
 fetch(url, controller ? { signal: controller.signal } : undefined)
 .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
 .then(d => {
@@ -14717,6 +14741,12 @@ if (!audio || currentId !== m.id) return;
 if (audio.currentTime > 0) return;
 if (playRejected) return; // 等手势恢复播放，不误判外链失败
 if (audio.paused) return; // 用户主动暂停，不兜底
+try {
+if (audio.readyState > 0 || (audio.buffered && audio.buffered.length > 0) || audio.networkState === 2) {
+armStallGuard(m);
+return;
+}
+} catch (e) {}
 if (m && m.neteaseId && !httpsRetrying) {
 if (retryWithHttpsUrl(m)) return;
 }
@@ -22681,6 +22711,7 @@ a.download = 'mochi数据备份_' + new Date().toISOString().slice(0, 10) + '.js
 document.body.appendChild(a);
 a.click();
 setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+try { localStorage.setItem('xy-home-v2:__last-backup', String(Date.now())); } catch (e) {}
 toast('数据已导出（' + Math.round(json.length / 1024) + ' KB，全部数据完整）');
 }
 function backupSummary(data) {
@@ -22910,13 +22941,14 @@ setTimeout(() => { impHide(); location.reload(); }, 3500);
 });
 });
 }
-const exportRow = document.getElementById('row-export');
-if (exportRow) {
-exportRow.addEventListener('click', () => {
+window.runBackupExport = function () {
 toast('正在导出，请稍候…');
 if (window.chatFlushSave) window.chatFlushSave();
 doExport();
-});
+};
+const exportRow = document.getElementById('row-export');
+if (exportRow) {
+exportRow.addEventListener('click', () => { window.runBackupExport(); });
 }
 const importRow = document.getElementById('row-import');
 if (importRow) {
@@ -22984,6 +23016,49 @@ setInterval(checkVersion, 30000);
 document.addEventListener('visibilitychange', function () {
 if (document.visibilityState === 'visible') checkVersion();
 });
+})();
+(function () {
+const bar = document.getElementById('backup-remind-bar');
+if (!bar) return;
+const G = 'xy-home-v2:';
+const DAY = 86400000;
+const INTERVAL = 7 * DAY;
+function ts(key) { try { return Number(localStorage.getItem(G + key)) || 0; } catch (e) { return 0; } }
+function show(days, everBacked) {
+const upd = document.getElementById('ver-update-bar');
+if (upd && !upd.hidden) return;
+const txt = document.getElementById('backup-remind-txt');
+if (txt) {
+txt.textContent = everBacked
+? '距上次导出备份已 ' + days + ' 天，数据只存本机浏览器，建议导出备份'
+: '数据只存在本机浏览器里，建议定期导出备份（防浏览器意外清除）';
+}
+bar.hidden = false;
+try { localStorage.setItem(G + '__last-backup-remind', String(Date.now())); } catch (e) {}
+}
+function tryShow() {
+if (window.__resetting) return;
+const lastBackup = ts('__last-backup');
+const lastRemind = ts('__last-backup-remind');
+if (lastRemind && Date.now() - lastRemind < INTERVAL) return; // 近期已提醒过
+if (lastBackup && Date.now() - lastBackup < INTERVAL) return; // 刚备份过
+show(lastBackup ? Math.max(Math.floor((Date.now() - lastBackup) / DAY), 7) : 7, !!lastBackup);
+}
+function gated() {
+try { if (!localStorage.getItem(G + 'contacts')) return; } catch (e) {}
+tryShow();
+}
+document.addEventListener('mochi-restore-done', gated);
+const poll = setInterval(function () {
+if (window.__mochiDataReady) { clearInterval(poll); gated(); }
+}, 300);
+const go = document.getElementById('backup-remind-go');
+if (go) go.addEventListener('click', function () {
+bar.hidden = true;
+try { if (window.runBackupExport) window.runBackupExport(); } catch (e) {}
+});
+const close = document.getElementById('backup-remind-close');
+if (close) close.addEventListener('click', function () { bar.hidden = true; });
 })();
 if ('serviceWorker' in navigator) {
 window.addEventListener('load', () => {
@@ -23418,6 +23493,14 @@ try { applyLock(); } catch (e) {}
     <span class="vub-txt">检测到新版本</span>
     <span class="vub-act" id="ver-update-refresh">刷新使用新版</span>
     <span class="vub-act vub-close" id="ver-update-close" style="background:transparent;color:#ccc;border:1px solid rgba(255,255,255,.3)">稍后</span>
+  </div>
+  <!-- v3.6.x：定期备份提醒条——距上次导出备份超 7 天时由 pwa.js 显示（复用 ver-update-bar 样式），
+       数据只存在本机浏览器里，iOS Safari 可能因存储清理/系统 bug 清空（WebKit#266559），
+       导出备份文件到「文件」App 是唯一能找回数据的办法 -->
+  <div class="ver-update-bar" id="backup-remind-bar" hidden>
+    <span class="vub-txt" id="backup-remind-txt">建议导出数据备份</span>
+    <span class="vub-act" id="backup-remind-go">去备份</span>
+    <span class="vub-act vub-close" id="backup-remind-close" style="background:transparent;color:#ccc;border:1px solid rgba(255,255,255,.3)">稍后</span>
   </div>
 </body>
 </html>
