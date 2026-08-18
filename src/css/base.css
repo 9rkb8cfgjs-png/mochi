@@ -11,7 +11,11 @@
   --overlay-bg:rgba(0,0,0,.35); --static-bg:rgba(0,0,0,.04); --track-bg:#e0e0e0;
   --hint-ink:#b5b5b5; --soft-ink:#555555; --pill-border:#ddd;
   --glass-bg:rgba(255,255,255,.92);
-  --bg-a:#ffffff; --bg-b:#f2f2f2;
+  /* v3.6.x：--bg-b 由 #f2f2f2 改为 #ffffff——.phone 背景渐变底部原为淡灰，
+     白色 tabbar 悬浮卡片四周（上/下/左右留白 + 圆角外）透出它形成"灰色条/灰角"；
+     改纯白后页面背景干净，tabbar 恢复圆角悬浮形状也再无灰（用户反馈形状回归 +
+     去灰双诉求）。深色模式 --bg-b 仍为 #0e0e0e，不受影响 */
+  --bg-a:#ffffff; --bg-b:#ffffff;
   --shadow-strong:rgba(0,0,0,.12);
   --desk-font-scale:1;
   --desk-card-scale:1;

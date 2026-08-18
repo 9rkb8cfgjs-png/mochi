@@ -31,7 +31,7 @@
 --overlay-bg:rgba(0,0,0,.35); --static-bg:rgba(0,0,0,.04); --track-bg:#e0e0e0;
 --hint-ink:#b5b5b5; --soft-ink:#555555; --pill-border:#ddd;
 --glass-bg:rgba(255,255,255,.92);
---bg-a:#ffffff; --bg-b:#f2f2f2;
+--bg-a:#ffffff; --bg-b:#ffffff;
 --shadow-strong:rgba(0,0,0,.12);
 --desk-font-scale:1;
 --desk-card-scale:1;
@@ -2936,12 +2936,10 @@ font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;
 }
 .bg-notify-test:active { background:rgba(0,0,0,.06); }
 .tabbar {
-margin-top:0; display:flex; justify-content:space-around;
-margin-left:-18px; margin-right:-18px;
-margin-bottom:-18px;
+margin-top:10px; display:flex; justify-content:space-around;
 flex-shrink:0; background:#ffffff;
 border:1px solid rgba(0,0,0,.12);
-border-radius:0; padding:8px 6px; z-index:2;
+border-radius:22px; padding:8px 6px; z-index:2;
 box-shadow:0 2px 8px rgba(0,0,0,.05);
 }
 .tabbar .tab {
@@ -3274,7 +3272,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.63 · 部署于 2026-08-18 15:34</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.64 · 部署于 2026-08-18 15:45</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3926,7 +3924,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.63</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.64</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 

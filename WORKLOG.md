@@ -11,6 +11,9 @@
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
 
 ### 2026-08-18
+- [本会话] 完成（tabbar 恢复圆角悬浮原形状 + 背景纯白根治去灰，已构建 verify 10/10 + CDP 采样验证，**随本次提交**）：用户反馈"桌面里的底部栏形状变了，和原来不一样"——24c157c 的满宽贴底方形不满足预期。恢复方案：①`src/css/tabbar.css` `.tabbar` 恢复原样（margin-top:10px、border-radius:22px、去负 margin/方形）；②`src/css/base.css` 浅色 `--bg-b` 由 `#f2f2f2` 改 `#ffffff`（.phone 渐变底部变纯白）——tabbar 悬浮卡片的上/下/左右留白与圆角外全部是白色，**形状恢复且无灰，两诉求兼得**（此前去灰靠"满宽贴底方形"改变形状，现改为背景色根治）。深色模式 --bg-b #0e0e0e 不变；聊天页 --page-bg-grad #f6f6f6 不变。CDP 验证：主页/字卡库页 tabbar rect=18,762 354x64、radius=22px、四周白色（--bg-b=#ffffff）。涉及 `src/css/tabbar.css`、`src/css/base.css`。⚠️ 全局视觉变化：浅色模式页面背景从"白→淡灰渐变"变为纯白（更干净），含主页/设置页/字卡库页。
+
+### 2026-08-18
 - [本会话] 完成（「正在输入」提示行由悬浮改内嵌——消除灰色一行遮挡消息，已构建 verify 10/10 + CDP 验证，**随本次提交**）：用户确认聊天页"除底部栏之外还有一点灰色、滑动遮挡聊天消息"的正是联系人触发的【正在输入中】行（chat-typing）。根因——v3.5.49 把 chat-typing 改成悬浮式（`position:absolute; bottom:calc(100%+4px); z-index:5` 相对输入栏定位），悬浮层固定在输入栏上方，**消息滚动时从这行灰色小字下方穿过被盖住**（chat.js 注释 1987 "typing 行占位时保持最后一条可见"证明原设计就是占位行，CSS/JS 语义矛盾）。修复（改回 v3.5.27/44 内嵌方案）：① `src/template.html` chat-typing 从 chat-input-row 内移到 chat-body 之后（消息区与输入栏之间）；② `src/css/chat-main.css` `.chat-typing` 由 absolute 改静态内嵌占位行（flex-shrink:0 + padding 2px 18px 4px，透明背景灰字）。CDP 验证：typing pos=static、rect 390x22 在消息区与输入栏之间、insideBody=false 不再悬浮、不遮挡消息；chat.js showTyping/hideTyping 已有的占位滚动处理直接复用。涉及 `src/template.html`、`src/css/chat-main.css`。
 - [对方改动·本次统一构建随提交] `src/js/music-player.js` 网易云直链改 meting API 方案（fetchNeteaseUrl allorigins/codetabs 代理替换为 api.injahow.cn/meting 302 https 直链，大陆可直连，已实测两首种子歌稳定返回）。
 
