@@ -830,7 +830,7 @@
         (answered
           ? '<div class="msg-ask-a">✓ ' + escTxt(rec.inviteAnswer || 'TA 回应了你') + '</div>'
           : '<div class="msg-ask-tip">等待 TA 回应…</div>') +
-        favHeartHtml +
+        favHeartHtml() +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -847,7 +847,7 @@
         (answered
           ? '<div class="msg-ask-a">✓ TA：' + escTxt(rec.askAnswer || '回答了你') + '</div>' + (rec.askReply ? '<div class="msg-choose-r">TA：' + escTxt(rec.askReply) + '</div>' : '')
           : '<div class="msg-ask-tip">' + (askIsSingle ? '等待 TA 选择…' : '等待 TA 回答…') + '</div>') +
-        favHeartHtml +
+        favHeartHtml() +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -882,7 +882,7 @@
         (answered
           ? '<div class="msg-ask-a">✓ 你选择了：' + escTxt(rec.choiceAnswer) + '</div><div class="msg-choose-r">TA：' + escTxt(rec.choiceReply) + '</div>'
           : '<div class="msg-ask-tip">点击选择你的答案</div>') +
-        favHeartHtml +
+        favHeartHtml() +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -898,7 +898,7 @@
         (answered
           ? '<div class="msg-ask-a">✓ 你：' + escTxt(rec.curiousAnswer) + '</div><div class="msg-choose-r">TA：' + escTxt(rec.curiousReply) + '</div>'
           : '<div class="msg-ask-tip">点击回答 TA 的好奇</div>') +
-        favHeartHtml +
+        favHeartHtml() +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -914,7 +914,7 @@
         (answered
           ? '<div class="msg-ask-a">✓ 你：' + escTxt(rec.roastAnswer) + '</div><div class="msg-choose-r">TA：' + escTxt(rec.roastReply) + '</div>'
           : '<div class="msg-ask-tip">点击回 TA 一句</div>') +
-        favHeartHtml +
+        favHeartHtml() +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
@@ -932,7 +932,7 @@
         (answered
           ? '<div class="msg-ask-a">✓ 已回答：' + escTxt(rec.askAnswer) + '</div>' + (rec.askReply ? '<div class="msg-choose-r">TA：' + escTxt(rec.askReply) + '</div>' : '')
           : '<div class="msg-ask-tip">' + (isSingle ? '点击选择你的答案' : '点击回答 TA 的提问') + '</div>') +
-        favHeartHtml +
+        favHeartHtml() +
         '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
