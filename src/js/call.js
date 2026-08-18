@@ -148,6 +148,14 @@
 
   function partnerName() { return store.get('lbl-partner') || 'TA'; }
   function partnerAv() { return store.get('avatar-partner') || ''; }
+  // v3.6.x：通话绑定归属桌面（cid + 昵称 + 头像）——通话中切换到其他联系人桌面再挂断时，
+  // 文案与记录仍归属发起通话的桌面，不会显示成当前桌面的联系人
+  function bindCall(callObj) {
+    callObj.cid = window.__activeCid || 'default';
+    callObj.name = partnerName();
+    callObj.av = partnerAv();
+    return callObj;
+  }
   function fillAv(el, data) {
     if (!el) return;
     // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
@@ -179,8 +187,8 @@
     if (mask) mask.hidden = true;
     if (cdEl) cdEl.hidden = true;
     if (mini) {
-      if (miniName) miniName.textContent = partnerName();
-      fillAv(miniAv, partnerAv());
+      if (miniName) miniName.textContent = currentCall.name || partnerName();
+      fillAv(miniAv, currentCall.av || partnerAv());
       mini.hidden = false;
     }
   }
@@ -217,6 +225,39 @@
       }
     }, 1000);
   }
+  // 通话结束信息写入归属桌面（v3.6.x 修复跨桌面挂断显示成当前联系人）：
+  // 当前桌面走内存链路（实时渲染/未读角标）；非当前桌面直接写该桌面 IDB 聊天记录
+  // + LS 快照 + 通话记录存储（该桌面 msgs 内存已在 contact-switched 时重置，
+  // 下次进入由 loadMsgs 从 IDB 读回）
+  function notifyCallEnd(cid, sysHtml, recType, recText) {
+    const cur = window.__activeCid || 'default';
+    if (cid === cur) {
+      if (window.chatAddSystem) window.chatAddSystem(sysHtml);
+      if (window.addCallRecord) window.addCallRecord(recType, recText);
+      return;
+    }
+    const prefix = 'xy-home-v2:' + cid;
+    try {
+      if (window.idbGet && window.idbSet) {
+        window.idbGet(prefix + ':chat-msgs').then(v => {
+          let arr = [];
+          try { arr = Array.isArray(v) ? v : JSON.parse(v || '[]'); } catch (e) { arr = []; }
+          if (!Array.isArray(arr)) arr = [];
+          arr.push({ side: 'in', special: 'poke', text: sysHtml, ts: Date.now() });
+          try { window.idbSet(prefix + ':chat-msgs', JSON.stringify(arr)); } catch (e) {}
+          try { localStorage.setItem(prefix + ':chat-msgs', JSON.stringify(arr)); } catch (e) {}
+        }).catch(() => {});
+      }
+    } catch (e) {}
+    try {
+      const s = (window.storeFor && window.storeFor(cid)) || store;
+      let list = [];
+      try { list = JSON.parse(s.get('records-call') || '[]'); } catch (e) { list = []; }
+      if (!Array.isArray(list)) list = [];
+      list.unshift({ type: recType, text: recText, ts: Date.now() });
+      s.set('records-call', JSON.stringify(list.slice(0, 50)));
+    } catch (e) {}
+  }
   // 结束通话：清界面 + 聊天系统消息（接通过必带时长）+ 记录
   // v3.5.51：真实时长从 startTime 计算（覆盖对方挂断/不明原因中断路径）；
   //   接通后结束 → 系统消息明确「通话已挂断 / 对方已挂断 · 时长 xx」
@@ -233,7 +274,8 @@
       // 真实通话时长：durationSec（接通后已计时）兜底用 startTime 计算
       const dur = currentCall.durationSec || (currentCall.connectedTime ? Math.max(0, Math.floor((Date.now() - currentCall.connectedTime) / 1000)) : 0);
       const dir = currentCall.direction;
-      const name = partnerName();
+      // v3.6.x：姓名用通话绑定的桌面（通话中切桌面后挂断不显示成当前联系人）
+      const name = currentCall.name || partnerName();
       const durTxt = dur > 0 ? ' · 时长 ' + fmtDur(dur) : '';
       // 接通过 → 系统消息明确「挂断/对方挂断/中断 + 时长」；未接通保持原结果文案
       // v3.5.129：只有真正接通（connectedTime 存在）才改写文案+加时长——
@@ -245,10 +287,7 @@
         else resText = '通话已结束'; // 不明原因中断等
         resText += durTxt;
       }
-      if (window.chatAddSystem) {
-        window.chatAddSystem('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>' + (dir === 'in' ? name + ' 来电' : '我拨打 ' + name) + ' · ' + resText);
-      }
-      if (window.addCallRecord) window.addCallRecord(dir, text + (dur ? '（' + fmtDur(dur) + '）' : ''));
+      notifyCallEnd(currentCall.cid || 'default', '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>' + (dir === 'in' ? name + ' 来电' : '我拨打 ' + name) + ' · ' + resText, dir, text + (dur ? '（' + fmtDur(dur) + '）' : ''));
     }
     currentCall = null;
   }
@@ -278,7 +317,7 @@
     // v3.5.127：来电时收起输入法（键盘会盖住通话面板下半部的接听/拒绝按钮）
     try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {}
     const name = partnerName();
-    currentCall = { direction: 'in', status: 'ringing', startTime: Date.now(), durationSec: 0 };
+    currentCall = bindCall({ direction: 'in', status: 'ringing', startTime: Date.now(), durationSec: 0 });
     fillAv(avEl, partnerAv());
     fillAv(miniAv, partnerAv());
     if (nameEl) nameEl.textContent = name;
@@ -320,8 +359,8 @@
       if (currentCall && currentCall.status === 'connected') {
         if (mask) mask.hidden = true;
         if (mini) {
-          if (miniName) miniName.textContent = partnerName();
-          fillAv(miniAv, partnerAv());
+          if (miniName) miniName.textContent = currentCall.name || partnerName();
+          fillAv(miniAv, currentCall.av || partnerAv());
           mini.hidden = false;
         }
       }
@@ -346,7 +385,7 @@
   window.placeCall = function () {
     if (currentCall) { toast('已有通话中'); return; }
     const name = partnerName();
-    currentCall = { direction: 'out', status: 'calling', startTime: Date.now(), durationSec: 0 };
+    currentCall = bindCall({ direction: 'out', status: 'calling', startTime: Date.now(), durationSec: 0 });
     // v3.6.x：绑定本次通话对象——结果定时器回调里校验 currentCall === callRef，
     // 否则「挂断后 3 秒内重拨」会让上一次的随机结果套到新通话上
     const callRef = currentCall;
@@ -374,7 +413,7 @@
         setTimeout(() => {
           if (currentCall === callRef && callRef.status === 'connected') {
             if (mask) mask.hidden = true;
-            if (mini) { if (miniName) miniName.textContent = partnerName(); fillAv(miniAv, partnerAv()); mini.hidden = false; }
+            if (mini) { if (miniName) miniName.textContent = callRef.name || partnerName(); fillAv(miniAv, callRef.av || partnerAv()); mini.hidden = false; }
           }
         }, 2000);
       } else {

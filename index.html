@@ -3291,7 +3291,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.71 · 部署于 2026-08-18 17:24</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.72 · 部署于 2026-08-18 17:33</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3944,7 +3944,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.71</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.72</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -14703,19 +14703,58 @@ return fetch(dataUrl).then(r => r.blob()).catch(() => manual());
 }
 return manual();
 }
-function playLocal(m, v) {
-const blobP = v instanceof Blob ? Promise.resolve(v) : dataUrlToBlob(v);
-blobP.then(blob => {
-if (currentId !== m.id) return; // 转换期间用户已切歌
-revokeObjectUrl();
-curObjectUrl = URL.createObjectURL(blob);
-audio = new Audio();
-audio.src = curObjectUrl;
-startPlayback(m);
-}).catch(() => {
-if (currentId !== m.id) return;
-toast('音乐文件加载失败，可能已被清理'); currentId = null; updatePlayerBar(); renderLibrary();
+function blobToDataUrl(blob) {
+return new Promise((resolve) => {
+const fr = new FileReader();
+fr.onload = () => resolve(fr.result || '');
+fr.onerror = () => resolve('');
+try { fr.readAsDataURL(blob); } catch (e) { resolve(''); }
 });
+}
+function playLocal(m, v) {
+if (currentId !== m.id) return;
+let failoverUsed = false; // 防止 blob:↔dataURL 之间无限切换
+function startWithSrc(src, isBlob) {
+if (currentId !== m.id) return;
+if (isBlob) { revokeObjectUrl(); curObjectUrl = src; }
+audio = new Audio();
+audio.src = src;
+startPlayback(m);
+let wd = setTimeout(() => {
+wd = null;
+if (currentId !== m.id || !audio) return; // 已切歌/已 teardown
+if (audio.currentTime > 0) return; // 已在播，blob:/dataURL 成功
+if (failoverUsed) { // 两种 src 都失败
+toast('播放失败：浏览器无法加载音频');
+try { audio.pause(); } catch (e) {}
+try { syncPlayIcons(false); } catch (e) {}
+return;
+}
+failoverUsed = true;
+teardownAudio();
+if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+if (isBlob) {
+const dataUrlP = (v instanceof Blob) ? blobToDataUrl(v) : Promise.resolve(v);
+dataUrlP.then(dataUrl => {
+if (currentId !== m.id) return;
+if (!dataUrl) { toast('播放失败：浏览器无法加载音频'); currentId = null; updatePlayerBar(); renderLibrary(); return; }
+startWithSrc(dataUrl, false);
+});
+} else {
+const blobP = (v instanceof Blob) ? Promise.resolve(v) : dataUrlToBlob(v);
+blobP.then(blob => {
+if (currentId !== m.id) return;
+try { startWithSrc(URL.createObjectURL(blob), true); } catch (e) { toast('播放失败：浏览器无法加载音频'); }
+}).catch(() => { toast('播放失败：浏览器无法加载音频'); currentId = null; updatePlayerBar(); renderLibrary(); });
+}
+}, 4000);
+if (audio) audio.addEventListener('play', () => { if (wd) { clearTimeout(wd); wd = null; } }, { once: true });
+}
+if (v instanceof Blob) {
+try { startWithSrc(URL.createObjectURL(v), true); } catch (e) { toast('播放失败：浏览器无法加载音频'); }
+} else {
+startWithSrc(v, false);
+}
 }
 function teardownAudio() {
 if (audio) {
@@ -19174,6 +19213,12 @@ miniPos = null;
 }
 function partnerName() { return store.get('lbl-partner') || 'TA'; }
 function partnerAv() { return store.get('avatar-partner') || ''; }
+function bindCall(callObj) {
+callObj.cid = window.__activeCid || 'default';
+callObj.name = partnerName();
+callObj.av = partnerAv();
+return callObj;
+}
 function fillAv(el, data) {
 if (!el) return;
 el.innerHTML = '';
@@ -19202,8 +19247,8 @@ if (!currentCall) return;
 if (mask) mask.hidden = true;
 if (cdEl) cdEl.hidden = true;
 if (mini) {
-if (miniName) miniName.textContent = partnerName();
-fillAv(miniAv, partnerAv());
+if (miniName) miniName.textContent = currentCall.name || partnerName();
+fillAv(miniAv, currentCall.av || partnerAv());
 mini.hidden = false;
 }
 }
@@ -19235,6 +19280,35 @@ endCall('对方挂断了电话');
 }
 }, 1000);
 }
+function notifyCallEnd(cid, sysHtml, recType, recText) {
+const cur = window.__activeCid || 'default';
+if (cid === cur) {
+if (window.chatAddSystem) window.chatAddSystem(sysHtml);
+if (window.addCallRecord) window.addCallRecord(recType, recText);
+return;
+}
+const prefix = 'xy-home-v2:' + cid;
+try {
+if (window.idbGet && window.idbSet) {
+window.idbGet(prefix + ':chat-msgs').then(v => {
+let arr = [];
+try { arr = Array.isArray(v) ? v : JSON.parse(v || '[]'); } catch (e) { arr = []; }
+if (!Array.isArray(arr)) arr = [];
+arr.push({ side: 'in', special: 'poke', text: sysHtml, ts: Date.now() });
+try { window.idbSet(prefix + ':chat-msgs', JSON.stringify(arr)); } catch (e) {}
+try { localStorage.setItem(prefix + ':chat-msgs', JSON.stringify(arr)); } catch (e) {}
+}).catch(() => {});
+}
+} catch (e) {}
+try {
+const s = (window.storeFor && window.storeFor(cid)) || store;
+let list = [];
+try { list = JSON.parse(s.get('records-call') || '[]'); } catch (e) { list = []; }
+if (!Array.isArray(list)) list = [];
+list.unshift({ type: recType, text: recText, ts: Date.now() });
+s.set('records-call', JSON.stringify(list.slice(0, 50)));
+} catch (e) {}
+}
 function endCall(text) {
 if (window.stopSfx) window.stopSfx('ring');
 if (window.musicHoldForCall) window.musicHoldForCall(false);
@@ -19245,7 +19319,7 @@ if (cdEl) cdEl.hidden = true;
 if (currentCall) {
 const dur = currentCall.durationSec || (currentCall.connectedTime ? Math.max(0, Math.floor((Date.now() - currentCall.connectedTime) / 1000)) : 0);
 const dir = currentCall.direction;
-const name = partnerName();
+const name = currentCall.name || partnerName();
 const durTxt = dur > 0 ? ' · 时长 ' + fmtDur(dur) : '';
 let resText = text;
 if (dur > 0 && currentCall.connectedTime) {
@@ -19254,10 +19328,7 @@ else if (text === '已挂断') resText = '通话已挂断';
 else resText = '通话已结束'; // 不明原因中断等
 resText += durTxt;
 }
-if (window.chatAddSystem) {
-window.chatAddSystem('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>' + (dir === 'in' ? name + ' 来电' : '我拨打 ' + name) + ' · ' + resText);
-}
-if (window.addCallRecord) window.addCallRecord(dir, text + (dur ? '（' + fmtDur(dur) + '）' : ''));
+notifyCallEnd(currentCall.cid || 'default', '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>' + (dir === 'in' ? name + ' 来电' : '我拨打 ' + name) + ' · ' + resText, dir, text + (dur ? '（' + fmtDur(dur) + '）' : ''));
 }
 currentCall = null;
 }
@@ -19279,7 +19350,7 @@ if (window.playSfx) window.playSfx('ring');
 if (window.musicHoldForCall) window.musicHoldForCall(true);
 try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {}
 const name = partnerName();
-currentCall = { direction: 'in', status: 'ringing', startTime: Date.now(), durationSec: 0 };
+currentCall = bindCall({ direction: 'in', status: 'ringing', startTime: Date.now(), durationSec: 0 });
 fillAv(avEl, partnerAv());
 fillAv(miniAv, partnerAv());
 if (nameEl) nameEl.textContent = name;
@@ -19317,8 +19388,8 @@ setTimeout(() => {
 if (currentCall && currentCall.status === 'connected') {
 if (mask) mask.hidden = true;
 if (mini) {
-if (miniName) miniName.textContent = partnerName();
-fillAv(miniAv, partnerAv());
+if (miniName) miniName.textContent = currentCall.name || partnerName();
+fillAv(miniAv, currentCall.av || partnerAv());
 mini.hidden = false;
 }
 }
@@ -19339,7 +19410,7 @@ endCall('已挂断');
 window.placeCall = function () {
 if (currentCall) { toast('已有通话中'); return; }
 const name = partnerName();
-currentCall = { direction: 'out', status: 'calling', startTime: Date.now(), durationSec: 0 };
+currentCall = bindCall({ direction: 'out', status: 'calling', startTime: Date.now(), durationSec: 0 });
 const callRef = currentCall;
 closeImageOverlay();
 fillAv(avEl, partnerAv());
@@ -19364,7 +19435,7 @@ startCallDuration();
 setTimeout(() => {
 if (currentCall === callRef && callRef.status === 'connected') {
 if (mask) mask.hidden = true;
-if (mini) { if (miniName) miniName.textContent = partnerName(); fillAv(miniAv, partnerAv()); mini.hidden = false; }
+if (mini) { if (miniName) miniName.textContent = callRef.name || partnerName(); fillAv(miniAv, callRef.av || partnerAv()); mini.hidden = false; }
 }
 }, 2000);
 } else {

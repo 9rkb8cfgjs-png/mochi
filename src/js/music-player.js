@@ -855,9 +855,12 @@
   }
 
   // ================= 播放器 =================
-  // v3.6.x：本地音频统一用 Blob + 对象 URL（blob:）播放——夸克等浏览器对
-  // `<audio src="data:...">`（尤其大段 base64）播放失效；blob: URL 是标准播放方案。
-  // 存量数据是 dataURL 字符串（旧版上传 / 种子歌本地旋律），播放时自动转成 Blob。
+  // v3.6.x：本地音频播放——blob: URL 和 dataURL 双路径互为兜底。
+  // 夸克等浏览器对 `<audio src="data:...">`（大段 base64）播放失效，blob: 必走；
+  // 永恒浏览器（安卓 WebView）相反，对 blob: URL 音频静默失败（play() Promise 挂起、
+  // onplay 不触发、无声无提示），dataURL 直接作为 src 才能播。
+  // 策略：Blob 优先 blob:，dataURL 字符串优先 dataURL；4 秒无 onplay/无进度 →
+  // teardown 切另一种 src 重试。两种都失败 → toast 提示。
   let curObjectUrl = null;
   function revokeObjectUrl() {
     if (curObjectUrl) { try { URL.revokeObjectURL(curObjectUrl); } catch (e) {} curObjectUrl = null; }
@@ -879,20 +882,65 @@
     }
     return manual();
   }
+  // Blob → dataURL 字符串（FileReader，异步；用于 blob: 失败后切 dataURL 重试）
+  function blobToDataUrl(blob) {
+    return new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result || '');
+      fr.onerror = () => resolve('');
+      try { fr.readAsDataURL(blob); } catch (e) { resolve(''); }
+    });
+  }
   // 用本地值（Blob 或 dataURL 字符串）建音频并播放
   function playLocal(m, v) {
-    const blobP = v instanceof Blob ? Promise.resolve(v) : dataUrlToBlob(v);
-    blobP.then(blob => {
-      if (currentId !== m.id) return; // 转换期间用户已切歌
-      revokeObjectUrl();
-      curObjectUrl = URL.createObjectURL(blob);
-      audio = new Audio();
-      audio.src = curObjectUrl;
-      startPlayback(m);
-    }).catch(() => {
+    if (currentId !== m.id) return;
+    let failoverUsed = false; // 防止 blob:↔dataURL 之间无限切换
+    // 用指定 src 建 audio 并启动播放，4 秒无 onplay/无进度 → 切另一种 src
+    function startWithSrc(src, isBlob) {
       if (currentId !== m.id) return;
-      toast('音乐文件加载失败，可能已被清理'); currentId = null; updatePlayerBar(); renderLibrary();
-    });
+      if (isBlob) { revokeObjectUrl(); curObjectUrl = src; }
+      audio = new Audio();
+      audio.src = src;
+      startPlayback(m);
+      let wd = setTimeout(() => {
+        wd = null;
+        if (currentId !== m.id || !audio) return; // 已切歌/已 teardown
+        if (audio.currentTime > 0) return; // 已在播，blob:/dataURL 成功
+        if (failoverUsed) { // 两种 src 都失败
+          toast('播放失败：浏览器无法加载音频');
+          try { audio.pause(); } catch (e) {}
+          try { syncPlayIcons(false); } catch (e) {}
+          return;
+        }
+        failoverUsed = true;
+        teardownAudio();
+        if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+        if (isBlob) {
+          // blob: 失败 → 切 dataURL 直接作为 src（永恒浏览器走这条）
+          const dataUrlP = (v instanceof Blob) ? blobToDataUrl(v) : Promise.resolve(v);
+          dataUrlP.then(dataUrl => {
+            if (currentId !== m.id) return;
+            if (!dataUrl) { toast('播放失败：浏览器无法加载音频'); currentId = null; updatePlayerBar(); renderLibrary(); return; }
+            startWithSrc(dataUrl, false);
+          });
+        } else {
+          // dataURL 失败 → 切 blob: URL（夸克浏览器走这条）
+          const blobP = (v instanceof Blob) ? Promise.resolve(v) : dataUrlToBlob(v);
+          blobP.then(blob => {
+            if (currentId !== m.id) return;
+            try { startWithSrc(URL.createObjectURL(blob), true); } catch (e) { toast('播放失败：浏览器无法加载音频'); }
+          }).catch(() => { toast('播放失败：浏览器无法加载音频'); currentId = null; updatePlayerBar(); renderLibrary(); });
+        }
+      }, 4000);
+      // onplay 取消 watchdog（正常出声，无需切 src）
+      if (audio) audio.addEventListener('play', () => { if (wd) { clearTimeout(wd); wd = null; } }, { once: true });
+    }
+    // 先试：Blob → blob: URL；dataURL 字符串 → dataURL 直接作为 src
+    if (v instanceof Blob) {
+      try { startWithSrc(URL.createObjectURL(v), true); } catch (e) { toast('播放失败：浏览器无法加载音频'); }
+    } else {
+      startWithSrc(v, false);
+    }
   }
   function teardownAudio() {
     if (audio) {
