@@ -301,7 +301,6 @@ html { margin:0; padding:0; }
   position:fixed; inset:0; z-index:99999;
   background:rgba(0,0,0,.45);
   display:flex; align-items:center; justify-content:center;
-  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
 }
 .cc-import-progress[hidden] { display:none; }
 .cc-ip-box {
@@ -380,12 +379,13 @@ input.ce-ghost, textarea.ce-ghost {
 .page[hidden] { display:none; }
 
 /* 通用弹层（替代 prompt/confirm，IAB 不支持原生弹窗）
-   层级最高，确保任何面板/浮层之上都能弹出 */
+   层级最高，确保任何面板/浮层之上都能弹出
+   v3.6.x：去掉 backdrop-filter blur——iOS Safari 全屏模糊每次弹窗打开都做一次
+   整屏栅格化（弹窗是最高频操作），纯 rgba 遮罩视觉几乎无差，性能收益大 */
 .modal-mask {
   position:fixed; inset:0; z-index:90;
   background:var(--overlay-bg);
   display:flex; align-items:center; justify-content:center;
-  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
 }
 .modal-mask[hidden] { display:none; }
 .modal {

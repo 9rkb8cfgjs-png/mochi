@@ -47,5 +47,16 @@
       底部留白保证滚动到底后最后卡片完整可见。
    ② background:var(--card-bg)：.page 默认透明，会透出 .phone 渐变灰底（#f2f2f2），
       tabbar 上方永远有一道灰条；页面背景改为不透明卡片色（浅色白/深色自动），
-      灰条彻底消失，与白色 tabbar 视觉连续。 */
+      灰条彻底消失，与白色 tabbar 视觉连续。
+   v3.6.67 增量：以上只解决了"滚动到底完整"——但用户进入页面 scrollTop=0 时
+   第 9 张卡片依然被 .page 底边裁剪（切缝透出页面背景，浅色 = 白色"白条"遮挡文字），
+   因为 9×chat-item + chat-title 总高（实测 ~760px）> .page 可视高（722px）。
+   根本解决：让所有卡片能在 722px 内【不滚动就完整显示】——
+   覆盖 chat-item 尺寸（padding 14→8px 省 12px/张，margin-bottom 10→4px 又省 12px/张，
+   9×24=216px 大幅低于 722px 余量），同时收紧 chat-title/chat-sub 上下留白。
+   选择器加 #page-chatcard 前缀只覆盖此页，不动 chat-pages.css。
+   AI-A 的 chat-pages.css 保持原样（其他页面用 chat-item 不受影响）。 */
 #page-chatcard { padding-bottom:24px; background:var(--card-bg); }
+#page-chatcard .chat-title { padding:2px 2px 4px; }
+#page-chatcard .chat-sub { padding-bottom:6px; }
+#page-chatcard .chat-item { padding:8px 12px; margin-bottom:4px; }

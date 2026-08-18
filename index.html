@@ -200,7 +200,6 @@ padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
 position:fixed; inset:0; z-index:99999;
 background:rgba(0,0,0,.45);
 display:flex; align-items:center; justify-content:center;
-backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
 }
 .cc-import-progress[hidden] { display:none; }
 .cc-ip-box {
@@ -262,7 +261,6 @@ padding:4px 4px 12px; font-size:13px; font-weight:600; z-index:2;
 position:fixed; inset:0; z-index:90;
 background:var(--overlay-bg);
 display:flex; align-items:center; justify-content:center;
-backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
 }
 .modal-mask[hidden] { display:none; }
 .modal {
@@ -428,6 +426,11 @@ overflow-wrap: anywhere;
 .page-slide.desk-page { zoom:var(--desk-font-scale, 1); }
 .deco-widget, .mini-card, .checkin, .weekend-box, .music-widget,
 .memo-card, .mood-card, .week-card { zoom:var(--desk-card-scale, 1); }
+@media (max-width: 900px) {
+.page-slide.desk-page,
+.deco-widget, .mini-card, .checkin, .weekend-box, .music-widget,
+.memo-card, .mood-card, .week-card { zoom:1; }
+}
 .deco-widget {
 position:relative; height:190px; border-radius:26px;
 margin-top:14px; margin-bottom:14px; flex-shrink:0;
@@ -1383,7 +1386,6 @@ max-width:70px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 position:fixed; inset:0; z-index:95;
 background:rgba(0,0,0,.5);
 display:flex; align-items:center; justify-content:center;
-backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
 }
 .call-mask[hidden] { display:none; }
 .call-panel {
@@ -2130,7 +2132,6 @@ display:flex; align-items:center; justify-content:center; cursor:pointer;
 position:fixed; inset:0; z-index:60;
 background:rgba(0,0,0,.35);
 display:flex; align-items:center; justify-content:center;
-backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
 }
 .mg-mask[hidden] { display:none; }
 .mg-panel {
@@ -2218,7 +2219,6 @@ font-size:13px; line-height:1.6;
 position:fixed; inset:0; z-index:85;
 background:rgba(0,0,0,.35);
 display:flex; align-items:center; justify-content:center;
-backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
 }
 .tc-mask[hidden] { display:none; }
 .tc-panel {
@@ -2295,7 +2295,6 @@ padding:12px; margin-bottom:8px;
 position:fixed; inset:0; z-index:88;
 background:rgba(0,0,0,.35);
 display:flex; align-items:center; justify-content:center;
-backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
 }
 .qa-mask[hidden] { display:none; }
 .qa-panel {
@@ -2527,6 +2526,23 @@ width:26px; height:26px; border:none; background:transparent; color:#999;
 display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0;
 }
 .sm-song-more svg { width:16px; height:16px; }
+.sm-song-ico.has-cov {
+background-size:cover; background-position:center;
+background-color:rgba(0,0,0,.06); border-radius:8px;
+}
+.sm-song-ico.has-cov svg { display:none; }
+.sm-cov-row { display:flex; align-items:center; gap:12px; }
+.sm-cov-prev {
+width:64px; height:64px; border-radius:12px; flex-shrink:0;
+background:rgba(0,0,0,.06); border:1px solid rgba(0,0,0,.08);
+display:flex; align-items:center; justify-content:center; color:#b9b9b9;
+cursor:pointer; overflow:hidden;
+background-size:cover; background-position:center;
+}
+.sm-cov-prev svg { width:22px; height:22px; }
+.sm-cov-prev.has-cov svg { display:none; }
+.sm-cov-actions { flex:1; display:flex; gap:8px; }
+.sm-cov-btn[hidden] { display:none; }
 .sm-batch-chk {
 width:16px; height:16px; border-radius:50%; border:1.5px solid #bbb;
 background:#fff; flex-shrink:0; position:relative;
@@ -2961,6 +2977,9 @@ transition:color .18s ease, background .18s ease;
 .page.full .gs-scroll { padding-left:18px; padding-right:18px; }
 .page.full .chat-item, .page.full .chat-search { margin-left:18px; margin-right:18px; }
 #page-chatcard { padding-bottom:24px; background:var(--card-bg); }
+#page-chatcard .chat-title { padding:2px 2px 4px; }
+#page-chatcard .chat-sub { padding-bottom:6px; }
+#page-chatcard .chat-item { padding:8px 12px; margin-bottom:4px; }
 [data-theme="dark"] {
 --dark-card: #1e1e1e;
 --dark-card-92: rgba(30,30,30,.92);
@@ -3270,7 +3289,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.67 · 部署于 2026-08-18 16:23</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.68 · 部署于 2026-08-18 16:50</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3923,7 +3942,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.67</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.68</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -13952,6 +13971,39 @@ const p = (n) => (n < 10 ? '0' + n : '' + n);
 return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+function songIcoHtml(m, icon) {
+if (m && m.cover) {
+return '<span class="sm-song-ico has-cov" style="background-image:url(\'' + esc(m.cover) + '\')"></span>';
+}
+return '<span class="sm-song-ico"><svg viewBox="0 0 24 24" fill="currentColor">' + (icon || '<path d="M8 5.5v13l11-6.5z"/>') + '</svg></span>';
+}
+function compressCover(file, cb) {
+let url = null;
+try { url = URL.createObjectURL(file); } catch (e) {}
+if (!url) {
+const r = new FileReader();
+r.onload = () => cb(r.result);
+r.onerror = () => cb('');
+try { r.readAsDataURL(file); } catch (e) { cb(''); }
+return;
+}
+const img = new Image();
+img.onload = function () {
+try { URL.revokeObjectURL(url); } catch (e) {}
+let w = img.width, h = img.height;
+if (!w || !h) { cb(''); return; }
+const k = Math.min(1, 512 / Math.max(w, h));
+w = Math.max(1, Math.round(w * k)); h = Math.max(1, Math.round(h * k));
+const c = document.createElement('canvas');
+c.width = w; c.height = h;
+const ctx = c.getContext('2d');
+if (!ctx) { cb(''); return; }
+try { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h); } catch (e) { cb(''); return; }
+try { cb(c.toDataURL('image/jpeg', 0.82)); } catch (e) { cb(''); }
+};
+img.onerror = function () { try { URL.revokeObjectURL(url); } catch (e) {} cb(''); };
+img.src = url;
+}
 function saveLibrary() { saveArr('music-library', library); }
 function savePlaylists() { saveArr('music-playlists', playlists); }
 function saveHistory() { saveArr('music-history', history); }
@@ -14192,7 +14244,7 @@ const list = Array.from(files);
 if (!list.length) return;
 toast('正在上传 ' + list.length + ' 首音乐…');
 let idx = 0;
-const done = () => { saveLibrary(); renderPage(); toast('已上传 ' + list.length + ' 首音乐'); };
+const done = () => { saveLibrary(); renderPage(); toast('已上传 ' + list.length + ' 首音乐（点歌曲右侧 ⋯ 可设置封面）'); };
 const readFile = (file, cb, failCb) => {
 const r1 = new FileReader();
 r1.onload = () => { if (r1.result instanceof ArrayBuffer) cb(r1.result, true); else cb(r1.result, false); };
@@ -14437,7 +14489,7 @@ const songs = library.filter(m => m.playlistId === pid);
 if (!pl || !window.openTCPanel) return;
 window.openTCPanel(esc(pl.name), songs.length
 ? songs.map(m => '<div class="sm-song" data-id="' + m.id + '">' +
-'<span class="sm-song-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg></span>' +
+songIcoHtml(m) +
 '<div class="sm-song-info"><div class="sm-song-name">' + esc(m.name || '未知歌曲') + '</div>' +
 '<div class="sm-song-sub">' + esc(m.artist || '未知歌手') + '</div></div>' +
 '<span class="sm-song-dur">' + fmtDur(m.duration) + '</span></div>').join('')
@@ -14503,7 +14555,7 @@ const checked = musicBatch && batchSel.has(m.id) ? ' sel' : '';
 const chk = musicBatch ? '<span class="sm-batch-chk"></span>' : '';
 return '<div class="sm-song' + (active ? ' active' : '') + checked + '" data-id="' + m.id + '">' +
 chk +
-'<span class="sm-song-ico"><svg viewBox="0 0 24 24" fill="currentColor">' + icon + '</svg></span>' +
+songIcoHtml(m, icon) +
 '<div class="sm-song-info"><div class="sm-song-name">' + esc(m.name || '未知歌曲') + '</div>' +
 '<div class="sm-song-sub">' + esc(m.artist || '未知歌手') + ' · ' + badge + '</div></div>' +
 '<span class="sm-song-dur">' + fmtDur(m.duration) + '</span>' +
@@ -15121,7 +15173,7 @@ el.innerHTML = songs.length
 ? songs.map(m => {
 const active = m.id === currentId;
 return '<div class="sm-song' + (active ? ' active' : '') + '" data-id="' + m.id + '">' +
-'<span class="sm-song-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg></span>' +
+songIcoHtml(m) +
 '<div class="sm-song-info"><div class="sm-song-name">' + esc(m.name || '未知歌曲') + '</div>' +
 '<div class="sm-song-sub">' + esc(m.artist || '未知歌手') + '</div></div>' +
 '<button class="sm-song-more" data-id="' + m.id + '" title="取消收藏"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5S4.5 15.2 4.5 9.9A4.9 4.9 0 0112 7.1a4.9 4.9 0 017.5 2.8c0 5.3-7.5 10.6-7.5 10.6z"/></svg></button>' +
@@ -15228,7 +15280,47 @@ window.openTCPanel('管理音乐', '' +
 '<div class="sm-fld"><label>歌曲名称</label><input class="tc-input" id="sm-e-name" value="' + String(m.name || '').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"></div>' +
 '<div class="sm-fld"><label>歌手</label><input class="tc-input" id="sm-e-artist" value="' + String(m.artist || '').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"></div>' +
 '<div class="sm-fld"><label>所属歌单</label><select class="tc-input" id="sm-e-pl"><option value="default">我的音乐库</option>' + plOpts + '</select></div>' +
+'<div class="sm-fld"><label>歌曲封面</label>' +
+'<div class="sm-cov-row">' +
+'<div class="sm-cov-prev' + (m.cover ? ' has-cov' : '') + '" id="sm-e-cov-prev"' + (m.cover ? ' style="background-image:url(\'' + esc(m.cover) + '\')"' : '') + ' title="点击上传封面"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg></div>' +
+'<div class="sm-cov-actions"><button class="cc-tool sm-cov-btn" id="sm-e-cov-up">上传封面</button><button class="cc-tool sm-cov-btn" id="sm-e-cov-clear"' + (m.cover ? '' : ' hidden') + '>清除封面</button></div>' +
+'</div></div>' +
 '<div class="mail-actions"><button class="cc-tool" id="sm-e-del">删除</button><button class="cc-tool" id="sm-e-cancel">取消</button><button class="cc-tool" id="sm-e-ok">保存</button></div>');
+const covPrev = document.getElementById('sm-e-cov-prev');
+const covUp = document.getElementById('sm-e-cov-up');
+const covClear = document.getElementById('sm-e-cov-clear');
+const covInput = document.createElement('input');
+covInput.type = 'file';
+covInput.accept = 'image/*';
+covInput.style.display = 'none';
+document.body.appendChild(covInput);
+covInput.onchange = function () {
+const f = covInput.files && covInput.files[0];
+covInput.value = '';
+if (!f) return;
+compressCover(f, function (dv) {
+if (!dv) { toast('封面读取失败，请换一张图片'); return; }
+m.cover = dv;
+saveLibrary();
+renderPage();
+covPrev.classList.add('has-cov');
+covPrev.style.backgroundImage = 'url(\'' + dv + '\')';
+covClear.hidden = false;
+toast('封面已设置');
+});
+};
+const pickCover = () => { try { covInput.click(); } catch (e) {} };
+if (covUp) covUp.addEventListener('click', pickCover);
+if (covPrev) covPrev.addEventListener('click', pickCover);
+if (covClear) covClear.addEventListener('click', () => {
+m.cover = '';
+saveLibrary();
+renderPage();
+covPrev.classList.remove('has-cov');
+covPrev.style.backgroundImage = '';
+covClear.hidden = true;
+toast('已清除封面');
+});
 document.getElementById('sm-e-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
 document.getElementById('sm-e-ok').addEventListener('click', () => {
 m.name = (document.getElementById('sm-e-name').value || '').trim() || m.name;

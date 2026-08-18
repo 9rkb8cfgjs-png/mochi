@@ -11,6 +11,12 @@
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
 
 ### 2026-08-18
+- [本会话] 完成（用户需求「上传歌曲时，可自定义上传歌曲封面图片」，已构建 verify 10/10 + CDP 端到端 18/18，**待提交**）：`src/js/music-player.js`（AI-A 域）+ `src/css/chat-pages.css`，未动 template.html。①「管理音乐」弹窗（歌曲 ⋯ 按钮）新增「歌曲封面」行：圆形预览（点击也可上传）+ 上传封面 + 清除封面按钮；图片压缩到最长边 512px JPEG dataURL 存 `m.cover`（画布失败回退原图；保存后列表/收藏/歌单/桌面部件同步刷新）；② 音乐库/收藏/歌单内歌曲列表有封面时渲染缩略图（`.sm-song-ico.has-cov`，替换音符图标），无封面保持原样；③ 上传完成 toast 改为「已上传 N 首音乐（点歌曲右侧 ⋯ 可设置封面）」。隐藏 file input 挂 body（`document.body.appendChild`，保证老内核/无头环境 click 可用）。数据量：每封面 ~几十 KB，走既有 xyStore 大键机制，备份导入导出自动包含。CDP 18/18：种子带/无封面列表缩略图/面板预览与清除按钮状态/真实 PNG 注入→m.cover 压缩为 jpeg dataURL/预览与列表同步/toast/清除后恢复占位与音符图标/无 JS 错误。涉及 `src/js/music-player.js`、`src/css/chat-pages.css` + 产物。**未提交**，等待统一提交/部署。临时探测脚本已删。
+
+### 2026-08-18
+- [本会话] 排查完成（用户反馈「联系人主动发送的消息气泡左上角没有小爱心标识」，结论=构建产物语法崩溃，已修复并随 8a1df3f 提交）：排查过程——① CDP 加载 HEAD 构建（2dbe6ad）无头实测：带 `initiative:true` 的消息渲染出 14px 粉红爱心、普通回复无爱心、`as-badge` 开关关→无/开→恢复，**老构建本身没问题**；② 复测时发现**当前 index.html（16:16 构建）整包 JS 抛 `SyntaxError: missing ) after argument list`（@index.html:8883）→ 全站 JS 不执行（`__mochiDataReady` 恒 false、splash 不消失、聊天/设置全部失效）——**根因是 `src/js/chat.js` 上一轮改动（myPrefix 跨联系人写串修复 + pendingLocal 合并落盘）在 loadMsgs 里留下 3 行孤儿代码（`} catch (e) {}` / `}` / `return;`，约 221-223 行），`node --check` 直接报错**。已删除孤儿行恢复结构（对方新加的 pendingLocal 合并逻辑原样保留，未动其他），`node --check` 通过后已 `node build.mjs`（16:23）+ `npm run verify` 10/10 + CDP 端到端（as-min=1 强制真实主动发送：85s 后 TA 发来消息气泡左上角爱心 14px 正常渲染；开机问候消息无爱心符合预期）。产物 index.html/sw.js/version.json 已随 8a1df3f 一起提交。涉及 `src/js/chat.js` + 产物。⚠️ 遗留：`tools/diag-cc-tmp.mjs` 未跟踪文件请对方确认后清理；另外 chat.js 新注释里有 GBK 乱码（如「写串）�?」「LS 拋留」）和注释内 `）` 后丢行尾的拼接现象，不影响运行，建议顺手修一下注释编码。
+
+### 2026-08-18
 - [本会话] 完成（tabbar 去投影 + 设置页/gs-scroll 底部留白——"还有一点灰/滑动遮挡"收尾，已构建 verify 10/10 + CDP 验证，**随本次提交**）：用户反馈去 radial 后"依旧还是有一点"，且在字卡库/设置页上下滑动遮挡。定位两处残留：①`src/css/tabbar.css` tabbar 自身 `box-shadow:0 2px 8px rgba(0,0,0,.05)`——纯白背景上投影即卡片下方一道淡灰（"形状旁边还有一点灰"），去掉（`dark.css` 深色覆盖同步去）；②设置页 `.page` 直接滚动（无 gs-scroll 容器），滚动到底最后一行距 tabbar 仅 14px（page padding 4px + tabbar margin 10px）视觉"被压住/遮挡"——`setting.css` 给 `#page-setting` 加 `padding-bottom:20px`（滚动到底最后一行距 tabbar 实测 86px）；同时给 `.gs-scroll` 加 `padding-bottom:20px`（日历/占卜等 gs-scroll 页面同样受益）。字卡库页已修（gap 44px）。CDP 验证：tabbar 下方无 shadow、设置页最后一行完整可见。涉及 `src/css/tabbar.css`、`src/css/dark.css`、`src/css/setting.css`。
 
 ### 2026-08-18
@@ -263,3 +269,9 @@
 - [AI-B] 2026-08-17 23:40：v3.6.47 已推送仓库，Pages 部署滞后，空提交+本记录再次触发。
 
 - [本会话] 2026-08-18：帮我决定——「是/否/半对」tab 删除「最多选几个」行（固定单选，最多选几个仅自定义选项 tab 保留）。涉及 `src/js/decision.js`；已 `node build.mjs` + `npm run verify` 10/10。
+
+### 2026-08-18
+- [本会话] 完成（tabbar 选中按钮去灰底 + 字卡库 toolbar 换行防截断 + chat.js 语法错误修复，已构建 verify 8/10 + CDP 验证，**已提交未 push**）：用户反馈'字卡库页面的 ui 的按钮的颜色变了，怎么 ui 不全了，还有莫名其妙的灰色'。根因①——背景改纯白后  在白色底上对比度变高，看起来像'颜色变了'；修复： 去掉 active 背景（改 transparent），只保留图标颜色变深，深色模式 dark.css 覆盖保留。根因②——字卡库详情页第二个  有 5 个按钮（管理字卡/去重复/导出/导入/清除）， 均分后每个仅约 64px，文字+图标被截断，看起来像'ui 不全了'；修复：  加 。根因③——tabbar 周围灰色此前已由 base.css  改白 + 去 radial 黑晕 + 去 box-shadow 根治，本次附加 tabbar active 去底后视觉更干净。另发现 AI-A 的  改动有多余闭合括号导致语法错误（staged 版本 node -c 失败），unstaged 改动已修复，一并提交。涉及 、、（语法修复）。
+
+### 2026-08-18
+- [���Ự] ��ɣ�tabbar ѡ�а�ťȥ�ҵ� + �ֿ��� toolbar ���з��ض� + chat.js �﷨�����޸����ѹ��� verify 8/10 + CDP ��֤��**���ύδ push**�����û�����'�ֿ���ҳ��� ui �İ�ť����ɫ���ˣ���ô ui ��ȫ�ˣ�����Ī������Ļ�ɫ'������١��������Ĵ��׺� .tab.active { background:rgba(0,0,0,.05) } �ڰ�ɫ���϶Աȶȱ�ߣ���������'��ɫ����'���޸���src/css/tabbar.css ȥ�� active �������� transparent����ֻ����ͼ����ɫ�����ɫģʽ dark.css ���Ǳ���������ڡ����ֿ�������ҳ�ڶ��� .cc-toolbar �� 5 ����ť�������ֿ�/ȥ�ظ�/����/����/�������lex:1 ���ֺ�ÿ����Լ 64px������+ͼ�걻�ضϣ���������'ui ��ȫ��'���޸���src/css/chat-pages.css .cc-toolbar �� lex-wrap:wrap������ۡ���tabbar ��Χ��ɫ��ǰ���� base.css --bg-b �İ� + ȥ radial ���� + ȥ box-shadow ���Σ����θ��� tabbar active ȥ�׺��Ӿ����ɾ��������� AI-A �� src/js/chat.js �Ķ��ж���պ����ŵ����﷨����staged �汾 node -c ʧ�ܣ���unstaged �Ķ����޸���һ���ύ���漰 src/css/tabbar.css��src/css/chat-pages.css��src/js/chat.js���﷨�޸�����

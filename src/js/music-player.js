@@ -53,6 +53,43 @@
   // v3.6.x：完整 HTML 转义（只转 < 可被 `&lt;…&gt;` 实体绕过注入）
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
+  // ================= 自定义歌曲封面 =================
+  // 封面存在时渲染圆形/圆角缩略图（背景图），否则渲染音符图标
+  function songIcoHtml(m, icon) {
+    if (m && m.cover) {
+      return '<span class="sm-song-ico has-cov" style="background-image:url(\'' + esc(m.cover) + '\')"></span>';
+    }
+    return '<span class="sm-song-ico"><svg viewBox="0 0 24 24" fill="currentColor">' + (icon || '<path d="M8 5.5v13l11-6.5z"/>') + '</svg></span>';
+  }
+  // 封面图片压缩到最长边 512px JPEG（几十 KB，不撑爆存储；画布失败回退原图 dataURL）
+  function compressCover(file, cb) {
+    let url = null;
+    try { url = URL.createObjectURL(file); } catch (e) {}
+    if (!url) {
+      const r = new FileReader();
+      r.onload = () => cb(r.result);
+      r.onerror = () => cb('');
+      try { r.readAsDataURL(file); } catch (e) { cb(''); }
+      return;
+    }
+    const img = new Image();
+    img.onload = function () {
+      try { URL.revokeObjectURL(url); } catch (e) {}
+      let w = img.width, h = img.height;
+      if (!w || !h) { cb(''); return; }
+      const k = Math.min(1, 512 / Math.max(w, h));
+      w = Math.max(1, Math.round(w * k)); h = Math.max(1, Math.round(h * k));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      if (!ctx) { cb(''); return; }
+      try { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h); } catch (e) { cb(''); return; }
+      try { cb(c.toDataURL('image/jpeg', 0.82)); } catch (e) { cb(''); }
+    };
+    img.onerror = function () { try { URL.revokeObjectURL(url); } catch (e) {} cb(''); };
+    img.src = url;
+  }
+
   // ================= 存储 =================
   function saveLibrary() { saveArr('music-library', library); }
   function savePlaylists() { saveArr('music-playlists', playlists); }
@@ -346,7 +383,7 @@
     // 列表里有歌但播放时读不到音频。写入失败自动回退存 dataURL 字符串（老内核 100% 支持，
     // 播放路径 dataUrlToBlob 会转回 Blob 播）。readAsArrayBuffer 失败同样回退 readAsDataURL。
     let idx = 0;
-    const done = () => { saveLibrary(); renderPage(); toast('已上传 ' + list.length + ' 首音乐'); };
+    const done = () => { saveLibrary(); renderPage(); toast('已上传 ' + list.length + ' 首音乐（点歌曲右侧 ⋯ 可设置封面）'); };
     const readFile = (file, cb, failCb) => {
       const r1 = new FileReader();
       r1.onload = () => { if (r1.result instanceof ArrayBuffer) cb(r1.result, true); else cb(r1.result, false); };
@@ -617,7 +654,7 @@
         if (!pl || !window.openTCPanel) return;
         window.openTCPanel(esc(pl.name), songs.length
           ? songs.map(m => '<div class="sm-song" data-id="' + m.id + '">' +
-              '<span class="sm-song-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg></span>' +
+              songIcoHtml(m) +
               '<div class="sm-song-info"><div class="sm-song-name">' + esc(m.name || '未知歌曲') + '</div>' +
               '<div class="sm-song-sub">' + esc(m.artist || '未知歌手') + '</div></div>' +
               '<span class="sm-song-dur">' + fmtDur(m.duration) + '</span></div>').join('')
@@ -686,7 +723,7 @@
           const chk = musicBatch ? '<span class="sm-batch-chk"></span>' : '';
           return '<div class="sm-song' + (active ? ' active' : '') + checked + '" data-id="' + m.id + '">' +
             chk +
-            '<span class="sm-song-ico"><svg viewBox="0 0 24 24" fill="currentColor">' + icon + '</svg></span>' +
+            songIcoHtml(m, icon) +
             '<div class="sm-song-info"><div class="sm-song-name">' + esc(m.name || '未知歌曲') + '</div>' +
             '<div class="sm-song-sub">' + esc(m.artist || '未知歌手') + ' · ' + badge + '</div></div>' +
             '<span class="sm-song-dur">' + fmtDur(m.duration) + '</span>' +
@@ -1381,7 +1418,7 @@
       ? songs.map(m => {
           const active = m.id === currentId;
           return '<div class="sm-song' + (active ? ' active' : '') + '" data-id="' + m.id + '">' +
-            '<span class="sm-song-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg></span>' +
+            songIcoHtml(m) +
             '<div class="sm-song-info"><div class="sm-song-name">' + esc(m.name || '未知歌曲') + '</div>' +
             '<div class="sm-song-sub">' + esc(m.artist || '未知歌手') + '</div></div>' +
             '<button class="sm-song-more" data-id="' + m.id + '" title="取消收藏"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5S4.5 15.2 4.5 9.9A4.9 4.9 0 0112 7.1a4.9 4.9 0 017.5 2.8c0 5.3-7.5 10.6-7.5 10.6z"/></svg></button>' +
@@ -1497,7 +1534,48 @@
       '<div class="sm-fld"><label>歌曲名称</label><input class="tc-input" id="sm-e-name" value="' + String(m.name || '').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"></div>' +
       '<div class="sm-fld"><label>歌手</label><input class="tc-input" id="sm-e-artist" value="' + String(m.artist || '').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"></div>' +
       '<div class="sm-fld"><label>所属歌单</label><select class="tc-input" id="sm-e-pl"><option value="default">我的音乐库</option>' + plOpts + '</select></div>' +
+      '<div class="sm-fld"><label>歌曲封面</label>' +
+      '<div class="sm-cov-row">' +
+      '<div class="sm-cov-prev' + (m.cover ? ' has-cov' : '') + '" id="sm-e-cov-prev"' + (m.cover ? ' style="background-image:url(\'' + esc(m.cover) + '\')"' : '') + ' title="点击上传封面"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg></div>' +
+      '<div class="sm-cov-actions"><button class="cc-tool sm-cov-btn" id="sm-e-cov-up">上传封面</button><button class="cc-tool sm-cov-btn" id="sm-e-cov-clear"' + (m.cover ? '' : ' hidden') + '>清除封面</button></div>' +
+      '</div></div>' +
       '<div class="mail-actions"><button class="cc-tool" id="sm-e-del">删除</button><button class="cc-tool" id="sm-e-cancel">取消</button><button class="cc-tool" id="sm-e-ok">保存</button></div>');
+    // 自定义封面：上传（压缩到 512px 存 dataURL）/ 清除，保存到 m.cover（桌面部件/列表同步显示）
+    const covPrev = document.getElementById('sm-e-cov-prev');
+    const covUp = document.getElementById('sm-e-cov-up');
+    const covClear = document.getElementById('sm-e-cov-clear');
+    const covInput = document.createElement('input');
+    covInput.type = 'file';
+    covInput.accept = 'image/*';
+    covInput.style.display = 'none';
+    document.body.appendChild(covInput);
+    covInput.onchange = function () {
+      const f = covInput.files && covInput.files[0];
+      covInput.value = '';
+      if (!f) return;
+      compressCover(f, function (dv) {
+        if (!dv) { toast('封面读取失败，请换一张图片'); return; }
+        m.cover = dv;
+        saveLibrary();
+        renderPage();
+        covPrev.classList.add('has-cov');
+        covPrev.style.backgroundImage = 'url(\'' + dv + '\')';
+        covClear.hidden = false;
+        toast('封面已设置');
+      });
+    };
+    const pickCover = () => { try { covInput.click(); } catch (e) {} };
+    if (covUp) covUp.addEventListener('click', pickCover);
+    if (covPrev) covPrev.addEventListener('click', pickCover);
+    if (covClear) covClear.addEventListener('click', () => {
+      m.cover = '';
+      saveLibrary();
+      renderPage();
+      covPrev.classList.remove('has-cov');
+      covPrev.style.backgroundImage = '';
+      covClear.hidden = true;
+      toast('已清除封面');
+    });
     document.getElementById('sm-e-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
     document.getElementById('sm-e-ok').addEventListener('click', () => {
       m.name = (document.getElementById('sm-e-name').value || '').trim() || m.name;

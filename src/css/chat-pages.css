@@ -748,7 +748,6 @@
   position:fixed; inset:0; z-index:60;
   background:rgba(0,0,0,.35);
   display:flex; align-items:center; justify-content:center;
-  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
 }
 .mg-mask[hidden] { display:none; }
 .mg-panel {
@@ -844,7 +843,6 @@
   position:fixed; inset:0; z-index:85;
   background:rgba(0,0,0,.35);
   display:flex; align-items:center; justify-content:center;
-  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
 }
 .tc-mask[hidden] { display:none; }
 .tc-panel {
@@ -927,7 +925,6 @@
   position:fixed; inset:0; z-index:88;
   background:rgba(0,0,0,.35);
   display:flex; align-items:center; justify-content:center;
-  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
 }
 .qa-mask[hidden] { display:none; }
 .qa-panel {
@@ -1187,6 +1184,25 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
   display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0;
 }
 .sm-song-more svg { width:16px; height:16px; }
+/* 自定义歌曲封面：列表缩略图（有封面时替换音符图标） */
+.sm-song-ico.has-cov {
+  background-size:cover; background-position:center;
+  background-color:rgba(0,0,0,.06); border-radius:8px;
+}
+.sm-song-ico.has-cov svg { display:none; }
+/* 管理音乐弹窗：封面预览 + 上传/清除 */
+.sm-cov-row { display:flex; align-items:center; gap:12px; }
+.sm-cov-prev {
+  width:64px; height:64px; border-radius:12px; flex-shrink:0;
+  background:rgba(0,0,0,.06); border:1px solid rgba(0,0,0,.08);
+  display:flex; align-items:center; justify-content:center; color:#b9b9b9;
+  cursor:pointer; overflow:hidden;
+  background-size:cover; background-position:center;
+}
+.sm-cov-prev svg { width:22px; height:22px; }
+.sm-cov-prev.has-cov svg { display:none; }
+.sm-cov-actions { flex:1; display:flex; gap:8px; }
+.sm-cov-btn[hidden] { display:none; }
 /* 音乐批量管理模式 */
 .sm-batch-chk {
   width:16px; height:16px; border-radius:50%; border:1.5px solid #bbb;
