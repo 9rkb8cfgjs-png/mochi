@@ -1,6 +1,11 @@
 /* ===== 底部 tab（白色纸张风格，与全局统一） ===== */
 .tabbar {
-  margin-top:10px; display:flex; justify-content:space-around;
+  /* v3.6.x：margin-top 由 10px 改为 0——原 10px 上间隙会露出 .page 底部之外的
+     页面灰底（浅色 rgb(233,233,233)），在白色 tabbar 上方形成一道横贯的"灰色条"
+     （字卡库页最后一张卡片贴底最明显，看起来像导航栏多出一块、压住上方文字）。
+     去掉后 tabbar 直接贴住 .page 底边（page 自身 padding-bottom:4px 保留留白），
+     灰条消失；主页内容底部有 .page-slide padding 18px 兜底，不受影响。 */
+  margin-top:0; display:flex; justify-content:space-around;
   flex-shrink:0; /* 视口/高度变化时不被 flex 压缩，防止底部栏被挤没 */
   background:#ffffff;
   border:1px solid rgba(0,0,0,.12);
@@ -32,3 +37,12 @@
 .page.full .card-list { padding-left:18px; padding-right:18px; }
 .page.full .gs-scroll { padding-left:18px; padding-right:18px; }
 .page.full .chat-item, .page.full .chat-search { margin-left:18px; margin-right:18px; }
+
+/* v3.6.x：字卡库首页（page-chatcard）底部修复——
+   ① padding-bottom：内容超出（899>728）时最后一张 chat-item 被 .page 底边裁剪，
+      卡片底部文字被切掉，切缝下露出灰底+白色 tabbar，视觉"灰色长方形遮挡文字"；
+      底部留白保证滚动到底后最后卡片完整可见。
+   ② background:var(--card-bg)：.page 默认透明，会透出 .phone 渐变灰底（#f2f2f2），
+      tabbar 上方永远有一道灰条；页面背景改为不透明卡片色（浅色白/深色自动），
+      灰条彻底消失，与白色 tabbar 视觉连续。 */
+#page-chatcard { padding-bottom:24px; background:var(--card-bg); }
