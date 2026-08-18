@@ -1326,20 +1326,6 @@ window.openTCPanel = openTCPanel;
     if (probVal) probVal.textContent = (typeof s.prob === 'number' ? s.prob : 15) + '%';
     const fuEl = document.getElementById('tcu-followup');
     if (fuEl) fuEl.checked = s.followup !== false;
-    const kcEl = document.getElementById('tcu-known-count');
-    if (kcEl) kcEl.textContent = '· 已了解 ' + Object.keys(d.known).length + ' 件';
-    // 已了解列表
-    const knownEl = document.getElementById('tcu-known');
-    if (knownEl) {
-      const entries = [];
-      for (const qid in d.known) if (d.known.hasOwnProperty(qid)) entries.push({ qid: qid, answer: d.known[qid] });
-      if (!entries.length) knownEl.innerHTML = '<div class="ta-empty">TA 还没有了解你什么</div>';
-      else knownEl.innerHTML = entries.map(en => {
-        const q = TCU_DEFAULT.find(x => x.id === en.qid);
-        const qText = q ? q.text : en.qid;
-        return '<div class="tc-listitem"><div class="tc-li-q">' + (q ? '[' + (TCU_CAT_LABEL[q.cat] || '') + '] ' : '') + qText + '</div><div class="tc-li-line">✓ 你：' + escT(en.answer) + '</div></div>';
-      }).join('');
-    }
   }
   function renderTCUCatsInto(container, presetOnly) {
     if (!container) return;
@@ -1474,16 +1460,6 @@ window.openTCPanel = openTCPanel;
   };
   const tcuNow = document.getElementById('tcu-now');
   if (tcuNow) tcuNow.addEventListener('click', () => window.triggerTaCuriousNow());
-  const tcuClearKnown = document.getElementById('tcu-clear-known');
-  if (tcuClearKnown) {
-    tcuClearKnown.addEventListener('click', () => {
-      if (window.openModal) {
-        window.openModal('清空「已了解」记录？清空后相同问题可能再次出现。', '', () => {
-          const d = tcuLoad(); d.known = {}; tcuSave(d); renderTCUSettings();
-        }, { noInput: true });
-      }
-    });
-  }
 
   // ================= Ta的吐槽（复刻星言 ta的吐槽 完整版） =================
   // 定位：TA 偶尔突然吐槽你一句，然后回到正常聊天（熟悉/调侃/亲密为主，不是批评）

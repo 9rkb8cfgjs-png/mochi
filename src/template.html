@@ -469,11 +469,6 @@
         <div id="tcu-mine-cats" style="padding:8px 14px 14px"></div>
       </div>
     </div>
-    <div class="set-group glass">
-      <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>已了解 <span id="tcu-known-count" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
-      <div id="tcu-known" style="padding:8px 14px 4px"></div>
-      <button class="mem-add" id="tcu-clear-known">清空已了解</button>
-    </div>
   </div>
 </div>
 
@@ -2386,6 +2381,15 @@
     </div>
   </div>
 
+  <!-- v3.6.x：桌面图片组件全屏查看器——点图片组件放大查看，点空白/×关闭。
+       注意：必须放在 <script> 之前（body 直子节点，position:fixed 不受布局影响）——
+       启动时 personalize.js 的 setupDeskImageViewerClose 会立即查询并绑定关闭事件，
+       放在脚本后面会导致启动时元素不存在、绑定被跳过，点 × 无反应无法关闭。 -->
+  <div class="desk-image-viewer" id="desk-image-viewer" hidden>
+    <img id="desk-image-viewer-img" alt="">
+    <span class="desk-image-viewer-close" id="desk-image-viewer-close">×</span>
+  </div>
+
   <script>
   // v3.5.123：readonly 起手（防 Chrome 密码弹条破坏表单签名）——这里立即解除，
   // 早于所有功能模块，任何设备都不会出现输入框不可用的情况
@@ -2416,11 +2420,6 @@
     <span class="vub-txt" id="backup-remind-txt">建议导出数据备份</span>
     <span class="vub-act" id="backup-remind-go">去备份</span>
     <span class="vub-act vub-close" id="backup-remind-close" style="background:transparent;color:#ccc;border:1px solid rgba(255,255,255,.3)">稍后</span>
-  </div>
-  <!-- v3.6.x：桌面图片组件全屏查看器——点图片组件放大查看，点空白/×关闭 -->
-  <div class="desk-image-viewer" id="desk-image-viewer" hidden>
-    <img id="desk-image-viewer-img" alt="">
-    <span class="desk-image-viewer-close" id="desk-image-viewer-close">×</span>
   </div>
 </body>
 </html>

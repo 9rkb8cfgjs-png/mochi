@@ -3497,7 +3497,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.85 · 部署于 2026-08-18 19:56</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.87 · 部署于 2026-08-18 20:12</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3913,11 +3913,6 @@ color: var(--muted);
         <div id="tcu-mine-cats" style="padding:8px 14px 14px"></div>
       </div>
     </div>
-    <div class="set-group glass">
-      <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>已了解 <span id="tcu-known-count" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
-      <div id="tcu-known" style="padding:8px 14px 4px"></div>
-      <button class="mem-add" id="tcu-clear-known">清空已了解</button>
-    </div>
   </div>
 </div>
 
@@ -4211,7 +4206,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.85</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.87</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5830,6 +5825,15 @@ color: var(--muted);
     </div>
   </div>
 
+  <!-- v3.6.x：桌面图片组件全屏查看器——点图片组件放大查看，点空白/×关闭。
+       注意：必须放在 <script> 之前（body 直子节点，position:fixed 不受布局影响）——
+       启动时 personalize.js 的 setupDeskImageViewerClose 会立即查询并绑定关闭事件，
+       放在脚本后面会导致启动时元素不存在、绑定被跳过，点 × 无反应无法关闭。 -->
+  <div class="desk-image-viewer" id="desk-image-viewer" hidden>
+    <img id="desk-image-viewer-img" alt="">
+    <span class="desk-image-viewer-close" id="desk-image-viewer-close">×</span>
+  </div>
+
   <script>
   // v3.5.123：readonly 起手（防 Chrome 密码弹条破坏表单签名）——这里立即解除，
   // 早于所有功能模块，任何设备都不会出现输入框不可用的情况
@@ -6858,6 +6862,8 @@ updateEntryCount();
 (function () {
 const uid = window.activePrefix();
 const store = window.activeStore();
+const DESK_IMG_SIZES = { s: 40, m: 70, l: 100 };
+let viewerBound = false;
 function compressImage(dataUrl, maxSide) {
 return new Promise((resolve) => {
 if (typeof dataUrl === 'string' && dataUrl.length > 8 * 1024 * 1024) {
@@ -8527,6 +8533,10 @@ if (!slide) return;
 const node = document.createElement('div');
 node.className = 'desk-image-widget';
 node.dataset.deskImage = m.id;
+const w = DESK_IMG_SIZES.l;
+const wv = (m.w === DESK_IMG_SIZES.s || m.w === DESK_IMG_SIZES.m) ? m.w : w;
+node.style.width = wv + '%';
+if (wv < 100) node.style.alignSelf = 'flex-start';
 const img = document.createElement('img');
 node.appendChild(img);
 const addBtn = slide.querySelector('.desk-page-add');
@@ -8613,13 +8623,36 @@ const isDecor = phone && phone.classList.contains('decor-on');
 if (isDecor) {
 e.stopPropagation();
 if (!window.openModal) return;
+const cur = (loadDeskImagesMeta().find(x => x.id === id) || {}).w || DESK_IMG_SIZES.l;
+const sizePill = (label, val, w) => ({ label: label + (cur === w ? ' ✓' : ''), value: val });
 window.openModal('图片组件', '', (v) => {
 if (v === '1') changeDeskImage(id);
 else if (v === '2') removeDeskImage(id);
-}, { noInput: true, pills: [{ label: '更换图片', value: '1' }, { label: '删除图片', value: '2' }] });
+else if (v === 's' || v === 'm' || v === 'l') {
+const w = DESK_IMG_SIZES[v];
+const meta = loadDeskImagesMeta();
+const m = meta.find(x => x.id === id);
+if (m) {
+m.w = w;
+saveDeskImagesMeta(meta);
+renderDeskImages();
+toast(v === 's' ? '已设为小尺寸' : v === 'm' ? '已设为中尺寸' : '已设为大尺寸');
+}
+}
+}, {
+noInput: true,
+pills: [
+{ label: '更换图片', value: '1' },
+sizePill('尺寸：小', 's', DESK_IMG_SIZES.s),
+sizePill('尺寸：中', 'm', DESK_IMG_SIZES.m),
+sizePill('尺寸：大', 'l', DESK_IMG_SIZES.l),
+{ label: '删除图片', value: '2' },
+],
+});
 } else {
 const img = widget.querySelector('img');
 if (!img || !img.src) return;
+setupDeskImageViewerClose();
 const viewer = document.getElementById('desk-image-viewer');
 const viewerImg = document.getElementById('desk-image-viewer-img');
 if (viewer && viewerImg) { viewerImg.src = img.src; viewer.hidden = false; }
@@ -8629,6 +8662,8 @@ if (viewer && viewerImg) { viewerImg.src = img.src; viewer.hidden = false; }
 function setupDeskImageViewerClose() {
 const viewer = document.getElementById('desk-image-viewer');
 if (!viewer) return;
+if (viewerBound) return;
+viewerBound = true;
 const closeBtn = document.getElementById('desk-image-viewer-close');
 const close = () => { viewer.hidden = true; const vi = document.getElementById('desk-image-viewer-img'); if (vi) vi.src = ''; };
 if (closeBtn) closeBtn.addEventListener('click', close);
@@ -18961,19 +18996,6 @@ if (probEl) probEl.value = typeof s.prob === 'number' ? s.prob : 15;
 if (probVal) probVal.textContent = (typeof s.prob === 'number' ? s.prob : 15) + '%';
 const fuEl = document.getElementById('tcu-followup');
 if (fuEl) fuEl.checked = s.followup !== false;
-const kcEl = document.getElementById('tcu-known-count');
-if (kcEl) kcEl.textContent = '· 已了解 ' + Object.keys(d.known).length + ' 件';
-const knownEl = document.getElementById('tcu-known');
-if (knownEl) {
-const entries = [];
-for (const qid in d.known) if (d.known.hasOwnProperty(qid)) entries.push({ qid: qid, answer: d.known[qid] });
-if (!entries.length) knownEl.innerHTML = '<div class="ta-empty">TA 还没有了解你什么</div>';
-else knownEl.innerHTML = entries.map(en => {
-const q = TCU_DEFAULT.find(x => x.id === en.qid);
-const qText = q ? q.text : en.qid;
-return '<div class="tc-listitem"><div class="tc-li-q">' + (q ? '[' + (TCU_CAT_LABEL[q.cat] || '') + '] ' : '') + qText + '</div><div class="tc-li-line">✓ 你：' + escT(en.answer) + '</div></div>';
-}).join('');
-}
 }
 function renderTCUCatsInto(container, presetOnly) {
 if (!container) return;
@@ -19106,16 +19128,6 @@ toast('TA 在聊天里向你好奇了');
 };
 const tcuNow = document.getElementById('tcu-now');
 if (tcuNow) tcuNow.addEventListener('click', () => window.triggerTaCuriousNow());
-const tcuClearKnown = document.getElementById('tcu-clear-known');
-if (tcuClearKnown) {
-tcuClearKnown.addEventListener('click', () => {
-if (window.openModal) {
-window.openModal('清空「已了解」记录？清空后相同问题可能再次出现。', '', () => {
-const d = tcuLoad(); d.known = {}; tcuSave(d); renderTCUSettings();
-}, { noInput: true });
-}
-});
-}
 const KEY4 = 'ta-roast';
 const TR_CAT_LABEL = { light: '轻微调侃', familiar: '熟悉感', sweet: '情侣式调侃', mild: '轻微嫌弃', serious: '严肃吐槽', world: '两个世界' };
 const TR_CAT_ORDER = ['light', 'familiar', 'sweet', 'mild', 'serious', 'world'];
@@ -24890,11 +24902,6 @@ try { applyLock(); } catch (e) {}
     <span class="vub-txt" id="backup-remind-txt">建议导出数据备份</span>
     <span class="vub-act" id="backup-remind-go">去备份</span>
     <span class="vub-act vub-close" id="backup-remind-close" style="background:transparent;color:#ccc;border:1px solid rgba(255,255,255,.3)">稍后</span>
-  </div>
-  <!-- v3.6.x：桌面图片组件全屏查看器——点图片组件放大查看，点空白/×关闭 -->
-  <div class="desk-image-viewer" id="desk-image-viewer" hidden>
-    <img id="desk-image-viewer-img" alt="">
-    <span class="desk-image-viewer-close" id="desk-image-viewer-close">×</span>
   </div>
 </body>
 </html>

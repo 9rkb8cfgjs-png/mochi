@@ -3,6 +3,12 @@
 (function () {
   const uid = window.activePrefix();
   const store = window.activeStore();
+  // v3.6.x：桌面图片组件尺寸档位（宽度百分比：小/中/大）——const 声明必须放顶部，
+  // renderDeskImages 在启动阶段（声明位置之前）就会被调用，放下面会触发 TDZ 报错
+  const DESK_IMG_SIZES = { s: 40, m: 70, l: 100 };
+  // v3.6.x：桌面图片查看器关闭监听幂等守卫——setupDeskImageViewerClose 启动时就会被调用，
+  // let 声明同样必须放顶部，否则 TDZ 报错（会把 personalize 整个 IIFE 中断）
+  let viewerBound = false;
 
   // 图片压缩后再存储：大幅缩小体积，本地存储容量更宽松（头像/图标 256px，背景/照片 1000px）
   // v3.6.x：失败/超大图不再回退存原图——iOS Safari 对超大 dataURL（48MP/ProRAW 级别）
@@ -1851,9 +1857,10 @@
   }
 
   // ===== v3.6.x：桌面图片组件（可多个，每页可放多张不同图片） =====
-  // 存储：desk-images（localStorage，元数据数组 [{id,page,addedAt}]）
+  // 存储：desk-images（localStorage，元数据数组 [{id,page,addedAt,w}]）
   //       desk-image-src-<id>（IDB，图片 dataURL，大数据）
   // 组件节点用 [data-desk-image="<id>"] 标识，不参与 desk-layout（与现有组件系统解耦）
+  // v3.6.x：w = 组件宽度百分比（40 小 / 70 中 / 100 大，档位见顶部 DESK_IMG_SIZES），不设时默认 100
   function loadDeskImagesMeta() {
     try { const v = JSON.parse(store.get('desk-images') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
   }
@@ -1870,6 +1877,11 @@
       const node = document.createElement('div');
       node.className = 'desk-image-widget';
       node.dataset.deskImage = m.id;
+      // v3.6.x：按 meta.w 应用宽度百分比——不同图片可设不同大小（小/中/大）
+      const w = DESK_IMG_SIZES.l;
+      const wv = (m.w === DESK_IMG_SIZES.s || m.w === DESK_IMG_SIZES.m) ? m.w : w;
+      node.style.width = wv + '%';
+      if (wv < 100) node.style.alignSelf = 'flex-start';
       const img = document.createElement('img');
       node.appendChild(img);
       const addBtn = slide.querySelector('.desk-page-add');
@@ -1961,13 +1973,38 @@
       if (isDecor) {
         e.stopPropagation();
         if (!window.openModal) return;
+        // v3.6.x：菜单加尺寸选项（小/中/大），当前尺寸打 ✓——不同图片可设不同大小
+        const cur = (loadDeskImagesMeta().find(x => x.id === id) || {}).w || DESK_IMG_SIZES.l;
+        const sizePill = (label, val, w) => ({ label: label + (cur === w ? ' ✓' : ''), value: val });
         window.openModal('图片组件', '', (v) => {
           if (v === '1') changeDeskImage(id);
           else if (v === '2') removeDeskImage(id);
-        }, { noInput: true, pills: [{ label: '更换图片', value: '1' }, { label: '删除图片', value: '2' }] });
+          else if (v === 's' || v === 'm' || v === 'l') {
+            const w = DESK_IMG_SIZES[v];
+            const meta = loadDeskImagesMeta();
+            const m = meta.find(x => x.id === id);
+            if (m) {
+              m.w = w;
+              saveDeskImagesMeta(meta);
+              renderDeskImages();
+              toast(v === 's' ? '已设为小尺寸' : v === 'm' ? '已设为中尺寸' : '已设为大尺寸');
+            }
+          }
+        }, {
+          noInput: true,
+          pills: [
+            { label: '更换图片', value: '1' },
+            sizePill('尺寸：小', 's', DESK_IMG_SIZES.s),
+            sizePill('尺寸：中', 'm', DESK_IMG_SIZES.m),
+            sizePill('尺寸：大', 'l', DESK_IMG_SIZES.l),
+            { label: '删除图片', value: '2' },
+          ],
+        });
       } else {
         const img = widget.querySelector('img');
         if (!img || !img.src) return;
+        // v3.6.x：防御——查看器元素若因 DOM 顺序/动态重建未绑定关闭事件，打开前补绑一次
+        setupDeskImageViewerClose();
         const viewer = document.getElementById('desk-image-viewer');
         const viewerImg = document.getElementById('desk-image-viewer-img');
         if (viewer && viewerImg) { viewerImg.src = img.src; viewer.hidden = false; }
@@ -1975,9 +2012,13 @@
     });
   }
   // 关闭全屏查看器
+  // v3.6.x：viewerBound 幂等守卫（声明在 IIFE 顶部）——启动绑定一次，
+  // 打开路径防御性重调时不再重复挂监听
   function setupDeskImageViewerClose() {
     const viewer = document.getElementById('desk-image-viewer');
     if (!viewer) return;
+    if (viewerBound) return;
+    viewerBound = true;
     const closeBtn = document.getElementById('desk-image-viewer-close');
     const close = () => { viewer.hidden = true; const vi = document.getElementById('desk-image-viewer-img'); if (vi) vi.src = ''; };
     if (closeBtn) closeBtn.addEventListener('click', close);
