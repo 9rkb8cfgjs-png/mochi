@@ -3445,7 +3445,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.73 · 部署于 2026-08-18 18:38</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.75 · 部署于 2026-08-18 18:43</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4098,7 +4098,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.73</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.75</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -11663,7 +11663,6 @@ if (!list.length) {
 favList.innerHTML += '<div class="fav-empty">' + empty + '</div>';
 return;
 }
-list.forEach(f => renderFavItem(f));
 const FAV_KIND_LABEL = {
 'ask-choose': '小问题', 'ask-curious': '好奇', 'ask-roast': '吐槽',
 'ask-card': '问问TA', 'invite': '邀请TA'
@@ -11681,6 +11680,7 @@ last = mm.index + mm[0].length;
 html += escTxt(str.slice(last));
 return html;
 }
+list.forEach(f => renderFavItem(f));
 function renderFavItem(f) {
 const kind = f.kind || 'msg';
 const m = document.createElement('div');

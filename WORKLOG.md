@@ -34,6 +34,17 @@
   `node --check` 通过（music-player.js + personalize.js）。涉及 `src/template.html`、`src/css/home.css`、`src/js/personalize.js`、`src/js/music-player.js`。**未构建未提交**，等待构建者执行 `node build.mjs` + `npm run verify`。
 
 ### 2026-08-18
+- [本会话] 完成（用户需求「桌面收藏新增：联系人可收藏聊天里的互动卡片整卡（问题+我的回答+联系人的回复）/ 互动卡片我可点击收藏 / 联系人可收藏信箱我的回信 / 联系人可收藏我发布的朋友圈」，已构建 verify 10/10 + CDP 端到端 15/15，**待统一提交/部署**）：
+  - **收藏存储扩展**（`src/js/chat.js`）：`fav-msgs` 条目新增 `kind` 字段（msg=聊天消息原样 / card=互动卡片 / mail=信箱回信 / feed=朋友圈动态）；新增全局入口 `window.addMyFavItem/addTaFavItem`（按 kind+q/text+ts 去重，供 mail/feed 调用）；互动卡片快照 `cardSnapshot`（小问题 choice* / 好奇 curious* / 吐槽 roast* / 询问 ask* / 邀请 invite*，含问题+我的回答+TA回复）+ `favCardFromMsg(idx)`。
+  - **互动卡片可点击收藏**：5 种卡片（含未作答/已作答）渲染底部小爱心「收藏」按钮（`.msg-fav-heart`，chat-main.css），点击整卡入「我的收藏」，重复点击提示已收藏；就地作答/邀请回调/ask 作答的 7 处卡片重建补上按钮。
+  - **TA 收藏互动卡片**：回答小问题/好奇/吐槽/询问、TA 回应邀请后，30% 概率整卡收藏进「联系人的收藏」+ toast「TA 收藏了你们的互动卡片」。
+  - **信箱回信**（`src/js/mail.js` submitReply）：我提交回信后 30% 概率 TA 收藏该回信（存来信标题 + 回信内容）+ toast「TA 收藏了你的回信」。
+  - **朋友圈**（`src/js/feed.js` publish）：我发布动态后 30% 概率 TA 收藏（内容 + imgs 数组，延迟同点赞节奏）+ toast「TA 收藏了你的朋友圈动态」。
+  - **收藏页渲染**（chat.js renderFav）：按 kind 分卡片式条目（互动卡片带分类标签/问题/✓我/TA；信箱回信带「来信《标题》」；朋友圈带内容+图片缩略图可点击放大），头像时间列沿用，长按/右键删除按 kind+内容+ts 匹配（旧消息收藏兼容）。chat-pages.css 新增 `.fav-item-*` 样式。
+  - ⚠️ 踩坑：`renderFav` 内 `const FAV_KIND_LABEL` 声明在 `list.forEach(f => renderFavItem(f))` 之后——renderFavItem 提升后引用 const 触发 TDZ 报错（`Cannot access before initialization`），已移至 forEach 之前（CDP 抓到）。
+  - 涉及 `src/js/chat.js` `src/js/mail.js` `src/js/feed.js` `src/css/chat-main.css` `src/css/chat-pages.css` + 产物。CDP 15/15：心形按钮/收藏写入/去重/收藏页渲染三类型/TA 收藏三入口/tab 归属/旧收藏回归/邀请卡/无 JS 错误。临时脚本已删。**未提交**，等待统一提交/部署。
+
+### 2026-08-18
 - [本会话] 完成（用户反馈「另一个桌面的聊天里的联系人，可以引用其他桌面的聊天的消息数据没有隔开」——聊天数据跨桌面串数据）：根因——`src/js/chat.js` `contact-switched` 处理只重置了 msgs/pendingLocal/chatDbReady，**会话内跨桌面残留未清**：`lastQuote`（用户点的「引用」内容）→ 在 A 聊天选了引用、切到 B 发消息，B 消息带上 A 的消息内容；`lastMineText`（TA 引用/收藏「我」最后一条消息用）→ TA 在 B 桌面会引用/收藏 A 桌面我发的消息；`draftImgs`（待发送图片草稿）+ 输入框草稿文本 → 切桌面原样带到新聊天。修复：`contact-switched` 处理补齐 4 项重置（lastQuote=null / lastMineText='' / draftImgs=[] + renderDraft / input.textContent=''，各包 try/catch 防 TDZ）。已 `node build.mjs` + `node tools/verify.mjs` 10/10 + CDP 端到端 8/8（A 发消息→点气泡引用+输草稿→切 B：草稿已清空 / B 发的消息无引用块 / B 记录无 A 内容 / A 记录未被污染）。涉及 `src/js/chat.js`（AI-A 域，用户直接反馈故越界修复）+ 产物（构建顺带包含对方未提交的 personalize.js）。**未提交**，等待统一提交/部署。
 
 ### 2026-08-18

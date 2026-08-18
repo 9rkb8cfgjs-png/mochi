@@ -3103,8 +3103,8 @@ function partialRetractMsg(msgEl, side) {
       favList.innerHTML += '<div class="fav-empty">' + empty + '</div>';
       return;
     }
-    list.forEach(f => renderFavItem(f));
     // 互动卡片类型名 / 信箱回信 / 朋友圈动态 的分类标签
+    // 注意：必须在 list.forEach 之前声明（renderFavItem 提升后引用 const 会 TDZ 报错）
     const FAV_KIND_LABEL = {
       'ask-choose': '小问题', 'ask-curious': '好奇', 'ask-roast': '吐槽',
       'ask-card': '问问TA', 'invite': '邀请TA'
@@ -3123,6 +3123,7 @@ function partialRetractMsg(msgEl, side) {
       html += escTxt(str.slice(last));
       return html;
     }
+    list.forEach(f => renderFavItem(f));
     function renderFavItem(f) {
       const kind = f.kind || 'msg';
       const m = document.createElement('div');
