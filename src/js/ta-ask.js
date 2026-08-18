@@ -318,7 +318,7 @@
     const d = taAskLoad();
     d.settings.useDefault = askDefault.checked;
     taAskSave(d);
-    renderManage();
+    switchAskTab(askTab);
     toast(askDefault.checked ? '系统预设问题已开启' : '系统预设问题已关闭（仅用你添加的问题）');
   });
   const askProb = document.getElementById('ta-ask-prob');
@@ -357,7 +357,7 @@
       taAskSave(d2);
       const label = (CATS.find(c => c[0] === cat) || [cat])[1] || cat;
       batchTextEl.value = '';
-      renderManage();
+      renderAskMineWithForms();
       toast('已导入 ' + lines.length + ' 个问题到「' + label + '」');
     });
   }
@@ -370,26 +370,68 @@
       if (home) home.hidden = false;
     });
   }
-  const catsEl = document.getElementById('ta-ask-cats');
+  const catsEl = document.getElementById('ta-ask-sys-cats');
+  const mineCatsEl = document.getElementById('ta-ask-mine-cats');
+  let askTab = 'sys';
 
-  function renderManage() {
-    if (!catsEl) return;
+  // 渲染单个分类的问题列表（presetOnly=true 只渲染系统预设，false 只渲染用户添加）
+  function renderAskCatsInto(container, presetOnly) {
+    if (!container) return;
     const d = taAskLoad();
     const useDefault = (d.settings || {}).useDefault !== false;
     let html = '';
     CATS.forEach(([k, label]) => {
-      html += '<div class="cal-card glass"><div class="cal-card-title">' + label + '</div>';
-      const arr = d.questions.filter(q => q.cat === k);
-      if (!arr.length) html += '<div class="ta-empty">暂无问题</div>';
+      const arr = d.questions.filter(q => q.cat === k && (q.isPreset === true) === presetOnly);
+      if (!arr.length) return;
+      html += '<div class="cal-card glass"><div class="cal-card-title">' + label + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
       arr.forEach(q => {
         const idx = d.questions.indexOf(q);
         const preset = q.isPreset === true;
-        // v3.6.x：系统预设只可启停、不可删除（不渲染删除按钮）；关闭「使用系统预设」时整体灰化提示
         const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
         html += '<div class="ta-row' + (preset && !useDefault ? ' off' : '') + '">' +
           '<label class="toggle"><input type="checkbox"' + (q.enabled !== false ? ' checked' : '') + ' data-idx="' + idx + '"><span class="tk"></span></label>' +
           '<span class="ta-txt">' + q.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (q.type === 'single' ? ' <span class="tc-known">单选·' + (q.options ? q.options.length : 0) + '选项</span>' : '') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</span>' +
           delBtn +
+          '</div>';
+      });
+      html += '</div>';
+    });
+    if (!html) html = '<div class="ta-empty" style="padding:14px">' + (presetOnly ? '暂无系统预设问题' : '暂未添加自定义问题，可在上方批量导入或下方逐条添加') + '</div>';
+    container.innerHTML = html;
+    container.querySelectorAll('input[data-idx]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const d2 = taAskLoad();
+        const q = d2.questions[Number(cb.dataset.idx)];
+        if (q) q.enabled = cb.checked;
+        taAskSave(d2);
+      });
+    });
+    container.querySelectorAll('.ta-del').forEach(b => {
+      b.addEventListener('click', () => {
+        const d2 = taAskLoad();
+        const q = d2.questions[Number(b.dataset.idx)];
+        if (q && q.isPreset === true) { toast('系统预设问题不可删除，可关闭使用'); return; }
+        d2.questions.splice(Number(b.dataset.idx), 1);
+        taAskSave(d2);
+        renderAskCatsInto(container, false);
+      });
+    });
+  }
+  // 我的添加 tab：每个分类带内联添加表单
+  function renderAskMineWithForms() {
+    if (!mineCatsEl) return;
+    const d = taAskLoad();
+    let html = '';
+    CATS.forEach(([k, label]) => {
+      const arr = d.questions.filter(q => q.cat === k && q.isPreset !== true);
+      html += '<div class="cal-card glass"><div class="cal-card-title">' + label + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
+      if (!arr.length) html += '<div class="ta-empty">暂无</div>';
+      arr.forEach(q => {
+        const idx = d.questions.indexOf(q);
+        html += '<div class="ta-row">' +
+          '<label class="toggle"><input type="checkbox"' + (q.enabled !== false ? ' checked' : '') + ' data-idx="' + idx + '"><span class="tk"></span></label>' +
+          '<span class="ta-txt">' + q.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (q.type === 'single' ? ' <span class="tc-known">单选·' + (q.options ? q.options.length : 0) + '选项</span>' : '') + '</span>' +
+          '<button class="ta-del" data-idx="' + idx + '">✕</button>' +
           '</div>';
       });
       html += '<div class="ta-add">' +
@@ -403,9 +445,8 @@
         '</div>';
       html += '</div>';
     });
-    catsEl.innerHTML = html;
-    // 绑定事件
-    catsEl.querySelectorAll('input[data-idx]').forEach(cb => {
+    mineCatsEl.innerHTML = html;
+    mineCatsEl.querySelectorAll('input[data-idx]').forEach(cb => {
       cb.addEventListener('change', () => {
         const d2 = taAskLoad();
         const q = d2.questions[Number(cb.dataset.idx)];
@@ -413,19 +454,17 @@
         taAskSave(d2);
       });
     });
-    catsEl.querySelectorAll('.ta-del').forEach(b => {
+    mineCatsEl.querySelectorAll('.ta-del').forEach(b => {
       b.addEventListener('click', () => {
         const d2 = taAskLoad();
         const q = d2.questions[Number(b.dataset.idx)];
-        // v3.6.x：系统预设不可删除
-        if (q && q.isPreset === true) { toast('系统预设问题不可删除，可关闭使用'); return; }
+        if (q && q.isPreset === true) { toast('系统预设问题不可删除'); return; }
         d2.questions.splice(Number(b.dataset.idx), 1);
         taAskSave(d2);
-        renderManage();
+        renderAskMineWithForms();
       });
     });
-    // v3.6.x：类型切换——单选题显示选项输入框（安卓 contenteditable 转换的 box 同步显隐）
-    catsEl.querySelectorAll('.ta-type').forEach(sel => {
+    mineCatsEl.querySelectorAll('.ta-type').forEach(sel => {
       const toggleOpts = () => {
         const o = document.getElementById('ta-opts-' + sel.dataset.cat);
         if (!o) return;
@@ -436,7 +475,7 @@
       sel.addEventListener('change', toggleOpts);
       toggleOpts();
     });
-    catsEl.querySelectorAll('.ta-add-btn').forEach(b => {
+    mineCatsEl.querySelectorAll('.ta-add-btn').forEach(b => {
       b.addEventListener('click', () => {
         const inp = document.getElementById('ta-new-' + b.dataset.cat);
         const v = inp ? inp.value.trim() : '';
@@ -457,8 +496,24 @@
         }
         d2.questions.push(q);
         taAskSave(d2);
-        renderManage();
+        renderAskMineWithForms();
       });
+    });
+  }
+  function switchAskTab(tab) {
+    askTab = tab;
+    const tabsWrap = document.getElementById('ta-ask-tabs');
+    if (tabsWrap) tabsWrap.querySelectorAll('.cc-tab').forEach(t => t.classList.toggle('sel', t.dataset.tab === tab));
+    const sysPanel = document.getElementById('ta-ask-sys-panel');
+    const minePanel = document.getElementById('ta-ask-mine-panel');
+    if (sysPanel) sysPanel.hidden = tab !== 'sys';
+    if (minePanel) minePanel.hidden = tab !== 'mine';
+    if (tab === 'sys') renderAskCatsInto(catsEl, true); else renderAskMineWithForms();
+  }
+  const askTabsWrap = document.getElementById('ta-ask-tabs');
+  if (askTabsWrap) {
+    askTabsWrap.querySelectorAll('.cc-tab').forEach(tab => {
+      tab.addEventListener('click', () => switchAskTab(tab.dataset.tab));
     });
   }
 
@@ -468,7 +523,7 @@
     li.addEventListener('click', () => {
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       page.hidden = false;
-      renderManage();
+      switchAskTab(askTab);
     });
   }
   // 入口：字卡库页点「TA的小问题」（选择题）进入独立页面
@@ -478,7 +533,7 @@
     liTC.addEventListener('click', () => {
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       tcPage.hidden = false;
-      renderTCManage();
+      switchTCTab(tcTab);
     });
   }
   const tcBackBtn = document.getElementById('tc-choose-back');
@@ -805,7 +860,8 @@ window.openTCPanel = openTCPanel;
   }
 
   // ---- 管理页：TA的小问题 ----
-  function renderTCManage() {
+  let tcTab = 'sys';
+  function renderTCSettings() {
     const d = tcLoad();
     const s = d.settings || { enabled: true, prob: 15, popupProb: 70 };
     const enEl = document.getElementById('tc-enable');
@@ -821,50 +877,68 @@ window.openTCPanel = openTCPanel;
     const probVal = document.getElementById('tc-prob-val');
     if (probEl) probEl.value = typeof s.prob === 'number' ? s.prob : 15;
     if (probVal) probVal.textContent = (typeof s.prob === 'number' ? s.prob : 15) + '%';
-    // 题库
-    const catsEl = document.getElementById('tc-cats');
     const favBtn = document.getElementById('tc-favs');
     if (favBtn) favBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><path d="M12 2l2.4 5 5.6.8-4 4 .9 5.6-4.9-2.6-4.9 2.6.9-5.6-4-4 5.6-.8z"/></svg>' + '收藏（' + d.favs.length + '）';
-    if (!catsEl) return;
-    const useDefault = s.useDefault !== false;
+  }
+  function escT(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  function renderTCCatsInto(container, presetOnly) {
+    if (!container) return;
+    const d = tcLoad();
+    const useDefault = (d.settings || {}).useDefault !== false;
     let html = '';
     TC_CAT_ORDER.forEach(k => {
-      html += '<div class="tc-cat-t">' + (TC_CAT_LABEL[k] || k) + '</div>';
-      const arr = d.questions.filter(q => q.cat === k);
-      if (!arr.length) html += '<div class="ta-empty">暂无</div>';
+      const arr = d.questions.filter(q => q.cat === k && (q.isPreset === true) === presetOnly);
+      if (!arr.length) return;
+      html += '<div class="tc-cat-t">' + (TC_CAT_LABEL[k] || k) + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
       arr.forEach(q => {
         const idx = d.questions.indexOf(q);
         const preset = q.isPreset === true;
-        // v3.6.x：系统预设只可启停、不可删除（不渲染删除按钮）；关闭「使用系统预设」时整体灰化提示
         const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
         html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) ? ' off' : '') + '">' +
           '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
-          '<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
+          '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
           '<div class="tc-qopts">选项：' + q.options.map(o => o.t).join(' / ') + '</div></div>' +
           delBtn +
           '</div>';
       });
     });
-    catsEl.innerHTML = html;
-    catsEl.querySelectorAll('input[data-idx]').forEach(cb => {
+    if (!html) html = '<div class="ta-empty">' + (presetOnly ? '暂无系统预设问题' : '暂未添加自定义问题，可在上方添加') + '</div>';
+    container.innerHTML = html;
+    container.querySelectorAll('input[data-idx]').forEach(cb => {
       cb.addEventListener('change', () => {
         const d2 = tcLoad();
         const q = d2.questions[Number(cb.dataset.idx)];
         if (q) q.enabled = cb.checked;
         tcSave(d2);
-        renderTCManage();
       });
     });
-    catsEl.querySelectorAll('.ta-del').forEach(b => {
+    container.querySelectorAll('.ta-del').forEach(b => {
       b.addEventListener('click', () => {
         const d2 = tcLoad();
         const q = d2.questions[Number(b.dataset.idx)];
-        // v3.6.x：系统预设不可删除
-        if (q && q.isPreset === true) { toast('系统预设问题不可删除，可关闭使用'); return; }
+        if (q && q.isPreset === true) { toast('系统预设问题不可删除'); return; }
         d2.questions.splice(Number(b.dataset.idx), 1);
         tcSave(d2);
-        renderTCManage();
+        renderTCCatsInto(container, false);
       });
+    });
+  }
+  function switchTCTab(tab) {
+    tcTab = tab;
+    renderTCSettings();
+    const tabsWrap = document.getElementById('tc-tabs');
+    if (tabsWrap) tabsWrap.querySelectorAll('.cc-tab').forEach(t => t.classList.toggle('sel', t.dataset.tab === tab));
+    const sysPanel = document.getElementById('tc-sys-panel');
+    const minePanel = document.getElementById('tc-mine-panel');
+    if (sysPanel) sysPanel.hidden = tab !== 'sys';
+    if (minePanel) minePanel.hidden = tab !== 'mine';
+    if (tab === 'sys') renderTCCatsInto(document.getElementById('tc-sys-cats'), true);
+    else renderTCCatsInto(document.getElementById('tc-mine-cats'), false);
+  }
+  const tcTabsWrap = document.getElementById('tc-tabs');
+  if (tcTabsWrap) {
+    tcTabsWrap.querySelectorAll('.cc-tab').forEach(tab => {
+      tab.addEventListener('click', () => switchTCTab(tab.dataset.tab));
     });
   }
   const tcEn = document.getElementById('tc-enable');
@@ -882,7 +956,7 @@ window.openTCPanel = openTCPanel;
       const d = tcLoad();
       d.settings.useDefault = tcDefault.checked;
       tcSave(d);
-      renderTCManage();
+      switchTCTab(tcTab);
       toast(tcDefault.checked ? '系统预设问题已开启' : '系统预设问题已关闭（仅用你添加的问题）');
     });
   }
@@ -935,7 +1009,7 @@ window.openTCPanel = openTCPanel;
       tcSave(d);
       if (textEl) textEl.value = '';
       if (optsEl) optsEl.value = '';
-      renderTCManage();
+      renderTCCatsInto(document.getElementById('tc-mine-cats'), false);
       toast('已添加问题');
     });
   }
@@ -1233,7 +1307,8 @@ window.openTCPanel = openTCPanel;
   }
 
   // 好奇管理页
-  function renderTCUManage() {
+  let tcuTab = 'sys';
+  function renderTCUSettings() {
     const d = tcuLoad();
     const s = d.settings || { enabled: true, prob: 15, popupProb: 70, followup: true };
     const enEl = document.getElementById('tcu-enable');
@@ -1253,49 +1328,6 @@ window.openTCPanel = openTCPanel;
     if (fuEl) fuEl.checked = s.followup !== false;
     const kcEl = document.getElementById('tcu-known-count');
     if (kcEl) kcEl.textContent = '· 已了解 ' + Object.keys(d.known).length + ' 件';
-    // 题库
-    const catsEl = document.getElementById('tcu-cats');
-    if (catsEl) {
-      const useDefault = s.useDefault !== false;
-      let html = '';
-      TCU_CAT_ORDER.forEach(k => {
-        html += '<div class="tc-cat-t">' + (TCU_CAT_LABEL[k] || k) + '</div>';
-        const arr = d.questions.filter(q => q.cat === k);
-        if (!arr.length) html += '<div class="ta-empty">暂无</div>';
-        arr.forEach(q => {
-          const idx = d.questions.indexOf(q);
-          const known = q.id && d.known[q.id];
-          const preset = q.isPreset === true;
-          // v3.6.x：系统预设只可启停、不可删除（不渲染删除按钮）；关闭「使用系统预设」时整体灰化提示
-          const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
-          html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) ? ' off' : '') + '">' +
-            '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
-            '<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (known ? ' <span class="tc-known">✓已了解</span>' : '') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
-            (q.quick && q.quick.length ? '<div class="tc-qopts">快捷：' + q.quick.join(' / ') + '</div>' : '') +
-            '</div>' + delBtn + '</div>';
-        });
-      });
-      catsEl.innerHTML = html;
-      catsEl.querySelectorAll('input[data-idx]').forEach(cb => {
-        cb.addEventListener('change', () => {
-          const d2 = tcuLoad();
-          const q = d2.questions[Number(cb.dataset.idx)];
-          if (q) q.enabled = cb.checked;
-          tcuSave(d2);
-        });
-      });
-      catsEl.querySelectorAll('.ta-del').forEach(b => {
-        b.addEventListener('click', () => {
-          const d2 = tcuLoad();
-          const q = d2.questions[Number(b.dataset.idx)];
-          // v3.6.x：系统预设不可删除
-          if (q && q.isPreset === true) { toast('系统预设问题不可删除，可关闭使用'); return; }
-          d2.questions.splice(Number(b.dataset.idx), 1);
-          tcuSave(d2);
-          renderTCUManage();
-        });
-      });
-    }
     // 已了解列表
     const knownEl = document.getElementById('tcu-known');
     if (knownEl) {
@@ -1305,9 +1337,69 @@ window.openTCPanel = openTCPanel;
       else knownEl.innerHTML = entries.map(en => {
         const q = TCU_DEFAULT.find(x => x.id === en.qid);
         const qText = q ? q.text : en.qid;
-        return '<div class="tc-listitem"><div class="tc-li-q">' + (q ? '[' + (TCU_CAT_LABEL[q.cat] || '') + '] ' : '') + qText + '</div><div class="tc-li-line">✓ 你：' + String(en.answer).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div></div>';
+        return '<div class="tc-listitem"><div class="tc-li-q">' + (q ? '[' + (TCU_CAT_LABEL[q.cat] || '') + '] ' : '') + qText + '</div><div class="tc-li-line">✓ 你：' + escT(en.answer) + '</div></div>';
       }).join('');
     }
+  }
+  function renderTCUCatsInto(container, presetOnly) {
+    if (!container) return;
+    const d = tcuLoad();
+    const useDefault = (d.settings || {}).useDefault !== false;
+    let html = '';
+    TCU_CAT_ORDER.forEach(k => {
+      const arr = d.questions.filter(q => q.cat === k && (q.isPreset === true) === presetOnly);
+      if (!arr.length) return;
+      html += '<div class="tc-cat-t">' + (TCU_CAT_LABEL[k] || k) + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
+      arr.forEach(q => {
+        const idx = d.questions.indexOf(q);
+        const known = q.id && d.known[q.id];
+        const preset = q.isPreset === true;
+        const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
+        html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) ? ' off' : '') + '">' +
+          '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
+          '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + (known ? ' <span class="tc-known">✓已了解</span>' : '') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
+          (q.quick && q.quick.length ? '<div class="tc-qopts">快捷：' + q.quick.join(' / ') + '</div>' : '') +
+          '</div>' + delBtn + '</div>';
+      });
+    });
+    if (!html) html = '<div class="ta-empty">' + (presetOnly ? '暂无系统预设问题' : '暂未添加自定义问题，可在上方添加') + '</div>';
+    container.innerHTML = html;
+    container.querySelectorAll('input[data-idx]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const d2 = tcuLoad();
+        const q = d2.questions[Number(cb.dataset.idx)];
+        if (q) q.enabled = cb.checked;
+        tcuSave(d2);
+      });
+    });
+    container.querySelectorAll('.ta-del').forEach(b => {
+      b.addEventListener('click', () => {
+        const d2 = tcuLoad();
+        const q = d2.questions[Number(b.dataset.idx)];
+        if (q && q.isPreset === true) { toast('系统预设问题不可删除'); return; }
+        d2.questions.splice(Number(b.dataset.idx), 1);
+        tcuSave(d2);
+        renderTCUCatsInto(container, false);
+      });
+    });
+  }
+  function switchTCUTab(tab) {
+    tcuTab = tab;
+    renderTCUSettings();
+    const tabsWrap = document.getElementById('tcu-tabs');
+    if (tabsWrap) tabsWrap.querySelectorAll('.cc-tab').forEach(t => t.classList.toggle('sel', t.dataset.tab === tab));
+    const sysPanel = document.getElementById('tcu-sys-panel');
+    const minePanel = document.getElementById('tcu-mine-panel');
+    if (sysPanel) sysPanel.hidden = tab !== 'sys';
+    if (minePanel) minePanel.hidden = tab !== 'mine';
+    if (tab === 'sys') renderTCUCatsInto(document.getElementById('tcu-sys-cats'), true);
+    else renderTCUCatsInto(document.getElementById('tcu-mine-cats'), false);
+  }
+  const tcuTabsWrap = document.getElementById('tcu-tabs');
+  if (tcuTabsWrap) {
+    tcuTabsWrap.querySelectorAll('.cc-tab').forEach(tab => {
+      tab.addEventListener('click', () => switchTCUTab(tab.dataset.tab));
+    });
   }
   // 好奇入口
   const liTCU = document.getElementById('li-ta-curious');
@@ -1316,7 +1408,7 @@ window.openTCPanel = openTCPanel;
     liTCU.addEventListener('click', () => {
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       tcuPage.hidden = false;
-      renderTCUManage();
+      switchTCUTab(tcuTab);
     });
   }
   const tcuBackBtn = document.getElementById('tc-curious-back');
@@ -1332,7 +1424,7 @@ window.openTCPanel = openTCPanel;
   const tcuDefault = document.getElementById('tcu-default');
   if (tcuDefault) tcuDefault.addEventListener('change', () => {
     const d = tcuLoad(); d.settings.useDefault = tcuDefault.checked; tcuSave(d);
-    renderTCUManage();
+    switchTCUTab(tcuTab);
     toast(tcuDefault.checked ? '系统预设问题已开启' : '系统预设问题已关闭（仅用你添加的问题）');
   });
   const tcuProb = document.getElementById('tcu-prob');
@@ -1367,7 +1459,7 @@ window.openTCPanel = openTCPanel;
       d.questions.push({ id: 'q_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: catEl ? catEl.value : 'you', text: text, quick: quick, replies: replies, followup: followup, enabled: true, isPreset: false });
       tcuSave(d);
       [textEl, quickEl, repliesEl, followupEl].forEach(el => { if (el) el.value = ''; });
-      renderTCUManage();
+      renderTCUCatsInto(document.getElementById('tcu-mine-cats'), false);
       toast('已添加问题');
     });
   }
@@ -1387,7 +1479,7 @@ window.openTCPanel = openTCPanel;
     tcuClearKnown.addEventListener('click', () => {
       if (window.openModal) {
         window.openModal('清空「已了解」记录？清空后相同问题可能再次出现。', '', () => {
-          const d = tcuLoad(); d.known = {}; tcuSave(d); renderTCUManage();
+          const d = tcuLoad(); d.known = {}; tcuSave(d); renderTCUSettings();
         }, { noInput: true });
       }
     });
@@ -1612,7 +1704,8 @@ window.openTCPanel = openTCPanel;
   }
 
   // 吐槽管理页
-  function renderTRManage() {
+  let trTab = 'sys';
+  function renderTRSettings() {
     const d = trLoad();
     const s = d.settings || { enabled: true, prob: 30, popupProb: 70 };
     const enEl = document.getElementById('tr-enable');
@@ -1628,47 +1721,65 @@ window.openTCPanel = openTCPanel;
     const probVal = document.getElementById('tr-prob-val');
     if (probEl) probEl.value = typeof s.prob === 'number' ? s.prob : 30;
     if (probVal) probVal.textContent = (typeof s.prob === 'number' ? s.prob : 30) + '%';
-    const catsEl = document.getElementById('tr-cats');
-    if (catsEl) {
-      const useDefault = s.useDefault !== false;
-      let html = '';
-      TR_CAT_ORDER.forEach(k => {
-        html += '<div class="tc-cat-t">' + (TR_CAT_LABEL[k] || k) + '</div>';
-        const arr = d.questions.filter(q => q.cat === k);
-        if (!arr.length) html += '<div class="ta-empty">暂无</div>';
-        arr.forEach(q => {
-          const idx = d.questions.indexOf(q);
-          const preset = q.isPreset === true;
-          // v3.6.x：系统预设只可启停、不可删除（不渲染删除按钮）；关闭「使用系统预设」时整体灰化提示
-          const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
-          html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) ? ' off' : '') + '">' +
-            '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
-            '<div class="tc-qmain"><div class="tc-qtext">' + String(q.text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
-            (q.match && q.match.length ? '<div class="tc-qopts">触发：' + q.match.join(' / ') + '</div>' : '') +
-            '</div>' + delBtn + '</div>';
-        });
+  }
+  function renderTRCatsInto(container, presetOnly) {
+    if (!container) return;
+    const d = trLoad();
+    const useDefault = (d.settings || {}).useDefault !== false;
+    let html = '';
+    TR_CAT_ORDER.forEach(k => {
+      const arr = d.questions.filter(q => q.cat === k && (q.isPreset === true) === presetOnly);
+      if (!arr.length) return;
+      html += '<div class="tc-cat-t">' + (TR_CAT_LABEL[k] || k) + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
+      arr.forEach(q => {
+        const idx = d.questions.indexOf(q);
+        const preset = q.isPreset === true;
+        const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕</button>';
+        html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) ? ' off' : '') + '">' +
+          '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
+          '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
+          (q.match && q.match.length ? '<div class="tc-qopts">触发：' + q.match.join(' / ') + '</div>' : '') +
+          '</div>' + delBtn + '</div>';
       });
-      catsEl.innerHTML = html;
-      catsEl.querySelectorAll('input[data-idx]').forEach(cb => {
-        cb.addEventListener('change', () => {
-          const d2 = trLoad();
-          const q = d2.questions[Number(cb.dataset.idx)];
-          if (q) q.enabled = cb.checked;
-          trSave(d2);
-        });
+    });
+    if (!html) html = '<div class="ta-empty">' + (presetOnly ? '暂无系统预设字卡' : '暂未添加自定义字卡，可在上方添加') + '</div>';
+    container.innerHTML = html;
+    container.querySelectorAll('input[data-idx]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const d2 = trLoad();
+        const q = d2.questions[Number(cb.dataset.idx)];
+        if (q) q.enabled = cb.checked;
+        trSave(d2);
       });
-      catsEl.querySelectorAll('.ta-del').forEach(b => {
-        b.addEventListener('click', () => {
-          const d2 = trLoad();
-          const q = d2.questions[Number(b.dataset.idx)];
-          // v3.6.x：系统预设不可删除
-          if (q && q.isPreset === true) { toast('系统预设字卡不可删除，可关闭使用'); return; }
-          d2.questions.splice(Number(b.dataset.idx), 1);
-          trSave(d2);
-          renderTRManage();
-        });
+    });
+    container.querySelectorAll('.ta-del').forEach(b => {
+      b.addEventListener('click', () => {
+        const d2 = trLoad();
+        const q = d2.questions[Number(b.dataset.idx)];
+        if (q && q.isPreset === true) { toast('系统预设字卡不可删除'); return; }
+        d2.questions.splice(Number(b.dataset.idx), 1);
+        trSave(d2);
+        renderTRCatsInto(container, false);
       });
-    }
+    });
+  }
+  function switchTRTab(tab) {
+    trTab = tab;
+    renderTRSettings();
+    const tabsWrap = document.getElementById('tr-tabs');
+    if (tabsWrap) tabsWrap.querySelectorAll('.cc-tab').forEach(t => t.classList.toggle('sel', t.dataset.tab === tab));
+    const sysPanel = document.getElementById('tr-sys-panel');
+    const minePanel = document.getElementById('tr-mine-panel');
+    if (sysPanel) sysPanel.hidden = tab !== 'sys';
+    if (minePanel) minePanel.hidden = tab !== 'mine';
+    if (tab === 'sys') renderTRCatsInto(document.getElementById('tr-sys-cats'), true);
+    else renderTRCatsInto(document.getElementById('tr-mine-cats'), false);
+  }
+  const trTabsWrap = document.getElementById('tr-tabs');
+  if (trTabsWrap) {
+    trTabsWrap.querySelectorAll('.cc-tab').forEach(tab => {
+      tab.addEventListener('click', () => switchTRTab(tab.dataset.tab));
+    });
   }
   // 吐槽入口
   const liTR = document.getElementById('li-ta-roast');
@@ -1677,7 +1788,7 @@ window.openTCPanel = openTCPanel;
     liTR.addEventListener('click', () => {
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       trPage.hidden = false;
-      renderTRManage();
+      switchTRTab(trTab);
     });
   }
   const trBackBtn = document.getElementById('tc-roast-back');
@@ -1693,7 +1804,7 @@ window.openTCPanel = openTCPanel;
   const trDefault = document.getElementById('tr-default');
   if (trDefault) trDefault.addEventListener('change', () => {
     const d = trLoad(); d.settings.useDefault = trDefault.checked; trSave(d);
-    renderTRManage();
+    switchTRTab(trTab);
     toast(trDefault.checked ? '系统预设字卡已开启' : '系统预设字卡已关闭（仅用你添加的字卡）');
   });
   const trProb = document.getElementById('tr-prob');
@@ -1722,7 +1833,7 @@ window.openTCPanel = openTCPanel;
       trSave(d);
       if (textEl) textEl.value = '';
       if (matchEl) matchEl.value = '';
-      renderTRManage();
+      renderTRCatsInto(document.getElementById('tr-mine-cats'), false);
       toast('已添加吐槽字卡');
     });
   }

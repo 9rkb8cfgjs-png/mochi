@@ -211,3 +211,77 @@
     }
   }
 })();
+
+// ===== 全新环境引导：无任何数据时首次提示「可导入备份」 =====
+// 背景：Edge/Chrome 安卓「安装应用」的 PWA 与浏览器标签页使用独立存储分区
+// （storage partition），用户从标签页换到桌面图标打开时看到的是全新空环境
+// （昵称/打卡/摸鱼全默认值），误以为数据丢了。
+// 判定：localStorage + IndexedDB 都没有 xy-home-v2: 数据键 → 全新环境。
+// 时机：等数据就绪（__mochiDataReady）且开屏关闭后再弹——modal-mask z-index(90)
+// 低于 splash(999)，开屏期间弹会被盖住。弹过一次写标记（含点取消），不再打扰。
+(function () {
+  const G = 'xy-home-v2:';
+  const MARK = G + '__onboard-done';
+  // localStorage 侧：无任何数据键（标记键除外）
+  function freshLs() {
+    try {
+      if (localStorage.getItem(MARK)) return false; // 已提示过
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf(G) === 0 && k !== MARK) return false; // 有任何数据键 → 老环境
+      }
+    } catch (e) { return false; }
+    return true;
+  }
+  // IndexedDB 侧：大键（聊天/字卡/音乐等）可能只进 IDB 不占 localStorage，也要查
+  function idbEmpty() {
+    return new Promise((resolve) => {
+      try {
+        if (!window.idbGetAllKeys) { resolve(true); return; }
+        window.idbGetAllKeys().then((keys) => {
+          resolve(!(keys || []).some(k => String(k).indexOf(G) === 0));
+        }).catch(() => resolve(true));
+      } catch (e) { resolve(true); }
+    });
+  }
+  // 开屏是否已关闭（clock.js：点击进入 → 加 .hide 类 → 400ms 后移除节点）
+  function splashGone() {
+    const s = document.getElementById('splash');
+    return !s || !s.isConnected || s.classList.contains('hide');
+  }
+  function maybeShow() {
+    if (!freshLs()) return;
+    if (window.__resetting) return; // 重置/导入流程中不打扰
+    idbEmpty().then((clean) => {
+      if (!clean) return; // IndexedDB 有数据 → 不是全新环境
+      // 先写标记：无论用户确定/取消，只提示这一次
+      try { localStorage.setItem(MARK, String(Date.now())); } catch (e) {}
+      if (!window.openModal) return;
+      const go = () => {
+        // 切到设置页并触发「导入数据」文件选择（row-import 已由 data-backup.js 绑定）
+        try {
+          const tab = document.querySelector('.tab[data-page="page-setting"]');
+          if (tab) tab.click();
+        } catch (e) {}
+        setTimeout(() => {
+          try {
+            const row = document.getElementById('row-import');
+            if (row) row.click();
+          } catch (e) {}
+        }, 120);
+      };
+      window.openModal('欢迎使用 Mochi', '', go, {
+        noInput: true,
+        staticText: '检测到当前是全新环境，还没有任何数据。\n\n· 如果之前在浏览器标签页里设置过昵称/打卡：点「确定」会打开设置页的数据导入，选择之前导出的备份文件即可全部恢复。\n\n· 如果是第一次使用：点「取消」直接开始设置即可。'
+      });
+    });
+  }
+  let ready = false;
+  const poll = setInterval(function () {
+    if (window.__mochiDataReady) ready = true;
+    if (ready && splashGone()) {
+      clearInterval(poll);
+      setTimeout(maybeShow, 300); // 留一点开屏退出动画缓冲
+    }
+  }, 300);
+})();

@@ -329,20 +329,29 @@
       <div class="gs-row"><span>触发概率</span><input type="range" id="ta-ask-prob" min="1" max="100" step="1" class="tc-range"><span class="tc-prob-val" id="ta-ask-prob-val">20%</span></div>
       <div class="gs-row"><span>自动弹窗概率</span><input type="range" id="ta-ask-popup" min="0" max="100" step="1" class="tc-range"><span class="tc-prob-val" id="ta-ask-popup-val">70%</span></div>
     </div>
-    <div class="set-group glass">
-      <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>批量导入问题</div>
-      <div class="tc-addform">
-        <select id="ta-ask-batch-cat" class="tc-input">
-          <option value="daily">日常询问</option>
-          <option value="care">关心询问</option>
-          <option value="interact">互动询问</option>
-          <option value="world">两个世界</option>
-        </select>
-        <textarea id="ta-ask-batch" class="tc-input" rows="6" placeholder="每行一个问题，如：&#10;你吃饭了吗？&#10;现在在做什么？&#10;今天过得怎么样？"></textarea>
-        <button class="ta-add-btn" style="width:100%" id="ta-ask-batch-add">批量导入到所选分类</button>
-      </div>
+    <div class="card-tabs" id="ta-ask-tabs" style="padding:6px 12px 8px">
+      <button class="cc-tab sel" data-tab="sys">系统预设</button>
+      <button class="cc-tab" data-tab="mine">我的添加</button>
     </div>
-    <div id="ta-ask-cats"></div>
+    <div id="ta-ask-sys-panel">
+      <div id="ta-ask-sys-cats"></div>
+    </div>
+    <div id="ta-ask-mine-panel" hidden>
+      <div class="set-group glass">
+        <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>批量导入问题</div>
+        <div class="tc-addform">
+          <select id="ta-ask-batch-cat" class="tc-input">
+            <option value="daily">日常询问</option>
+            <option value="care">关心询问</option>
+            <option value="interact">互动询问</option>
+            <option value="world">两个世界</option>
+          </select>
+          <textarea id="ta-ask-batch" class="tc-input" rows="6" placeholder="每行一个问题，如：&#10;你吃饭了吗？&#10;现在在做什么？&#10;今天过得怎么样？"></textarea>
+          <button class="ta-add-btn" style="width:100%" id="ta-ask-batch-add">批量导入到所选分类</button>
+        </div>
+      </div>
+      <div id="ta-ask-mine-cats"></div>
+    </div>
   </div>
 </div>
 
@@ -365,26 +374,38 @@
       <div class="gs-row"><span>触发概率</span><input type="range" id="tc-prob" min="1" max="100" step="1" class="tc-range"><span class="tc-prob-val" id="tc-prob-val">15%</span></div>
       <div class="gs-row"><span>自动弹窗概率</span><input type="range" id="tc-popup" min="0" max="100" step="1" class="tc-range"><span class="tc-prob-val" id="tc-popup-val">70%</span></div>
     </div>
-    <div class="set-group glass">
-      <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加问题</div>
-      <div class="tc-addform">
-        <select id="tc-new-cat" class="tc-input">
-          <option value="daily">日常</option>
-          <option value="like">喜好</option>
-          <option value="fun">趣味</option>
-          <option value="rel">关系</option>
-          <option value="hypo">假设</option>
-          <option value="star">摸鱼</option>
-          <option value="world">两个世界</option>
-        </select>
-        <input id="tc-new-text" class="tc-input" type="text" placeholder="问题内容…">
-        <input id="tc-new-opts" class="tc-input" type="text" placeholder="选项用 | 分隔，可写「选项~回应」，如：睡觉~嗯，听你的。">
-        <button class="ta-add-btn" style="width:100%" id="tc-new-add">添加</button>
+    <div class="card-tabs" id="tc-tabs" style="padding:6px 12px 8px">
+      <button class="cc-tab sel" data-tab="sys">系统预设</button>
+      <button class="cc-tab" data-tab="mine">我的添加</button>
+    </div>
+    <div id="tc-sys-panel">
+      <div class="set-group glass">
+        <div class="cal-card-title" style="padding:14px 14px 0">系统预设题库（可逐句开关，不可删除）</div>
+        <div id="tc-sys-cats" style="padding:8px 14px 14px"></div>
       </div>
     </div>
-    <div class="set-group glass">
-      <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>字卡题库 <span style="font-size:11px;color:var(--muted);font-weight:400">（可停用/删除）</span></div>
-      <div id="tc-cats" style="padding:8px 14px 14px"></div>
+    <div id="tc-mine-panel" hidden>
+      <div class="set-group glass">
+        <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加问题</div>
+        <div class="tc-addform">
+          <select id="tc-new-cat" class="tc-input">
+            <option value="daily">日常</option>
+            <option value="like">喜好</option>
+            <option value="fun">趣味</option>
+            <option value="rel">关系</option>
+            <option value="hypo">假设</option>
+            <option value="star">摸鱼</option>
+            <option value="world">两个世界</option>
+          </select>
+          <input id="tc-new-text" class="tc-input" type="text" placeholder="问题内容…">
+          <input id="tc-new-opts" class="tc-input" type="text" placeholder="选项用 | 分隔，可写「选项~回应」，如：睡觉~嗯，听你的。">
+          <button class="ta-add-btn" style="width:100%" id="tc-new-add">添加</button>
+        </div>
+      </div>
+      <div class="set-group glass">
+        <div class="cal-card-title" style="padding:14px 14px 0">我添加的问题 <span style="font-size:11px;color:var(--muted);font-weight:400">（可停用/删除）</span></div>
+        <div id="tc-mine-cats" style="padding:8px 14px 14px"></div>
+      </div>
     </div>
     <div class="set-group glass" style="display:flex;gap:8px;padding:10px">
       <button class="cc-tool" id="tc-favs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><path d="M12 2l2.4 5 5.6.8-4 4 .9 5.6-4.9-2.6-4.9 2.6.9-5.6-4-4 5.6-.8z"/></svg>收藏（0）</button>
@@ -412,29 +433,41 @@
       <div class="gs-row"><span>自动弹窗概率</span><input type="range" id="tcu-popup" min="0" max="100" step="1" class="tc-range"><span class="tc-prob-val" id="tcu-popup-val">70%</span></div>
       <div class="gs-row"><span>回答后 TA 偶尔追问</span><label class="toggle"><input type="checkbox" id="tcu-followup"><span class="tk"></span></label></div>
     </div>
-    <div class="set-group glass">
-      <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加问题</div>
-      <div class="tc-addform">
-        <select id="tcu-new-cat" class="tc-input">
-          <option value="you">关于你</option>
-          <option value="mood">情绪</option>
-          <option value="daily">日常</option>
-          <option value="past">过去</option>
-          <option value="like">喜好</option>
-          <option value="think">想法</option>
-          <option value="us">你和TA</option>
-          <option value="world">两个世界</option>
-        </select>
-        <input id="tcu-new-text" class="tc-input" type="text" placeholder="问题内容（开放式）…">
-        <input id="tcu-new-quick" class="tc-input" type="text" placeholder="快捷回复，用 | 分隔（可选），如：看动画|出去玩">
-        <input id="tcu-new-replies" class="tc-input" type="text" placeholder="TA 的回应，用 | 分隔（可选，至少1条）">
-        <input id="tcu-new-followup" class="tc-input" type="text" placeholder="TA 偶尔的自然追问（可选）">
-        <button class="ta-add-btn" style="width:100%" id="tcu-new-add">添加</button>
+    <div class="card-tabs" id="tcu-tabs" style="padding:6px 12px 8px">
+      <button class="cc-tab sel" data-tab="sys">系统预设</button>
+      <button class="cc-tab" data-tab="mine">我的添加</button>
+    </div>
+    <div id="tcu-sys-panel">
+      <div class="set-group glass">
+        <div class="cal-card-title" style="padding:14px 14px 0">系统预设题库（可逐句开关，不可删除）</div>
+        <div id="tcu-sys-cats" style="padding:8px 14px 14px"></div>
       </div>
     </div>
-    <div class="set-group glass">
-      <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>字卡题库 <span style="font-size:11px;color:var(--muted);font-weight:400">（可停用/删除，答过的题不重复问）</span></div>
-      <div id="tcu-cats" style="padding:8px 14px 14px"></div>
+    <div id="tcu-mine-panel" hidden>
+      <div class="set-group glass">
+        <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加问题</div>
+        <div class="tc-addform">
+          <select id="tcu-new-cat" class="tc-input">
+            <option value="you">关于你</option>
+            <option value="mood">情绪</option>
+            <option value="daily">日常</option>
+            <option value="past">过去</option>
+            <option value="like">喜好</option>
+            <option value="think">想法</option>
+            <option value="us">你和TA</option>
+            <option value="world">两个世界</option>
+          </select>
+          <input id="tcu-new-text" class="tc-input" type="text" placeholder="问题内容（开放式）…">
+          <input id="tcu-new-quick" class="tc-input" type="text" placeholder="快捷回复，用 | 分隔（可选），如：看动画|出去玩">
+          <input id="tcu-new-replies" class="tc-input" type="text" placeholder="TA 的回应，用 | 分隔（可选，至少1条）">
+          <input id="tcu-new-followup" class="tc-input" type="text" placeholder="TA 偶尔的自然追问（可选）">
+          <button class="ta-add-btn" style="width:100%" id="tcu-new-add">添加</button>
+        </div>
+      </div>
+      <div class="set-group glass">
+        <div class="cal-card-title" style="padding:14px 14px 0">我添加的问题 <span style="font-size:11px;color:var(--muted);font-weight:400">（可停用/删除）</span></div>
+        <div id="tcu-mine-cats" style="padding:8px 14px 14px"></div>
+      </div>
     </div>
     <div class="set-group glass">
       <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>已了解 <span id="tcu-known-count" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
@@ -463,25 +496,37 @@
       <div class="gs-row"><span>触发概率</span><input type="range" id="tr-prob" min="1" max="100" step="1" class="tc-range"><span class="tc-prob-val" id="tr-prob-val">30%</span></div>
       <div class="gs-row"><span>自动弹窗概率</span><input type="range" id="tr-popup" min="0" max="100" step="1" class="tc-range"><span class="tc-prob-val" id="tr-popup-val">70%</span></div>
     </div>
-    <div class="set-group glass">
-      <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加吐槽字卡</div>
-      <div class="tc-addform">
-        <select id="tr-new-cat" class="tc-input">
-          <option value="light">轻微调侃</option>
-          <option value="familiar">熟悉感</option>
-          <option value="sweet">情侣式调侃</option>
-          <option value="mild">轻微嫌弃</option>
-          <option value="serious">严肃吐槽</option>
-          <option value="world">两个世界</option>
-        </select>
-        <input id="tr-new-text" class="tc-input" type="text" placeholder="吐槽内容…">
-        <input id="tr-new-match" class="tc-input" type="text" placeholder="触发关键词，用 | 分隔（可选），如：熬夜|没睡">
-        <button class="ta-add-btn" style="width:100%" id="tr-new-add">添加</button>
+    <div class="card-tabs" id="tr-tabs" style="padding:6px 12px 8px">
+      <button class="cc-tab sel" data-tab="sys">系统预设</button>
+      <button class="cc-tab" data-tab="mine">我的添加</button>
+    </div>
+    <div id="tr-sys-panel">
+      <div class="set-group glass">
+        <div class="cal-card-title" style="padding:14px 14px 0">系统预设字卡（可逐句开关，不可删除）</div>
+        <div id="tr-sys-cats" style="padding:8px 14px 14px"></div>
       </div>
     </div>
-    <div class="set-group glass">
-      <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>字卡题库 <span style="font-size:11px;color:var(--muted);font-weight:400">（可停用/删除，带触发词的优先）</span></div>
-      <div id="tr-cats" style="padding:8px 14px 14px"></div>
+    <div id="tr-mine-panel" hidden>
+      <div class="set-group glass">
+        <div class="cal-card-title" style="padding:14px 14px 0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>添加吐槽字卡</div>
+        <div class="tc-addform">
+          <select id="tr-new-cat" class="tc-input">
+            <option value="light">轻微调侃</option>
+            <option value="familiar">熟悉感</option>
+            <option value="sweet">情侣式调侃</option>
+            <option value="mild">轻微嫌弃</option>
+            <option value="serious">严肃吐槽</option>
+            <option value="world">两个世界</option>
+          </select>
+          <input id="tr-new-text" class="tc-input" type="text" placeholder="吐槽内容…">
+          <input id="tr-new-match" class="tc-input" type="text" placeholder="触发关键词，用 | 分隔（可选），如：熬夜|没睡">
+          <button class="ta-add-btn" style="width:100%" id="tr-new-add">添加</button>
+        </div>
+      </div>
+      <div class="set-group glass">
+        <div class="cal-card-title" style="padding:14px 14px 0">我添加的字卡 <span style="font-size:11px;color:var(--muted);font-weight:400">（可停用/删除）</span></div>
+        <div id="tr-mine-cats" style="padding:8px 14px 14px"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -503,16 +548,28 @@
       <button class="fav-tab" data-cktab="action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px"><path d="M13 2L4.5 13.5H11l-1 8.5L18.5 10H12l1-8z"/></svg>在做什么</button>
       <button class="fav-tab" data-cktab="msg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>说的话</button>
     </div>
-    <div class="set-group glass">
-      <div class="cal-card-title" style="padding:14px 14px 0">批量输入字卡</div>
-      <div class="tc-addform">
-        <textarea id="cck-batch" class="tc-input" rows="6" placeholder="每行一个，如：&#10;在家&#10;在公司&#10;在咖啡店"></textarea>
-        <button class="ta-add-btn" style="width:100%" id="cck-batch-add">添加到当前分类</button>
+    <div class="card-tabs" id="ck-tabs" style="padding:6px 12px 8px">
+      <button class="cc-tab sel" data-tab="sys">系统预设</button>
+      <button class="cc-tab" data-tab="mine">我的添加</button>
+    </div>
+    <div id="ck-sys-panel">
+      <div class="set-group glass">
+        <div class="cal-card-title" style="padding:14px 14px 0" id="cck-sys-title">地点</div>
+        <div id="cck-sys-list" style="padding:8px 14px 14px"></div>
       </div>
     </div>
-    <div class="set-group glass">
-      <div class="cal-card-title" style="padding:14px 14px 0" id="cck-list-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px"><path d="M12 21s-6-5.3-6-10a6 6 0 1112 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>地点</div>
-      <div id="cck-list" style="padding:8px 14px 14px"></div>
+    <div id="ck-mine-panel" hidden>
+      <div class="set-group glass">
+        <div class="cal-card-title" style="padding:14px 14px 0">批量输入字卡</div>
+        <div class="tc-addform">
+          <textarea id="cck-batch" class="tc-input" rows="6" placeholder="每行一个，如：&#10;在家&#10;在公司&#10;在咖啡店"></textarea>
+          <button class="ta-add-btn" style="width:100%" id="cck-batch-add">添加到当前分类</button>
+        </div>
+      </div>
+      <div class="set-group glass">
+        <div class="cal-card-title" style="padding:14px 14px 0" id="cck-mine-title">地点</div>
+        <div id="cck-mine-list" style="padding:8px 14px 14px"></div>
+      </div>
     </div>
     <div class="cal-card-title" style="padding:0 2px">查岗时 TA 会随机从这三组字卡里各抽一条展示</div>
   </div>

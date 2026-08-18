@@ -268,7 +268,16 @@ function ckList(k, def) {
   } catch (e) {}
   return def.slice();
 }
-function ckSaveList(k, list) { store.set('checkin-cards-' + k, JSON.stringify(list)); }
+  function ckSaveList(k, list) { store.set('checkin-cards-' + k, JSON.stringify(list)); }
+  // v3.6.x：纯自定义库读取（不 fallback 到默认）——批量添加/我的添加列表用这个，
+  //   避免原 ckList() 在无自定义时返回默认库导致系统预设被"转正"存进自定义库
+  function ckCustomList(k) {
+    try {
+      const v = JSON.parse(store.get('checkin-cards-' + k) || 'null');
+      if (Array.isArray(v)) return v;
+    } catch (e) {}
+    return [];
+  }
 // v3.6.x：查岗系统预设字卡单卡开关——逐张开启/关闭（关闭后查岗不再抽取该条）
 function isCkCardOff(k, x) { return store.get('ck-off-' + k + ':' + x) === '1'; }
 function setCkCardOff(k, x, off) { store.set('ck-off-' + k + ':' + x, off ? '1' : '0'); }
@@ -500,65 +509,102 @@ if (ckRefresh) {
       return Array.isArray(v) && v.length > 0;
     } catch (e) { return false; }
   }
+  let ckTab2 = 'sys';
+  function escCk(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  function renderCkSysList() {
+    const listEl = document.getElementById('cck-sys-list');
+    const titleEl = document.getElementById('cck-sys-title');
+    if (titleEl) titleEl.textContent = CK_LABEL[ckTab] || '';
+    if (!listEl) return;
+    const useDefault = getCkDefault();
+    const def = { place: DEF_PLACES, action: DEF_ACTIONS, msg: DEF_CHECK_MSGS }[ckTab];
+    listEl.innerHTML = '';
+    if (!useDefault) {
+      const tip = document.createElement('div');
+      tip.className = 'ta-empty';
+      tip.textContent = '系统预设字卡已关闭（查岗只从「我的添加」里抽取）。开启上方开关即可恢复使用。';
+      listEl.appendChild(tip);
+      return;
+    }
+    def.forEach(x => {
+      const off = isCkCardOff(ckTab, x);
+      const row = document.createElement('div');
+      row.className = 'tc-qrow' + (off ? ' off' : '');
+      row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + escCk(x) + ' <span class="tc-known">系统</span></div></div>';
+      const lab = document.createElement('label');
+      lab.className = 'toggle ccard-toggle';
+      lab.innerHTML = '<input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span>';
+      lab.querySelector('input').addEventListener('change', () => {
+        const nowOff = !lab.querySelector('input').checked;
+        setCkCardOff(ckTab, x, nowOff);
+        renderCkSysList();
+        updateCkCount();
+        toast((nowOff ? '已关闭：' : '已开启：') + (x.length > 18 ? x.slice(0, 18) + '…' : x));
+      });
+      row.appendChild(lab);
+      listEl.appendChild(row);
+    });
+  }
+  function renderCkMineList() {
+    const listEl = document.getElementById('cck-mine-list');
+    const titleEl = document.getElementById('cck-mine-title');
+    if (titleEl) titleEl.textContent = CK_LABEL[ckTab] || '';
+    if (!listEl) return;
+    const custom = ckCustomList(ckTab);
+    listEl.innerHTML = '';
+    if (!custom.length) {
+      listEl.innerHTML = '<div class="ta-empty">暂未添加自定义字卡，可在上方批量输入（每行一个）。</div>';
+      return;
+    }
+    custom.forEach((x, i) => {
+      const row = document.createElement('div');
+      row.className = 'tc-qrow';
+      row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + escCk(x) + '</div></div>';
+      const del = document.createElement('button');
+      del.className = 'ta-del';
+      del.textContent = '✕';
+      del.addEventListener('click', () => {
+        const l = ckCustomList(ckTab);
+        l.splice(i, 1);
+        ckSaveList(ckTab, l);
+        renderCkMineList();
+        updateCkCount();
+        toast('已删除');
+      });
+      row.appendChild(del);
+      listEl.appendChild(row);
+    });
+  }
+  function updateCkCount() {
+    const useDefault = getCkDefault();
+    let total = 0;
+    CK_DEFS.forEach(([k, def]) => {
+      total += ckCustomList(k).length;
+      if (useDefault) total += def.filter(x => !isCkCardOff(k, x)).length;
+    });
+    const cnt = document.getElementById('cc-checkin-count');
+    if (cnt) cnt.textContent = total;
+  }
+  function switchCkTab2(tab) {
+    ckTab2 = tab;
+    const tabsWrap = document.getElementById('ck-tabs');
+    if (tabsWrap) tabsWrap.querySelectorAll('.cc-tab').forEach(t => t.classList.toggle('sel', t.dataset.tab === tab));
+    const sysPanel = document.getElementById('ck-sys-panel');
+    const minePanel = document.getElementById('ck-mine-panel');
+    if (sysPanel) sysPanel.hidden = tab !== 'sys';
+    if (minePanel) minePanel.hidden = tab !== 'mine';
+    if (tab === 'sys') renderCkSysList(); else renderCkMineList();
+  }
   function renderCheckinCards() {
     // 顶部分类 tab
     document.querySelectorAll('#page-checkin-cards .fav-tab').forEach(tab => {
       tab.classList.toggle('sel', tab.dataset.cktab === ckTab);
     });
-    // v3.6.x：使用系统预设开关状态同步
     const useDefault = getCkDefault();
     const defEl = document.getElementById('ck-default');
     if (defEl) defEl.checked = useDefault;
-    const listEl = document.getElementById('cck-list');
-    const titleEl = document.getElementById('cck-list-title');
-    if (titleEl) titleEl.textContent = CK_LABEL[ckTab] || '';
-    if (listEl) {
-      const def = { place: DEF_PLACES, action: DEF_ACTIONS, msg: DEF_CHECK_MSGS }[ckTab];
-      const list = ckList(ckTab, def);
-      const custom = ckHasCustom(ckTab);
-      listEl.innerHTML = '';
-      if (!list.length) { listEl.innerHTML = '<div class="ta-empty">暂无，可添加</div>'; }
-      else {
-        list.forEach((x, i) => {
-          // 系统预设 = 无自定义（整库默认）或内容匹配默认项；系统项不可删除
-          const sys = !custom || def.indexOf(x) >= 0;
-          const off = isCkCardOff(ckTab, x) || (sys && !useDefault);
-          const row = document.createElement('div');
-          row.className = 'tc-qrow' + (off ? ' off' : '');
-          row.innerHTML = '<div class="tc-qmain"><div class="tc-qtext">' + String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (sys ? ' <span class="tc-known">系统</span>' : '') + '</div></div>';
-          if (sys) {
-            // v3.6.x：系统预设单卡开关——逐张开启/关闭（关闭后查岗不再抽取）
-            const lab = document.createElement('label');
-            lab.className = 'toggle ccard-toggle';
-            lab.innerHTML = '<input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span>';
-            lab.querySelector('input').addEventListener('change', () => {
-              const nowOff = !lab.querySelector('input').checked;
-              setCkCardOff(ckTab, x, nowOff);
-              renderCheckinCards();
-              const s = String(x == null ? '' : x);
-              toast((nowOff ? '已关闭：' : '已开启：') + (s.length > 18 ? s.slice(0, 18) + '…' : s));
-            });
-            row.appendChild(lab);
-          } else {
-            const del = document.createElement('button');
-            del.className = 'ta-del';
-            del.textContent = '✕';
-            del.addEventListener('click', () => {
-              const l = ckList(ckTab, def);
-              l.splice(i, 1);
-              ckSaveList(ckTab, l);
-              renderCheckinCards();
-            });
-            row.appendChild(del);
-          }
-          listEl.appendChild(row);
-        });
-      }
-    }
-    // 数字
-    const total = CK_DEFS.reduce((s, [k, def]) => s + ckList(k, def).length, 0);
-    const cnt = document.getElementById('cc-checkin-count');
-    if (cnt) cnt.textContent = total;
+    switchCkTab2(ckTab2);
+    updateCkCount();
   }
   // v3.6.x：使用系统预设字卡开关（默认开启；关闭后查岗只从用户添加的字卡里抽）
   const ckDefaultEl = document.getElementById('ck-default');
@@ -576,7 +622,14 @@ if (ckRefresh) {
       renderCheckinCards();
     });
   });
-  // 批量输入：每行一个，添加到当前分类
+  // 系统预设/我的添加 双 tab 切换
+  const ckTabsWrap = document.getElementById('ck-tabs');
+  if (ckTabsWrap) {
+    ckTabsWrap.querySelectorAll('.cc-tab').forEach(tab => {
+      tab.addEventListener('click', () => { ckTab2 = tab.dataset.tab; switchCkTab2(ckTab2); });
+    });
+  }
+  // 批量输入：每行一个，添加到当前分类（只追加到用户自定义库，不污染系统预设）
   const batchAdd = document.getElementById('cck-batch-add');
   if (batchAdd) {
     batchAdd.addEventListener('click', () => {
@@ -584,12 +637,12 @@ if (ckRefresh) {
       const raw = ta ? ta.value : '';
       const items = raw.split('\n').map(s => s.trim()).filter(Boolean);
       if (!items.length) { toast('请输入内容，每行一个'); return; }
-      const def = { place: DEF_PLACES, action: DEF_ACTIONS, msg: DEF_CHECK_MSGS }[ckTab];
-      const list = ckList(ckTab, def);
+      const list = ckCustomList(ckTab);
       items.forEach(it => list.push(it));
       ckSaveList(ckTab, list);
       if (ta) ta.value = '';
-      renderCheckinCards();
+      renderCkMineList();
+      updateCkCount();
       toast('已添加 ' + items.length + ' 条到「' + (CK_LABEL[ckTab] || ckTab) + '」');
     });
   }

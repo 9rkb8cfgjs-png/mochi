@@ -238,7 +238,25 @@
     return '<div class="cc-txt"><div class="t">' + esc(c) + '</div></div>';
   }
 
+  // v3.6.x：分类 tab 显示每个大分类的字卡数量（主字卡/颜文字/emoji/表情包/图片/拍一拍/语音）
+  function renderTabCounts() {
+    tabsWrap.querySelectorAll('.cc-tab').forEach(tab => {
+      const grps = groups[tab.dataset.type] || [];
+      let n = 0;
+      grps.forEach(g => { if (Array.isArray(g) && Array.isArray(g[1])) n += g[1].length; });
+      let em = tab.querySelector('.cc-tab-n');
+      if (!em) {
+        em = document.createElement('em');
+        em.className = 'cc-tab-n';
+        tab.appendChild(em);
+      }
+      em.textContent = n;
+      em.classList.toggle('zero', n === 0);
+    });
+  }
+
   function render() {
+    renderTabCounts();
     // 表情包分类：网格一行四个；图片分类：网格一行两个；emoji 分类：网格一行六个；其他分类保持行式列表
     list.classList.toggle('cc-grid', cur === 'sticker');
     list.classList.toggle('cc-grid2', cur === 'image');

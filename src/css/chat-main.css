@@ -87,8 +87,8 @@
 /* 主动发送标识：联系人主动找你的消息，气泡左上角一枚小爱心（矢量图） */
 .msg-hi-heart {
   position:absolute;
-  top:-4px; left:-5px;
-  width:14px; height:14px;
+  top:-8px; left:-8px;
+  width:11px; height:11px;
   color:#ff4d6a;
   pointer-events:none;
 }

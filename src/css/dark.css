@@ -145,6 +145,8 @@
   .card-tabs { background:transparent; }
   .card-tab, .cc-tab { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
   .card-tab.sel, .cc-tab.sel { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
+  .cc-tab-n { background:var(--dark-border-12); color:var(--dark-soft); }
+  .cc-tab.sel .cc-tab-n { background:rgba(255,255,255,.22); color:#fff; }
   .card-search { background:var(--dark-input); border-color:var(--dark-border-12); }
   .card-search-input { background:transparent; color:var(--ink); }
   .card-search-input::placeholder { color:var(--muted); }
