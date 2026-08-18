@@ -11,6 +11,11 @@
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
 
 ### 2026-08-18
+- [本会话] 完成（用户反馈「iPhone 15 Pro 打开部署的 GitHub Pages 页面依旧卡顿，iOS 都会这样」——iOS Safari 性能专项，已构建 verify 10/10 + CDP 双端对照验证，**随本次提交推送**）：定位两个遗留 iOS 卡顿源——①**桌面 zoom 回归**：v3.6.x「桌面字号/卡片大小」滑块在 `src/css/home.css` 用 `zoom:var(--desk-font-scale/--desk-card-scale)` 重新引入了 AGENTS.md 红线禁用的整页 zoom（WebKit 下整页/整组件踢出 GPU 合成路径、滚动每帧 CPU 重排重绘；verify.mjs 只查 `.phone` 没查 `.page-slide`/小组件，回归未被发现）；②**6 处全屏遮罩 backdrop-filter blur**（base.css `.modal-mask` blur4 + `.cc-import-progress` blur3、chat-main.css `.call-mask` blur6、chat-pages.css `.mg-mask`/`.tc-mask`/`.qa-mask` blur4）——iOS Safari 每次弹窗打开都对全屏做模糊栅格化（弹窗是全站最高频操作，openModal 全站统一走它）。修复：①home.css 加 `@media (max-width:900px)` 把桌面页/小组件 zoom 强制 1（手机端禁用缩放，设置仍可保存、桌面 >900px 模拟器端功能保留；手机端如需缩放后续用字号/间距方案重做）；②6 处遮罩全部去掉 blur 行（纯 rgba 遮罩视觉几乎无差，浅色 rgba(0,0,0,.35)/深色 .6 不透明足够）。CDP 双端对照：注入 --desk-card-scale=1.2 后 mobile(390x844) 组件 zoom=1、desktop(1280x800) zoom=1.2 功能保留、modal-mask 显示/隐藏两态 backdropFilter=none、遮罩色 rgba(0,0,0,.35) 正常。涉及 `src/css/home.css`（AI-A 域，红线违规故越界修复）、`src/css/base.css`、`src/css/chat-main.css`、`src/css/chat-pages.css`。⚠️ 另清理了遗留临时脚本 tools/diag-cc-tmp.mjs（对方曾留言待清理）。
+- [对方 16:51 已提交未 push] ef16467 v3.6.68（字卡库首页 chat-item 压缩 + 对方累积含音乐封面）。本会话已复核：对方构建已包含本会话 CSS 修复（built index.html 无 backdrop-filter、含 zoom 媒体查询），16:53 重新构建（仅版本时间戳差异）+ verify 10/10，**本次随本会话记录一起提交推送**。
+
+
+### 2026-08-18
 - [本会话] 完成（用户需求「上传歌曲时，可自定义上传歌曲封面图片」，已构建 verify 10/10 + CDP 端到端 18/18，**待提交**）：`src/js/music-player.js`（AI-A 域）+ `src/css/chat-pages.css`，未动 template.html。①「管理音乐」弹窗（歌曲 ⋯ 按钮）新增「歌曲封面」行：圆形预览（点击也可上传）+ 上传封面 + 清除封面按钮；图片压缩到最长边 512px JPEG dataURL 存 `m.cover`（画布失败回退原图；保存后列表/收藏/歌单/桌面部件同步刷新）；② 音乐库/收藏/歌单内歌曲列表有封面时渲染缩略图（`.sm-song-ico.has-cov`，替换音符图标），无封面保持原样；③ 上传完成 toast 改为「已上传 N 首音乐（点歌曲右侧 ⋯ 可设置封面）」。隐藏 file input 挂 body（`document.body.appendChild`，保证老内核/无头环境 click 可用）。数据量：每封面 ~几十 KB，走既有 xyStore 大键机制，备份导入导出自动包含。CDP 18/18：种子带/无封面列表缩略图/面板预览与清除按钮状态/真实 PNG 注入→m.cover 压缩为 jpeg dataURL/预览与列表同步/toast/清除后恢复占位与音符图标/无 JS 错误。涉及 `src/js/music-player.js`、`src/css/chat-pages.css` + 产物。**未提交**，等待统一提交/部署。临时探测脚本已删。
 
 ### 2026-08-18
