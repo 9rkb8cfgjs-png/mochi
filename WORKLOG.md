@@ -329,3 +329,5 @@
 
 ### 2026-08-18
 - [本会话] 完成（开屏公告新增第12条，已构建 + 提交 v3.6.75）：公告新增「更新和bug修复」说明——灵感有但修设备bug耗时长所以慢；网站持续部署、每个反馈都修了，但只能靠用户自己设备验证，没设备无法验证修复程度；反馈修完后不一一回复，可晚点刷新新版再试；开屏无法跳过，加载完才能点进入。涉及 src/pwa/notice.json、src/template.html（离线兜底同步）。已 node build.mjs，产物与源码同次提交。
+
+- [本会话] 完成（互动卡片收藏按钮显示乱码「function favHeartHtmlO{return收藏}」修复，已构建 verify 10/10 + 提交 v3.6.76）：根因——src/js/chat.js renderMsg 六类互动卡片（invite/ask/ask-choose/ask-curious/ask-roast/ask-card）拼 HTML 时漏写调用括号 `favHeartHtml +`（应 `favHeartHtml() +`），函数源码被 toString 拼进卡片导致乱码；其余 7 处正常。修复：6 处补 `()`。已 node build.mjs + verify 10/10，产物与源码同次提交。
