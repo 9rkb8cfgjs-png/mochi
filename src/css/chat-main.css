@@ -116,17 +116,20 @@
    v3.5.50 修正：元素必须位于 .chat-input-row 内部（其 position:relative 为包含块），
    bottom:calc(100% + 4px) 才能正确悬浮在输入栏正上方（此前误放在 page-chat 下，
    absolute 相对整页定位，位置错乱） */
+/* 联系人「正在输入」：消息区与输入栏之间的内嵌占位行（v3.6.x 由悬浮式改回）
+   占一行、随消息区正常滚动，不悬浮、不遮挡任何消息；未触发时 display:none 无痕。
+   v3.5.49 曾改为悬浮式（absolute 相对输入栏 + z-index:5），消息滚动时会从
+   这行灰色小字下方穿过、被盖住（用户反馈"灰色一行遮挡聊天消息"）——
+   改回 v3.5.27/44 的内嵌方案，chat.js showTyping/hideTyping 已有占位滚动处理 */
 .chat-typing {
-  position:absolute;
-  bottom:calc(100% + 4px);
-  left:14px;
+  flex-shrink:0;
+  padding:2px 18px 4px;
   font-size:12px;
   color:var(--typing-ink, #8a8a8a);
   letter-spacing:.5px;
   background:transparent;
   white-space:nowrap;
   pointer-events:none;
-  z-index:5;
 }
 .chat-typing[hidden] { display:none; }
 /* 消息区底部留白，最后一条消息不贴输入栏 */

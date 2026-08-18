@@ -1913,12 +1913,14 @@
       <div class="chat-body" id="chat-body">
         <!-- 聊天记录由 JS 从本地恢复 -->
       </div>
+      <!-- 联系人正在输入：消息区与输入栏之间的内嵌占位行（v3.6.x 由悬浮改回——
+           悬浮式固定在输入栏上方，消息滚动时被灰色小字盖住（用户反馈"灰色一行遮挡消息"）；
+           内嵌占位后随消息区滚动、不遮挡，chat.js 在占位时保持最后消息可见） -->
+      <div class="chat-typing" id="chat-typing" hidden>对方正在输入…</div>
       <div class="chat-draft" id="chat-draft" hidden>
         <div class="chat-draft-items" id="chat-draft-items"></div>
       </div>
       <div class="chat-input-row">
-        <!-- 联系人正在输入：悬浮在输入栏正上方（不占布局、不遮挡任何消息），未触发时 display:none 无痕 -->
-        <div class="chat-typing" id="chat-typing" hidden>对方正在输入…</div>
         <button class="ch-input-btn" id="chat-more-btn" title="更多功能">
           <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
         </button>

@@ -316,42 +316,6 @@
     tryNext();
   }
 
-  // v3.6.x：网易云 https 直链获取——外链 music.163.com/song/media/outer/url?id=xxx.mp3
-  // 会 302 跳到 http://m*.music.126.net/...（http 协议）；HTTPS 部署（GitHub Pages）下
-  // audio 加载 http 资源被浏览器按混合内容拦截 → 所有手机外链全失败、只能播内置旋律。
-  // 网易云官方 API（enhance/player/url）返回的 CDN 地址把 http→https 即可直接播放
-  //（CDN 域名支持 https，已实测）。API 直连无 CORS 头，走 allorigins 代理兜底。
-  function fetchNeteaseUrl(id, cb) {
-    const api = 'https://music.163.com/api/song/enhance/player/url?ids=[' + encodeURIComponent(String(id)) + ']&br=320000';
-    // v3.6.x：多代理候选——allorigins 在中国大陆可能不通，补 codetabs 备选；
-    // 任一返回即可，超时 6 秒逐个尝试
-    const sources = [
-      api,
-      'https://api.allorigins.win/raw?url=' + encodeURIComponent(api),
-      'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(api)
-    ];
-    let si = 0;
-    const tryFetch = (url, next) => {
-      let controller;
-      try { controller = new AbortController(); } catch (e) { controller = null; }
-      const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 6000);
-      fetch(url, controller ? { signal: controller.signal } : undefined)
-        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(d => {
-          clearTimeout(timer);
-          try {
-            if (d && Array.isArray(d.data) && d.data[0] && d.data[0].url) {
-              const u = String(d.data[0].url).replace(/^http:\/\//i, 'https://');
-              if (/^https:\/\//i.test(u)) { cb(u); return; }
-            }
-          } catch (e) {}
-          next();
-        })
-        .catch(() => { clearTimeout(timer); next(); });
-    };
-    const next = () => { if (si < sources.length) { const u = sources[si++]; tryFetch(u, next); } else { cb(null); } };
-    next();
-  }
   // 本地上传（多个文件，存储到 IndexedDB）
   // v3.6.x：改存 Blob（不再存 base64 dataURL 字符串）——夸克等浏览器对
   // `<audio src="data:...">`（尤其大段 base64）播放失效，Blob + 对象 URL 是标准播放方案
@@ -1038,28 +1002,34 @@
       } catch (e) {}
     }, 12000);
   }
-  // v3.6.x：外链失败 → 尝试网易云 https 直链重播（HTTPS 部署下 outer/url 302 到 http
-  // 被混合内容拦截；API 返回的 CDN 地址 http→https 可直接播放）。直链一次性（约 20 分钟
-  // 过期），不持久化——每次播放失败都重新拉取；拉取失败才走内置旋律/报错兜底。
+  // v3.6.x：外链失败 → 用 meting API 的 https 302 重播。
+  // 根因：outer/url 302 到 http CDN，HTTPS 部署（GitHub Pages）下被浏览器按混合内容
+  // 拦截（所有手机外链全失败、只能播内置旋律）。Meting-API（api.injahow.cn，大陆可直连）
+  // 的 ?type=url&id=xxx 会 302 到 https://m*.music.126.net 直链——audio.src 直接指向
+  // meting URL 即可，浏览器自动跟随 302，全程 https 无混合内容。已实测两首种子歌
+  // 完整返回（5.3MB / 9.6MB，连续多次稳定）。若 meting 不可用则回退内置旋律。
+  function neteaseMetingUrl(id) {
+    return 'https://api.injahow.cn/meting/?type=url&id=' + encodeURIComponent(String(id));
+  }
   let httpsRetrying = false;
   function retryWithHttpsUrl(m) {
-    // v3.6.x：每首歌最多重试一次（_httpsRetried 内存标记）——防止 https 直链也失败时
-    // onerror/停滞守卫反复触发 → 无限拉取直链
+    // v3.6.x：每首歌最多重试一次（_httpsRetried 内存标记）——防止 meting 直链也失败时
+    // onerror/停滞守卫反复触发 → 无限拉取
     if (httpsRetrying || !m || !m.neteaseId || m._httpsRetried) return false;
     m._httpsRetried = true;
     httpsRetrying = true;
     toast('正在获取完整版直链…');
-    fetchNeteaseUrl(m.neteaseId, function (u) {
-      httpsRetrying = false;
-      if (!u || currentId !== m.id) { demoFallbackOrError(m); return; }
-      try { if (audio) { audio.onerror = null; audio.onended = null; } } catch (e) {}
-      teardownAudio();
-      if (currentId !== m.id) return;
-      audio = new Audio();
-      try { audio.referrerPolicy = 'no-referrer'; } catch (e) {}
-      audio.src = u;
-      startPlayback(m);
-    });
+    // 直接换 src 为 meting URL（302 → https CDN 音频），audio 自动跟随
+    try {
+      if (audio) { audio.onerror = null; audio.onended = null; audio.onloadedmetadata = null; }
+    } catch (e) {}
+    teardownAudio();
+    httpsRetrying = false;
+    if (currentId !== m.id) { demoFallbackOrError(m); return; }
+    audio = new Audio();
+    try { audio.referrerPolicy = 'no-referrer'; } catch (e) {}
+    audio.src = neteaseMetingUrl(m.neteaseId);
+    startPlayback(m);
     return true;
   }
   function demoFallbackOrError(m) {
