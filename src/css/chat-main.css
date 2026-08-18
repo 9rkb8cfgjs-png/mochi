@@ -84,11 +84,13 @@
 .msg-in .msg-bubble { background: var(--msg-in-bg, #ffffff); color: var(--msg-in-ink, #111111); }
 .msg-out .msg-bubble { background: var(--msg-out-bg, #111111); color: var(--msg-out-ink, #ffffff); }
 
-/* 主动发送标识：联系人主动找你的消息，气泡左上角一枚小爱心（矢量图） */
+/* 主动发送标识：联系人主动找你的消息，气泡左上角一枚小爱心（矢量图）
+   v3.6.x：爱心放在气泡内部左上角（2px/4px 偏移 + 9px 尺寸，恰好落在气泡
+   11px/14px 内边距范围内，不压文字）；此前 top/left:-8px 是挂在气泡外角 */
 .msg-hi-heart {
   position:absolute;
-  top:-8px; left:-8px;
-  width:11px; height:11px;
+  top:2px; left:4px;
+  width:9px; height:9px;
   color:#ff4d6a;
   pointer-events:none;
 }

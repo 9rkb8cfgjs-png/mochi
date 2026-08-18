@@ -258,7 +258,7 @@
     // ② 洗牌完成 → 展示两行牌面（每行横向自由滑动），点击牌背抽取
     setTimeout(function () {
       if (cancelled) return;
-      box.innerHTML = '';
+      box.remove();
       const hint = document.createElement('div');
       hint.className = 'div-pile-hint';
       stageEl.appendChild(hint);
