@@ -52,6 +52,37 @@
       sessionChangedIdx.clear();
     } catch (e) {}
   });
+  // v3.6.x：localStorage 兜底快照——聊天记录权威数据只存 IndexedDB（几千条带图
+  // 记录是几十 MB，LS 5MB 配额放不下且同步 setItem 卡主线程），但个别安卓内核
+  //（QQ浏览器 X5 等）可能清掉/丢失 IndexedDB 数据（信箱等 LS+IDB 双写功能不受
+  // 影响，唯独聊天记录"重进后消失"）。为让聊天记录同样有 LS 兜底：写 IDB 的同时
+  // 写一份【有损快照】到 LS（≤2MB；超限时剥掉 img/voice 等图片字段只保文本历史）。
+  // loadMsgs 在 IDB 无数据时自动从这份快照恢复（复用了原「老版本 LS 迁入 IDB」
+  // 的恢复分支，同一键名）。
+  const LS_SNAP_LIMIT = 2 * 1024 * 1024;
+  function writeLsSnapshot(raw) {
+    try {
+      let snap = raw;
+      if (snap.length > LS_SNAP_LIMIT) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          snap = JSON.stringify(arr.map(m => {
+            if (!m || typeof m !== 'object') return m;
+            const hasBig = m.img || m.voice || (typeof m.text === 'string' && m.text.length > 8192);
+            if (!hasBig) return m;
+            const c = Object.assign({}, m);
+            if (c.img) c.img = '';
+            if (c.voice) c.voice = '';
+            if (typeof c.text === 'string' && c.text.length > 8192) c.text = '[内容已省略]';
+            return c;
+          }));
+        }
+      }
+      if (snap.length <= LS_SNAP_LIMIT) {
+        localStorage.setItem(window.activePrefix() + ':chat-msgs', snap);
+      }
+    } catch (e) {}
+  }
   function saveMsgs() {
     const data = JSON.stringify(msgs);
     // 权威未就绪：只暂存内存。既不能写 localStorage（会让 loadMsgs 第一步读到
@@ -64,6 +95,7 @@
     saveTimer = setTimeout(() => {
       saveTimer = null;
       try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
+      writeLsSnapshot(data);
     }, 400);
   }
   // v3.5.128：页面离开（刷新/关闭/切后台被回收）前强制落盘防抖窗口内的消息
@@ -74,7 +106,9 @@
     if (saveTimer) {
       clearTimeout(saveTimer);
       saveTimer = null;
-      try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+      const data = JSON.stringify(msgs);
+      try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
+      writeLsSnapshot(data);
     }
   }
   // v3.5.134：暴露给导出/清除等外部流程（导出前强制落盘，防止备份缺最后几条消息）
@@ -133,8 +167,10 @@
               try {
                 const lsArr = JSON.parse(lsRaw);
                 if (Array.isArray(lsArr) && lsArr.length) {
+                  // v3.6.x：IDB 无数据 → 用 LS 快照恢复；写 IDB 后【保留】LS 快照
+                  // 作双保险（原 store.remove 会把 IDB/LS/内存全删，若 idbSet 静默
+                  // 失败则唯一的备份也没了）。writeLsSnapshot 会随后续保存持续刷新。
                   if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', lsRaw);
-                  try { store.remove('chat-msgs'); } catch (e) {}
                 }
               } catch (e) {}
             }
@@ -179,6 +215,12 @@
               merged[i] = m;
             });
             let changed = localNew.length > 0 || merged.length !== msgs.length;
+            // v3.6.x：LS 兜底快照预载可能是【有损版】（img/voice 字段被剥掉），
+            // IDB 合并补全了图片后必须重渲染 + 回写，否则画面停留在缺图状态
+            //（条数相同时 changed 恒 false 不会触发）
+            if (!changed && merged.length === msgs.length && msgs.length) {
+              changed = msgs.some(m => m && (m.img === '' || m.voice === ''));
+            }
             msgs = merged;
             // 条数不一致（IDB 快照与内存不是同一批消息）→ 索引已失效，清空会话改动标记
             if (merged.length !== curArr.length) sessionChangedIdx.clear();
@@ -189,9 +231,14 @@
             if (restoreEscapedPokeIcons()) changed = true;
             pendingLocal = null;
             chatDbReady = true;
-            // v3.6.x：IDB 权威已读到，清理老版本 localStorage 残留（老用户升级后
-            // 聊天记录不再占 5MB 配额；读取路径已不再依赖它）
-            try { store.remove('chat-msgs'); } catch (e) {}
+            // v3.6.x 修复（iQOO/QQ浏览器「聊天记录重进后消失」根因）：这里绝不能再用
+            // store.remove('chat-msgs')——它是「内存缓存 + localStorage + IndexedDB」
+            // 三连删，而 v3.6.x 起聊天记录权威数据只存 IDB：同一会话再次进入聊天页时
+            // merged 与内存条数一致（changed=false），删掉后不会重写，杀掉 App 再进
+            // IDB/LS 全空 → 聊天记录整体丢失且无法恢复。只需清 legacy 顶层键的 LS
+            // 残留（旧版 xy-home-v2:chat-msgs），IDB 权威数据与当前命名空间的 LS
+            // 快照（writeLsSnapshot 的兜底备份）一律保留。
+            try { localStorage.removeItem('xy-home-v2:chat-msgs'); } catch (e) {}
             // v3.5.127：无变化（localNew 空且长度相同）时跳过重复写盘 + 全量重渲染
             // v3.6.x：IDB 合并产生新数据才写回（避免每次 loadMsgs 全量重写）
             if (changed) {
@@ -1055,7 +1102,9 @@
     renderStart = 0;
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
     try { store.remove('chat-msgs'); } catch (e) {}
-    try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+    const importedData = JSON.stringify(msgs);
+    try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', importedData); } catch (e) {}
+    writeLsSnapshot(importedData);
     if (body) body.innerHTML = '';
     clearChatUnread();
     if (chatVisible() && msgs.length) {
@@ -1363,6 +1412,7 @@
   function saveMsgsNow() {
     const data = JSON.stringify(msgs);
     try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
+    writeLsSnapshot(data);
   }
 
   // 回答 TA 的小问题（选择题）：更新记录 + 插入"我的选择"和 TA 回应

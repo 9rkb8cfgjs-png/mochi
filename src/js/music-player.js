@@ -9,8 +9,16 @@
     if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
     t.textContent = msg;
     t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
+    // v3.6.x：内联 opacity 双保险——QQ浏览器 X5 内核下 CSS 动画兜底
+    //（#cc-toast.show 的 ccToastAutoHide）可能不执行，且主线程被大文件读写
+    // 阻塞时 2s 的 setTimeout 隐藏回调会被严重延迟；内联样式优先级最高，
+    // 动画与 JS 定时器任一生效都能自动消失，互不依赖
+    t.style.opacity = '1';
     clearTimeout(t._timer);
-    t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
+    t._timer = setTimeout(() => {
+      t.className = 'cc-toast';
+      t.style.opacity = '0';
+    }, 2000);
   }
 
   // ================= 数据 =================
@@ -322,14 +330,23 @@
   }
   function uploadFiles(files) {
     const list = Array.from(files);
-    let pending = list.length;
-    const oneDone = () => {
-      pending--;
-      if (pending <= 0) { saveLibrary(); renderPage(); toast('已上传 ' + list.length + ' 首音乐'); }
-    };
-    list.forEach(file => {
-      if (file.size > 50 * 1024 * 1024) { toast('「' + file.name + '」超过 50MB，已跳过'); oneDone(); return; }
+    if (!list.length) return;
+    toast('正在上传 ' + list.length + ' 首音乐…');
+    // v3.6.x：改为逐个文件串行处理——原来 N 个文件并行 FileReader.readAsArrayBuffer
+    //（每个都把整段音频读进内存）+ 并行 idbSet 写 Blob，多首几十 MB 音乐同时进行时
+    // 内存峰值 N 倍、GC 频繁，主线程被长阻塞（用户反馈 iQOO/QQ浏览器：添加音乐后
+    // 页面卡顿、「已上传」弹窗一直不消失——2s 隐藏定时器被阻塞延迟）。
+    // 串行后主线程不再长阻塞；每文件 3s 时长读取超时兜底——个别格式/内核不触发
+    // loadedmetadata/error 时（原逻辑 pending 永远 >0）也不会卡住队列，
+    // 最后一个文件完成时必然弹出「已上传 N 首音乐」替换掉「正在上传…」提示。
+    let idx = 0;
+    const done = () => { saveLibrary(); renderPage(); toast('已上传 ' + list.length + ' 首音乐'); };
+    const next = function () {
+      if (idx >= list.length) { done(); return; }
+      const file = list[idx++];
+      if (file.size > 50 * 1024 * 1024) { toast('「' + file.name + '」超过 50MB，已跳过'); next(); return; }
       const reader = new FileReader();
+      reader.onerror = next;
       reader.onload = function () {
         const id = 'sm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
         const name = file.name.replace(/\.[^.]+$/, '');
@@ -340,37 +357,44 @@
         const payload = buf instanceof ArrayBuffer
           ? new Blob([buf], { type: file.type || 'audio/mpeg' })
           : buf;
-        // 尝试读取时长（读不到也能播放）
+        // 尝试读取时长（读不到也能播放；3s 超时兜底，不阻塞队列）
         const tmp = document.createElement('audio');
         tmp.preload = 'metadata';
         let tmpUrl = null;
+        let metaTimer = null;
+        let settled = false;
         const cleanupTmp = () => {
           try { if (tmpUrl) URL.revokeObjectURL(tmpUrl); } catch(e) {}
           try { tmp.src = ''; tmp.load(); } catch(e) {}
         };
+        const finishMeta = () => {
+          if (settled) return;
+          settled = true;
+          if (metaTimer) clearTimeout(metaTimer);
+          cleanupTmp();
+          next();
+        };
         tmp.onloadedmetadata = function () {
           const m = findTrack(id);
-          if (m && tmp.duration) { m.duration = tmp.duration; saveLibrary(); }
-          cleanupTmp();
-          oneDone();
+          if (m && tmp.duration) { m.duration = tmp.duration; }
+          finishMeta();
         };
-        tmp.onerror = function () { cleanupTmp(); oneDone(); };
+        tmp.onerror = finishMeta;
+        metaTimer = setTimeout(finishMeta, 3000);
         if (payload instanceof Blob) {
           tmpUrl = URL.createObjectURL(payload);
           tmp.src = tmpUrl;
         } else {
           tmp.src = payload;
         }
+        // 存储（异步写 IDB，不阻塞队列；失败静默，不影响上传完成提示）
         if (window.idbSet) {
-          window.idbSet(window.activePrefix() + ':music-file:' + id, payload).then(() => { saveLibrary(); renderPage(); }).catch(() => {});
-        } else {
-          saveLibrary();
+          window.idbSet(window.activePrefix() + ':music-file:' + id, payload).then(() => { saveLibrary(); }).catch(() => {});
         }
       };
-      reader.onerror = oneDone;
       reader.readAsArrayBuffer(file);
-    });
-    toast('正在上传 ' + list.length + ' 首音乐…');
+    };
+    next();
   }
 
   // 链接添加（网易云 ID / 直链）

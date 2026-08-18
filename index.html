@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Mochi 字卡传讯</title>
 <meta name="description" content="情侣专属的摸鱼字卡聊天模拟器">
 <meta name="theme-color" content="#111111">
@@ -138,8 +138,7 @@ padding:0 18px 18px;
 .phone select {
 font-size:16px;
 }
-html, body { touch-action:manipulation; }
-.phone { touch-action:manipulation; }
+html, body, * { touch-action: manipulation; }
 html, body, .phone, img { -webkit-touch-callout:none; }
 }
 @media (max-width: 900px) {
@@ -2957,7 +2956,7 @@ transition:color .18s ease, background .18s ease;
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.47 · 部署于 2026-08-17 23:25</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.50 · 部署于 2026-08-18 11:21</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3608,7 +3607,7 @@ transition:color .18s ease, background .18s ease;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.47</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.50</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -8095,6 +8094,30 @@ chatDbReady = false;
 sessionChangedIdx.clear();
 } catch (e) {}
 });
+const LS_SNAP_LIMIT = 2 * 1024 * 1024;
+function writeLsSnapshot(raw) {
+try {
+let snap = raw;
+if (snap.length > LS_SNAP_LIMIT) {
+const arr = JSON.parse(raw);
+if (Array.isArray(arr)) {
+snap = JSON.stringify(arr.map(m => {
+if (!m || typeof m !== 'object') return m;
+const hasBig = m.img || m.voice || (typeof m.text === 'string' && m.text.length > 8192);
+if (!hasBig) return m;
+const c = Object.assign({}, m);
+if (c.img) c.img = '';
+if (c.voice) c.voice = '';
+if (typeof c.text === 'string' && c.text.length > 8192) c.text = '[内容已省略]';
+return c;
+}));
+}
+}
+if (snap.length <= LS_SNAP_LIMIT) {
+localStorage.setItem(window.activePrefix() + ':chat-msgs', snap);
+}
+} catch (e) {}
+}
 function saveMsgs() {
 const data = JSON.stringify(msgs);
 if (!chatDbReady) {
@@ -8105,6 +8128,7 @@ if (saveTimer) clearTimeout(saveTimer);
 saveTimer = setTimeout(() => {
 saveTimer = null;
 try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
+writeLsSnapshot(data);
 }, 400);
 }
 function flushSave() {
@@ -8112,7 +8136,9 @@ if (window.__resetting) return;
 if (saveTimer) {
 clearTimeout(saveTimer);
 saveTimer = null;
-try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+const data = JSON.stringify(msgs);
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
+writeLsSnapshot(data);
 }
 }
 window.chatFlushSave = flushSave;
@@ -8157,7 +8183,6 @@ try {
 const lsArr = JSON.parse(lsRaw);
 if (Array.isArray(lsArr) && lsArr.length) {
 if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', lsRaw);
-try { store.remove('chat-msgs'); } catch (e) {}
 }
 } catch (e) {}
 }
@@ -8188,13 +8213,16 @@ if (!answeredRec(m) || answeredRec(merged[i])) return;
 merged[i] = m;
 });
 let changed = localNew.length > 0 || merged.length !== msgs.length;
+if (!changed && merged.length === msgs.length && msgs.length) {
+changed = msgs.some(m => m && (m.img === '' || m.voice === ''));
+}
 msgs = merged;
 if (merged.length !== curArr.length) sessionChangedIdx.clear();
 migrateLegacyMediaMsgs();
 if (restoreEscapedPokeIcons()) changed = true;
 pendingLocal = null;
 chatDbReady = true;
-try { store.remove('chat-msgs'); } catch (e) {}
+try { localStorage.removeItem('xy-home-v2:chat-msgs'); } catch (e) {}
 if (changed) {
 try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
 if (chatVisible() && chatNearBottom()) {
@@ -8909,7 +8937,9 @@ chatDbReady = true;
 renderStart = 0;
 if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
 try { store.remove('chat-msgs'); } catch (e) {}
-try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+const importedData = JSON.stringify(msgs);
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', importedData); } catch (e) {}
+writeLsSnapshot(importedData);
 if (body) body.innerHTML = '';
 clearChatUnread();
 if (chatVisible() && msgs.length) {
@@ -9123,6 +9153,7 @@ return addIn(text);
 function saveMsgsNow() {
 const data = JSON.stringify(msgs);
 try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
+writeLsSnapshot(data);
 }
 window.chatChooseReply = function (msgIdx, answer, reply, match) {
 const rec = msgs[msgIdx];
@@ -13142,8 +13173,12 @@ let t = document.getElementById('cc-toast');
 if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
 t.textContent = msg;
 t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
+t.style.opacity = '1';
 clearTimeout(t._timer);
-t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
+t._timer = setTimeout(() => {
+t.className = 'cc-toast';
+t.style.opacity = '0';
+}, 2000);
 }
 let library = [];          // {id,name,artist,url,source,duration,playlistId,addedAt}
 let playlists = [];        // {id,name,createdAt}
@@ -13410,14 +13445,16 @@ inp.click();
 }
 function uploadFiles(files) {
 const list = Array.from(files);
-let pending = list.length;
-const oneDone = () => {
-pending--;
-if (pending <= 0) { saveLibrary(); renderPage(); toast('已上传 ' + list.length + ' 首音乐'); }
-};
-list.forEach(file => {
-if (file.size > 50 * 1024 * 1024) { toast('「' + file.name + '」超过 50MB，已跳过'); oneDone(); return; }
+if (!list.length) return;
+toast('正在上传 ' + list.length + ' 首音乐…');
+let idx = 0;
+const done = () => { saveLibrary(); renderPage(); toast('已上传 ' + list.length + ' 首音乐'); };
+const next = function () {
+if (idx >= list.length) { done(); return; }
+const file = list[idx++];
+if (file.size > 50 * 1024 * 1024) { toast('「' + file.name + '」超过 50MB，已跳过'); next(); return; }
 const reader = new FileReader();
+reader.onerror = next;
 reader.onload = function () {
 const id = 'sm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
 const name = file.name.replace(/\.[^.]+$/, '');
@@ -13430,17 +13467,26 @@ const payload = buf instanceof ArrayBuffer
 const tmp = document.createElement('audio');
 tmp.preload = 'metadata';
 let tmpUrl = null;
+let metaTimer = null;
+let settled = false;
 const cleanupTmp = () => {
 try { if (tmpUrl) URL.revokeObjectURL(tmpUrl); } catch(e) {}
 try { tmp.src = ''; tmp.load(); } catch(e) {}
 };
+const finishMeta = () => {
+if (settled) return;
+settled = true;
+if (metaTimer) clearTimeout(metaTimer);
+cleanupTmp();
+next();
+};
 tmp.onloadedmetadata = function () {
 const m = findTrack(id);
-if (m && tmp.duration) { m.duration = tmp.duration; saveLibrary(); }
-cleanupTmp();
-oneDone();
+if (m && tmp.duration) { m.duration = tmp.duration; }
+finishMeta();
 };
-tmp.onerror = function () { cleanupTmp(); oneDone(); };
+tmp.onerror = finishMeta;
+metaTimer = setTimeout(finishMeta, 3000);
 if (payload instanceof Blob) {
 tmpUrl = URL.createObjectURL(payload);
 tmp.src = tmpUrl;
@@ -13448,15 +13494,12 @@ tmp.src = tmpUrl;
 tmp.src = payload;
 }
 if (window.idbSet) {
-window.idbSet(window.activePrefix() + ':music-file:' + id, payload).then(() => { saveLibrary(); renderPage(); }).catch(() => {});
-} else {
-saveLibrary();
+window.idbSet(window.activePrefix() + ':music-file:' + id, payload).then(() => { saveLibrary(); }).catch(() => {});
 }
 };
-reader.onerror = oneDone;
 reader.readAsArrayBuffer(file);
-});
-toast('正在上传 ' + list.length + ' 首音乐…');
+};
+next();
 }
 function openAddUrl() {
 if (!window.openTCPanel) return;

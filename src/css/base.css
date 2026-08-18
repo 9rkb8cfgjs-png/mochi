@@ -172,9 +172,13 @@ html { margin:0; padding:0; }
   .phone select {
     font-size:16px;
   }
-  /* 双击/双指不再触发页面缩放（viewport 已锁，这里再兜一层） */
-  html, body { touch-action:manipulation; }
-  .phone { touch-action:manipulation; }
+  /* 双击不再触发页面缩放（viewport 已锁，这里再兜一层）。
+     v3.6.x：touch-action 是逐元素属性、不继承——原来只设 html/body/.phone，
+     双击落在子元素（按钮/卡片/文字）上时命中子元素默认的 auto，
+     iOS Safari 依旧双击放大（用户反馈「点几下页面越变越大，功能看不见」）。
+     manipulation = 允许滚动/捏合（捏合另有 gesturestart 兜底），仅禁双击缩放，
+     对 range 滑块、横向滑动、overflow 滚动均无影响 */
+  html, body, * { touch-action: manipulation; }
   /* v3.6.x：iOS 长按图片/文字不再弹出系统「存储图像/拷贝」菜单——
      朋友圈九宫格图、聊天表情包等点击都是自定义放大/操作，长按菜单只会误触 */
   html, body, .phone, img { -webkit-touch-callout:none; }
