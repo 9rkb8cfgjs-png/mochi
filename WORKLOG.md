@@ -331,3 +331,5 @@
 - [本会话] 完成（开屏公告新增第12条，已构建 + 提交 v3.6.75）：公告新增「更新和bug修复」说明——灵感有但修设备bug耗时长所以慢；网站持续部署、每个反馈都修了，但只能靠用户自己设备验证，没设备无法验证修复程度；反馈修完后不一一回复，可晚点刷新新版再试；开屏无法跳过，加载完才能点进入。涉及 src/pwa/notice.json、src/template.html（离线兜底同步）。已 node build.mjs，产物与源码同次提交。
 
 - [本会话] 完成（互动卡片收藏按钮显示乱码「function favHeartHtmlO{return收藏}」修复，已构建 verify 10/10 + 提交 v3.6.76）：根因——src/js/chat.js renderMsg 六类互动卡片（invite/ask/ask-choose/ask-curious/ask-roast/ask-card）拼 HTML 时漏写调用括号 `favHeartHtml +`（应 `favHeartHtml() +`），函数源码被 toString 拼进卡片导致乱码；其余 7 处正常。修复：6 处补 `()`。已 node build.mjs + verify 10/10，产物与源码同次提交。
+
+- [本会话] 完成（互动卡片收藏按钮隐蔽化，已构建 verify 10/10 + CDP 探测 9/9 + 提交 v3.6.77）：收藏按钮不再常驻卡片，改为默认隐藏、点击卡片才浮现（再点收起，点卡片外区域自动收起，单选同时只显示一张卡片的按钮）。改 src/css/chat-main.css（.msg-fav-heart 默认 display:none，卡片 .show-fav 时显示+淡入动画；answered 卡片 cursor 改 pointer）+ src/js/chat.js（body click 委托：外层点非卡片区域清除 show-fav；card 分支 toggle show-fav，answered 卡片只 toggle 不再触发作答）。CDP 验证 9/9：默认隐藏/点显/再点收/点外收/未作答卡片浮现且作答区照常展开/收藏正常。本次构建同时带上 AI-A 已保存的音乐修复（music-player.js blob/dataURL 双路径）。临时脚本已删。
