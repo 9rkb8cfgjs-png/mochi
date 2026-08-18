@@ -6,10 +6,20 @@
      去掉后 tabbar 直接贴住 .page 底边（page 自身 padding-bottom:4px 保留留白），
      灰条消失；主页内容底部有 .page-slide padding 18px 兜底，不受影响。 */
   margin-top:0; display:flex; justify-content:space-around;
+  /* v3.6.x：满宽贴边——抵消 .phone 左右 18px 内边距，消除导航栏圆角卡片
+     左右两侧及圆角四角露出的页面灰底（用户反馈"导航栏形状之外还有一点灰色"）；
+     真机与桌面模拟器的 .phone 左右 padding 均为 18px，两种模式一致 */
+  margin-left:-18px; margin-right:-18px;
+  /* v3.6.x：底部延伸——抵消 .phone 底部 18px 内边距，白色背景延伸盖住
+     tabbar 下方的灰带，导航栏视觉上完整贴底（iOS 底部导航同款） */
+  margin-bottom:-18px;
   flex-shrink:0; /* 视口/高度变化时不被 flex 压缩，防止底部栏被挤没 */
   background:#ffffff;
   border:1px solid rgba(0,0,0,.12);
-  border-radius:22px; padding:8px 6px; z-index:2;
+  /* v3.6.x：满宽贴底后圆角改为 0——大圆角（22px）在屏幕边缘会露出圆角
+     切线外的页面灰底小三角（"导航栏形状之外还有一点灰色"）；方形底部栏
+     贴边无灰角，符合 iOS 底部导航形态 */
+  border-radius:0; padding:8px 6px; z-index:2;
   box-shadow:0 2px 8px rgba(0,0,0,.05);
 }
 .tabbar .tab {

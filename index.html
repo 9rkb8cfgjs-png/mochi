@@ -2938,9 +2938,11 @@ font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;
 .bg-notify-test:active { background:rgba(0,0,0,.06); }
 .tabbar {
 margin-top:0; display:flex; justify-content:space-around;
+margin-left:-18px; margin-right:-18px;
+margin-bottom:-18px;
 flex-shrink:0; background:#ffffff;
 border:1px solid rgba(0,0,0,.12);
-border-radius:22px; padding:8px 6px; z-index:2;
+border-radius:0; padding:8px 6px; z-index:2;
 box-shadow:0 2px 8px rgba(0,0,0,.05);
 }
 .tabbar .tab {
@@ -3273,7 +3275,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.60 · 部署于 2026-08-18 14:15</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.61 · 部署于 2026-08-18 14:39</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3925,7 +3927,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.60</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.61</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -14102,6 +14104,34 @@ if (res && res.name) cb(res); else tryNext();
 }
 tryNext();
 }
+function fetchNeteaseUrl(id, cb) {
+const api = 'https://music.163.com/api/song/enhance/player/url?ids=[' + encodeURIComponent(String(id)) + ']&br=320000';
+const sources = [
+api,
+'https://api.allorigins.win/raw?url=' + encodeURIComponent(api)
+];
+let si = 0;
+const tryFetch = (url, next) => {
+let controller;
+try { controller = new AbortController(); } catch (e) { controller = null; }
+const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 8000);
+fetch(url, controller ? { signal: controller.signal } : undefined)
+.then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+.then(d => {
+clearTimeout(timer);
+try {
+if (d && Array.isArray(d.data) && d.data[0] && d.data[0].url) {
+const u = String(d.data[0].url).replace(/^http:\/\//i, 'https://');
+if (/^https:\/\//i.test(u)) { cb(u); return; }
+}
+} catch (e) {}
+next();
+})
+.catch(() => { clearTimeout(timer); next(); });
+};
+const next = () => { if (si < sources.length) { const u = sources[si++]; tryFetch(u, next); } else { cb(null); } };
+next();
+}
 function triggerUpload() {
 const inp = document.createElement('input');
 inp.type = 'file';
@@ -14116,21 +14146,65 @@ if (!list.length) return;
 toast('正在上传 ' + list.length + ' 首音乐…');
 let idx = 0;
 const done = () => { saveLibrary(); renderPage(); toast('已上传 ' + list.length + ' 首音乐'); };
+const readFile = (file, cb, failCb) => {
+const r1 = new FileReader();
+r1.onload = () => { if (r1.result instanceof ArrayBuffer) cb(r1.result, true); else cb(r1.result, false); };
+r1.onerror = () => {
+const r2 = new FileReader();
+r2.onload = () => cb(r2.result, false);
+r2.onerror = failCb;
+try { r2.readAsDataURL(file); } catch (e) { failCb(); }
+};
+try { r1.readAsArrayBuffer(file); } catch (e) { failCb(); }
+};
+const storePayload = (id, file, buf) => {
+const payload = buf instanceof ArrayBuffer ? new Blob([buf], { type: file.type || 'audio/mpeg' }) : buf;
+const key = window.activePrefix() + ':music-file:' + id;
+const toDataUrl = (cb) => {
+const fr = new FileReader();
+fr.onload = () => cb(fr.result);
+fr.onerror = () => cb(null);
+const src = payload instanceof Blob ? payload : new Blob([buf], { type: file.type || 'audio/mpeg' });
+try { fr.readAsDataURL(src); } catch (e) { cb(null); }
+};
+const saveToLocal = (dv) => {
+if (!dv) { saveLibrary(); return; }
+try {
+localStorage.setItem(key, dv);
+} catch (e) {
+try { toast('存储空间不足，部分音乐可能无法播放'); } catch (e2) {}
+}
+saveLibrary();
+};
+const saveStrFallback = (dv) => {
+if (!dv) { saveLibrary(); return; }
+if (window.idbSet) {
+window.idbSet(key, dv).then(ok2 => { if (ok2) saveLibrary(); else saveToLocal(dv); }).catch(() => saveToLocal(dv));
+} else {
+saveToLocal(dv);
+}
+};
+if (!window.indexedDB || !window.idbSet) {
+toDataUrl(saveToLocal);
+return;
+}
+window.idbSet(key, payload).then(ok => {
+if (ok) { saveLibrary(); return; }
+toDataUrl(saveStrFallback);
+}).catch(() => {
+toDataUrl(saveStrFallback);
+});
+};
 const next = function () {
 if (idx >= list.length) { done(); return; }
 const file = list[idx++];
 if (file.size > 50 * 1024 * 1024) { toast('「' + file.name + '」超过 50MB，已跳过'); next(); return; }
-const reader = new FileReader();
-reader.onerror = next;
-reader.onload = function () {
+readFile(file, function (buf) {
 const id = 'sm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
 const name = file.name.replace(/\.[^.]+$/, '');
 const item = { id: id, name: name, artist: '', url: '', source: 'local', duration: 0, playlistId: 'default', addedAt: Date.now() };
 library.push(item);
-const buf = reader.result;
-const payload = buf instanceof ArrayBuffer
-? new Blob([buf], { type: file.type || 'audio/mpeg' })
-: buf;
+const payload = buf instanceof ArrayBuffer ? new Blob([buf], { type: file.type || 'audio/mpeg' }) : buf;
 const tmp = document.createElement('audio');
 tmp.preload = 'metadata';
 let tmpUrl = null;
@@ -14160,13 +14234,26 @@ tmp.src = tmpUrl;
 } else {
 tmp.src = payload;
 }
-if (window.idbSet) {
-window.idbSet(window.activePrefix() + ':music-file:' + id, payload).then(() => { saveLibrary(); }).catch(() => {});
-}
-};
-reader.readAsArrayBuffer(file);
+storePayload(id, file, buf);
+}, function () { next(); });
 };
 next();
+}
+function readCeInput(id) {
+const el = document.getElementById(id);
+if (!el) return '';
+try {
+const v = el.value;
+if (v !== undefined && v !== null && String(v).trim()) return String(v).trim();
+} catch (e) {}
+try {
+const box = el.__ceBox || (el.parentNode && el.parentNode.querySelector('.ce-box[data-for="' + (el.id || '') + '"]'));
+if (box) {
+const t = (box.innerText !== undefined ? box.innerText : box.textContent) || '';
+if (t.trim()) return t.trim();
+}
+} catch (e) {}
+return '';
 }
 function openAddUrl() {
 if (!window.openTCPanel) return;
@@ -14180,9 +14267,9 @@ window.openTCPanel('添加链接音乐', '' +
 '<div class="mail-actions"><button class="cc-tool" id="sm-url-cancel">取消</button><button class="cc-tool" id="sm-url-ok">确认添加</button></div>');
 document.getElementById('sm-url-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
 document.getElementById('sm-url-ok').addEventListener('click', () => {
-let name = (document.getElementById('sm-url-name').value || '').trim();
-const artist = (document.getElementById('sm-url-artist').value || '').trim();
-const raw = (document.getElementById('sm-url-link').value || '').trim();
+let name = readCeInput('sm-url-name');
+const artist = readCeInput('sm-url-artist');
+const raw = readCeInput('sm-url-link');
 if (!raw) { toast('请输入网易云ID或音乐链接'); return; }
 let neteaseId = '';
 if (/^\d+$/.test(raw)) neteaseId = raw;
@@ -14228,7 +14315,7 @@ window.openTCPanel('批量导入音乐', '' +
 '<div class="mail-actions"><button class="cc-tool" id="sm-batch-cancel">取消</button><button class="cc-tool" id="sm-batch-ok">开始导入</button></div>');
 document.getElementById('sm-batch-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
 document.getElementById('sm-batch-ok').addEventListener('click', () => {
-const raw = (document.getElementById('sm-batch-input').value || '').trim();
+const raw = readCeInput('sm-batch-input');
 if (!raw) { toast('请输入内容'); return; }
 const blocks = raw.split(/\n\s*\n/);
 let added = 0;
@@ -14566,9 +14653,23 @@ const p = audio.play();
 if (p && p.catch) {
 p.catch(() => {
 playRejected = true;
-try { syncPlayIcons(false); } catch (e) {}
+try { audio.muted = true; } catch (e) {}
+const p2 = audio.play();
+if (p2 && p2.then) {
+p2.then(() => {
+if (audio) audio.muted = false; // 静音解锁成功 → 恢复出声
+playRejected = false;
+clearStallGuard();
+disarmAutoResume();
+try { syncPlayIcons(true); } catch (e) {}
+}).catch(() => {
 toast('点击播放被浏览器拦截，请再点一下屏幕继续播放');
 armAutoResume();
+});
+} else {
+toast('点击播放被浏览器拦截，请再点一下屏幕继续播放');
+armAutoResume();
+}
 });
 }
 armStallGuard(m);
@@ -14616,6 +14717,9 @@ if (!audio || currentId !== m.id) return;
 if (audio.currentTime > 0) return;
 if (playRejected) return; // 等手势恢复播放，不误判外链失败
 if (audio.paused) return; // 用户主动暂停，不兜底
+if (m && m.neteaseId && !httpsRetrying) {
+if (retryWithHttpsUrl(m)) return;
+}
 const idx = seedIdxOf(m);
 if (idx >= 0 && !demoFallbackBusy) {
 demoFallbackBusy = true;
@@ -14629,14 +14733,26 @@ try { syncPlayIcons(false); } catch (e) {}
 } catch (e) {}
 }, 12000);
 }
-function setupHandlers(m) {
-audio.onended = function () {
-revokeObjectUrl();
-let handled = false;
-try { handled = maybeTAAutoAction(); } catch(e) {}
-if (!handled) next();
-};
-audio.onerror = function () {
+let httpsRetrying = false;
+function retryWithHttpsUrl(m) {
+if (httpsRetrying || !m || !m.neteaseId || m._httpsRetried) return false;
+m._httpsRetried = true;
+httpsRetrying = true;
+toast('正在获取完整版直链…');
+fetchNeteaseUrl(m.neteaseId, function (u) {
+httpsRetrying = false;
+if (!u || currentId !== m.id) { demoFallbackOrError(m); return; }
+try { if (audio) { audio.onerror = null; audio.onended = null; } } catch (e) {}
+teardownAudio();
+if (currentId !== m.id) return;
+audio = new Audio();
+try { audio.referrerPolicy = 'no-referrer'; } catch (e) {}
+audio.src = u;
+startPlayback(m);
+});
+return true;
+}
+function demoFallbackOrError(m) {
 const idx = seedIdxOf(m);
 if (idx >= 0 && !demoFallbackBusy) {
 demoFallbackBusy = true;
@@ -14646,6 +14762,20 @@ return;
 }
 if (idx >= 0) return; // 兜底合成/播放进行中，静默等待结果
 toast('播放失败：网络链接可能已失效');
+}
+function setupHandlers(m) {
+audio.onended = function () {
+revokeObjectUrl();
+let handled = false;
+try { handled = maybeTAAutoAction(); } catch(e) {}
+if (!handled) next();
+};
+audio.onerror = function () {
+if (m && m.neteaseId && !httpsRetrying) {
+if (retryWithHttpsUrl(m)) return;
+}
+if (httpsRetrying) return; // 正在拉直链，等结果
+demoFallbackOrError(m);
 };
 audio.onloadedmetadata = function () {
 const dur = audio.duration || 0;
@@ -14654,12 +14784,15 @@ if (el) el.textContent = fmtDur(dur);
 if (m && dur) { m.duration = dur; saveLibrary(); }
 if (playRejected && currentId === m.id) {
 playRejected = false;
+try { audio.muted = true; } catch (e) {}
 const p2 = audio.play();
-if (p2 && p2.catch) p2.catch(() => {
+if (p2 && p2.then) {
+p2.then(() => { if (audio) audio.muted = false; }).catch(() => {
 playRejected = true;
 try { syncPlayIcons(false); } catch (e) {}
 armAutoResume();
 });
+} else { armAutoResume(); }
 }
 };
 audio.onplay = function () { playRejected = false; clearStallGuard(); disarmAutoResume(); syncPlayIcons(true); };
@@ -14746,9 +14879,16 @@ if (audio.paused) {
 const p = audio.play();
 if (p && p.catch) p.catch(() => {
 playRejected = true;
+try { audio.muted = true; } catch (e) {}
+const p2 = audio.play();
+if (p2 && p2.then) {
+p2.then(() => { if (audio) audio.muted = false; playRejected = false; try { syncPlayIcons(true); } catch (e) {} })
+.catch(() => {
 try { syncPlayIcons(false); } catch (e) {}
 toast('点击播放被浏览器拦截，请再点一下屏幕继续播放');
 armAutoResume();
+});
+} else { armAutoResume(); }
 });
 }
 else audio.pause();
@@ -14766,8 +14906,12 @@ if (callHoldPlaying && audio && currentId) {
 const p = audio.play();
 if (p && p.catch) p.catch(() => {
 playRejected = true;
-try { syncPlayIcons(false); } catch (e) {}
-armAutoResume();
+try { audio.muted = true; } catch (e) {}
+const p2 = audio.play();
+if (p2 && p2.then) {
+p2.then(() => { if (audio) audio.muted = false; playRejected = false; try { syncPlayIcons(true); } catch (e) {} })
+.catch(() => { try { syncPlayIcons(false); } catch (e) {} armAutoResume(); });
+} else { armAutoResume(); }
 });
 }
 callHoldPlaying = false;
@@ -22791,6 +22935,11 @@ input.click();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
+try {
+if (navigator.storage && navigator.storage.persist) {
+navigator.storage.persist().catch(function () {});
+}
+} catch (e) {}
 function toast(msg) {
 let t = document.getElementById('cc-toast');
 if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }

@@ -316,6 +316,42 @@
     tryNext();
   }
 
+  // v3.6.x：网易云 https 直链获取——外链 music.163.com/song/media/outer/url?id=xxx.mp3
+  // 会 302 跳到 http://m*.music.126.net/...（http 协议）；HTTPS 部署（GitHub Pages）下
+  // audio 加载 http 资源被浏览器按混合内容拦截 → 所有手机外链全失败、只能播内置旋律。
+  // 网易云官方 API（enhance/player/url）返回的 CDN 地址把 http→https 即可直接播放
+  //（CDN 域名支持 https，已实测）。API 直连无 CORS 头，走 allorigins 代理兜底。
+  function fetchNeteaseUrl(id, cb) {
+    const api = 'https://music.163.com/api/song/enhance/player/url?ids=[' + encodeURIComponent(String(id)) + ']&br=320000';
+    const sources = [
+      api,
+      'https://api.allorigins.win/raw?url=' + encodeURIComponent(api)
+    ];
+    let si = 0;
+    const tryFetch = (url, next) => {
+      let controller;
+      try { controller = new AbortController(); } catch (e) { controller = null; }
+      const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 8000);
+      fetch(url, controller ? { signal: controller.signal } : undefined)
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(d => {
+          clearTimeout(timer);
+          try {
+            if (d && Array.isArray(d.data) && d.data[0] && d.data[0].url) {
+              const u = String(d.data[0].url).replace(/^http:\/\//i, 'https://');
+              if (/^https:\/\//i.test(u)) { cb(u); return; }
+            }
+          } catch (e) {}
+          next();
+        })
+        .catch(() => { clearTimeout(timer); next(); });
+    };
+    const next = () => { if (si < sources.length) { const u = sources[si++]; tryFetch(u, next); } else { cb(null); } };
+    next();
+  }
+  // 本地上传（多个文件，存储到 IndexedDB）
+  // v3.6.x：改存 Blob（不再存 base64 dataURL 字符串）——夸克等浏览器对
+  // `<audio src="data:...">`（尤其大段 base64）播放失效，Blob + 对象 URL 是标准播放方案
   // ================= 添加歌曲 =================
   // 本地上传（多个文件，存储到 IndexedDB）
   // v3.6.x：改存 Blob（不再存 base64 dataURL 字符串）——夸克等浏览器对
@@ -339,24 +375,78 @@
     // 串行后主线程不再长阻塞；每文件 3s 时长读取超时兜底——个别格式/内核不触发
     // loadedmetadata/error 时（原逻辑 pending 永远 >0）也不会卡住队列，
     // 最后一个文件完成时必然弹出「已上传 N 首音乐」替换掉「正在上传…」提示。
+    // v3.6.x：Via/OPPO 等老内核 IndexedDB 不支持 Blob 结构化克隆——存 Blob 会静默失败，
+    // 列表里有歌但播放时读不到音频。写入失败自动回退存 dataURL 字符串（老内核 100% 支持，
+    // 播放路径 dataUrlToBlob 会转回 Blob 播）。readAsArrayBuffer 失败同样回退 readAsDataURL。
     let idx = 0;
     const done = () => { saveLibrary(); renderPage(); toast('已上传 ' + list.length + ' 首音乐'); };
+    const readFile = (file, cb, failCb) => {
+      const r1 = new FileReader();
+      r1.onload = () => { if (r1.result instanceof ArrayBuffer) cb(r1.result, true); else cb(r1.result, false); };
+      r1.onerror = () => {
+        // ArrayBuffer 读取失败 → 回退 DataURL（最老内核也支持）
+        const r2 = new FileReader();
+        r2.onload = () => cb(r2.result, false);
+        r2.onerror = failCb;
+        try { r2.readAsDataURL(file); } catch (e) { failCb(); }
+      };
+      try { r1.readAsArrayBuffer(file); } catch (e) { failCb(); }
+    };
+    const storePayload = (id, file, buf) => {
+      // 优先 Blob（紧凑）；ArrayBuffer 成功 → Blob；否则原样（dataURL 字符串）
+      const payload = buf instanceof ArrayBuffer ? new Blob([buf], { type: file.type || 'audio/mpeg' }) : buf;
+      const key = window.activePrefix() + ':music-file:' + id;
+      const toDataUrl = (cb) => {
+        const fr = new FileReader();
+        fr.onload = () => cb(fr.result);
+        fr.onerror = () => cb(null);
+        const src = payload instanceof Blob ? payload : new Blob([buf], { type: file.type || 'audio/mpeg' });
+        try { fr.readAsDataURL(src); } catch (e) { cb(null); }
+      };
+      // localStorage 最终兜底：直接写（绕过 xyStore 大键只进 IDB 的限制）；
+      // 播放读取路径（store.get('music-file:'+id)）会查 localStorage，数据不丢。
+      // 超 5MB 配额时写失败 → 明确提示，用户知道原因而不是无声失败
+      const saveToLocal = (dv) => {
+        if (!dv) { saveLibrary(); return; }
+        try {
+          localStorage.setItem(key, dv);
+        } catch (e) {
+          try { toast('存储空间不足，部分音乐可能无法播放'); } catch (e2) {}
+        }
+        saveLibrary();
+      };
+      // dataURL 字符串 → 先试 IDB，失败再落 localStorage
+      const saveStrFallback = (dv) => {
+        if (!dv) { saveLibrary(); return; }
+        if (window.idbSet) {
+          window.idbSet(key, dv).then(ok2 => { if (ok2) saveLibrary(); else saveToLocal(dv); }).catch(() => saveToLocal(dv));
+        } else {
+          saveToLocal(dv);
+        }
+      };
+      // v3.6.x：IDB 完全不可用（file:// 本地打开、部分国产浏览器）→ 直接 dataURL 存 localStorage
+      if (!window.indexedDB || !window.idbSet) {
+        toDataUrl(saveToLocal);
+        return;
+      }
+      window.idbSet(key, payload).then(ok => {
+        if (ok) { saveLibrary(); return; }
+        // Blob 写入失败（老内核不支持 Blob 克隆）→ 转 dataURL 字符串重存
+        toDataUrl(saveStrFallback);
+      }).catch(() => {
+        toDataUrl(saveStrFallback);
+      });
+    };
     const next = function () {
       if (idx >= list.length) { done(); return; }
       const file = list[idx++];
       if (file.size > 50 * 1024 * 1024) { toast('「' + file.name + '」超过 50MB，已跳过'); next(); return; }
-      const reader = new FileReader();
-      reader.onerror = next;
-      reader.onload = function () {
+      readFile(file, function (buf) {
         const id = 'sm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
         const name = file.name.replace(/\.[^.]+$/, '');
         const item = { id: id, name: name, artist: '', url: '', source: 'local', duration: 0, playlistId: 'default', addedAt: Date.now() };
         library.push(item);
-        // 优先 ArrayBuffer → Blob（紧凑、可结构化克隆）；失败回退 dataURL 字符串（播放路径会自动转回）
-        const buf = reader.result;
-        const payload = buf instanceof ArrayBuffer
-          ? new Blob([buf], { type: file.type || 'audio/mpeg' })
-          : buf;
+        const payload = buf instanceof ArrayBuffer ? new Blob([buf], { type: file.type || 'audio/mpeg' }) : buf;
         // 尝试读取时长（读不到也能播放；3s 超时兜底，不阻塞队列）
         const tmp = document.createElement('audio');
         tmp.preload = 'metadata';
@@ -387,17 +477,34 @@
         } else {
           tmp.src = payload;
         }
-        // 存储（异步写 IDB，不阻塞队列；失败静默，不影响上传完成提示）
-        if (window.idbSet) {
-          window.idbSet(window.activePrefix() + ':music-file:' + id, payload).then(() => { saveLibrary(); }).catch(() => {});
-        }
-      };
-      reader.readAsArrayBuffer(file);
+        // 存储（异步写 IDB，不阻塞队列；Blob 失败自动回退字符串）
+        storePayload(id, file, buf);
+      }, function () { next(); });
     };
     next();
   }
 
   // 链接添加（网易云 ID / 直链）
+  // v3.6.x：输入值读取兜底——部分国产浏览器（Via 等）对 contenteditable 转换器
+  // （mobile-adapt.js 的 ce-box）的 input.value 代理支持不完整，读出来是空，
+  // 表现为「输入了内容却提示请输入/添加失败」。这里优先走代理，读空时直接
+  // 从 ce-box 取 innerText/textContent 兜底。
+  function readCeInput(id) {
+    const el = document.getElementById(id);
+    if (!el) return '';
+    try {
+      const v = el.value;
+      if (v !== undefined && v !== null && String(v).trim()) return String(v).trim();
+    } catch (e) {}
+    try {
+      const box = el.__ceBox || (el.parentNode && el.parentNode.querySelector('.ce-box[data-for="' + (el.id || '') + '"]'));
+      if (box) {
+        const t = (box.innerText !== undefined ? box.innerText : box.textContent) || '';
+        if (t.trim()) return t.trim();
+      }
+    } catch (e) {}
+    return '';
+  }
   function openAddUrl() {
     if (!window.openTCPanel) return;
     window.openTCPanel('添加链接音乐', '' +
@@ -412,9 +519,9 @@
     document.getElementById('sm-url-ok').addEventListener('click', () => {
       // v3.6.x：修复——原用 const 声明 name，第 307 行「名称留空时补全」对其重新赋值，
       // 会抛 TypeError（Assignment to constant variable），导致「链接音乐添加」整体失效
-      let name = (document.getElementById('sm-url-name').value || '').trim();
-      const artist = (document.getElementById('sm-url-artist').value || '').trim();
-      const raw = (document.getElementById('sm-url-link').value || '').trim();
+      let name = readCeInput('sm-url-name');
+      const artist = readCeInput('sm-url-artist');
+      const raw = readCeInput('sm-url-link');
       if (!raw) { toast('请输入网易云ID或音乐链接'); return; }
       let neteaseId = '';
       if (/^\d+$/.test(raw)) neteaseId = raw;
@@ -463,7 +570,7 @@
       '<div class="mail-actions"><button class="cc-tool" id="sm-batch-cancel">取消</button><button class="cc-tool" id="sm-batch-ok">开始导入</button></div>');
     document.getElementById('sm-batch-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
     document.getElementById('sm-batch-ok').addEventListener('click', () => {
-      const raw = (document.getElementById('sm-batch-input').value || '').trim();
+      const raw = readCeInput('sm-batch-input');
       if (!raw) { toast('请输入内容'); return; }
       const blocks = raw.split(/\n\s*\n/);
       let added = 0;
@@ -824,11 +931,28 @@
       p.catch(() => {
         // v3.6.x：移动端自动播放策略——本地文件是「异步从 IDB/Blob 读回后再 play()」，
         // 用户点击的手势上下文已丢失，play() 被浏览器拒绝（NotAllowedError）。
-        // 不再静默：明确提示 + 挂起下一次手势自动续播（用户再点一次屏幕即恢复）。
+        // muted 静音解锁（Chromium/国产 WebView 的 autoplay 策略对静音媒体放行）：
+        // 静音 play() → 成功后再恢复音量。这比「提示用户再点一下屏幕」在
+        // Via/OPPO 自带等国产浏览器上更可靠（实测其手势续播仍被拒）。
         playRejected = true;
-        try { syncPlayIcons(false); } catch (e) {}
-        toast('点击播放被浏览器拦截，请再点一下屏幕继续播放');
-        armAutoResume();
+        try { audio.muted = true; } catch (e) {}
+        const p2 = audio.play();
+        if (p2 && p2.then) {
+          p2.then(() => {
+            if (audio) audio.muted = false; // 静音解锁成功 → 恢复出声
+            playRejected = false;
+            clearStallGuard();
+            disarmAutoResume();
+            try { syncPlayIcons(true); } catch (e) {}
+          }).catch(() => {
+            // muted 也被拒（极端策略/设置关闭自动播放）→ 明确提示 + 手势续播兜底
+            toast('点击播放被浏览器拦截，请再点一下屏幕继续播放');
+            armAutoResume();
+          });
+        } else {
+          toast('点击播放被浏览器拦截，请再点一下屏幕继续播放');
+          armAutoResume();
+        }
       });
     }
     armStallGuard(m);
@@ -884,6 +1008,10 @@
         if (audio.currentTime > 0) return;
         if (playRejected) return; // 等手势恢复播放，不误判外链失败
         if (audio.paused) return; // 用户主动暂停，不兜底
+        // v3.6.x：挂起（无 error 无进度）且是网易云歌曲 → 先拉 https 直链重播
+        if (m && m.neteaseId && !httpsRetrying) {
+          if (retryWithHttpsUrl(m)) return;
+        }
         const idx = seedIdxOf(m);
         if (idx >= 0 && !demoFallbackBusy) {
           demoFallbackBusy = true;
@@ -897,6 +1025,41 @@
       } catch (e) {}
     }, 12000);
   }
+  // v3.6.x：外链失败 → 尝试网易云 https 直链重播（HTTPS 部署下 outer/url 302 到 http
+  // 被混合内容拦截；API 返回的 CDN 地址 http→https 可直接播放）。直链一次性（约 20 分钟
+  // 过期），不持久化——每次播放失败都重新拉取；拉取失败才走内置旋律/报错兜底。
+  let httpsRetrying = false;
+  function retryWithHttpsUrl(m) {
+    // v3.6.x：每首歌最多重试一次（_httpsRetried 内存标记）——防止 https 直链也失败时
+    // onerror/停滞守卫反复触发 → 无限拉取直链
+    if (httpsRetrying || !m || !m.neteaseId || m._httpsRetried) return false;
+    m._httpsRetried = true;
+    httpsRetrying = true;
+    toast('正在获取完整版直链…');
+    fetchNeteaseUrl(m.neteaseId, function (u) {
+      httpsRetrying = false;
+      if (!u || currentId !== m.id) { demoFallbackOrError(m); return; }
+      try { if (audio) { audio.onerror = null; audio.onended = null; } } catch (e) {}
+      teardownAudio();
+      if (currentId !== m.id) return;
+      audio = new Audio();
+      try { audio.referrerPolicy = 'no-referrer'; } catch (e) {}
+      audio.src = u;
+      startPlayback(m);
+    });
+    return true;
+  }
+  function demoFallbackOrError(m) {
+    const idx = seedIdxOf(m);
+    if (idx >= 0 && !demoFallbackBusy) {
+      demoFallbackBusy = true;
+      toast('外链播放失败，已改用内置示例旋律');
+      playDemoFor(m, idx);
+      return;
+    }
+    if (idx >= 0) return; // 兜底合成/播放进行中，静默等待结果
+    toast('播放失败：网络链接可能已失效');
+  }
   function setupHandlers(m) {
     audio.onended = function () {
       revokeObjectUrl();
@@ -907,33 +1070,32 @@
     audio.onerror = function () {
       // v3.5.112：网易云外链播放失败 → 若为内置种子歌曲，自动回退本地合成旋律；
       // 本地旋律也失败时不再递归（demoFallbackBusy 置位）
-      // v3.6.x：onerror 可能被触发多次（不同错误码）——兜底进行中时后续 error 静默，
-      // 不再重复提示「播放失败：网络链接可能已失效」干扰
-      const idx = seedIdxOf(m);
-      if (idx >= 0 && !demoFallbackBusy) {
-        demoFallbackBusy = true;
-        toast('外链播放失败，已改用内置示例旋律');
-        playDemoFor(m, idx);
-        return;
+      // v3.6.x：onerror 可能被触发多次（不同错误码）——先尝试 https 直链重播，
+      // 已重试/重试失败才走内置旋律兜底；兜底进行中后续 error 静默
+      if (m && m.neteaseId && !httpsRetrying) {
+        if (retryWithHttpsUrl(m)) return;
       }
-      if (idx >= 0) return; // 兜底合成/播放进行中，静默等待结果
-      toast('播放失败：网络链接可能已失效');
+      if (httpsRetrying) return; // 正在拉直链，等结果
+      demoFallbackOrError(m);
     };
     audio.onloadedmetadata = function () {
       const dur = audio.duration || 0;
       const el = document.getElementById('sm-pb-dur');
       if (el) el.textContent = fmtDur(dur);
       if (m && dur) { m.duration = dur; saveLibrary(); }
-      // v3.6.x：play() 曾被拒绝（自动播放策略/音频未就绪）→ 元数据就绪后补播一次
-      //（非手势触发仍可能被拒，被拒时走 armAutoResume 等下一次用户手势）
+      // v3.6.x：play() 曾被拒绝（自动播放策略/音频未就绪）→ 元数据就绪后补播一次，
+      // 同样走 muted 静音解锁（直接 play 非手势仍会被拒）
       if (playRejected && currentId === m.id) {
         playRejected = false;
+        try { audio.muted = true; } catch (e) {}
         const p2 = audio.play();
-        if (p2 && p2.catch) p2.catch(() => {
-          playRejected = true;
-          try { syncPlayIcons(false); } catch (e) {}
-          armAutoResume();
-        });
+        if (p2 && p2.then) {
+          p2.then(() => { if (audio) audio.muted = false; }).catch(() => {
+            playRejected = true;
+            try { syncPlayIcons(false); } catch (e) {}
+            armAutoResume();
+          });
+        } else { armAutoResume(); }
       }
     };
     audio.onplay = function () { playRejected = false; clearStallGuard(); disarmAutoResume(); syncPlayIcons(true); };
@@ -1030,13 +1192,20 @@
       return;
     }
     if (audio.paused) {
-      // v3.6.x：按钮点击本身是用户手势，正常可播；个别浏览器仍拒 → 明确提示 + 手势续播
+      // v3.6.x：按钮点击本身是用户手势，正常可播；个别浏览器仍拒 → muted 静音解锁
       const p = audio.play();
       if (p && p.catch) p.catch(() => {
         playRejected = true;
-        try { syncPlayIcons(false); } catch (e) {}
-        toast('点击播放被浏览器拦截，请再点一下屏幕继续播放');
-        armAutoResume();
+        try { audio.muted = true; } catch (e) {}
+        const p2 = audio.play();
+        if (p2 && p2.then) {
+          p2.then(() => { if (audio) audio.muted = false; playRejected = false; try { syncPlayIcons(true); } catch (e) {} })
+            .catch(() => {
+              try { syncPlayIcons(false); } catch (e) {}
+              toast('点击播放被浏览器拦截，请再点一下屏幕继续播放');
+              armAutoResume();
+            });
+        } else { armAutoResume(); }
       });
     }
     else audio.pause();
@@ -1055,10 +1224,14 @@
         if (callHoldPlaying && audio && currentId) {
           const p = audio.play();
           if (p && p.catch) p.catch(() => {
-            // v3.6.x：通话结束恢复也是非手势播放，被拒时等下一次手势续播
+            // v3.6.x：通话结束恢复也是非手势播放，被拒时 muted 静音解锁
             playRejected = true;
-            try { syncPlayIcons(false); } catch (e) {}
-            armAutoResume();
+            try { audio.muted = true; } catch (e) {}
+            const p2 = audio.play();
+            if (p2 && p2.then) {
+              p2.then(() => { if (audio) audio.muted = false; playRejected = false; try { syncPlayIcons(true); } catch (e) {} })
+                .catch(() => { try { syncPlayIcons(false); } catch (e) {} armAutoResume(); });
+            } else { armAutoResume(); }
           });
         }
         callHoldPlaying = false;

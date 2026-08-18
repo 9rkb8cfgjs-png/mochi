@@ -11,6 +11,10 @@
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
 
 ### 2026-08-18
+- [本会话] 完成（tabbar 满宽贴底方形化——消除"导航栏形状之外"的灰色，已构建 verify 10/10 + CDP 四周采样验证，**随本次提交**）：用户刷新 69b3038 后反馈"底部导航栏的形状之外还有一点灰色"。像素级采样定位：灰来自 `.phone` 左右 18px 内边距区（`.page` 354 宽盖不到 18px 边条）+ 底部 18px padding + 圆角 22px 切线外角落，均透出 `.phone` 渐变灰底。修复（`src/css/tabbar.css`）：① `margin-left/right:-18px` 满宽；② `margin-bottom:-18px` 贴底；③ `border-radius 22px→0`（方形，无圆角灰角）。CDP 采样验证：tabbar 四周（左/右/上角/下角/底部）全部 `rgb(255,255,255)`，无灰。涉及 `src/css/tabbar.css`。⚠️ **全站 tabbar 视觉变化**：白色满宽贴底方形导航栏（含主页/设置页），符合 iOS 底部导航形态。
+- [对方改动·本次统一构建随提交] `src/js/music-player.js` 网易云 https 直链获取（music.163.com API 返回 CDN 地址 http→https，解决 GitHub Pages HTTPS 下混合内容拦截导致外链全失败只能播内置旋律；API 无 CORS 走 allorigins 代理兜底，8s 超时）。
+
+### 2026-08-18
 - [本会话] 完成（字卡库页底部灰条修复——真实根因，已构建 verify 10/10 + CDP 精确验证，**随本次提交**）：用户追问"是灰色的条"——上轮深色 tabbar 修复未覆盖浅色模式。用真实点击 tab 复现：字卡库首页（page-chatcard）是 10 张 chat-item 卡片列表，内容 899>728 超出、`.page` 直接滚动；未滚动时最后卡片被 page 底边裁剪、副标题被切（视觉"灰色长方形遮挡上方文字"），且 `.page` 透明 → tabbar 上方永远透出 .phone 渐变灰底（14px 灰条，margin-top:10px 时更明显）。修复（`src/css/tabbar.css`）：①`.tabbar` margin-top 10px→0（去掉上间隙灰带）；②`#page-chatcard { padding-bottom:24px; background:var(--card-bg); }`（滚动到底最后卡片完整可见 + 页面背景不透明，浅色白/深色 #1e1e1e 自动切换，灰条彻底消失）。CDP 精确验证：滚动到底「Ta的吐槽」完整 75px + 距 tabbar 34px 白底留白；未滚动被裁为正常滚动行为。涉及 `src/css/tabbar.css`。⚠️ 对方留话「13:59 构建可能夹带半成品」——本次已重新 `node build.mjs` 覆盖后提交。
 
 ### 2026-08-18
