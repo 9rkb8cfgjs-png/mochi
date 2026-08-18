@@ -190,16 +190,17 @@
     });
   }
 
-  // 渲染分组筛选栏
+  // 渲染分组筛选栏（每个分组显示字卡数量）
   function renderGroupsBar() {
     if (!groupsBar) return;
     groupsBar.innerHTML = '';
     const grps = groups[cur] || [];
-    const chips = [['', '全部']].concat(grps.map(g => [g[0], g[0]]));
-    chips.forEach(([val, label]) => {
+    const allCount = grps.reduce((s, g) => s + (Array.isArray(g[1]) ? g[1].length : 0), 0);
+    const chips = [['', '全部', allCount]].concat(grps.map(g => [g[0], g[0], Array.isArray(g[1]) ? g[1].length : 0]));
+    chips.forEach(([val, label, n]) => {
       const c = document.createElement('span');
       c.className = 'cc-g-chip' + (curGroup === val ? ' sel' : '');
-      c.textContent = label;
+      c.textContent = label + ' (' + n + ')';
       c.addEventListener('click', () => {
         curGroup = val;
         renderGroupsBar();
@@ -539,6 +540,45 @@
   }
   const mcBtn = document.getElementById('cc-manage-cards');
   if (mcBtn) mcBtn.addEventListener('click', () => { if (manageMode) exitManage(); else enterManage(); });
+
+  // ================= 去重复字卡（同一分组内内容完全相同的字卡只保留 1 张） =================
+  const ccDedupe = document.getElementById('cc-dedupe');
+  if (ccDedupe) {
+    ccDedupe.addEventListener('click', () => {
+      // 先统计重复数量（不修改数据），确认后才真正删除
+      let dup = 0;
+      Object.keys(groups).forEach(cat => {
+        (groups[cat] || []).forEach(([gname, arr]) => {
+          dup += (arr || []).length - new Set(arr || []).size;
+        });
+      });
+      if (!dup) { toast('没有发现重复字卡'); return; }
+      if (window.openModal) {
+        window.openModal('去重 ' + dup + ' 张重复字卡？', '', () => {
+          let removed = 0;
+          Object.keys(groups).forEach(cat => {
+            (groups[cat] || []).forEach(([gname, arr]) => {
+              const kept = [];
+              const seen = new Set();
+              (arr || []).forEach(c => {
+                if (seen.has(c)) { removed++; return; }
+                seen.add(c); kept.push(c);
+              });
+              arr.length = 0;
+              arr.push.apply(arr, kept);
+            });
+          });
+          saveGroups(groups);
+          renderGroupsBar();
+          render();
+          toast('已去除 ' + removed + ' 张重复字卡');
+        }, {
+          noInput: true,
+          staticText: '将删除同一分组内内容完全相同的重复字卡（每种内容只保留 1 张），并同步清理各分组的数量显示。'
+        });
+      }
+    });
+  }
 
   // ================= 导出数据（字卡库 json，文件名：mochi字卡库数据） =================
   const ccExport = document.getElementById('cc-export');
@@ -917,7 +957,18 @@
           if (!groups[cur]) groups[cur] = [];
           let curGrp = null;
           let imported = 0;
+          let dup = 0;
           let newGroups = 0;
+          // 同一分组内自动去重：分组已有字卡 + 本次已导入的都算，重复内容跳过
+          const seenMap = new Map();
+          const pushCard = (g, card) => {
+            let seen = seenMap.get(g);
+            if (!seen) { seen = new Set(g[1]); seenMap.set(g, seen); }
+            if (seen.has(card)) { dup++; return false; }
+            seen.add(card);
+            g[1].push(card);
+            return true;
+          };
           if (targetGroup) {
             let g = groups[cur].find(g => g[0] === targetGroup);
             if (!g) { g = [targetGroup, []]; groups[cur].push(g); }
@@ -931,23 +982,21 @@
               if (!g) { g = [gname, []]; groups[cur].push(g); newGroups++; }
               curGrp = g;
               const rest = (m[2] || '').trim();
-              if (rest) { g[1].push(rest); imported++; }
+              if (rest && pushCard(g, rest)) imported++;
               return;
             }
             if (curGrp) {
-              curGrp[1].push(line);
-              imported++;
+              if (pushCard(curGrp, line)) imported++;
             } else {
               let g = groups[cur].find(g => g[0] === '未分组');
               if (!g) { g = ['未分组', []]; groups[cur].push(g); newGroups++; }
-              g[1].push(line);
-              imported++;
+              if (pushCard(g, line)) imported++;
             }
           });
           saveGroups(groups);
           renderGroupsBar();
           render();
-          toast('已导入 ' + imported + ' 条字卡' + (newGroups ? '，新建 ' + newGroups + ' 个分组' : ''));
+          toast('已导入 ' + imported + ' 条字卡' + (dup ? '，自动去重 ' + dup + ' 条' : '') + (newGroups ? '，新建 ' + newGroups + ' 个分组' : ''));
         }, {
           textarea: true,
           textareaPlaceholder: '【日常】\n你今天真好看\n我想你了',

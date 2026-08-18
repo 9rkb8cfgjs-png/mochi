@@ -24,6 +24,10 @@
         req.onerror = () => reject(req.error);
       } catch (e) { reject(e); }
     });
+    // v3.6.x 修复（open 失败永久不可用）：失败时清 dbPromise 允许下次重试——
+    // 原实现缓存 rejected Promise，整个会话 IDB 永久不可用（隐私模式/配额耗尽/
+    // 浏览器临时禁用 IDB 后恢复时无法自愈）
+    dbPromise.catch(() => { dbPromise = null; });
     return dbPromise;
   }
 

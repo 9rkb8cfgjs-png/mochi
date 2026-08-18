@@ -113,9 +113,12 @@
       return;
     }
     if (saveTimer) clearTimeout(saveTimer);
+    // v3.6.x 修复（防抖定时器跨联系人写串）：闭包捕获当前命名空间，
+    // 防止 400ms 回调执行时 activePrefix() 已切到新联系人
+    const myPrefix = window.activePrefix();
     saveTimer = setTimeout(() => {
       saveTimer = null;
-      try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
+      try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', data); } catch (e) {}
       writeLsSnapshot(data);
     }, 400);
   }
@@ -128,7 +131,8 @@
       clearTimeout(saveTimer);
       saveTimer = null;
       const data = JSON.stringify(msgs);
-      try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
+      const myPrefix = window.activePrefix();
+      try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', data); } catch (e) {}
       writeLsSnapshot(data);
     } else if (!chatDbReady && msgs.length) {
       // IDB 未就绪期间的杀进程/切后台：内存消息写 LS 快照兜底，下次启动从快照恢复
@@ -183,9 +187,13 @@
     // 且合并规则是「IDB 完整历史 + 本地更新的消息」，绝不覆盖 IDB 权威数据。
     try {
       if (window.idbGet) {
-        window.idbGet(window.activePrefix() + ':chat-msgs').then(v => {
+        // v3.6.x 修复（跨联系人写串桌面）：闭包捕获当前命名空间，回调内一律用 myPrefix，
+        // 且回调开头校验是否已切换联系人——是则放弃本次合并（旧桌面的数据不写到新桌面）
+        const myPrefix = window.activePrefix();
+        window.idbGet(myPrefix + ':chat-msgs').then(v => {
+          if (window.activePrefix() !== myPrefix) return;
           if (v === undefined || v === null) {
-            // IDB 无权威数据：若 localStorage 还有老版本数据，迁入 IDB 并清掉 LS 残留
+            // IDB 无权威数据：若 localStorage 还有老版本数据，迁入 IDB 并清掉 LS 拋留
             chatDbReady = true;
             const lsRaw = store.get('chat-msgs');
             if (lsRaw) {
@@ -195,9 +203,18 @@
                   // v3.6.x：IDB 无数据 → 用 LS 快照恢复；写 IDB 后【保留】LS 快照
                   // 作双保险（原 store.remove 会把 IDB/LS/内存全删，若 idbSet 静默
                   // 失败则唯一的备份也没了）。writeLsSnapshot 会随后续保存持续刷新。
-                  if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', lsRaw);
+                  if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', lsRaw);
                 }
               } catch (e) {}
+            }
+            // v3.6.x 修复（pendingLocal 丢失）：IDB 无数据时 pendingLocal 可能非空
+            //（启动瞬间注入的日常/查岗消息），必须合并落盘，否则 chatDbReady 置 true
+            // 后 pendingLocal 被遗忘、永不写入
+            if (pendingLocal && pendingLocal.length) {
+              msgs = pendingLocal.concat(msgs.filter(m => !pendingLocal.some(p => p && p.ts === m.ts && p.text === m.text)));
+              pendingLocal = null;
+              try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+              writeLsSnapshot(JSON.stringify(msgs));
             }
             return;
           }
@@ -267,7 +284,7 @@
             // v3.5.127：无变化（localNew 空且长度相同）时跳过重复写盘 + 全量重渲染
             // v3.6.x：IDB 合并产生新数据才写回（避免每次 loadMsgs 全量重写）
             if (changed) {
-              try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+              try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
               // 聊天页当前可见且贴近底部 → 重新渲染窗口，让恢复出的历史立即显示
               // v3.6.x：改用分页渲染（原全量 forEach 渲染几千条会卡顿）
               if (chatVisible() && chatNearBottom()) {
@@ -1139,7 +1156,8 @@
     chatDbReady = true;
     renderStart = 0;
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
-    try { store.remove('chat-msgs'); } catch (e) {}
+    // v3.6.x 修复（导入竞态）：删除 store.remove——它内部 idbDelete 异步，与下一行
+    // idbSet 并发可能后执行把刚导入的数据删掉。idbSet(put) 本就覆盖旧值，无需先删
     const importedData = JSON.stringify(msgs);
     try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', importedData); } catch (e) {}
     writeLsSnapshot(importedData);

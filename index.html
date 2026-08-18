@@ -1518,7 +1518,7 @@ transition:background .15s ease, color .15s ease;
 }
 .cc-tab svg { width:15px; height:15px; }
 .cc-tab.sel { background:#111; color:#fff; border-color:#111; }
-.cc-toolbar { display:flex; gap:8px; margin-bottom:10px; flex-shrink:0; }
+.cc-toolbar { display:flex; gap:8px; margin-bottom:10px; flex-shrink:0; flex-wrap:wrap; }
 .cc-tool {
 flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px;
 padding:10px; font-size:13px; border-radius:14px;
@@ -2945,7 +2945,7 @@ display:flex; align-items:center; justify-content:center; flex:1;
 color:var(--muted); cursor:pointer; padding:12px 6px; border-radius:14px;
 transition:color .18s ease, background .18s ease;
 }
-.tabbar .tab.active { color:var(--ink); background:rgba(0,0,0,.05); }
+.tabbar .tab.active { color:var(--ink); background:transparent; }
 .tabbar .tab svg { width:23px; height:23px; }
 .tabbar[hidden] { display:none; }
 .phone.no-statusbar { padding:0; }
@@ -3270,7 +3270,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.66 · 部署于 2026-08-18 15:58</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.67 · 部署于 2026-08-18 16:23</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3836,6 +3836,7 @@ color: var(--muted);
       </div>
       <div class="cc-toolbar">
         <button class="cc-tool" id="cc-manage-cards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg>管理字卡</button>
+        <button class="cc-tool" id="cc-dedupe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/><path d="M10 13.5l1.5 1.5L16 10"/></svg>去重复</button>
         <button class="cc-tool" id="cc-export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v12"/></svg>导出数据</button>
         <button class="cc-tool" id="cc-import-data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 5v12"/></svg>导入数据</button>
         <button class="cc-tool cc-tool-danger" id="cc-clear-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>清除全部</button>
@@ -3922,7 +3923,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.66</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.67</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5535,6 +5536,7 @@ req.onsuccess = () => resolve(req.result);
 req.onerror = () => reject(req.error);
 } catch (e) { reject(e); }
 });
+dbPromise.catch(() => { dbPromise = null; });
 return dbPromise;
 }
 window.idbSet = function (key, value) {
@@ -8802,9 +8804,10 @@ writeLsSnapshot(data);
 return;
 }
 if (saveTimer) clearTimeout(saveTimer);
+const myPrefix = window.activePrefix();
 saveTimer = setTimeout(() => {
 saveTimer = null;
-try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
+try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', data); } catch (e) {}
 writeLsSnapshot(data);
 }, 400);
 }
@@ -8814,7 +8817,8 @@ if (saveTimer) {
 clearTimeout(saveTimer);
 saveTimer = null;
 const data = JSON.stringify(msgs);
-try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
+const myPrefix = window.activePrefix();
+try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', data); } catch (e) {}
 writeLsSnapshot(data);
 } else if (!chatDbReady && msgs.length) {
 writeLsSnapshot(JSON.stringify(msgs));
@@ -8854,7 +8858,9 @@ if (!Array.isArray(msgs)) msgs = [];
 migrateLegacyMediaMsgs();
 try {
 if (window.idbGet) {
-window.idbGet(window.activePrefix() + ':chat-msgs').then(v => {
+const myPrefix = window.activePrefix();
+window.idbGet(myPrefix + ':chat-msgs').then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v === undefined || v === null) {
 chatDbReady = true;
 const lsRaw = store.get('chat-msgs');
@@ -8862,9 +8868,15 @@ if (lsRaw) {
 try {
 const lsArr = JSON.parse(lsRaw);
 if (Array.isArray(lsArr) && lsArr.length) {
-if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', lsRaw);
+if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', lsRaw);
 }
 } catch (e) {}
+}
+if (pendingLocal && pendingLocal.length) {
+msgs = pendingLocal.concat(msgs.filter(m => !pendingLocal.some(p => p && p.ts === m.ts && p.text === m.text)));
+pendingLocal = null;
+try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+writeLsSnapshot(JSON.stringify(msgs));
 }
 return;
 }
@@ -8904,7 +8916,7 @@ pendingLocal = null;
 chatDbReady = true;
 try { localStorage.removeItem('xy-home-v2:chat-msgs'); } catch (e) {}
 if (changed) {
-try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
+try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
 if (chatVisible() && chatNearBottom()) {
 renderWindow(false, true);
 scrollChatBottom();
@@ -9627,7 +9639,6 @@ sessionChangedIdx.clear();
 chatDbReady = true;
 renderStart = 0;
 if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
-try { store.remove('chat-msgs'); } catch (e) {}
 const importedData = JSON.stringify(msgs);
 try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', importedData); } catch (e) {}
 writeLsSnapshot(importedData);
@@ -11888,11 +11899,12 @@ function renderGroupsBar() {
 if (!groupsBar) return;
 groupsBar.innerHTML = '';
 const grps = groups[cur] || [];
-const chips = [['', '全部']].concat(grps.map(g => [g[0], g[0]]));
-chips.forEach(([val, label]) => {
+const allCount = grps.reduce((s, g) => s + (Array.isArray(g[1]) ? g[1].length : 0), 0);
+const chips = [['', '全部', allCount]].concat(grps.map(g => [g[0], g[0], Array.isArray(g[1]) ? g[1].length : 0]));
+chips.forEach(([val, label, n]) => {
 const c = document.createElement('span');
 c.className = 'cc-g-chip' + (curGroup === val ? ' sel' : '');
-c.textContent = label;
+c.textContent = label + ' (' + n + ')';
 c.addEventListener('click', () => {
 curGroup = val;
 renderGroupsBar();
@@ -12192,6 +12204,42 @@ if (manageBar) manageBar.hidden = true;
 }
 const mcBtn = document.getElementById('cc-manage-cards');
 if (mcBtn) mcBtn.addEventListener('click', () => { if (manageMode) exitManage(); else enterManage(); });
+const ccDedupe = document.getElementById('cc-dedupe');
+if (ccDedupe) {
+ccDedupe.addEventListener('click', () => {
+let dup = 0;
+Object.keys(groups).forEach(cat => {
+(groups[cat] || []).forEach(([gname, arr]) => {
+dup += (arr || []).length - new Set(arr || []).size;
+});
+});
+if (!dup) { toast('没有发现重复字卡'); return; }
+if (window.openModal) {
+window.openModal('去重 ' + dup + ' 张重复字卡？', '', () => {
+let removed = 0;
+Object.keys(groups).forEach(cat => {
+(groups[cat] || []).forEach(([gname, arr]) => {
+const kept = [];
+const seen = new Set();
+(arr || []).forEach(c => {
+if (seen.has(c)) { removed++; return; }
+seen.add(c); kept.push(c);
+});
+arr.length = 0;
+arr.push.apply(arr, kept);
+});
+});
+saveGroups(groups);
+renderGroupsBar();
+render();
+toast('已去除 ' + removed + ' 张重复字卡');
+}, {
+noInput: true,
+staticText: '将删除同一分组内内容完全相同的重复字卡（每种内容只保留 1 张），并同步清理各分组的数量显示。'
+});
+}
+});
+}
 const ccExport = document.getElementById('cc-export');
 if (ccExport) {
 ccExport.addEventListener('click', () => {
@@ -12521,7 +12569,17 @@ if (!lines.length) { toast('没有可导入的内容'); return; }
 if (!groups[cur]) groups[cur] = [];
 let curGrp = null;
 let imported = 0;
+let dup = 0;
 let newGroups = 0;
+const seenMap = new Map();
+const pushCard = (g, card) => {
+let seen = seenMap.get(g);
+if (!seen) { seen = new Set(g[1]); seenMap.set(g, seen); }
+if (seen.has(card)) { dup++; return false; }
+seen.add(card);
+g[1].push(card);
+return true;
+};
 if (targetGroup) {
 let g = groups[cur].find(g => g[0] === targetGroup);
 if (!g) { g = [targetGroup, []]; groups[cur].push(g); }
@@ -12535,23 +12593,21 @@ let g = groups[cur].find(g => g[0] === gname);
 if (!g) { g = [gname, []]; groups[cur].push(g); newGroups++; }
 curGrp = g;
 const rest = (m[2] || '').trim();
-if (rest) { g[1].push(rest); imported++; }
+if (rest && pushCard(g, rest)) imported++;
 return;
 }
 if (curGrp) {
-curGrp[1].push(line);
-imported++;
+if (pushCard(curGrp, line)) imported++;
 } else {
 let g = groups[cur].find(g => g[0] === '未分组');
 if (!g) { g = ['未分组', []]; groups[cur].push(g); newGroups++; }
-g[1].push(line);
-imported++;
+if (pushCard(g, line)) imported++;
 }
 });
 saveGroups(groups);
 renderGroupsBar();
 render();
-toast('已导入 ' + imported + ' 条字卡' + (newGroups ? '，新建 ' + newGroups + ' 个分组' : ''));
+toast('已导入 ' + imported + ' 条字卡' + (dup ? '，自动去重 ' + dup + ' 条' : '') + (newGroups ? '，新建 ' + newGroups + ' 个分组' : ''));
 }, {
 textarea: true,
 textareaPlaceholder: '【日常】\n你今天真好看\n我想你了',

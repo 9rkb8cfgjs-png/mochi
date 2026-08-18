@@ -42,7 +42,7 @@
 .cc-tab.sel { background:#111; color:#fff; border-color:#111; }
 
 /* 工具栏：新建分组 / 批量导入 */
-.cc-toolbar { display:flex; gap:8px; margin-bottom:10px; flex-shrink:0; }
+.cc-toolbar { display:flex; gap:8px; margin-bottom:10px; flex-shrink:0; flex-wrap:wrap; }
 .cc-tool {
   flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px;
   padding:10px; font-size:13px; border-radius:14px;

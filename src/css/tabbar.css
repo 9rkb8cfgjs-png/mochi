@@ -20,7 +20,7 @@
   color:var(--muted); cursor:pointer; padding:12px 6px; border-radius:14px;
   transition:color .18s ease, background .18s ease;
 }
-.tabbar .tab.active { color:var(--ink); background:rgba(0,0,0,.05); }
+.tabbar .tab.active { color:var(--ink); background:transparent; }
 .tabbar .tab svg { width:23px; height:23px; }
 /* 独立全屏页（聊天等）隐藏底部导航 */
 .tabbar[hidden] { display:none; }
