@@ -9,6 +9,19 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-19（本会话，AI-B：桌面美化自由度+便捷增强）
+- [本会话·完成]（**已构建 verify 10/10，未提交**）：用户需求「增加桌面美化自由度和便捷」。新增 5 项功能（全在 AI-B 域）：
+  ①**背景模糊/遮罩**（`src/template.html`加`.phone-bg-mask`层 + `src/css/home.css` backdrop-filter + `src/js/personalize.js` slider 0-20px / 0-80%）——不破坏现有背景逻辑，backdrop-filter 模糊 .phone 背景图，白色遮罩调透明度；
+  ②**组件卡片圆角**（CSS 变量 `--desk-card-radius` 统一应用到所有桌面组件，slider 0-30px，默认 20px 保持兼容）；
+  ③**自定义文字组件**（可多个，`desk-texts` 元数据，装修模式点击编辑文字/字号+/字号-/换颜色/删除）；
+  ④**通用倒计时组件**（可多个，`desk-countdowns` 元数据，格式"标题|日期"，自动计算剩余天数，装修模式点击编辑/删除）；
+  ⑤**美化方案导入导出**（收集所有美化 key 打包 JSON，导出复制到剪贴板，导入粘贴写回+刷新）。
+  每页独立背景/主色调/组件透明度/图标圆角等已有功能确认存在，未重复开发。
+  涉及 `src/template.html`+`src/js/personalize.js`+`src/css/home.css`+`WORKLOG.md`+产物。**未提交**（不含 AI-A 进行中改动 chat.js/ta-ask.js/default-cards*.js），等待统一提交。
+
+### 2026-08-19（本会话，用户需求「互动卡片系统预设回应话术池，在字卡库→系统预设字卡里展示」）
+- [本会话·完成]（**未构建未提交**，请构建者统一执行）：新增「互动回应」tab + 逐张开关联动回复抽取。①**数据**：`src/js/default-cards-data.js`（AI-A 域）`DEFAULT_CARD_DATA` 新增 `interact` 分类（7 分组：邀请TA·接受 5 / 邀请TA·拒绝 4 / 问问TA·回应 11 / 小问题·回应 96 / 好奇·回应 113 / 吐槽·回应 7 / 询问·回应 5，共 241 条）——小问题/好奇两池由临时脚本从 ta-ask.js `TC_DEFAULT`/`TCU_DEFAULT` 提取去重合并，脚本已删；②**UI**：`src/js/default-cards.js` JS 注入「互动回应」tab（**未动 template.html**，避免越界），复用现有分组/搜索/单卡开关体系；③**接线**：`src/js/ta-ask.js` `pickAskCardReply` 过滤 `isDefaultCardOff('interact', …)` 已关闭话术；吐槽池（ta-ask.js 2059）、邀请TA 接受/拒绝与问问TA 文字题池（chat.js）改为 `getInteractPool(分组名, 回退内置池)` 同源读取；`src/js/chat.js` `chatChooseReply` 默契命中路径同样过滤已关闭话术（`presetOff`）。普通聊天回复池 keys 不含 interact，不受影响。`node --check` 4 个文件全过。**未构建未提交**，等待统一提交/部署。
+
 ### 2026-08-19（本会话，AI-B：apps/p2apps 添加 bug 修复 + 回前台汇总通知）
 - [本会话·完成]（**已构建 verify 10/10 + CDP apps/p2apps 添加测试通过，未提交**）：
   ①**功能图标添加无反应 bug 修复**（用户反馈）：根因——`WIDGET_IDS` 含 `'apps'`/`'p2apps'` 但 template app-grid/p2-grid 无 `data-desk-widget` 属性，`querySelector('[data-desk-widget="apps"]')` 返回 null → `if(!node) return` 静默退出。修复：template app-grid 加 `data-desk-widget="apps"`、p2-grid 加 `data-desk-widget="p2apps"`；`applyDeskLayout` 跳过 apps/p2apps 池逻辑（老兼容：老 layout 不含它们，避免老用户功能图标被移到隐藏池消失）。CDP 复测：apps 从 p0 成功添加到 p1（toast"已添加到本页"）、p2apps 已在目标页时按钮正确 disabled。涉及 `src/template.html`+`src/js/personalize.js`（AI-B 域）。

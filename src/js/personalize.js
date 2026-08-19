@@ -1140,6 +1140,88 @@
     });
   }
 
+  // v3.7.x：背景模糊——slider 0~20px，CSS 变量 --desk-bg-blur
+  const bgBlurRow = document.getElementById('row-bg-blur');
+  const bgBlurVal = document.getElementById('bg-blur-val');
+  const getBgBlur = () => { const v = store.get('bg-blur'); if (v) { const n = parseInt(v, 10); if (!isNaN(n)) return Math.max(0, Math.min(20, n)); } return 0; };
+  const applyBgBlur = (px) => {
+    document.documentElement.style.setProperty('--desk-bg-blur', px + 'px');
+    if (bgBlurVal) bgBlurVal.textContent = px === 0 ? '关闭' : px + 'px';
+  };
+  applyBgBlur(getBgBlur());
+  if (bgBlurRow) {
+    bgBlurRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const current = getBgBlur();
+      window.openModal('背景模糊', '', (v) => {
+        if (v === '__reset__') { store.remove('bg-blur'); applyBgBlur(0); return; }
+        const px = parseInt(v, 10); if (isNaN(px)) return;
+        if (px === 0) store.remove('bg-blur'); else store.set('bg-blur', String(px));
+        applyBgBlur(px);
+      }, {
+        noInput: true,
+        slider: { min: 0, max: 20, step: 1, value: current, label: '拖动调整背景模糊', unit: 'px',
+          onChange: (val) => { document.documentElement.style.setProperty('--desk-bg-blur', val + 'px'); } },
+        pills: [{ label: '关闭', value: '__reset__' }],
+      });
+    });
+  }
+
+  // v3.7.x：背景遮罩——slider 0~80%，CSS 变量 --desk-bg-mask-op（白色半透明遮罩让背景变淡）
+  const bgMaskOpRow = document.getElementById('row-bg-mask-op');
+  const bgMaskOpVal = document.getElementById('bg-mask-op-val');
+  const getBgMaskOp = () => { const v = store.get('bg-mask-op'); if (v) { const n = parseInt(v, 10); if (!isNaN(n)) return Math.max(0, Math.min(80, n)); } return 0; };
+  const applyBgMaskOp = (pct) => {
+    document.documentElement.style.setProperty('--desk-bg-mask-op', String(pct / 100));
+    if (bgMaskOpVal) bgMaskOpVal.textContent = pct === 0 ? '关闭' : pct + '%';
+  };
+  applyBgMaskOp(getBgMaskOp());
+  if (bgMaskOpRow) {
+    bgMaskOpRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const current = getBgMaskOp();
+      window.openModal('背景遮罩', '', (v) => {
+        if (v === '__reset__') { store.remove('bg-mask-op'); applyBgMaskOp(0); return; }
+        const pct = parseInt(v, 10); if (isNaN(pct)) return;
+        if (pct === 0) store.remove('bg-mask-op'); else store.set('bg-mask-op', String(pct));
+        applyBgMaskOp(pct);
+      }, {
+        noInput: true,
+        slider: { min: 0, max: 80, step: 5, value: current, label: '白色遮罩让背景变淡', unit: '%',
+          onChange: (val) => { document.documentElement.style.setProperty('--desk-bg-mask-op', String(val / 100)); } },
+        pills: [{ label: '关闭', value: '__reset__' }],
+      });
+    });
+  }
+
+  // v3.7.x：组件卡片圆角——slider 0~30px，CSS 变量 --desk-card-radius（默认 20px）
+  const cardRadiusRow = document.getElementById('row-desk-card-radius');
+  const cardRadiusVal = document.getElementById('desk-card-radius-val');
+  const CARD_RADIUS_DEFAULT = 20;
+  const getCardRadius = () => { const v = store.get('desk-card-radius'); if (v) { const n = parseInt(v, 10); if (!isNaN(n)) return Math.max(0, Math.min(30, n)); } return CARD_RADIUS_DEFAULT; };
+  const applyCardRadius = (px) => {
+    document.documentElement.style.setProperty('--desk-card-radius', px + 'px');
+    if (cardRadiusVal) cardRadiusVal.textContent = px === CARD_RADIUS_DEFAULT ? '默认' : px + 'px';
+  };
+  applyCardRadius(getCardRadius());
+  if (cardRadiusRow) {
+    cardRadiusRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const current = getCardRadius();
+      window.openModal('组件圆角', '', (v) => {
+        if (v === '__reset__') { store.remove('desk-card-radius'); applyCardRadius(CARD_RADIUS_DEFAULT); return; }
+        const px = parseInt(v, 10); if (isNaN(px)) return;
+        if (px === CARD_RADIUS_DEFAULT) store.remove('desk-card-radius'); else store.set('desk-card-radius', String(px));
+        applyCardRadius(px);
+      }, {
+        noInput: true,
+        slider: { min: 0, max: 30, step: 1, value: current, label: '拖动调整组件圆角', unit: 'px',
+          onChange: (val) => { document.documentElement.style.setProperty('--desk-card-radius', val + 'px'); } },
+        pills: [{ label: '恢复默认', value: '__reset__' }],
+      });
+    });
+  }
+
   // v3.6.x：图标圆角——滑块 0~30px 自由调整（原「圆形/圆角方/直角方」三选一删除，
   // 旧 ico-shape 值迁移：circle→30 / square→0 / rounded→18），CSS 变量 --app-ico-radius
   const icoShapeRow = document.getElementById('row-ico-shape');
@@ -1192,6 +1274,54 @@
         },
         pills: [{ label: '恢复默认', value: '__reset__' }],
       });
+    });
+  }
+
+  // v3.7.x：美化方案导入导出——收集所有美化相关 key 打包 JSON
+  const BEAUTY_KEYS = [
+    'phone-bg', 'phone-bg-preset', 'bg-blur', 'bg-mask-op',
+    'desk-font-size', 'desk-card-scale', 'desk-card-radius',
+    'widget-opacity', 'ico-radius', 'ico-shape',
+    'widget-color', 'widget-border', 'widget-btn', 'widget-btn-text', 'widget-heart',
+    'desk-layout', 'desk-page-count',
+    'desk-images', 'desk-texts', 'desk-countdowns',
+  ];
+  ['deco','quote','fish','checkin','music','memo','mood','week','weekend'].forEach(function(t) {
+    BEAUTY_KEYS.push('card-bg-' + t, 'card-bg-mask-' + t);
+  });
+  for (var _i = 0; _i < 5; _i++) BEAUTY_KEYS.push('page-bg-' + _i);
+  const beautyExportRow = document.getElementById('row-beauty-export');
+  if (beautyExportRow) {
+    beautyExportRow.addEventListener('click', () => {
+      const data = {};
+      BEAUTY_KEYS.forEach(k => { const v = store.get(k); if (v !== null && v !== undefined) data[k] = v; });
+      try { const ac = localStorage.getItem('xy-home-v2:accent-color'); if (ac) data['__accent__'] = ac; } catch (e) {}
+      try { const tm = localStorage.getItem('xy-home-v2:theme-mode'); if (tm) data['__theme__'] = tm; } catch (e) {}
+      const json = JSON.stringify(data);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(json).then(() => toast('已复制到剪贴板，发给对方粘贴导入')).catch(() => toast('复制失败，请手动复制'));
+      } else {
+        if (!window.openModal) return;
+        window.openModal('美化方案（长按全选复制）', json, () => {}, { noInput: true, pills: [{ label: '关闭', value: '__close__' }] });
+      }
+    });
+  }
+  const beautyImportRow = document.getElementById('row-beauty-import');
+  if (beautyImportRow) {
+    beautyImportRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      window.openModal('导入美化方案', '', (v) => {
+        if (!v || !v.trim()) return;
+        try {
+          const data = JSON.parse(v.trim());
+          if (typeof data !== 'object' || Array.isArray(data)) { toast('格式错误'); return; }
+          BEAUTY_KEYS.forEach(k => { if (data[k] !== undefined) store.set(k, data[k]); });
+          if (data['__accent__']) { try { localStorage.setItem('xy-home-v2:accent-color', data['__accent__']); } catch (e) {} }
+          if (data['__theme__']) { try { localStorage.setItem('xy-home-v2:theme-mode', data['__theme__']); } catch (e) {} }
+          toast('已导入，刷新生效');
+          setTimeout(() => location.reload(), 800);
+        } catch (e) { toast('解析失败，请检查文本'); }
+      }, { placeholder: '粘贴对方导出的美化方案文本' });
     });
   }
 
@@ -1600,6 +1730,8 @@
         s.querySelectorAll('[data-desk-widget]').forEach(node => pool.appendChild(node));
         // 该页上的图片组件直接删除（图片不跨页保留，避免索引错位）
         removeDeskImagesOnPage(delIdx);
+        removeDeskTextsOnPage(delIdx);
+        removeDeskCountdownsOnPage(delIdx);
         s.parentNode.removeChild(s);
       }
     }
@@ -1760,6 +1892,13 @@
   setupDeskImageClick();
   setupDeskImageViewerClose();
   document.addEventListener('contact-switched', renderDeskImages);
+  // v3.7.x：文字/倒计时组件——启动渲染 + 点击初始化 + 切联系人重渲染
+  renderDeskTexts();
+  setupDeskTextClick();
+  renderDeskCountdowns();
+  setupDeskCountdownClick();
+  document.addEventListener('contact-switched', renderDeskTexts);
+  document.addEventListener('contact-switched', renderDeskCountdowns);
 
   // ===== v3.6.x：卡片自由摆放（装修模式：上移/下移/移除；新增页可添加卡片） =====
   // 组件 id 列表（对应 template.html 中 [data-desk-widget]）；组件节点唯一，
@@ -1941,6 +2080,50 @@
     imgMeta.appendChild(imgName); imgMeta.appendChild(imgWhere);
     imgItem.appendChild(imgPrev); imgItem.appendChild(imgMeta); imgItem.appendChild(imgBtn);
     box.appendChild(imgItem);
+    // v3.7.x：自定义文字组件——可多个
+    const textItem = document.createElement('div');
+    textItem.className = 'desk-lib-item';
+    const textPrev = document.createElement('div');
+    textPrev.className = 'dl-prev';
+    textPrev.style.cssText = PREV_BOX;
+    textPrev.innerHTML = '<span style="font-size:10px;color:#333;font-weight:600;line-height:1.3;text-align:center;padding:2px 6px">愿你<br>温柔且自由</span>';
+    const textMeta = document.createElement('div');
+    textMeta.className = 'dl-meta';
+    const textName = document.createElement('div');
+    textName.className = 'dl-name';
+    textName.textContent = '文字（自定义一句话）';
+    const textWhere = document.createElement('div');
+    textWhere.className = 'dl-where';
+    textWhere.textContent = '可多个';
+    const textBtn = document.createElement('button');
+    textBtn.className = 'dl-btn';
+    textBtn.textContent = '添加文字';
+    textBtn.addEventListener('click', () => { addDeskText(pageIdx); lib.remove(); });
+    textMeta.appendChild(textName); textMeta.appendChild(textWhere);
+    textItem.appendChild(textPrev); textItem.appendChild(textMeta); textItem.appendChild(textBtn);
+    box.appendChild(textItem);
+    // v3.7.x：通用倒计时组件——可多个
+    const cdItem = document.createElement('div');
+    cdItem.className = 'desk-lib-item';
+    const cdPrev = document.createElement('div');
+    cdPrev.className = 'dl-prev';
+    cdPrev.style.cssText = PREV_BOX;
+    cdPrev.innerHTML = '<span style="display:flex;flex-direction:column;align-items:center;gap:1px"><span style="font-size:6px;color:#bbb">距出差</span><span style="font-size:14px;font-weight:700;color:#333">28 天</span><span style="font-size:5px;color:#999">9 月 16 日</span></span>';
+    const cdMeta = document.createElement('div');
+    cdMeta.className = 'dl-meta';
+    const cdName = document.createElement('div');
+    cdName.className = 'dl-name';
+    cdName.textContent = '倒计时（自定义事件）';
+    const cdWhere = document.createElement('div');
+    cdWhere.className = 'dl-where';
+    cdWhere.textContent = '可多个';
+    const cdBtn = document.createElement('button');
+    cdBtn.className = 'dl-btn';
+    cdBtn.textContent = '添加倒计时';
+    cdBtn.addEventListener('click', () => { addDeskCountdown(pageIdx); lib.remove(); });
+    cdMeta.appendChild(cdName); cdMeta.appendChild(cdWhere);
+    cdItem.appendChild(cdPrev); cdItem.appendChild(cdMeta); cdItem.appendChild(cdBtn);
+    box.appendChild(cdItem);
     const close = document.createElement('button');
     close.textContent = '关闭';
     close.style.cssText = 'width:100%;margin-top:8px;padding:10px;border:1px solid #eee;border-radius:10px;background:#fafafa;font-size:13px;cursor:pointer;font-family:inherit';
@@ -2177,6 +2360,193 @@
     const close = () => { viewer.hidden = true; const vi = document.getElementById('desk-image-viewer-img'); if (vi) vi.src = ''; };
     if (closeBtn) closeBtn.addEventListener('click', close);
     viewer.addEventListener('click', (e) => { if (e.target === viewer) close(); });
+  }
+
+  // ===== v3.7.x：桌面文字组件（可多个，自定义一句话放桌面） =====
+  // 存储：desk-texts（localStorage，[{id,page,text,size,color}]）
+  // 组件节点用 [data-desk-text="<id>"] 标识，不参与 desk-layout
+  function loadDeskTextsMeta() {
+    try { const v = JSON.parse(store.get('desk-texts') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+  }
+  function saveDeskTextsMeta(arr) { store.set('desk-texts', JSON.stringify(arr)); }
+  function renderDeskTexts() {
+    if (!pagesBox) return;
+    pagesBox.querySelectorAll('[data-desk-text]').forEach(n => n.remove());
+    const meta = loadDeskTextsMeta();
+    const slides = pagesBox.querySelectorAll('.page-slide');
+    meta.forEach(m => {
+      const slide = slides[m.page];
+      if (!slide) return;
+      const node = document.createElement('div');
+      node.className = 'desk-text-widget';
+      node.dataset.deskText = m.id;
+      const p = document.createElement('p');
+      p.textContent = m.text || '点击编辑文字';
+      p.style.fontSize = (m.size || 15) + 'px';
+      p.style.color = m.color || '#333';
+      node.appendChild(p);
+      const addBtn = slide.querySelector('.desk-page-add');
+      if (addBtn) slide.insertBefore(node, addBtn); else slide.appendChild(node);
+    });
+    for (let i = 0; i < slides.length; i++) syncPageHint(slides[i]);
+  }
+  function addDeskText(pageIdx) {
+    if (!window.openModal) return;
+    window.openModal('添加文字', '', (v) => {
+      if (!v || !v.trim()) return;
+      const id = 'txt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+      const meta = loadDeskTextsMeta();
+      meta.push({ id: id, page: pageIdx, text: v.trim(), size: 15, color: '#333' });
+      saveDeskTextsMeta(meta);
+      renderDeskTexts();
+      toast('已添加文字');
+    }, { placeholder: '输入要显示的文字' });
+  }
+  function removeDeskText(id) {
+    saveDeskTextsMeta(loadDeskTextsMeta().filter(m => m.id !== id));
+    renderDeskTexts();
+    toast('已删除');
+  }
+  function removeDeskTextsOnPage(pageIdx) {
+    saveDeskTextsMeta(loadDeskTextsMeta().filter(m => m.page !== pageIdx));
+  }
+  function setupDeskTextClick() {
+    if (!pagesBox) return;
+    pagesBox.addEventListener('click', (e) => {
+      const widget = e.target.closest('[data-desk-text]');
+      if (!widget) return;
+      const id = widget.dataset.deskText;
+      const phone = document.getElementById('page-phone');
+      const isDecor = phone && phone.classList.contains('decor-on');
+      if (!isDecor) return;
+      e.stopPropagation();
+      if (!window.openModal) return;
+      const m = loadDeskTextsMeta().find(x => x.id === id);
+      if (!m) return;
+      window.openModal('编辑文字', m.text, (v) => {
+        if (!v || !v.trim()) return;
+        m.text = v.trim();
+        saveDeskTextsMeta(loadDeskTextsMeta());
+        renderDeskTexts();
+      }, {
+        placeholder: '输入文字',
+        pills: [
+          { label: '字号+', value: '__sizeup__' },
+          { label: '字号-', value: '__sizedn__' },
+          { label: '换颜色', value: '__color__' },
+          { label: '删除', value: '__del__' },
+        ],
+      });
+      // pills 走单独监听（openModal 的 cb 只处理输入确认）
+      setTimeout(() => {
+        const pills = document.querySelectorAll('.modal-pill');
+        pills.forEach(pill => {
+          pill.addEventListener('click', () => {
+            const val = pill.dataset.value;
+            if (val === '__sizeup__') { m.size = Math.min(30, (m.size || 15) + 2); saveDeskTextsMeta(loadDeskTextsMeta()); renderDeskTexts(); toast('字号 ' + m.size + 'px'); }
+            else if (val === '__sizedn__') { m.size = Math.max(10, (m.size || 15) - 2); saveDeskTextsMeta(loadDeskTextsMeta()); renderDeskTexts(); toast('字号 ' + m.size + 'px'); }
+            else if (val === '__color__') {
+              const colors = ['#333', '#666', '#999', '#e05555', '#3a7bd5', '#4a9d5e', '#d6459d', '#f0a020'];
+              const ci = colors.indexOf(m.color || '#333');
+              m.color = colors[(ci + 1) % colors.length];
+              saveDeskTextsMeta(loadDeskTextsMeta()); renderDeskTexts(); toast('已换颜色');
+            }
+            else if (val === '__del__') { removeDeskText(id); }
+          });
+        });
+      }, 100);
+    });
+  }
+
+  // ===== v3.7.x：通用倒计时组件（可多个，自定义标题+目标日期） =====
+  // 存储：desk-countdowns（localStorage，[{id,page,title,date}]）
+  // 组件节点用 [data-desk-countdown="<id>"] 标识，不参与 desk-layout
+  function loadDeskCountdownsMeta() {
+    try { const v = JSON.parse(store.get('desk-countdowns') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+  }
+  function saveDeskCountdownsMeta(arr) { store.set('desk-countdowns', JSON.stringify(arr)); }
+  function renderDeskCountdowns() {
+    if (!pagesBox) return;
+    pagesBox.querySelectorAll('[data-desk-countdown]').forEach(n => n.remove());
+    const meta = loadDeskCountdownsMeta();
+    const slides = pagesBox.querySelectorAll('.page-slide');
+    meta.forEach(m => {
+      const slide = slides[m.page];
+      if (!slide) return;
+      const node = document.createElement('div');
+      node.className = 'desk-countdown-widget';
+      node.dataset.deskCountdown = m.id;
+      const target = new Date(m.date + 'T00:00:00');
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const days = Math.round((target - today) / 86400000);
+      node.innerHTML = '<div class="dcd-label">距' + (m.title || '事件') + '</div>' +
+        '<div class="dcd-days">' + (days >= 0 ? days : '已过') + (days >= 0 ? ' 天' : '') + '</div>' +
+        '<div class="dcd-date">' + m.date + '</div>';
+      const addBtn = slide.querySelector('.desk-page-add');
+      if (addBtn) slide.insertBefore(node, addBtn); else slide.appendChild(node);
+    });
+    for (let i = 0; i < slides.length; i++) syncPageHint(slides[i]);
+  }
+  function addDeskCountdown(pageIdx) {
+    if (!window.openModal) return;
+    const today = new Date().toISOString().slice(0, 10);
+    window.openModal('添加倒计时', '', (v) => {
+      if (!v || !v.trim()) return;
+      const parts = v.split('|');
+      const title = (parts[0] || '').trim();
+      const date = (parts[1] || '').trim();
+      if (!title || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('格式：标题|日期，如 出差|2026-09-16'); return; }
+      const id = 'cd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+      const meta = loadDeskCountdownsMeta();
+      meta.push({ id: id, page: pageIdx, title: title, date: date });
+      saveDeskCountdownsMeta(meta);
+      renderDeskCountdowns();
+      toast('已添加倒计时');
+    }, { placeholder: '标题|日期，如 出差|2026-09-16', value: '|' + today });
+  }
+  function removeDeskCountdown(id) {
+    saveDeskCountdownsMeta(loadDeskCountdownsMeta().filter(m => m.id !== id));
+    renderDeskCountdowns();
+    toast('已删除');
+  }
+  function removeDeskCountdownsOnPage(pageIdx) {
+    saveDeskCountdownsMeta(loadDeskCountdownsMeta().filter(m => m.page !== pageIdx));
+  }
+  function setupDeskCountdownClick() {
+    if (!pagesBox) return;
+    pagesBox.addEventListener('click', (e) => {
+      const widget = e.target.closest('[data-desk-countdown]');
+      if (!widget) return;
+      const id = widget.dataset.deskCountdown;
+      const phone = document.getElementById('page-phone');
+      const isDecor = phone && phone.classList.contains('decor-on');
+      if (!isDecor) return;
+      e.stopPropagation();
+      if (!window.openModal) return;
+      const m = loadDeskCountdownsMeta().find(x => x.id === id);
+      if (!m) return;
+      window.openModal('编辑倒计时', m.title + '|' + m.date, (v) => {
+        if (!v || !v.trim()) return;
+        const parts = v.split('|');
+        const title = (parts[0] || '').trim();
+        const date = (parts[1] || '').trim();
+        if (!title || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('格式：标题|日期'); return; }
+        m.title = title; m.date = date;
+        saveDeskCountdownsMeta(loadDeskCountdownsMeta());
+        renderDeskCountdowns();
+      }, {
+        placeholder: '标题|日期，如 出差|2026-09-16',
+        pills: [{ label: '删除', value: '__del__' }],
+      });
+      setTimeout(() => {
+        const pills = document.querySelectorAll('.modal-pill');
+        pills.forEach(pill => {
+          pill.addEventListener('click', () => {
+            if (pill.dataset.value === '__del__') removeDeskCountdown(id);
+          });
+        });
+      }, 100);
+    });
   }
 
   // v3.6.x：装修模式装饰条「+ 添加卡片」——找回被移出的桌面组件，加到当前页

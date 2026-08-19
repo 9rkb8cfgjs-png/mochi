@@ -8,6 +8,17 @@
   --widget-heart:#111111;
   --widget-opacity:1;
   --app-ico-radius:18px;
+  --desk-bg-blur:0px;
+  --desk-bg-mask-op:0;
+  --desk-card-radius:16px;
+}
+/* v3.7.x：背景模糊/遮罩层——backdrop-filter 模糊 .phone 背景图，白色遮罩调透明度 */
+.phone-bg-mask {
+  position:absolute; inset:0; z-index:0; pointer-events:none;
+  backdrop-filter:blur(var(--desk-bg-blur,0px));
+  -webkit-backdrop-filter:blur(var(--desk-bg-blur,0px));
+  background:rgba(255,255,255,var(--desk-bg-mask-op,0));
+  border-radius:inherit;
 }
 /* v3.6.x：桌面字号/卡片大小可调。
    ⚠️ iOS 卡顿红线（AGENTS.md / WORKLOG）：zoom 是 WebKit 已知卡顿源，会把元素踢出
@@ -241,6 +252,12 @@
 .desk-widget, [data-desk-widget] {
   position:relative;
 }
+/* v3.7.x：组件卡片圆角全局统一调节 */
+.deco-widget, .mini-card, .checkin, .weekend-box, .music-widget,
+.memo-card, .mood-card, .week-card,
+.desk-clock, .desk-cal, .desk-timer, .desk-anniv {
+  border-radius:var(--desk-card-radius, 20px);
+}
 
 /* v3.6.x：组件库面板（新增页点「添加卡片」弹出） */
 .desk-lib {
@@ -303,6 +320,22 @@
   overflow:hidden; cursor:pointer; background:rgba(0,0,0,.04);
   box-shadow:0 4px 14px rgba(0,0,0,.06);
 }
+/* v3.7.x：自定义文字组件 */
+.desk-text-widget {
+  margin:10px 0; padding:14px 16px; text-align:center;
+  background:var(--widget-bg,#fff); opacity:var(--widget-opacity,1);
+  box-shadow:0 4px 14px rgba(0,0,0,.06); cursor:pointer;
+}
+.desk-text-widget p { margin:0; line-height:1.5; word-break:break-word; }
+/* v3.7.x：通用倒计时组件 */
+.desk-countdown-widget {
+  margin:10px 0; padding:14px 16px; text-align:center;
+  background:var(--widget-bg,#fff); opacity:var(--widget-opacity,1);
+  box-shadow:0 4px 14px rgba(0,0,0,.06); cursor:pointer;
+}
+.desk-countdown-widget .dcd-label { font-size:11px; color:var(--muted,#888); }
+.desk-countdown-widget .dcd-days { font-size:26px; font-weight:700; color:var(--ink,#111); margin:2px 0; }
+.desk-countdown-widget .dcd-date { font-size:12px; color:var(--muted,#666); }
 .desk-image-widget img { width:100%; display:block; border-radius:inherit; }
 /* 装修模式下图片组件可操作：点组件弹菜单（换图/删除），加视觉提示 */
 .decor-on .desk-image-widget::after {
