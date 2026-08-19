@@ -1001,6 +1001,32 @@
       maybeScrollChatBottom();
       return m;
     }
+    // Pong：居中白底卡片，显示比分与结果
+    if (rec.special === 'pong') {
+      m.className = 'msg-pong';
+      m.innerHTML = '<div class="msg-pong-card">' +
+        '<div class="msg-pong-label">双人 Pong</div>' +
+        '<div class="msg-pong-result">' + escTxt(rec.text || '') + '</div>' +
+      '</div>';
+      body.appendChild(m);
+      maybeScrollChatBottom();
+      return m;
+    }
+    // 双人贪吃蛇：居中白底卡片，双方长度/食物/得分 + 结果
+    if (rec.special === 'snake') {
+      m.className = 'msg-rps';
+      const snkResTxt = rec.snkResult === 'win' ? '你赢了' : rec.snkResult === 'lose' ? 'TA 赢了' : '平局';
+      const snkClr = rec.snkResult === 'win' ? '#34c759' : rec.snkResult === 'lose' ? '#ff6b6b' : '#888';
+      m.innerHTML = '<div class="msg-rps-card msg-snake-card">' +
+        '<div class="msg-snake-title">🐍 双人贪吃蛇</div>' +
+        '<div class="msg-snake-row"><span class="msg-snake-side">你</span><span>长度 ' + rec.snkPLen + '</span><span>食物 ' + rec.snkPFood + '</span><span>' + rec.snkPScore + '分</span></div>' +
+        '<div class="msg-snake-row"><span class="msg-snake-side">TA</span><span>长度 ' + rec.snkOLen + '</span><span>食物 ' + rec.snkOFood + '</span><span>' + rec.snkOScore + '分</span></div>' +
+        '<div class="msg-rps-result" style="color:' + snkClr + '">存活 ' + rec.snkTime + 's · ' + escTxt(snkResTxt) + '</div>' +
+      '</div>';
+      body.appendChild(m);
+      maybeScrollChatBottom();
+      return m;
+    }
     // 红包：居中白底卡片，红包图标 + 金额 + 留言 + 领取状态（简约白灰风格）
     if (rec.special === 'redpacket') {
       m.className = 'msg-rp';
@@ -3645,6 +3671,49 @@ function partialRetractMsg(msgEl, side) {
       openChatCall();
     });
   }
+  // ---- Pong：更多功能「Pong」→ 打开底部半框（pong.js 负责游戏循环） ----
+  const morePong = document.getElementById('more-pong');
+  if (morePong) {
+    morePong.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (morePanel) morePanel.hidden = true;
+      // 关闭其他底部半框
+      const pc = document.getElementById('poke-card'); if (pc) pc.hidden = true;
+      const ep = document.getElementById('emoji-panel'); if (ep) ep.hidden = true;
+      const askP = document.getElementById('chat-ask-panel'); if (askP) askP.hidden = true;
+      const cs = document.getElementById('chat-search'); if (cs) cs.hidden = true;
+      const dv = document.getElementById('chat-divine-panel'); if (dv) dv.hidden = true;
+      const dp = document.getElementById('chat-decision-panel'); if (dp) dp.hidden = true;
+      const rpsP = document.getElementById('chat-rps-panel'); if (rpsP) rpsP.hidden = true;
+      const rpP = document.getElementById('chat-rp-panel'); if (rpP) rpP.hidden = true;
+      const callP = document.getElementById('chat-call-panel'); if (callP) callP.hidden = true;
+      if (window.closeAvlib) window.closeAvlib();
+      if (window.openPongPanel) window.openPongPanel();
+    });
+  }
+  // ---- 双人贪吃蛇：更多功能「贪吃蛇」→ 打开底部半框（snake-game.js 负责游戏循环） ----
+  const moreSnake = document.getElementById('more-snake');
+  if (moreSnake) {
+    moreSnake.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (morePanel) morePanel.hidden = true;
+      if (window.openSnakePanel) window.openSnakePanel();
+    });
+  }
+  // 贪吃蛇结束 → 写入聊天特殊卡片 + TA 字卡回应（调用 interact 字卡池：游戏胜利/失败/平局·回应）
+  window.sendSnakeResult = function (d) {
+    if (!d) return;
+    addRec({ side: 'in', special: 'snake', snkResult: d.result, snkPLen: d.pLen, snkOLen: d.oLen, snkPFood: d.pFood, snkOFood: d.oFood, snkPScore: d.pScore, snkOScore: d.oScore, snkTime: d.time });
+    if (window.logFish) window.logFish();
+    showTyping();
+    setTimeout(() => {
+      hideTyping();
+      const grp = d.result === 'win' ? '游戏胜利·回应' : d.result === 'lose' ? '游戏失败·回应' : '游戏平局·回应';
+      const pool = window.getInteractPool ? window.getInteractPool(grp, ['再来一局？']) : ['再来一局？'];
+      const say = pool.length ? pool[Math.floor(Math.random() * pool.length)] : '再来一局？';
+      addRec({ side: 'in', text: say });
+    }, randInt(900, 1600));
+  };
   if (chatCallClose) chatCallClose.addEventListener('click', (e) => { e.stopPropagation(); closeChatCall(); });
   // 拨打（降级保留旧逻辑兜底）
   if (callPanelDial) callPanelDial.addEventListener('click', (e) => {

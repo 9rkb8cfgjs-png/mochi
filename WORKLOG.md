@@ -9,6 +9,28 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-19（本会话，用户需求「聊天更多功能里加双人 Pong 小游戏」）
+- [本会话·完成·snake 第二轮]（**已构建 verify 10/10 + snake 冒烟 16/16，未提交**）：贪吃蛇补难度选择 + 暂停 + 全屏 + 保存/继续对局 + 方向键加大。
+  - **难度**：顶栏加 select（慢/普通/快），tick 间隔 easy[200,180,160,140] / normal[160,140,120,100] / hard[120,110,100,90]（按 0-30s/30-60s/60-90s/90s+ 分段），默认 normal 比第一轮慢。
+  - **暂停**：顶栏加暂停按钮，playing↔paused，暂停时记 pauseAt，恢复时 startTime 补偿 Date.now()-pauseAt。
+  - **全屏**：顶栏加全屏按钮，`#chat-snake-panel` 加 `.snake-fs` 类（position:fixed 占满视口、深色沉浸背景、canvas/方向键反色）。
+  - **保存/继续**：关闭时若 status==='playing' → 存 localStorage（键 `:snake-saved`）；同会话重开走内存继续；切联系人/刷新后重开 → 显示「继续上局」按钮从 localStorage 恢复；游戏结束/开始新局 → 清保存。
+  - **方向键加大**：52×44 → 64×56，字号 16→20px（手机更好按）。面板 max-height 74%→86%。
+  - **涉及**：`src/js/snake-game.js`（重写）、`src/template.html`（head 加按钮容器 + controls 加 resume 按钮）、`src/css/chat-pages.css`（head-actions/icon-btn/diff/fs 样式 + 方向键加大）。临时测试脚本已删。
+- [本会话·完成·补充]（**已构建 verify 10/10 + 全屏/暂停/保存恢复 12/12，未提交**）：Pong 补全屏 + 暂停 + 保存对局。
+  - **全屏**：顶栏加全屏按钮，点击 `#chat-pong-panel` 加 `.pong-fs` 类（position:fixed 占满视口、沉浸式深色背景、游戏区域居中放大到 560px），再点退出。
+  - **暂停**：顶栏加暂停按钮，游戏中可暂停/继续（停循环保留 state、显示「已暂停」提示）。
+  - **保存恢复**：关闭半框时若对局进行中（有比分或球已发）→ 序列化 state 存 localStorage（每联系人独立键 `:pong-saved`）；同会话重开 → 内存 state 直接继续；刷新页面后打开 → 显示「继续上局」按钮从 localStorage 恢复；游戏结束 → 清除保存。开始新游戏也清除保存。
+  - **涉及**：`src/js/pong.js`、`src/template.html`、`src/css/chat-pages.css`。临时测试脚本已删。
+- [本会话·完成]（**已构建 verify 10/10 + Pong 专项冒烟 11/11，未提交，请构建者统一执行**）：新增双人 Pong 小游戏。
+  - **游戏**：玩家左挡板 / TA 右挡板 AI，球持续运动，先得 5 分获胜。Canvas 渲染（逻辑 400×240 + DPR 清晰），球速随回合 +0.2（上限 8），反弹角度按击球点偏移，发球随机方向 ±15°。
+  - **TA AI**：基础轨迹预测（含上下边界反弹推演）+ 反应延迟（0.12~0.5s 按难度）+ 移动速度限制（3.2~5.5px/tick）+ 预测误差 + 概率行为池（提前移动/反应慢/偏离预测/提前改变站位/随机失误/连续成功冒险，各带 3~6s 冷却）+ 危险状态提高 AI 更新频率。三难度（简单/普通/困难）。
+  - **控制**：手机左半边触摸拖动 / 电脑 ↑↓WS，挡板最大速度限制。
+  - **结束**：写入聊天记录（special:'pong' 居中白底卡片）+ TA 随机回应（内置三组字卡池：玩家胜/TA胜/平局，不依赖聊天 AI）。
+  - **音效**：Web Audio 短促 beep（碰墙/碰挡板/得分/胜利），可静音。
+  - **涉及**：新增 `src/js/pong.js`（AI-A 域业务功能）；`src/template.html`（more-pong 入口 + #chat-pong-panel 半框，AI-B 域）；`src/css/chat-pages.css`（游戏样式，AI-A 域）；`src/js/chat.js`（more-pong 监听 + renderMsg special:'pong' 渲染，AI-A 域）；`src/js/mobile-adapt.js`（FLOAT_SELECTORS 加 #chat-pong-panel，AI-B 域）；`build.mjs`（jsFiles 加 pong.js，AI-B 域）。
+  - **验证**：node --check 全过；verify 10/10；Pong 专项冒烟 11/11（入口/面板/Canvas/接口/倒计时/触摸/无JS异常/关闭/重开/难度/静音）。临时测试脚本已删。
+
 ### 2026-08-19（GIF 动图上传变静态图修复——用户反馈字卡库表情包/我的表情包动图不动）
 - [本会话·完成]（**已构建 index.html；本次提交一并带上 AI-A 已保存的红包长按退回 + ta-ask 第四批等改动**）：
   根因：字卡库【表情包】【图片】批量导入走 `compressImage` canvas 重绘（sticker→PNG 480 / image→JPEG 720），
@@ -546,3 +568,6 @@
   - 遗留：`.verify-fixes-tmp.mjs`、`.shot-tmp/`（历史遗留未跟踪调试残留，非本次创建，待确认清理）。
 ### 2026-08-19
 - [AI-A] 开工（用户追问「还有能增加的问题吗」，再追加第四批，**本条尚未构建**）：src/js/ta-ask.js 四数组末尾各加一批，共 +73 条：询问 +14（11 开放 q_d18-d20/q_c14-c15/q_i18-i19/q_w19-w22 + 3 单选 q_s9-s11）；小问题 +18（cd16-19/cl11-12/cf11-12/cr12-13/ch11-12/cs9/cw14-16）；好奇 +19（cy14-15/cm12-13/cd14-16/cp12-13/cl13-14/ct12-13/cu12-13/cw15-18，4 题带 followup）；吐槽 +22（rl26-31/rf20-24/rs23-28/rm10-12/rsg6-7/rw16-21，5 条带 match）。题材换角度：时间感/感官/未来/字卡本身/两个世界深化/情绪细微/日常碎片。校验：node --check 通过，四数组 ID 唯一性通过（87/93/115/127）。涉及 src/js/ta-ask.js。**未构建未提交**，连同前几批待构建部分，请构建者执行一次 node build.mjs 一并带上。
+
+### 2026-08-19
+- [AI-A] 完成：新增双人贪吃蛇小游戏（聊天更多功能→贪吃蛇）。已构建 verify 10/10 + CDP 冒烟 12/12。20x20地图/双蛇同时移动/统y碰撞结算(公平)/TA=生存判断+目标评分+flood-fill空间+9种概率行为池+冷却/速度120->90ms随时间/滑动+方向键+WASD+虚拟方向键/倒计时3-2-1/胜负平+长度食物得分存活时间/结束调interact字卡池(游戏胜利/失败/平局·回应)作TA回复+special:snake卡片入聊天。文件:src/js/snake-game.js(新)、template.html、chat.js、default-cards-data.js、chat-pages.css、mobile-adapt.js、tabs.js、build.mjs。仿pong.js模式。未提交。

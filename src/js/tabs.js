@@ -84,7 +84,7 @@
     // 1) 弹层优先关闭（不改变页面栈）——与 mobile-adapt.js 的滚动穿透锁同一组浮层，
     //    微信式交互：按返回先关面板（表情/更多/拍一拍/搜索/半框等），再退页面
     const layers = ['img-view-mask', 'modal-mask', 'qa-mask', 'tc-mask', 'poke-card', 'emoji-panel',
-      'chat-more-panel', 'chat-search', 'chat-decision-panel', 'chat-divine-panel',
+      'chat-more-panel', 'chat-search', 'chat-decision-panel', 'chat-divine-panel', 'chat-snake-panel',
       'avlib-card', 'ck-panel', 'feed-notice-panel', 'desk-msg', 'chat-ask-panel', 'msg-actions'];
     for (const id of layers) {
       const el = document.getElementById(id);

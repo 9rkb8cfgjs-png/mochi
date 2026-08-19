@@ -1769,3 +1769,94 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
 /* 设置页危险操作行（如聊天设置-删除全部聊天记录）：红字红图标 */
 .set-row.danger .txt { color:#d64545; }
 .set-row.danger .ico svg { stroke:#d64545; }
+
+/* ===== 双人 Pong 小游戏（聊天页底部半框） ===== */
+#chat-pong-panel { padding-bottom:env(safe-area-inset-bottom); }
+.pong-wrap { display:flex; flex-direction:column; align-items:center; gap:10px; padding:6px 4px 4px; }
+.pong-bar { display:flex; align-items:center; justify-content:space-between; width:100%; gap:8px; }
+.pong-bar-left { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); }
+.pong-diff { font-size:13px; padding:4px 8px; border-radius:8px; border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.6); color:var(--ink); outline:none; }
+.pong-sound { width:32px; height:32px; border-radius:50%; border:none; background:rgba(0,0,0,.06); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.pong-sound-off { opacity:.5; }
+.pong-score { font-size:22px; font-weight:700; letter-spacing:2px; color:var(--ink); transition:transform .12s; text-align:center; min-height:28px; }
+.pong-s-you { color:#3a7fd5; }
+.pong-s-ta { color:#d5763a; }
+.pong-s-sep { color:var(--muted); margin:0 8px; font-weight:400; }
+.pong-canvas-box { position:relative; width:100%; max-width:480px; }
+#pong-canvas { display:block; width:100%; height:auto; border-radius:10px; background:#0f1420; touch-action:none; user-select:none; }
+.pong-hint { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:30px; font-weight:700; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.5); pointer-events:none; min-height:30px; text-align:center; }
+.pong-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; background:rgba(15,20,32,.88); border-radius:10px; z-index:2; overflow:hidden; padding:4px 8px; }
+.pong-overlay[hidden] { display:none; }
+.pong-overlay-title { font-size:18px; font-weight:700; color:#fff; text-align:center; }
+.pong-overlay-body { font-size:12px; color:rgba(255,255,255,.85); text-align:center; line-height:1.5; }
+.pong-start-tip { font-size:13px; color:#fff; margin-bottom:2px; }
+.pong-start-ctrl { font-size:11px; color:rgba(255,255,255,.7); }
+.pong-end-score { font-size:22px; font-weight:700; color:#fff; margin-bottom:4px; }
+.pong-end-stat { font-size:11px; color:rgba(255,255,255,.75); }
+.pong-overlay-btn { padding:8px 24px; border-radius:20px; border:none; background:#3a7fd5; color:#fff; font-size:14px; font-weight:600; cursor:pointer; }
+.pong-overlay-btn:active { transform:scale(.96); }
+.pong-foot { font-size:11px; color:var(--muted); text-align:center; padding-top:2px; }
+
+/* 聊天记录里的 Pong 结果卡片（居中白底） */
+.msg-pong { display:flex; justify-content:center; margin:6px 0; }
+.msg-pong-card { background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.08); border-radius:14px; padding:10px 18px; text-align:center; max-width:80%; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.msg-pong-label { font-size:11px; color:var(--muted); margin-bottom:2px; }
+.msg-pong-result { font-size:15px; font-weight:600; color:var(--ink); }
+
+/* Pong 顶栏按钮组 / 暂停 / 全屏 */
+.pong-bar-right { display:flex; align-items:center; gap:6px; }
+.pong-icon-btn { width:32px; height:32px; border-radius:50%; border:none; background:rgba(0,0,0,.06); font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; line-height:1; }
+.pong-icon-btn:active { transform:scale(.92); }
+.pong-overlay-btns { display:flex; gap:10px; }
+.pong-overlay-btn2 { background:rgba(255,255,255,.16); }
+/* Pong 全屏模式：面板占满视口，游戏区域放大（fitCanvas 按视口算 canvas 尺寸） */
+#chat-pong-panel.pong-fs { position:fixed; inset:0; z-index:9999; border-radius:0; max-height:none; height:100vh; background:#0f1420; }
+#chat-pong-panel.pong-fs .poke-card-head { background:transparent; color:#fff; border-bottom-color:rgba(255,255,255,.12); }
+#chat-pong-panel.pong-fs .poke-card-head b { color:#fff; }
+#chat-pong-panel.pong-fs .poke-card-close { color:#fff; }
+#chat-pong-panel.pong-fs .pong-wrap { max-width:none; }
+#chat-pong-panel.pong-fs .pong-canvas-box { max-width:none; }
+#chat-pong-panel.pong-fs .pong-bar-left { color:rgba(255,255,255,.7); }
+#chat-pong-panel.pong-fs .pong-diff { background:rgba(255,255,255,.1); color:#fff; border-color:rgba(255,255,255,.2); }
+#chat-pong-panel.pong-fs .pong-icon-btn { background:rgba(255,255,255,.12); color:#fff; }
+#chat-pong-panel.pong-fs .pong-sound { background:rgba(255,255,255,.12); }
+#chat-pong-panel.pong-fs .pong-score { color:#fff; }
+#chat-pong-panel.pong-fs .pong-foot { color:rgba(255,255,255,.5); }
+
+/* 双人贪吃蛇半框（复用 .poke-card 容器） */
+#chat-snake-panel { height:auto; max-height:86%; }
+#chat-snake-panel .poke-card-scroll { min-height:0; max-height:none; }
+#chat-snake-panel .poke-card-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.snake-head-actions { display:flex; align-items:center; gap:6px; }
+.snake-diff { font-size:13px; padding:4px 8px; border-radius:8px; border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.6); color:var(--ink); outline:none; font-family:inherit; }
+.snake-icon-btn { width:32px; height:32px; border-radius:50%; border:none; background:rgba(0,0,0,.06); font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; line-height:1; color:var(--ink); }
+.snake-icon-btn:active { transform:scale(.92); }
+.snake-score { text-align:center; font-size:13px; font-weight:700; color:var(--ink); padding:4px 0 8px; letter-spacing:.5px; }
+.snake-canvas { display:block; width:min(300px,86vw); height:min(300px,86vw); margin:0 auto; background:#f6f6f8; border-radius:12px; touch-action:none; }
+.snake-hint { text-align:center; font-size:12px; color:var(--muted); padding:8px 0 4px; }
+.snake-result { text-align:center; padding:8px 0 4px; }
+.snake-res-title { font-size:16px; font-weight:700; color:var(--ink); margin-bottom:8px; }
+.snake-res-row { display:flex; justify-content:space-between; font-size:12px; color:var(--ink); padding:3px 12px; }
+.snake-res-time { font-size:11px; color:var(--muted); margin-top:6px; }
+.snake-controls { display:flex; gap:10px; justify-content:center; padding:10px 0 4px; }
+.snake-btn { flex:1; max-width:140px; padding:10px; border:none; border-radius:12px; background:var(--ink); color:#fff; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent; }
+.snake-btn:active { opacity:.85; }
+.snake-dpad { display:grid; grid-template-columns:repeat(3,64px); grid-template-rows:repeat(2,56px); gap:6px; justify-content:center; padding:6px 0 2px; }
+.snake-dp { border:1px solid rgba(0,0,0,.12); border-radius:12px; background:rgba(255,255,255,.92); color:var(--ink); font-size:20px; cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent; }
+.snake-dp:active { background:rgba(0,0,0,.06); }
+.snake-dp[data-dir="up"] { grid-column:2; grid-row:1; }
+.snake-dp[data-dir="left"] { grid-column:1; grid-row:2; }
+.snake-dp[data-dir="down"] { grid-column:2; grid-row:2; }
+.snake-dp[data-dir="right"] { grid-column:3; grid-row:2; }
+/* 全屏：面板占满视口，canvas + 方向键放大，保持浅色背景 */
+#chat-snake-panel.snake-fs { position:fixed; inset:0; z-index:9999; border-radius:0; max-height:none; height:100vh; background:#fff; }
+#chat-snake-panel.snake-fs .poke-card-head { border-bottom-color:rgba(0,0,0,.08); }
+#chat-snake-panel.snake-fs .poke-card-scroll { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 16px; }
+#chat-snake-panel.snake-fs .snake-canvas { width:min(440px,92vw); height:min(440px,92vw); }
+#chat-snake-panel.snake-fs .snake-dpad { grid-template-columns:repeat(3,76px); grid-template-rows:repeat(2,68px); }
+#chat-snake-panel.snake-fs .snake-dp { font-size:24px; }
+/* 聊天记录里的贪吃蛇结果卡片（居中白底） */
+.msg-snake-card { min-width:220px; }
+.msg-snake-title { font-size:13px; font-weight:700; color:var(--ink); padding-bottom:8px; border-bottom:1px dashed rgba(0,0,0,.1); margin-bottom:8px; }
+.msg-snake-row { display:flex; gap:10px; justify-content:space-between; font-size:12px; color:var(--ink); padding:3px 0; }
+.msg-snake-side { font-weight:700; min-width:24px; }

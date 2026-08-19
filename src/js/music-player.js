@@ -2242,11 +2242,13 @@
   // 聊天回复完成后由 chat.js 调用（延后 2 秒，仿星言）
   window.maybeMusicRequest = function () {
     try {
-      if (!library.length) return;
+      console.log('[music-req] called', { libLen: library.length, cooldownAt: cooldownAt, cooldownMs: settings.cooldownMs, reqProb: settings.reqProb, prob: settings.reqProb || 5, now: Date.now() });
+      if (!library.length) { console.log('[music-req] return: library empty'); return; }
       const now = Date.now();
-      if (now - cooldownAt < settings.cooldownMs) return;
+      if (now - cooldownAt < settings.cooldownMs) { console.log('[music-req] return: cooldown', { remain: settings.cooldownMs - (now - cooldownAt) }); return; }
       const prob = settings.reqProb || 5;
-      if (Math.random() * 100 >= prob) return;
+      if (Math.random() * 100 >= prob) { console.log('[music-req] return: prob miss', { prob: prob }); return; }
+      console.log('[music-req] TRIGGER');
       cooldownAt = now;
       const candidates = library.slice();
       if (!candidates.length) return;
@@ -2415,8 +2417,37 @@
       '<div class="gs-row"><span>桌面小组件封面</span><select class="tc-input" id="sm-set-wcov" style="width:120px"><option value="song"' + (settings.widgetCoverMode !== 'playlist' ? ' selected' : '') + '>歌曲封面</option><option value="playlist"' + (settings.widgetCoverMode === 'playlist' ? ' selected' : '') + '>歌单封面</option></select></div>' +
       '<div class="sm-set-hint">聊天过程中 TA 会按概率请求和你一起听歌；播放时右上角出现可拖动的悬浮小框</div>' +
       '<div class="sm-set-row"><span>本地音频缓存</span><span id="sm-storage-use" style="color:var(--muted);font-size:12px">计算中…</span></div>' +
-      '<div class="mail-actions"><button class="cc-tool" id="sm-clear-cache">清理本地音频缓存</button><button class="cc-tool" id="sm-set-close">关闭</button></div>');
+      '<div class="mail-actions"><button class="cc-tool" id="sm-diag-req">诊断邀请</button><button class="cc-tool" id="sm-clear-cache">清理本地音频缓存</button><button class="cc-tool" id="sm-set-close">关闭</button></div>');
     document.getElementById('sm-set-close').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
+    const diagBtn = document.getElementById('sm-diag-req');
+    if (diagBtn) diagBtn.addEventListener('click', function () {
+      const remain = Math.max(0, settings.cooldownMs - (Date.now() - cooldownAt));
+      const lines = [
+        '歌库: ' + library.length + ' 首',
+        'maybeMusicRequest: ' + (typeof window.maybeMusicRequest),
+        'reqProb: ' + settings.reqProb + ' → 实际 ' + (settings.reqProb || 5) + '%',
+        'cooldownMs: ' + settings.cooldownMs,
+        '冷却剩余: ' + Math.ceil(remain / 1000) + ' s',
+        'openTCPanel: ' + (typeof window.openTCPanel),
+        'chatAddSystem: ' + (typeof window.chatAddSystem)
+      ];
+      window.openTCPanel('音乐邀请诊断', '<div class="sm-set-hint">' + lines.join('<br>') + '</div><div class="mail-actions"><button class="cc-tool" id="sm-diag-force">强制触发一次</button><button class="cc-tool" id="sm-diag-close">关闭</button></div>');
+      document.getElementById('sm-diag-close').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
+      document.getElementById('sm-diag-force').addEventListener('click', () => {
+        document.getElementById('tc-mask').hidden = true;
+        if (!library.length) { toast('library 为空，无法触发'); return; }
+        const track = library[Math.floor(Math.random() * library.length)];
+        reqData = { trackId: track.id };
+        taActive = true;
+        const name = partnerName();
+        const trackName = track.name || '未知歌曲';
+        const artist = track.artist ? ' - ' + track.artist : '';
+        if (window.chatAddSystem) window.chatAddSystem(name + ' 想和你一起听《' + trackName + '》' + artist);
+        if (window.openTCPanel) {
+          window.openTCPanel('音乐', '<div class="sm-req"><div class="sm-req-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div class="sm-req-hint">' + name + ' 想和你一起听：</div><div class="sm-req-name">《' + esc(trackName) + '》</div></div><div class="mail-actions"><button class="cc-tool" id="sm-req-no">稍后</button><button class="cc-tool" id="sm-req-yes">一起听</button></div>');
+        }
+      });
+    });
     const clearBtn = document.getElementById('sm-clear-cache');
     if (clearBtn) clearBtn.addEventListener('click', clearLocalAudioCache);
     refreshStorageUse();

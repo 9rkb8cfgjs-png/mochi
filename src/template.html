@@ -2239,6 +2239,79 @@
           </div>
         </div>
       </div>
+      <!-- 双人贪吃蛇：聊天页底部半框（我 vs TA，滑动/方向键控制，TA 带行为池 AI） -->
+      <div class="poke-card" id="chat-snake-panel" hidden>
+        <div class="poke-card-head">
+          <span>贪吃蛇 · <b id="snake-partner-name">TA</b></span>
+          <div class="snake-head-actions">
+            <select class="snake-diff" id="snake-diff">
+              <option value="easy">慢</option>
+              <option value="normal" selected>普通</option>
+              <option value="hard">快</option>
+            </select>
+            <button class="snake-icon-btn" id="snake-pause" title="暂停/继续">⏸</button>
+            <button class="snake-icon-btn" id="snake-fs" title="全屏">⛶</button>
+            <button class="poke-card-close" id="chat-snake-close">✕</button>
+          </div>
+        </div>
+        <div class="poke-card-scroll">
+          <div class="snake-score" id="snake-score">胜 0 · 负 0 · 平 0</div>
+          <canvas class="snake-canvas" id="snake-canvas" width="300" height="300"></canvas>
+          <div class="snake-hint" id="snake-hint">点开始 · 滑动控制方向</div>
+          <div class="snake-result" id="snake-result" hidden></div>
+          <div class="snake-controls">
+            <button class="snake-btn" id="snake-start" type="button">开始</button>
+            <button class="snake-btn" id="snake-restart" type="button" hidden>再来一局</button>
+            <button class="snake-btn" id="snake-resume" type="button" hidden>继续上局</button>
+          </div>
+          <div class="snake-dpad" id="snake-dpad">
+            <button class="snake-dp" data-dir="up" type="button">▲</button>
+            <button class="snake-dp" data-dir="left" type="button">◀</button>
+            <button class="snake-dp" data-dir="down" type="button">▼</button>
+            <button class="snake-dp" data-dir="right" type="button">▶</button>
+          </div>
+        </div>
+      </div>
+      <!-- 双人 Pong 小游戏：聊天页底部半框（玩家左挡板 / TA 右挡板 AI） -->
+      <div class="poke-card" id="chat-pong-panel" hidden>
+        <div class="poke-card-head">
+          <span>Pong · <b id="pong-partner-name">TA</b></span>
+          <button class="poke-card-close" id="pong-close">✕</button>
+        </div>
+        <div class="poke-card-scroll">
+          <div class="pong-wrap">
+            <div class="pong-bar">
+              <div class="pong-bar-left">
+                <select class="pong-diff" id="pong-diff">
+                  <option value="easy">简单</option>
+                  <option value="normal" selected>普通</option>
+                  <option value="hard">困难</option>
+                </select>
+                <span>先得 5 分获胜</span>
+              </div>
+              <div class="pong-bar-right">
+                <button class="pong-icon-btn" id="pong-pause" title="暂停/继续">⏸</button>
+                <button class="pong-icon-btn" id="pong-fs" title="全屏">⛶</button>
+                <button class="pong-sound" id="pong-sound" title="音效开关">🔊</button>
+              </div>
+            </div>
+            <div class="pong-score" id="pong-score">你 0 : 0 TA</div>
+            <div class="pong-canvas-box">
+              <canvas id="pong-canvas" width="400" height="240"></canvas>
+              <div class="pong-hint" id="pong-hint"></div>
+              <div class="pong-overlay" id="pong-overlay">
+                <div class="pong-overlay-title" id="pong-overlay-title">双人 Pong</div>
+                <div class="pong-overlay-body" id="pong-overlay-body"></div>
+                <div class="pong-overlay-btns">
+                  <button class="pong-overlay-btn" id="pong-overlay-btn" type="button">开始</button>
+                  <button class="pong-overlay-btn pong-overlay-btn2" id="pong-overlay-btn2" type="button" hidden>继续上局</button>
+                </div>
+              </div>
+            </div>
+            <div class="pong-foot">手机：左半边上下拖动 · 电脑：↑↓ 或 W S</div>
+          </div>
+        </div>
+      </div>
       <!-- 红包：聊天页底部半框（我和 TA 互发红包，情侣特殊金额 / 随机 / 七夕特别） -->
       <div class="poke-card" id="chat-rp-panel" hidden>
         <div class="poke-card-head">
@@ -2398,6 +2471,14 @@
           <button class="more-item" id="more-divine" title="占卜">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg></span>
             <span>占卜</span>
+          </button>
+          <button class="more-item" id="more-pong" title="双人Pong">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><rect x="4" y="8" width="2" height="8" rx="1" fill="currentColor"/><rect x="18" y="8" width="2" height="8" rx="1" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg></span>
+            <span>Pong</span>
+          </button>
+          <button class="more-item" id="more-snake" title="双人贪吃蛇">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h3v3H7zM14 14h3v3h-3z"/></svg></span>
+            <span>贪吃蛇</span>
           </button>
         </div>
         <div class="more-grid" id="more-grid-ask" hidden>
