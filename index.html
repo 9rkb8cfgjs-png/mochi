@@ -1772,10 +1772,11 @@ border-radius:16px; padding:14px 18px;
 box-shadow:0 2px 8px rgba(0,0,0,.05);
 cursor:pointer; position:relative; overflow:hidden;
 }
-.msg-rp-cover {
-width:calc(100% + 36px); height:72px; margin:-14px -18px 10px;
-background-size:cover; background-position:center;
-border-radius:16px 16px 0 0;
+.msg-rp-card.has-cover { background-size:cover; background-position:center; }
+.msg-rp-card.has-cover > * { position:relative; z-index:1; }
+.msg-rp-card.has-cover::before {
+content:''; position:absolute; inset:0; border-radius:16px;
+background:rgba(255,255,255,.78); z-index:0;
 }
 .msg-rp-top { display:flex; align-items:center; justify-content:center; gap:6px; color:var(--muted); }
 .msg-rp-ico { display:inline-flex; }
@@ -3790,6 +3791,10 @@ color: var(--muted);
 .rp-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
 .rp-side { background:var(--dark-card); border-color:var(--dark-border-12); }
 .rp-balance { border-bottom-color:var(--dark-border-12); }
+.msg-rp-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+.msg-rp-card.opened { border-color:var(--dark-border-12); }
+.msg-rp-card.has-cover::before { background:rgba(30,30,30,.8); }
+.msg-rp-foot { border-top-color:var(--dark-border-12); }
 .rps-choice { background:var(--dark-card-92); border-color:var(--dark-border); }
 .rps-c-ico { background:rgba(255,255,255,.06); }
 .rps-c-ico svg { color:var(--dark-soft); }
@@ -3848,7 +3853,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.125 · 部署于 2026-08-19 17:56</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.126 · 部署于 2026-08-19 18:06</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4591,7 +4596,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.125</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.126</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -6042,7 +6047,7 @@ color: var(--muted);
         <div class="rp-balance" id="rp-balance"></div>
         <div class="poke-card-scroll">
           <div class="rp-cover-row">
-            <div class="rp-cover-preview" id="rp-cover-preview"><span>默认红色封面</span></div>
+            <div class="rp-cover-preview" id="rp-cover-preview"><span>未设置封面</span></div>
             <div class="rp-cover-actions">
               <button class="rp-cover-btn" id="rp-cover-upload" type="button">上传封面</button>
               <button class="rp-cover-btn" id="rp-cover-del" type="button" hidden>删除封面</button>
@@ -11441,10 +11446,8 @@ const cover = rpCoverGet();
 if (cover) {
 const card = m.querySelector('.msg-rp-card');
 if (card) {
-const banner = document.createElement('div');
-banner.className = 'msg-rp-cover';
-banner.style.backgroundImage = 'url("' + cover + '")';
-card.insertBefore(banner, card.firstChild);
+card.classList.add('has-cover');
+card.style.backgroundImage = 'url("' + cover + '")';
 }
 }
 }
@@ -12815,16 +12818,30 @@ return '';
 }
 function trySystemAutoSend() {
 if (rpDailyCount() >= 5) return;
-if (Math.random() >= 0.04) return;
+const qixi = isQixiToday();
+const baseRate = qixi ? 0.08 : 0.04;
+if (Math.random() >= baseRate) return;
 const wallet = rpWalletGet();
 if (wallet.systemBalance < 1) return;
-const amtFen = genRpAmount(wallet.systemBalance);
+let amtFen, wish;
+if (qixi && Math.random() < 0.6) {
+const qixiPool = [777, 7777, 77777].filter(f => f <= wallet.systemBalance);
+if (qixiPool.length) {
+amtFen = pick(qixiPool);
+wish = pick(['七夕快乐', '七夕快乐呀', '宝宝七夕快乐', '今天七夕，给你花']);
+} else {
+amtFen = genRpAmount(wallet.systemBalance);
+wish = '七夕快乐';
+}
+} else {
+amtFen = genRpAmount(wallet.systemBalance);
+wish = pick(['心意', '给你花', '小礼物', '辛苦啦', '开心一下', '七夕快乐']);
+}
 if (amtFen < 1) return;
 wallet.systemBalance -= amtFen;
 rpWalletSet(wallet);
 rpDailyIncr();
 const amt = amtFen / 100;
-const wish = pick(['心意', '给你花', '小礼物', '辛苦啦', '开心一下', '七夕快乐']);
 setTimeout(() => {
 addIn('', { special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now(), rpCover: rpCoverGet() ? 1 : 0 });
 if (window.logFish) window.logFish();

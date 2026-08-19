@@ -1050,10 +1050,11 @@
   box-shadow:0 2px 8px rgba(0,0,0,.05);
   cursor:pointer; position:relative; overflow:hidden;
 }
-.msg-rp-cover {
-  width:calc(100% + 36px); height:72px; margin:-14px -18px 10px;
-  background-size:cover; background-position:center;
-  border-radius:16px 16px 0 0;
+.msg-rp-card.has-cover { background-size:cover; background-position:center; }
+.msg-rp-card.has-cover > * { position:relative; z-index:1; }
+.msg-rp-card.has-cover::before {
+  content:''; position:absolute; inset:0; border-radius:16px;
+  background:rgba(255,255,255,.78); z-index:0;
 }
 .msg-rp-top { display:flex; align-items:center; justify-content:center; gap:6px; color:var(--muted); }
 .msg-rp-ico { display:inline-flex; }

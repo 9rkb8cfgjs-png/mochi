@@ -984,10 +984,8 @@
         if (cover) {
           const card = m.querySelector('.msg-rp-card');
           if (card) {
-            const banner = document.createElement('div');
-            banner.className = 'msg-rp-cover';
-            banner.style.backgroundImage = 'url("' + cover + '")';
-            card.insertBefore(banner, card.firstChild);
+            card.classList.add('has-cover');
+            card.style.backgroundImage = 'url("' + cover + '")';
           }
         }
       }
@@ -2653,19 +2651,34 @@ function partialRetractMsg(msgEl, side) {
     if (st === 'expired' || st === 'returned') return 'expired';
     return '';
   }
-  // 系统自动发红包（TA → 我）：回复完成后 4% 概率，每日上限 5
+  // 系统自动发红包（TA → 我）：回复完成后触发，每日上限 5
+  // 七夕当天：触发概率翻倍（4% → 8%），且 60% 概率发七夕特别金额（¥7.77/77.77/777.77）
   function trySystemAutoSend() {
     if (rpDailyCount() >= 5) return;
-    if (Math.random() >= 0.04) return;
+    const qixi = isQixiToday();
+    const baseRate = qixi ? 0.08 : 0.04;
+    if (Math.random() >= baseRate) return;
     const wallet = rpWalletGet();
     if (wallet.systemBalance < 1) return;
-    const amtFen = genRpAmount(wallet.systemBalance);
+    let amtFen, wish;
+    if (qixi && Math.random() < 0.6) {
+      const qixiPool = [777, 7777, 77777].filter(f => f <= wallet.systemBalance);
+      if (qixiPool.length) {
+        amtFen = pick(qixiPool);
+        wish = pick(['七夕快乐', '七夕快乐呀', '宝宝七夕快乐', '今天七夕，给你花']);
+      } else {
+        amtFen = genRpAmount(wallet.systemBalance);
+        wish = '七夕快乐';
+      }
+    } else {
+      amtFen = genRpAmount(wallet.systemBalance);
+      wish = pick(['心意', '给你花', '小礼物', '辛苦啦', '开心一下', '七夕快乐']);
+    }
     if (amtFen < 1) return;
     wallet.systemBalance -= amtFen;
     rpWalletSet(wallet);
     rpDailyIncr();
     const amt = amtFen / 100;
-    const wish = pick(['心意', '给你花', '小礼物', '辛苦啦', '开心一下', '七夕快乐']);
     setTimeout(() => {
       addIn('', { special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now(), rpCover: rpCoverGet() ? 1 : 0 });
       if (window.logFish) window.logFish();
