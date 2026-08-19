@@ -21,6 +21,40 @@
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
   }
   function escG(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  // v3.7.x：管理页"系统预设"tab 追加 TA 回应话术池区块——与「系统预设字卡→互动回应」tab
+  // 同源（DEFAULT_CARD_DATA.interact），逐张开关联动 dc-off-interact:*，与 pickAskCardReply
+  // 抽取过滤、互动回应 tab 开关三方一致；仅展示与启停，不可删除（标【系统】）
+  function interactPoolBlockHtml(poolName, title) {
+    const arr = window.getInteractPool ? window.getInteractPool(poolName, []) : [];
+    if (!arr.length) return '';
+    let h = '<div class="cal-card glass"><div class="cal-card-title">' + escG(title) + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
+    arr.forEach((c, i) => {
+      const off = window.isDefaultCardOff ? window.isDefaultCardOff('interact', c) : false;
+      h += '<div class="ta-row' + (off ? ' off' : '') + '">' +
+        '<label class="toggle"><input type="checkbox"' + (off ? '' : ' checked') + ' data-ipool="' + escG(poolName) + '" data-ipidx="' + i + '"><span class="tk"></span></label>' +
+        '<span class="ta-txt">' + escG(c) + ' <span class="tc-known">系统</span></span>' +
+        '</div>';
+    });
+    h += '</div>';
+    return h;
+  }
+  function bindInteractPoolToggle(container) {
+    if (!container) return;
+    container.querySelectorAll('input[data-ipool]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const poolName = cb.dataset.ipool;
+        const idx = Number(cb.dataset.ipidx);
+        const arr = window.getInteractPool ? window.getInteractPool(poolName, []) : [];
+        const c = arr[idx];
+        if (c == null) return;
+        const off = !cb.checked;
+        store.set('dc-off-interact:' + c, off ? '1' : '0');
+        const row = cb.closest('.ta-row');
+        if (row) row.classList.toggle('off', off);
+        grpToast((off ? '已关闭：' : '已开启：') + (c.length > 18 ? c.slice(0, 18) + '…' : c));
+      });
+    });
+  }
   window.cardGroups = {
     genId: function () { return 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); },
     toast: grpToast,
@@ -533,6 +567,7 @@
       });
       html += '</div>';
     });
+    if (presetOnly) html += interactPoolBlockHtml('询问·回应', 'TA 回应话术池');
     if (!html) html = '<div class="ta-empty" style="padding:14px">' + (presetOnly ? '暂无系统预设问题' : '暂未添加自定义问题，可在上方批量导入或下方逐条添加') + '</div>';
     container.innerHTML = html;
     container.querySelectorAll('input[data-idx]').forEach(cb => {
@@ -553,6 +588,7 @@
         renderAskCatsInto(container, false);
       });
     });
+    bindInteractPoolToggle(container);
   }
   // 我的添加 tab：v3.7.x 自定义分组模式——
   // 自定义分组区块置顶（各自独立卡片），未分组内容按系统分类放在下面（与系统预设 tab 的分组体系隔开）
@@ -1122,6 +1158,7 @@ window.openTCPanel = openTCPanel;
           '</div>';
       });
     });
+    if (presetOnly) html += interactPoolBlockHtml('小问题·回应', 'TA 回应话术池');
     if (!html) html = '<div class="ta-empty">' + (presetOnly ? '暂无系统预设问题' : '暂未添加自定义问题，可在上方添加') + '</div>';
     container.innerHTML = html;
     container.querySelectorAll('input[data-idx]').forEach(cb => {
@@ -1142,6 +1179,7 @@ window.openTCPanel = openTCPanel;
         renderTCCatsInto(container, false);
       });
     });
+    bindInteractPoolToggle(container);
   }
   // ===== v3.7.x 通用：我的添加 tab 分组模式渲染（tc/tcu/tr 共用） =====
   // opt: { load, save, order, label, emptyTip, rowHtml(q,idx) }
@@ -1712,6 +1750,7 @@ window.openTCPanel = openTCPanel;
           '</div>' + delBtn + '</div>';
       });
     });
+    if (presetOnly) html += interactPoolBlockHtml('好奇·回应', 'TA 回应话术池');
     if (!html) html = '<div class="ta-empty">' + (presetOnly ? '暂无系统预设问题' : '暂未添加自定义问题，可在上方添加') + '</div>';
     container.innerHTML = html;
     container.querySelectorAll('input[data-idx]').forEach(cb => {
@@ -1732,6 +1771,7 @@ window.openTCPanel = openTCPanel;
         renderTCUCatsInto(container, false);
       });
     });
+    bindInteractPoolToggle(container);
   }
   // TA的好奇 我的添加渲染配置
   const tcuMineOpt = {
@@ -2135,6 +2175,7 @@ window.openTCPanel = openTCPanel;
           '</div>' + delBtn + '</div>';
       });
     });
+    if (presetOnly) html += interactPoolBlockHtml('吐槽·回应', 'TA 回应话术池');
     if (!html) html = '<div class="ta-empty">' + (presetOnly ? '暂无系统预设字卡' : '暂未添加自定义字卡，可在上方添加') + '</div>';
     container.innerHTML = html;
     container.querySelectorAll('input[data-idx]').forEach(cb => {
@@ -2155,6 +2196,7 @@ window.openTCPanel = openTCPanel;
         renderTRCatsInto(container, false);
       });
     });
+    bindInteractPoolToggle(container);
   }
   // TA的吐槽 我的添加渲染配置
   const trMineOpt = {

@@ -3847,7 +3847,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.120 · 部署于 2026-08-19 16:48</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.121 · 部署于 2026-08-19 17:10</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4590,7 +4590,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.120</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.121</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -20644,6 +20644,37 @@ clearTimeout(t._timer);
 t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
 }
 function escG(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+function interactPoolBlockHtml(poolName, title) {
+const arr = window.getInteractPool ? window.getInteractPool(poolName, []) : [];
+if (!arr.length) return '';
+let h = '<div class="cal-card glass"><div class="cal-card-title">' + escG(title) + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
+arr.forEach((c, i) => {
+const off = window.isDefaultCardOff ? window.isDefaultCardOff('interact', c) : false;
+h += '<div class="ta-row' + (off ? ' off' : '') + '">' +
+'<label class="toggle"><input type="checkbox"' + (off ? '' : ' checked') + ' data-ipool="' + escG(poolName) + '" data-ipidx="' + i + '"><span class="tk"></span></label>' +
+'<span class="ta-txt">' + escG(c) + ' <span class="tc-known">系统</span></span>' +
+'</div>';
+});
+h += '</div>';
+return h;
+}
+function bindInteractPoolToggle(container) {
+if (!container) return;
+container.querySelectorAll('input[data-ipool]').forEach(cb => {
+cb.addEventListener('change', () => {
+const poolName = cb.dataset.ipool;
+const idx = Number(cb.dataset.ipidx);
+const arr = window.getInteractPool ? window.getInteractPool(poolName, []) : [];
+const c = arr[idx];
+if (c == null) return;
+const off = !cb.checked;
+store.set('dc-off-interact:' + c, off ? '1' : '0');
+const row = cb.closest('.ta-row');
+if (row) row.classList.toggle('off', off);
+grpToast((off ? '已关闭：' : '已开启：') + (c.length > 18 ? c.slice(0, 18) + '…' : c));
+});
+});
+}
 window.cardGroups = {
 genId: function () { return 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); },
 toast: grpToast,
@@ -21066,6 +21097,7 @@ delBtn +
 });
 html += '</div>';
 });
+if (presetOnly) html += interactPoolBlockHtml('询问·回应', 'TA 回应话术池');
 if (!html) html = '<div class="ta-empty" style="padding:14px">' + (presetOnly ? '暂无系统预设问题' : '暂未添加自定义问题，可在上方批量导入或下方逐条添加') + '</div>';
 container.innerHTML = html;
 container.querySelectorAll('input[data-idx]').forEach(cb => {
@@ -21086,6 +21118,7 @@ taAskSave(d2);
 renderAskCatsInto(container, false);
 });
 });
+bindInteractPoolToggle(container);
 }
 function askItemHtml(q, idx) {
 return '<div class="ta-row">' +
@@ -21613,6 +21646,7 @@ delBtn +
 '</div>';
 });
 });
+if (presetOnly) html += interactPoolBlockHtml('小问题·回应', 'TA 回应话术池');
 if (!html) html = '<div class="ta-empty">' + (presetOnly ? '暂无系统预设问题' : '暂未添加自定义问题，可在上方添加') + '</div>';
 container.innerHTML = html;
 container.querySelectorAll('input[data-idx]').forEach(cb => {
@@ -21633,6 +21667,7 @@ tcSave(d2);
 renderTCCatsInto(container, false);
 });
 });
+bindInteractPoolToggle(container);
 }
 function renderMineGroupsInto(container, opt) {
 if (!container) return;
@@ -22167,6 +22202,7 @@ html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) 
 '</div>' + delBtn + '</div>';
 });
 });
+if (presetOnly) html += interactPoolBlockHtml('好奇·回应', 'TA 回应话术池');
 if (!html) html = '<div class="ta-empty">' + (presetOnly ? '暂无系统预设问题' : '暂未添加自定义问题，可在上方添加') + '</div>';
 container.innerHTML = html;
 container.querySelectorAll('input[data-idx]').forEach(cb => {
@@ -22187,6 +22223,7 @@ tcuSave(d2);
 renderTCUCatsInto(container, false);
 });
 });
+bindInteractPoolToggle(container);
 }
 const tcuMineOpt = {
 load: tcuLoad, save: tcuSave, order: TCU_CAT_ORDER, label: TCU_CAT_LABEL,
@@ -22557,6 +22594,7 @@ html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) 
 '</div>' + delBtn + '</div>';
 });
 });
+if (presetOnly) html += interactPoolBlockHtml('吐槽·回应', 'TA 回应话术池');
 if (!html) html = '<div class="ta-empty">' + (presetOnly ? '暂无系统预设字卡' : '暂未添加自定义字卡，可在上方添加') + '</div>';
 container.innerHTML = html;
 container.querySelectorAll('input[data-idx]').forEach(cb => {
@@ -22577,6 +22615,7 @@ trSave(d2);
 renderTRCatsInto(container, false);
 });
 });
+bindInteractPoolToggle(container);
 }
 const trMineOpt = {
 load: trLoad, save: trSave, order: TR_CAT_ORDER, label: TR_CAT_LABEL,
