@@ -305,6 +305,47 @@
     }
   }
 
+  // v3.7.x：单卡点击编辑——文字类字卡（主字卡/颜文字/emoji/拍一拍）在卡片上直接点击
+  // 打开编辑弹窗修改内容；媒体字卡（图片/表情包/语音）保持原交互（查看大图/播放），不走这里
+  function openEditCard(gname, i) {
+    if (manageMode) return;
+    const grps = groups[cur] || [];
+    const g = grps.find(x => x[0] === gname);
+    if (!g) return;
+    const c = g[1][i];
+    if (typeof c !== 'string' || !c) return;
+    // 媒体字卡：图片 dataURL / 文件名|||音频 dataURL，不提供文字编辑
+    if (c.indexOf('data:') === 0) return;
+    if (c.indexOf('|||') > 0 && c.slice(c.indexOf('|||') + 3).indexOf('data:audio') === 0) return;
+    if (!window.openModal) return;
+    window.openModal('编辑字卡', c, (v) => {
+      const val = String(v == null ? '' : v).trim();
+      if (!val) { toast('字卡内容不能为空'); return; }
+      if (val === c) return; // 内容未变化，直接关闭
+      // 与批量导入一致：同一分组内不保留重复内容
+      const dup = g[1].find((x, xi) => xi !== i && x === val);
+      if (dup !== undefined) { toast('该分组已有相同内容'); return; }
+      g[1][i] = val;
+      saveGroups(groups);
+      updateCardDom(gname, i, val);
+      toast('字卡已更新');
+    });
+  }
+
+  // 编辑后局部更新单张卡的 DOM（图片懒加载/语音按钮数据同步重挂），大列表不全量重渲染；
+  // 搜索过滤开启时内容可能不再匹配关键词，直接全量重渲染保证过滤结果正确
+  function updateCardDom(gname, i, val) {
+    if (q) { renderGroupsBar(); render(); return; }
+    const sel = (window.CSS && CSS.escape) ? CSS.escape(String(gname)) : String(gname).replace(/["\\]/g, '\\$&');
+    const node = list.querySelector('.cc-item[data-g="' + sel + '"][data-idx="' + i + '"]');
+    if (node) {
+      if (imgObserver) node.querySelectorAll('img[data-src]').forEach(im => { try { imgObserver.unobserve(im); } catch (e) {} });
+      node.innerHTML = cardItemHtml(val);
+      attachCardData(node, val);
+    }
+    updateCountsOnly();
+  }
+
   // v3.6.x：只更新各类计数（tab 徽标/分组栏/总数），不重建列表 DOM——
   // 删除字卡/删除分组等高频操作改局部移除 DOM + 本函数，替代整页 render()
   function updateCountsOnly() {
@@ -367,7 +408,7 @@
       d.addEventListener('click', () => {
         if (manageMode) { toggleSelect(d, gname, i); return; }
         if (typeof c === 'string' && c.indexOf('data:') === 0) { viewImage(c); return; }
-        if (window.logFish) window.logFish();
+        openEditCard(gname, i);
       });
       frag.appendChild(d);
     });
@@ -438,7 +479,7 @@
             viewImage(it.c);
             return;
           }
-          if (window.logFish) window.logFish();
+          openEditCard(it.gname, it.i);
         });
       }
     };

@@ -876,6 +876,7 @@ opacity:.5;
 }
 .chat-typing {
 flex-shrink:0;
+width:fit-content;
 padding:2px 18px 4px;
 font-size:12px;
 color:var(--typing-ink, #8a8a8a);
@@ -3543,7 +3544,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.106 · 部署于 2026-08-19 11:44</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.107 · 部署于 2026-08-19 12:29</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4254,7 +4255,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.106</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.107</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -10078,7 +10079,7 @@ const isLiked = o.liked === true || o.liked === 'true';
 const matchTxt = isPref ? '✦ 刚好想到了一起'
 : isLiked ? '你们想得不一样，不过TA似乎很喜欢你的答案'
 : '这次没有选到一起。TA心里想的是：「' + prefTxt + '」';
-if (window.chatChooseReply) window.chatChooseReply(idx, String(o.t || ''), String(o.reply || '…'), matchTxt);
+if (window.chatChooseReply) window.chatChooseReply(idx, String(o.t || ''), o, matchTxt);
 if (window.logFish) window.logFish();
 });
 wrap.appendChild(b);
@@ -10124,12 +10125,13 @@ const v = (inp.value || '').trim();
 if (!v) return;
 if (type === 'curious' && window.chatCuriousReply) {
 const replies = (rec.curiousReplies && rec.curiousReplies.length) ? rec.curiousReplies : ['嗯，我记住了。', '原来是这样。', '好，我记住了。'];
-const reply = replies[Math.floor(Math.random() * replies.length)];
+const reply = (window.pickAskCardReply ? window.pickAskCardReply(replies) : replies[Math.floor(Math.random() * replies.length)]);
 const fw = (rec.curiousFollowup && Math.random() < 0.3) ? rec.curiousFollowup : null;
 window.chatCuriousReply(idx, v, reply, fw);
 } else if (type === 'roast' && window.chatRoastReply) {
 const defs = ['你觉得我会信？', '少骗我。', '哼。', '好吧好吧。', '就这一次？', '行吧，放过你。', '嗯，这还差不多。'];
-window.chatRoastReply(idx, v, defs[Math.floor(Math.random() * defs.length)]);
+const reply = (window.pickAskCardReply ? window.pickAskCardReply(defs) : defs[Math.floor(Math.random() * defs.length)]);
+window.chatRoastReply(idx, v, reply);
 } else if (type === 'ask' && window.chatAskReply) {
 window.chatAskReply(idx, v);
 }
@@ -10786,12 +10788,23 @@ const data = JSON.stringify(msgs);
 try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
 writeLsSnapshot(data);
 }
-window.chatChooseReply = function (msgIdx, answer, reply, match) {
+window.chatChooseReply = function (msgIdx, answer, opt, match) {
 const rec = msgs[msgIdx];
 if (!rec || rec.special !== 'ask-choose' || rec.choiceStatus === 'answered') return;
+const preset = (opt && typeof opt.reply === 'string' && opt.reply.trim()) ? opt.reply.trim() : '';
+const liked = !!(opt && (opt.liked === true || opt.liked === 'true'));
+const matched = typeof match === 'string' && match.indexOf('刚好想到在了一起') >= 0;
+let reply;
+if (preset && (matched || liked)) {
+reply = preset; // 默契命中：保留选项预设回应
+} else if (preset) {
+reply = (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset); // 预设回应 + 字卡库混合
+} else {
+reply = (window.pickAskCardReply ? window.pickAskCardReply() : '…');
+}
 rec.choiceStatus = 'answered';
 rec.choiceAnswer = answer;
-rec.choiceReply = reply || '…';
+rec.choiceReply = reply;
 if (match) rec.choiceMatch = match;
 saveMsgs();
 saveMsgsNow();
@@ -10841,7 +10854,9 @@ const rec = msgs[msgIdx];
 if (!rec || rec.special !== 'ask-card' || rec.askStatus === 'answered') return;
 rec.askStatus = 'answered';
 rec.askAnswer = answer;
-const taReply = (reply && String(reply).trim()) ? String(reply).trim()
+const preset = (reply && String(reply).trim()) ? String(reply).trim() : '';
+const taReply = preset
+? (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset)
 : (window.pickAskCardReply ? window.pickAskCardReply() : '收到你的回答。');
 rec.askReply = taReply;
 saveMsgs();
@@ -11398,10 +11413,6 @@ return;
 const shown = pokeCurGroup ? groups.filter(g => g[0] === pokeCurGroup) : groups;
 shown.forEach(([gname, arr]) => {
 if (!arr.length) return;
-const h = document.createElement('div');
-h.className = 'cc-group-header';
-h.innerHTML = '<span class="ccg-name">' + gname + '</span><span class="ccg-count">' + arr.length + '</span>';
-pokeList.appendChild(h);
 arr.forEach(c => {
 const d = document.createElement('div');
 d.className = 'cc-item glass';
@@ -11779,12 +11790,12 @@ let status, answer, reply = null;
 if (roll < 0.6) {
 status = '接受';
 answer = name + ' 接受了你的邀请';
-reply = ['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。'][Math.floor(Math.random() * 5)];
+reply = (window.pickAskCardReply ? window.pickAskCardReply(['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。']) : ['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。'][Math.floor(Math.random() * 5)]);
 setTimeout(() => addIn(reply), 800);
 } else if (roll < 0.85) {
 status = '拒绝';
 answer = name + ' 拒绝了你的邀请';
-reply = ['这次不行。', '下次吧。', '抱歉。', '今天不方便。'][Math.floor(Math.random() * 4)];
+reply = (window.pickAskCardReply ? window.pickAskCardReply(['这次不行。', '下次吧。', '抱歉。', '今天不方便。']) : ['这次不行。', '下次吧。', '抱歉。', '今天不方便。'][Math.floor(Math.random() * 4)]);
 setTimeout(() => addIn(reply), 800);
 } else {
 status = '未回应';
@@ -11822,10 +11833,12 @@ let text, replyText = null;
 if (isSingle && askOpts && askOpts.length) {
 const o = askOpts[Math.floor(Math.random() * askOpts.length)];
 text = o.t;
-replyText = (o.reply && String(o.reply).trim()) ? String(o.reply).trim()
+const preset = (o.reply && String(o.reply).trim()) ? String(o.reply).trim() : '';
+replyText = preset
+? (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset)
 : (window.pickAskCardReply ? window.pickAskCardReply() : '收到你的回答。');
 } else {
-text = defs[Math.floor(Math.random() * defs.length)];
+text = (window.pickAskCardReply ? window.pickAskCardReply(defs) : defs[Math.floor(Math.random() * defs.length)]);
 }
 const rec = msgs[askIdx];
 if (rec && rec.special === 'ask') {
@@ -13135,6 +13148,39 @@ const s = c.slice(p + 3);
 if (s.indexOf('data:audio') === 0) audioSrcMap.set(pb, s);
 }
 }
+function openEditCard(gname, i) {
+if (manageMode) return;
+const grps = groups[cur] || [];
+const g = grps.find(x => x[0] === gname);
+if (!g) return;
+const c = g[1][i];
+if (typeof c !== 'string' || !c) return;
+if (c.indexOf('data:') === 0) return;
+if (c.indexOf('|||') > 0 && c.slice(c.indexOf('|||') + 3).indexOf('data:audio') === 0) return;
+if (!window.openModal) return;
+window.openModal('编辑字卡', c, (v) => {
+const val = String(v == null ? '' : v).trim();
+if (!val) { toast('字卡内容不能为空'); return; }
+if (val === c) return; // 内容未变化，直接关闭
+const dup = g[1].find((x, xi) => xi !== i && x === val);
+if (dup !== undefined) { toast('该分组已有相同内容'); return; }
+g[1][i] = val;
+saveGroups(groups);
+updateCardDom(gname, i, val);
+toast('字卡已更新');
+});
+}
+function updateCardDom(gname, i, val) {
+if (q) { renderGroupsBar(); render(); return; }
+const sel = (window.CSS && CSS.escape) ? CSS.escape(String(gname)) : String(gname).replace(/["\\]/g, '\\/*__SCRIPTS__*/');
+const node = list.querySelector('.cc-item[data-g="' + sel + '"][data-idx="' + i + '"]');
+if (node) {
+if (imgObserver) node.querySelectorAll('img[data-src]').forEach(im => { try { imgObserver.unobserve(im); } catch (e) {} });
+node.innerHTML = cardItemHtml(val);
+attachCardData(node, val);
+}
+updateCountsOnly();
+}
 function updateCountsOnly() {
 renderTabCounts();
 renderGroupsBar();
@@ -13186,7 +13232,7 @@ if (manageMode && selected.has(gname + '\u0001' + i)) d.classList.add('sel');
 d.addEventListener('click', () => {
 if (manageMode) { toggleSelect(d, gname, i); return; }
 if (typeof c === 'string' && c.indexOf('data:') === 0) { viewImage(c); return; }
-if (window.logFish) window.logFish();
+openEditCard(gname, i);
 });
 frag.appendChild(d);
 });
@@ -13247,7 +13293,7 @@ if (typeof it.c === 'string' && it.c.indexOf('data:') === 0) {
 viewImage(it.c);
 return;
 }
-if (window.logFish) window.logFish();
+openEditCard(it.gname, it.i);
 });
 }
 };
@@ -18352,6 +18398,11 @@ store.set('avatar-partner', data);
 applyAvatarImg(data);
 renderGrid();
 chatSystem((store.get('lbl-partner') || 'TA') + ' 更换了头像', data);
+try {
+if (window.bgNotifyCheck) {
+window.bgNotifyCheck((store.get('lbl-partner') || 'TA') + ' 更换了头像', Date.now(), { name: store.get('lbl-partner') || 'TA' });
+}
+} catch (e) {}
 store.set('avatar-lib-last', String(now));
 store.set('avatar-lib-next', String(1 + Math.random() * 7));
 } catch (e) {}
@@ -18588,11 +18639,14 @@ const qs = d.questions.filter(q => q.enabled !== false && q.text && (useDefault 
 if (!qs.length) return null;
 return qs[Math.floor(Math.random() * qs.length)];
 }
-window.pickAskCardReply = function () {
+window.pickAskCardReply = function (presetPool) {
 try {
 const cards = (window.getCustomCards && window.getCustomCards()) || [];
 const words = cards.filter(s => typeof s === 'string' && s.indexOf('data:') !== 0 && s.indexOf('|||') < 0 && s.trim());
-if (words.length) return words[Math.floor(Math.random() * words.length)];
+const pool = [];
+if (Array.isArray(presetPool) && presetPool.length) pool.push.apply(pool, presetPool);
+pool.push.apply(pool, words);
+if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
 } catch (e) {}
 const defs = ['收到你的回答。', '好呀，我知道了。', '嗯嗯，我也是这么想的。', '你这么说，我记住了。', '好的，我记在心里了。'];
 return defs[Math.floor(Math.random() * defs.length)];
@@ -19253,7 +19307,7 @@ const isLiked = opt.liked === true || opt.liked === 'true';
 const matchTxt = isPref ? '✦ 刚好想到了一起'
 : isLiked ? '你们想得不一样，不过TA似乎很喜欢你的答案'
 : '这次没有选到一起。TA心里想的是：「' + prefTxt + '」';
-if (window.chatChooseReply) window.chatChooseReply(msgIdx, String(opt.t || ''), String(opt.reply || '…'), matchTxt);
+if (window.chatChooseReply) window.chatChooseReply(msgIdx, String(opt.t || ''), opt, matchTxt);
 const d = tcLoad();
 d.history.unshift({ q: rec.choiceQuestion, my: rec.choiceAnswer, reply: rec.choiceReply, match: matchTxt, cat: rec.choiceCat || '', ts: Date.now() });
 tcSave(d);
@@ -19833,7 +19887,7 @@ rec = getCardAt(msgIdx);
 }
 if (!rec || rec.special !== 'ask-curious' || rec.curiousStatus === 'answered') return;
 const replies = (rec.curiousReplies && rec.curiousReplies.length) ? rec.curiousReplies : TCU_FALLBACK.slice();
-const reply = replies[Math.floor(Math.random() * replies.length)];
+const reply = window.pickAskCardReply ? window.pickAskCardReply(replies) : replies[Math.floor(Math.random() * replies.length)];
 const d = tcuLoad();
 const qid = rec.curiousQid || ('q_' + String(rec.curiousQuestion || ''));
 d.known[qid] = answer;
@@ -20230,7 +20284,7 @@ rec = getCardAt(msgIdx);
 }
 if (!rec || rec.special !== 'ask-roast' || rec.roastStatus === 'answered') return;
 const defs = ['你觉得我会信？', '少骗我。', '哼。', '好吧好吧。', '就这一次？', '行吧，放过你。', '嗯，这还差不多。'];
-const reply = defs[Math.floor(Math.random() * defs.length)];
+const reply = window.pickAskCardReply ? window.pickAskCardReply(defs) : defs[Math.floor(Math.random() * defs.length)];
 const d = trLoad();
 d.history.unshift({ roast: rec.roastText, my: answer, reply: reply, cat: rec.roastCat || '', ts: Date.now() });
 trSave(d);
@@ -20692,7 +20746,7 @@ if (keepEnabled) startKeepAlive(false);
 })();
 let notifyEnabled = false;
 const NOTIFY_ICON = (function () {
-try { return new URL('./icon-192.png', location.href).href; } catch (e) { return ''; }
+try { return new URL('./icon-512.png', location.href).href; } catch (e) { return ''; }
 })();
 function showSysNotification(title, opts) {
 opts = opts || {};
@@ -20925,17 +20979,23 @@ else {
 const avatar = store.get('avatar-partner') || '';
 if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) rightImg = avatar;
 }
+const sendNotify = function (img) {
+if (img) opts.image = img;
+showSysNotification(name, opts);
+};
 if (rightImg) {
-if (rightImg.indexOf('data:') === 0 && rightImg.length > 30000) {
-compressNotifyImg(rightImg, function (small) {
-if (small) opts.image = small;
-showSysNotification(name, opts);
-});
-return;
+if (rightImg.indexOf('data:') === 0) {
+try {
+fetch(rightImg).then(function (r) { return r.blob(); }).then(function (b) {
+try { sendNotify(URL.createObjectURL(b)); } catch (e) { sendNotify(''); }
+}).catch(function () { sendNotify(''); });
+} catch (e) { sendNotify(''); }
+} else {
+sendNotify(rightImg);
 }
-opts.image = rightImg;
+} else {
+sendNotify('');
 }
-showSysNotification(name, opts);
 };
 function compressNotifyImg(dataUrl, cb) {
 try {
@@ -22309,6 +22369,50 @@ updateBadge();
 const uid = 'xy-home-v2';
 const store = window.xyStore(uid);
 const KEY = 'feed-posts';
+const SNAP_KEY = 'feed-posts-snap';
+const LS_BIG_LIMIT = 200 * 1024;
+function maxPostTs(arr) { return (Array.isArray(arr) ? arr : []).reduce((m, p) => (p && p.ts > m ? p.ts : m), 0); }
+function loadSnap() {
+try {
+const v = localStorage.getItem('xy-home-v2:default:' + SNAP_KEY);
+if (v) { const a = JSON.parse(v); if (Array.isArray(a)) return a; }
+} catch (e) {}
+return [];
+}
+function stripPostImg(p) {
+if (!p || typeof p !== 'object') return p;
+const c = Object.assign({}, p);
+if (Array.isArray(c.imgs)) c.imgs = [];
+c.authorAv = '';
+c.taAv = '';
+if (typeof c.content === 'string') {
+c.content = c.content.replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[图片]');
+if (c.content.length > 8192) c.content = c.content.slice(0, 8192) + '…';
+}
+if (Array.isArray(c.comments)) {
+c.comments = c.comments.map(co => {
+if (!co || typeof co !== 'object') return co;
+const cc = Object.assign({}, co);
+if (typeof cc.content === 'string') {
+cc.content = cc.content.replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[图片]');
+if (cc.content.length > 8192) cc.content = cc.content.slice(0, 8192) + '…';
+}
+if (Array.isArray(cc.replies)) {
+cc.replies = cc.replies.map(r => {
+if (!r || typeof r !== 'object') return r;
+const rr = Object.assign({}, r);
+if (typeof rr.content === 'string') {
+rr.content = rr.content.replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[图片]');
+if (rr.content.length > 8192) rr.content = rr.content.slice(0, 8192) + '…';
+}
+return rr;
+});
+}
+return cc;
+});
+}
+return c;
+}
 function partnerName() { return store.get('lbl-partner') || 'TA'; }
 function partnerAv() { return store.get('avatar-partner') || ''; }
 function myName() { return store.get('lbl-user') || '我'; }
@@ -22335,8 +22439,34 @@ const p = (n) => (n < 10 ? '0' + n : '' + n);
 return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 function normPost(p) { if (p.by && !p.role) { p.role = p.by; if (!p.owner) p.owner = 'default'; } return p; }
-function load() { try { const a = JSON.parse(store.get(KEY) || '[]'); return (Array.isArray(a) ? a : []).map(normPost); } catch (e) { return []; } }
-function save(list) { store.set(KEY, JSON.stringify(list)); }
+function load() {
+const raw = store.get(KEY);
+if (raw !== null) {
+try {
+const a = JSON.parse(raw);
+if (Array.isArray(a)) return a.map(normPost);
+} catch (e) {}
+}
+try {
+const v = loadSnap();
+if (v.length) return v.map(normPost);
+} catch (e) {}
+return [];
+}
+function save(list) {
+const raw = JSON.stringify(list);
+store.set(KEY, raw);
+if (!list.length) {
+try { localStorage.removeItem('xy-home-v2:default:' + SNAP_KEY); } catch (e) {}
+return;
+}
+if (raw.length > LS_BIG_LIMIT) {
+try {
+const snap = JSON.stringify(list.map(stripPostImg));
+if (snap.length <= LS_BIG_LIMIT) localStorage.setItem('xy-home-v2:default:' + SNAP_KEY, snap);
+} catch (e) {}
+}
+}
 function avHtml(data, cls) {
 const c = cls || 'feed-av';
 return data
@@ -23200,6 +23330,26 @@ function feedToday() {
 const d = new Date();
 return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
 }
+function notifyFeedPostToChat(cid, taName) {
+const cur = window.__activeCid || 'default';
+if (cid === cur) {
+if (window.chatAddSystem) window.chatAddSystem(taName + ' 发布了一条朋友圈动态');
+return;
+}
+const prefix = 'xy-home-v2:' + cid;
+try {
+if (window.idbGet && window.idbSet) {
+window.idbGet(prefix + ':chat-msgs').then(v => {
+let arr = [];
+try { arr = Array.isArray(v) ? v : JSON.parse(v || '[]'); } catch (e) { arr = []; }
+if (!Array.isArray(arr)) arr = [];
+arr.push({ side: 'in', special: 'poke', text: taName + ' 发布了一条朋友圈动态', ts: Date.now() });
+try { window.idbSet(prefix + ':chat-msgs', JSON.stringify(arr)); } catch (e) {}
+try { localStorage.setItem(prefix + ':chat-msgs', JSON.stringify(arr)); } catch (e) {}
+}).catch(() => {});
+}
+} catch (e) {}
+}
 function maybeAutoPostFor(cid) {
 try {
 const cs = window.storeFor(cid);
@@ -23227,7 +23377,7 @@ save(list);
 cs.set('feed-last', String(now));
 cs.set('feed-next', String(cfg.minInterval + Math.random() * Math.max(1, cfg.maxInterval - cfg.minInterval)));
 cs.set('feed-day-count', JSON.stringify({ t: today, n: dayCount.n + 1 }));
-if (window.chatAddSystem) window.chatAddSystem(taName + ' 发布了一条朋友圈动态');
+notifyFeedPostToChat(cid, taName);
 addNotice('post', post.id, taName + ' 发布了一条新动态');
 render();
 } catch (e) {}
@@ -23493,6 +23643,13 @@ try {
 if (window.idbGet) {
 window.idbGet(uid + ':' + KEY).then(v => {
 if (v && typeof v === 'string' && v.length > 2 && !store.get(KEY)) {
+const snapTs = maxPostTs(loadSnap());
+if (snapTs > 0) {
+try {
+const idbArr = JSON.parse(v);
+if (maxPostTs(idbArr) < snapTs) return;
+} catch (e) {}
+}
 store.set(KEY, v);
 render();
 }

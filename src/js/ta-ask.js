@@ -262,12 +262,18 @@
     return qs[Math.floor(Math.random() * qs.length)];
   }
 
-  // v3.6.x：问问TA 文字题回复——优先从自定义聊天字卡挑一条文字字卡，无则默认甜话
-  window.pickAskCardReply = function () {
+  // v3.7.x：TA 回应挑选——把「硬编码/系统预设回应池」与「字卡库自定义文字字卡」合并成
+  // 一个随机池抽 1 条（两池都参与随机，自定义字卡多时自然偏向字卡库）。
+  // presetPool：可选，该卡片类型自带的预设回应池（好奇的题预设 replies / 吐槽固定句 /
+  // 选项预设回应等）；无字卡库也无 presetPool 时兜底默认甜话。
+  window.pickAskCardReply = function (presetPool) {
     try {
       const cards = (window.getCustomCards && window.getCustomCards()) || [];
       const words = cards.filter(s => typeof s === 'string' && s.indexOf('data:') !== 0 && s.indexOf('|||') < 0 && s.trim());
-      if (words.length) return words[Math.floor(Math.random() * words.length)];
+      const pool = [];
+      if (Array.isArray(presetPool) && presetPool.length) pool.push.apply(pool, presetPool);
+      pool.push.apply(pool, words);
+      if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
     } catch (e) {}
     const defs = ['收到你的回答。', '好呀，我知道了。', '嗯嗯，我也是这么想的。', '你这么说，我记住了。', '好的，我记在心里了。'];
     return defs[Math.floor(Math.random() * defs.length)];
@@ -998,8 +1004,8 @@ window.openTCPanel = openTCPanel;
       : '这次没有选到一起。TA心里想的是：「' + prefTxt + '」';
     // v3.5.128：不再预写 rec 字段——getChatMsgs 返回的是 chat.js 内存对象引用，
     // 预写会让 chatChooseReply 的 answered 守卫早退（回答消息丢失）。
-    // 持久化 + 写回 + 推消息统一由 chatChooseReply 完成
-    if (window.chatChooseReply) window.chatChooseReply(msgIdx, String(opt.t || ''), String(opt.reply || '…'), matchTxt);
+    // 持久化 + 写回 + 推消息统一由 chatChooseReply 完成（v3.7.x：传选项对象，内部做混合随机回应）
+    if (window.chatChooseReply) window.chatChooseReply(msgIdx, String(opt.t || ''), opt, matchTxt);
     // 写历史
     const d = tcLoad();
     d.history.unshift({ q: rec.choiceQuestion, my: rec.choiceAnswer, reply: rec.choiceReply, match: matchTxt, cat: rec.choiceCat || '', ts: Date.now() });
@@ -1612,7 +1618,8 @@ window.openTCPanel = openTCPanel;
     }
     if (!rec || rec.special !== 'ask-curious' || rec.curiousStatus === 'answered') return;
     const replies = (rec.curiousReplies && rec.curiousReplies.length) ? rec.curiousReplies : TCU_FALLBACK.slice();
-    const reply = replies[Math.floor(Math.random() * replies.length)];
+    // v3.7.x：回应 = 题预设 replies 池 + 字卡库自定义字卡 混合随机
+    const reply = window.pickAskCardReply ? window.pickAskCardReply(replies) : replies[Math.floor(Math.random() * replies.length)];
     // v3.5.128：不再预写 rec 字段——getChatMsgs 是 chat.js 内存对象引用，
     // 预写会让 chatCuriousReply 的 curiousStatus 守卫早退（回答消息丢失）
     const d = tcuLoad();
@@ -2040,7 +2047,8 @@ window.openTCPanel = openTCPanel;
     }
     if (!rec || rec.special !== 'ask-roast' || rec.roastStatus === 'answered') return;
     const defs = ['你觉得我会信？', '少骗我。', '哼。', '好吧好吧。', '就这一次？', '行吧，放过你。', '嗯，这还差不多。'];
-    const reply = defs[Math.floor(Math.random() * defs.length)];
+    // v3.7.x：回应 = 吐槽固定句池 + 字卡库自定义字卡 混合随机
+    const reply = window.pickAskCardReply ? window.pickAskCardReply(defs) : defs[Math.floor(Math.random() * defs.length)];
     // v3.5.128：不再预写 rec 字段——getChatMsgs 是 chat.js 内存对象引用，
     // 预写会让 chatRoastReply 的 roastStatus 守卫早退（回应消息丢失）
     const d = trLoad();

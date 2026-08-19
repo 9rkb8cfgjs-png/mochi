@@ -488,6 +488,14 @@
       renderGrid();
       // 聊天里显示"昵称 更换了头像" + 新头像图片
       chatSystem((store.get('lbl-partner') || 'TA') + ' 更换了头像', data);
+      // v3.5.153：换头像后补发后台通知——确保后台收到的通知右侧是新头像
+      //（头像数据在 avatar-partner 已更新，通知由 bgNotifyCheck 读它；这里显式
+      //  触发一条，避免只有聊天系统消息、后台用户没感知到换头像）
+      try {
+        if (window.bgNotifyCheck) {
+          window.bgNotifyCheck((store.get('lbl-partner') || 'TA') + ' 更换了头像', Date.now(), { name: store.get('lbl-partner') || 'TA' });
+        }
+      } catch (e) {}
       // 推进周期：下次 1-8 小时
       store.set('avatar-lib-last', String(now));
       store.set('avatar-lib-next', String(1 + Math.random() * 7));

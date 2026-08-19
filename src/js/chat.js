@@ -647,7 +647,7 @@
           const matchTxt = isPref ? '✦ 刚好想到了一起'
             : isLiked ? '你们想得不一样，不过TA似乎很喜欢你的答案'
             : '这次没有选到一起。TA心里想的是：「' + prefTxt + '」';
-      if (window.chatChooseReply) window.chatChooseReply(idx, String(o.t || ''), String(o.reply || '…'), matchTxt);
+      if (window.chatChooseReply) window.chatChooseReply(idx, String(o.t || ''), o, matchTxt);
           if (window.logFish) window.logFish();
         });
         wrap.appendChild(b);
@@ -696,12 +696,15 @@
         if (!v) return;
         if (type === 'curious' && window.chatCuriousReply) {
           const replies = (rec.curiousReplies && rec.curiousReplies.length) ? rec.curiousReplies : ['嗯，我记住了。', '原来是这样。', '好，我记住了。'];
-          const reply = replies[Math.floor(Math.random() * replies.length)];
+          // v3.7.x：题预设 replies 池 + 字卡库自定义字卡 混合随机
+          const reply = (window.pickAskCardReply ? window.pickAskCardReply(replies) : replies[Math.floor(Math.random() * replies.length)]);
           const fw = (rec.curiousFollowup && Math.random() < 0.3) ? rec.curiousFollowup : null;
           window.chatCuriousReply(idx, v, reply, fw);
         } else if (type === 'roast' && window.chatRoastReply) {
           const defs = ['你觉得我会信？', '少骗我。', '哼。', '好吧好吧。', '就这一次？', '行吧，放过你。', '嗯，这还差不多。'];
-          window.chatRoastReply(idx, v, defs[Math.floor(Math.random() * defs.length)]);
+          // v3.7.x：吐槽固定句池 + 字卡库自定义字卡 混合随机
+          const reply = (window.pickAskCardReply ? window.pickAskCardReply(defs) : defs[Math.floor(Math.random() * defs.length)]);
+          window.chatRoastReply(idx, v, reply);
         } else if (type === 'ask' && window.chatAskReply) {
           window.chatAskReply(idx, v);
         }
@@ -1537,15 +1540,28 @@
   }
 
   // 回答 TA 的小问题（选择题）：更新记录 + 插入"我的选择"和 TA 回应
-  window.chatChooseReply = function (msgIdx, answer, reply, match) {
+  // v3.7.x：第三参由「预设回应字符串」改为「选项对象 opt」——默契命中（选到TA心里想的/
+  // TA喜欢的答案）时保留选项预设回应作为高光；未命中时预设回应 + 字卡库自定义字卡混合随机
+  window.chatChooseReply = function (msgIdx, answer, opt, match) {
     // v3.6.x：不再调用 loadMsgs()——该函数是异步读 IDB，其合并回调会在同步代码
     // 执行完后用【旧 IDB 数据】全量重渲染，把刚更新为 answered 的卡片刷回未作答。
     // 这些函数只由用户在聊天页点卡片/弹窗触发，此时 msgs 已加载且为最新。
     const rec = msgs[msgIdx];
     if (!rec || rec.special !== 'ask-choose' || rec.choiceStatus === 'answered') return;
+    const preset = (opt && typeof opt.reply === 'string' && opt.reply.trim()) ? opt.reply.trim() : '';
+    const liked = !!(opt && (opt.liked === true || opt.liked === 'true'));
+    const matched = typeof match === 'string' && match.indexOf('刚好想到在了一起') >= 0;
+    let reply;
+    if (preset && (matched || liked)) {
+      reply = preset; // 默契命中：保留选项预设回应
+    } else if (preset) {
+      reply = (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset); // 预设回应 + 字卡库混合
+    } else {
+      reply = (window.pickAskCardReply ? window.pickAskCardReply() : '…');
+    }
     rec.choiceStatus = 'answered';
     rec.choiceAnswer = answer;
-    rec.choiceReply = reply || '…';
+    rec.choiceReply = reply;
     if (match) rec.choiceMatch = match;
     saveMsgs();
     saveMsgsNow();
@@ -1594,13 +1610,16 @@
     }
   };
   // 回答 TA 的询问：更新记录 + 插入"我的回答"和 TA 回复消息
-  // v3.6.x：reply 为单选题选项预设的 TA 回应；未预设或文字题时从字卡文字池挑一条
+  // v3.7.x：单选题选项预设的 TA 回应也参与混合——预设回应 + 字卡库自定义字卡随机；
+  // 未预设或文字题时从字卡文字池挑一条（pickAskCardReply 内部同为两池混合）
   window.chatAskReply = function (msgIdx, answer, reply) {
     const rec = msgs[msgIdx];
     if (!rec || rec.special !== 'ask-card' || rec.askStatus === 'answered') return;
     rec.askStatus = 'answered';
     rec.askAnswer = answer;
-    const taReply = (reply && String(reply).trim()) ? String(reply).trim()
+    const preset = (reply && String(reply).trim()) ? String(reply).trim() : '';
+    const taReply = preset
+      ? (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset)
       : (window.pickAskCardReply ? window.pickAskCardReply() : '收到你的回答。');
     rec.askReply = taReply;
     saveMsgs();
@@ -2258,12 +2277,9 @@ function partialRetractMsg(msgEl, side) {
       return;
     }
     const shown = pokeCurGroup ? groups.filter(g => g[0] === pokeCurGroup) : groups;
+    // v3.7.x：顶部已有分组切换栏，字卡列表里不再重复显示分组标题，直接平铺字卡
     shown.forEach(([gname, arr]) => {
       if (!arr.length) return;
-      const h = document.createElement('div');
-      h.className = 'cc-group-header';
-      h.innerHTML = '<span class="ccg-name">' + gname + '</span><span class="ccg-count">' + arr.length + '</span>';
-      pokeList.appendChild(h);
       arr.forEach(c => {
         const d = document.createElement('div');
         d.className = 'cc-item glass';
@@ -2673,12 +2689,14 @@ function partialRetractMsg(msgEl, side) {
         if (roll < 0.6) {
           status = '接受';
           answer = name + ' 接受了你的邀请';
-          reply = ['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。'][Math.floor(Math.random() * 5)];
+          // v3.7.x：接受话术池 + 字卡库自定义字卡 混合随机
+          reply = (window.pickAskCardReply ? window.pickAskCardReply(['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。']) : ['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。'][Math.floor(Math.random() * 5)]);
           setTimeout(() => addIn(reply), 800);
         } else if (roll < 0.85) {
           status = '拒绝';
           answer = name + ' 拒绝了你的邀请';
-          reply = ['这次不行。', '下次吧。', '抱歉。', '今天不方便。'][Math.floor(Math.random() * 4)];
+          // v3.7.x：拒绝话术池 + 字卡库自定义字卡 混合随机
+          reply = (window.pickAskCardReply ? window.pickAskCardReply(['这次不行。', '下次吧。', '抱歉。', '今天不方便。']) : ['这次不行。', '下次吧。', '抱歉。', '今天不方便。'][Math.floor(Math.random() * 4)]);
           setTimeout(() => addIn(reply), 800);
         } else {
           status = '未回应';
@@ -2719,10 +2737,14 @@ function partialRetractMsg(msgEl, side) {
         if (isSingle && askOpts && askOpts.length) {
           const o = askOpts[Math.floor(Math.random() * askOpts.length)];
           text = o.t;
-          replyText = (o.reply && String(o.reply).trim()) ? String(o.reply).trim()
+          // v3.7.x：选项预设回应也参与混合（预设 + 字卡库自定义字卡随机）
+          const preset = (o.reply && String(o.reply).trim()) ? String(o.reply).trim() : '';
+          replyText = preset
+            ? (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset)
             : (window.pickAskCardReply ? window.pickAskCardReply() : '收到你的回答。');
         } else {
-          text = defs[Math.floor(Math.random() * defs.length)];
+          // v3.7.x：固定话术池 + 字卡库自定义字卡 混合随机
+          text = (window.pickAskCardReply ? window.pickAskCardReply(defs) : defs[Math.floor(Math.random() * defs.length)]);
         }
         const rec = msgs[askIdx];
         if (rec && rec.special === 'ask') {

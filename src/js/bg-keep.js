@@ -149,10 +149,11 @@
 
   // ================= 后台通知 =================
   let notifyEnabled = false;
-  // v3.5.139：系统通知默认图标（mochi 图标）——不传 icon 时 Chrome 安卓用黑色圆形
-  // 占位图标 + 标题文字，表现为"黑色圆圈、字在圆圈外"；统一补上图标让通知显示正常
+  // v3.5.151：系统通知左侧图标用「带 mochi 字母的完整图标」（icon-512.png，
+  // 与手机桌面快捷方式图标一致）。之前用 icon-192.png（纯心形小图标），
+  // 用户看到的左侧是"爱心"而非带字母的 mochi 图标
   const NOTIFY_ICON = (function () {
-    try { return new URL('./icon-192.png', location.href).href; } catch (e) { return ''; }
+    try { return new URL('./icon-512.png', location.href).href; } catch (e) { return ''; }
   })();
   // v3.5.135：统一走 Service Worker 显示通知——Chrome Android 规范：页面在后台（隐藏）
   //   时，页面脚本直接 new Notification() 会被静默抑制（通知不弹也不报错），
@@ -436,30 +437,34 @@
     // v3.5.150：右侧大图（image）——消息自带图片优先（聊天图片/表情包），
     // 消息没带图时用联系人头像（代表"TA 发来的"，通知右侧始终有内容）；
     // 左侧图标仍为 mochi（icon=NOTIFY_ICON，v3.5.148），两者不冲突
+    // v3.5.151：头像（256px 压缩图，dataURL 通常 <50KB）不做压缩直接设 image，
+    // 压缩是异步的，之前头像也走压缩路径时可能因时序没显示成右侧头像
     let rightImg = '';
     if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) rightImg = extra.img;
     else {
       const avatar = store.get('avatar-partner') || '';
       if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) rightImg = avatar;
     }
-    // v3.5.147：dataURL 原图可能过大（安卓 Chrome 通知 image 字段对 dataURL 有大小限制，
-    // 超大 dataURL 会致 showNotification 失败 → 走降级重发 → 通知只剩文字没图片）。
-    // 发送前把 dataURL 压缩成小缩略图（96px JPEG，几 KB），稳定渲染且不拖垮通知；
-    // http(s) URL 图片不受限，直接使用
+    // v3.5.152：dataURL → blob URL 再设 image——安卓 Chrome 对通知 image 字段的
+    // dataURL 支持不稳定（经常不渲染），blob URL 是 http(s) 形式，Chrome 可靠渲染。
+    // 右侧头像/消息图片都走这条路径；失败则不带图发送，文字通知不丢
+    const sendNotify = function (img) {
+      if (img) opts.image = img;
+      showSysNotification(name, opts);
+    };
     if (rightImg) {
-      if (rightImg.indexOf('data:') === 0 && rightImg.length > 30000) {
-        compressNotifyImg(rightImg, function (small) {
-          if (small) opts.image = small;
-          showSysNotification(name, opts);
-        });
-        return;
+      if (rightImg.indexOf('data:') === 0) {
+        try {
+          fetch(rightImg).then(function (r) { return r.blob(); }).then(function (b) {
+            try { sendNotify(URL.createObjectURL(b)); } catch (e) { sendNotify(''); }
+          }).catch(function () { sendNotify(''); });
+        } catch (e) { sendNotify(''); }
+      } else {
+        sendNotify(rightImg);
       }
-      opts.image = rightImg;
+    } else {
+      sendNotify('');
     }
-    // v3.5.135：核心修复——后台消息通知必须走 Service Worker showNotification：
-    //   页面在后台（隐藏）时 Chrome 会静默抑制页面脚本的 new Notification()，
-    //   这是此功能此前"开关全开也弹不出来"的代码级根因。
-    showSysNotification(name, opts);
   };
   // v3.5.147：通知缩略图压缩——canvas 把图片 dataURL 压到最长边 96px JPEG。
   // 压缩失败返回空串（调用方不带图发送，保证文字通知不丢）

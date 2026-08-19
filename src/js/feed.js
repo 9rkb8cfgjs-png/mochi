@@ -6,6 +6,58 @@
   const uid = 'xy-home-v2';
   const store = window.xyStore(uid);
   const KEY = 'feed-posts';
+  // v3.7.x：LS 剥图快照兜底——主键 >200KB（含图片 dataURL）时 xyStore 只进
+  // IndexedDB + 内存缓存（LS 5MB 配额保护），Edge 等浏览器杀后台/强制关闭会丢
+  // IndexedDB 数据（WORKLOG 有 vivo S16 Edge 实录），届时动态只剩聊天里的系统
+  // 消息、朋友圈空空如也。与聊天记录 writeLsSnapshot 同策略：剥掉图片/头像
+  // dataURL 只保文本，写一份 ≤200KB 的 LS 快照（必须 ≤200KB——超过会被 idb.js
+  // 的大键迁移搬进 IDB 删 LS，本处直接读 LS 就读不到了；快照是全局数据，放
+  // default 命名空间防 contacts.js migrateLegacy 迁移成 default:default:* 垃圾键）。
+  const SNAP_KEY = 'feed-posts-snap';
+  const LS_BIG_LIMIT = 200 * 1024;
+  function maxPostTs(arr) { return (Array.isArray(arr) ? arr : []).reduce((m, p) => (p && p.ts > m ? p.ts : m), 0); }
+  function loadSnap() {
+    try {
+      const v = localStorage.getItem('xy-home-v2:default:' + SNAP_KEY);
+      if (v) { const a = JSON.parse(v); if (Array.isArray(a)) return a; }
+    } catch (e) {}
+    return [];
+  }
+  // 剥图：动态/评论/回复里的图片 dataURL 换占位文本，头像清空（快照只保文本历史）
+  function stripPostImg(p) {
+    if (!p || typeof p !== 'object') return p;
+    const c = Object.assign({}, p);
+    if (Array.isArray(c.imgs)) c.imgs = [];
+    c.authorAv = '';
+    c.taAv = '';
+    if (typeof c.content === 'string') {
+      c.content = c.content.replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[图片]');
+      if (c.content.length > 8192) c.content = c.content.slice(0, 8192) + '…';
+    }
+    if (Array.isArray(c.comments)) {
+      c.comments = c.comments.map(co => {
+        if (!co || typeof co !== 'object') return co;
+        const cc = Object.assign({}, co);
+        if (typeof cc.content === 'string') {
+          cc.content = cc.content.replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[图片]');
+          if (cc.content.length > 8192) cc.content = cc.content.slice(0, 8192) + '…';
+        }
+        if (Array.isArray(cc.replies)) {
+          cc.replies = cc.replies.map(r => {
+            if (!r || typeof r !== 'object') return r;
+            const rr = Object.assign({}, r);
+            if (typeof rr.content === 'string') {
+              rr.content = rr.content.replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[图片]');
+              if (rr.content.length > 8192) rr.content = rr.content.slice(0, 8192) + '…';
+            }
+            return rr;
+          });
+        }
+        return cc;
+      });
+    }
+    return c;
+  }
   function partnerName() { return store.get('lbl-partner') || 'TA'; }
   function partnerAv() { return store.get('avatar-partner') || ''; }
   function myName() { return store.get('lbl-user') || '我'; }
@@ -33,8 +85,41 @@
     return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
   function normPost(p) { if (p.by && !p.role) { p.role = p.by; if (!p.owner) p.owner = 'default'; } return p; }
-  function load() { try { const a = JSON.parse(store.get(KEY) || '[]'); return (Array.isArray(a) ? a : []).map(normPost); } catch (e) { return []; } }
-  function save(list) { store.set(KEY, JSON.stringify(list)); }
+  function load() {
+    // 主键存在（含清空后的 '[]'）→ 直接用它；键缺失（null）才走剥图快照兜底——
+    // 原写法 `store.get(KEY) || '[]'` 在键缺失时返回空数组提前 return，快照兜底永不生效
+    const raw = store.get(KEY);
+    if (raw !== null) {
+      try {
+        const a = JSON.parse(raw);
+        if (Array.isArray(a)) return a.map(normPost);
+      } catch (e) {}
+    }
+    // v3.7.x：LS 主键缺失兜底——大列表只进 IDB（Edge 丢 IDB / LS 被清）时读剥图快照，
+    // 文本+作者+时间保留；IDB 存活时模块底部 idbGet 会随后用完整数据重渲染
+    try {
+      const v = loadSnap();
+      if (v.length) return v.map(normPost);
+    } catch (e) {}
+    return [];
+  }
+  function save(list) {
+    const raw = JSON.stringify(list);
+    store.set(KEY, raw);
+    // 清空时同步清掉旧快照（防清空后又被陈旧快照"恢复"出已删除的动态）
+    if (!list.length) {
+      try { localStorage.removeItem('xy-home-v2:default:' + SNAP_KEY); } catch (e) {}
+      return;
+    }
+    // v3.7.x：主键 >200KB 时写剥图快照（见 SNAP_KEY 注释）；快照本身也限制 ≤200KB，
+    // 防被 idb.js 大键迁移搬走（迁移只认 LS 键不认命名空间）
+    if (raw.length > LS_BIG_LIMIT) {
+      try {
+        const snap = JSON.stringify(list.map(stripPostImg));
+        if (snap.length <= LS_BIG_LIMIT) localStorage.setItem('xy-home-v2:default:' + SNAP_KEY, snap);
+      } catch (e) {}
+    }
+  }
   function avHtml(data, cls) {
     const c = cls || 'feed-av';
     return data
@@ -998,6 +1083,31 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     const d = new Date();
     return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
   }
+  // v3.7.x：发布朋友圈的系统消息写入「动态所属桌面」的聊天——maybeAutoPost 遍历
+  // 所有联系人，原实现写进【当前激活桌面】的聊天（用户在 A 桌面却收到 B 的
+  // 「发布了一条朋友圈动态」= 系统消息跨桌面串消息）。与 call.js notifyCallEnd
+  // 同模式：当前桌面走内存链路（实时渲染）；非当前桌面直接写该桌面 IDB 聊天记录
+  // + LS 快照（该桌面 msgs 已在 contact-switched 时重置，下次进入由 loadMsgs 读回）
+  function notifyFeedPostToChat(cid, taName) {
+    const cur = window.__activeCid || 'default';
+    if (cid === cur) {
+      if (window.chatAddSystem) window.chatAddSystem(taName + ' 发布了一条朋友圈动态');
+      return;
+    }
+    const prefix = 'xy-home-v2:' + cid;
+    try {
+      if (window.idbGet && window.idbSet) {
+        window.idbGet(prefix + ':chat-msgs').then(v => {
+          let arr = [];
+          try { arr = Array.isArray(v) ? v : JSON.parse(v || '[]'); } catch (e) { arr = []; }
+          if (!Array.isArray(arr)) arr = [];
+          arr.push({ side: 'in', special: 'poke', text: taName + ' 发布了一条朋友圈动态', ts: Date.now() });
+          try { window.idbSet(prefix + ':chat-msgs', JSON.stringify(arr)); } catch (e) {}
+          try { localStorage.setItem(prefix + ':chat-msgs', JSON.stringify(arr)); } catch (e) {}
+        }).catch(() => {});
+      }
+    } catch (e) {}
+  }
   // 单个联系人的 TA 自动发动态（用该联系人自己的字卡 + TA 身份）
   function maybeAutoPostFor(cid) {
     try {
@@ -1027,7 +1137,7 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
       cs.set('feed-last', String(now));
       cs.set('feed-next', String(cfg.minInterval + Math.random() * Math.max(1, cfg.maxInterval - cfg.minInterval)));
       cs.set('feed-day-count', JSON.stringify({ t: today, n: dayCount.n + 1 }));
-      if (window.chatAddSystem) window.chatAddSystem(taName + ' 发布了一条朋友圈动态');
+      notifyFeedPostToChat(cid, taName);
       addNotice('post', post.id, taName + ' 发布了一条新动态');
       render();
     } catch (e) {}
@@ -1321,6 +1431,15 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     if (window.idbGet) {
       window.idbGet(uid + ':' + KEY).then(v => {
         if (v && typeof v === 'string' && v.length > 2 && !store.get(KEY)) {
+          // v3.7.x：IDB 权威比剥图快照旧时不回退——Edge 清过 IDB 后重建的空库、
+          // 或上次写入 IDB 失败，恢复旧值会让快照里的新动态「消失」
+          const snapTs = maxPostTs(loadSnap());
+          if (snapTs > 0) {
+            try {
+              const idbArr = JSON.parse(v);
+              if (maxPostTs(idbArr) < snapTs) return;
+            } catch (e) {}
+          }
           store.set(KEY, v);
           render();
         }

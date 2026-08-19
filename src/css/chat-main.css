@@ -122,9 +122,15 @@
    占一行、随消息区正常滚动，不悬浮、不遮挡任何消息；未触发时 display:none 无痕。
    v3.5.49 曾改为悬浮式（absolute 相对输入栏 + z-index:5），消息滚动时会从
    这行灰色小字下方穿过、被盖住（用户反馈"灰色一行遮挡聊天消息"）——
-   改回 v3.5.27/44 的内嵌方案，chat.js showTyping/hideTyping 已有占位滚动处理 */
+   改回 v3.5.27/44 的内嵌方案，chat.js showTyping/hideTyping 已有占位滚动处理。
+   v3.6.x 回归修复：必须加 width:fit-content（v3.5.47 曾有，改内嵌时漏掉）——
+   本行是 #page-chat（flex column）的直接子项，align-items 默认 stretch 会把
+   它拉成整行全宽透明块；设置了聊天壁纸（cs-bg 铺满 #page-chat）时整行透出
+   壁纸图案，看起来"不是只有文字、这一整行是一个图形"（用户反馈）。fit-content
+   让行只占文字宽度，不透出整行壁纸、不形成色块/矩形 */
 .chat-typing {
   flex-shrink:0;
+  width:fit-content;
   padding:2px 18px 4px;
   font-size:12px;
   color:var(--typing-ink, #8a8a8a);
