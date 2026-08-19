@@ -626,6 +626,23 @@
       (type === 'curious' && rec.curiousStatus === 'answered') ||
       (type === 'roast' && rec.roastStatus === 'answered') ||
       (type === 'ask' && rec.askStatus === 'answered');
+    // v3.7.x：问问TA 单选题已作答 → 点击展开「选项查看」：列出设置的选项+各选项预设回应，TA 选的选项高亮
+    if (done && type === 'ask' && rec.askType === 'single' && Array.isArray(rec.askOptions) && rec.askOptions.length) {
+      const card = el.querySelector('.msg-ask-card');
+      if (!card) return false;
+      const wrap = document.createElement('div');
+      wrap.className = 'msg-inplace';
+      const chosen = String(rec.askAnswer || '');
+      (rec.askOptions || []).forEach(o => {
+        const row = document.createElement('div');
+        row.className = 'ip-opt-row' + (String(o.t || '') === chosen ? ' sel' : '');
+        row.innerHTML = '<span class="ip-opt-t">' + escTxt(String(o.t || '')) + '</span>' +
+          ((o.reply && String(o.reply).trim()) ? '<span class="ip-opt-reply">' + escTxt(String(o.reply)) + '</span>' : '');
+        wrap.appendChild(row);
+      });
+      card.appendChild(wrap);
+      return true;
+    }
     if (done) return false;
     const card = el.querySelector('.msg-choose-card, .msg-ask-card');
     if (!card) return false;
@@ -747,13 +764,23 @@
       const item = card.closest('.msg-ask');
       if (!item || item.dataset.idx === undefined) return;
       // v3.6.77：点击卡片 toggle 收藏按钮显示（单选——先收起其它卡片的收藏按钮）
+      const idx = Number(item.dataset.idx);
+      const rec = msgs[idx];
+      if (!rec) return;
+      // v3.7.x：问问TA 单选题已作答 → 点击展开/收起「选项查看」（查看设置的选项+预设回应），
+      // 同时照常切换收藏按钮显示
+      if (card.classList.contains('answered') && rec.special === 'ask' && rec.askType === 'single' && Array.isArray(rec.askOptions) && rec.askOptions.length) {
+        e.stopPropagation();
+        const hadFav = card.classList.contains('show-fav');
+        body.querySelectorAll('.msg-ask-card.show-fav, .msg-choose-card.show-fav').forEach(c => c.classList.remove('show-fav'));
+        if (!hadFav) card.classList.add('show-fav');
+        expandCardInPlace(idx, 'ask');
+        return;
+      }
       const hadFav = card.classList.contains('show-fav');
       body.querySelectorAll('.msg-ask-card.show-fav, .msg-choose-card.show-fav').forEach(c => c.classList.remove('show-fav'));
       if (!hadFav) card.classList.add('show-fav');
       if (card.classList.contains('answered')) { e.stopPropagation(); return; } // 已作答：只切换收藏按钮
-      const idx = Number(item.dataset.idx);
-      const rec = msgs[idx];
-      if (!rec) return;
       e.stopPropagation(); // 不冒泡触发气泡操作菜单
       let type = null;
       if (rec.special === 'ask-choose') type = 'choose';
@@ -1982,17 +2009,30 @@ function partialRetractMsg(msgEl, side) {
       return;
     }
     // v3.6.x：异常/极端间隔值防御——真机上旧坏数据可能把 as-min/as-max 存成超大值
-    // （如 99999），TA 要等几百天才发一次，用户以为"从不主动发"。NaN 由 getCfg 兜底，
-    // 这里再限制上限：最短 ≤30 分钟、最长 ≤180 分钟（3 小时），坏数据不会让 TA 永静默
-    let asMin = Math.min(30, Number(cfgn(c, 'as-min', 5)) || 5) * 60;
-    let asMax = Math.min(180, Number(cfgn(c, 'as-max', 10)) || 10) * 60;
-    if (cfgn(c, 'dnd-en', 0) === 1) { asMin = 1; asMax = 180 * 60; }
+    // （如 99999），TA 要等几百天才发一次，用户以为"从不主动发"。NaN 由 getCfg 兜底。
+    // v3.7.x：修复「设置的时间不生效」——旧实现 Math.min(30, as-min) 把用户设置的
+    // 30 分钟以上「最短间隔」一律压回 30 分钟（设 60 分钟实际 30 分钟就来消息），
+    // 且免打扰分支 asMin=1（秒）反而可能 1 秒就发。改为：尊重用户设置（UI 上限
+    // 600 分钟），仅对超大坏数据钳制到 600 分钟；免打扰最小 30 分钟、最长 3 小时。
+    let asMin = Math.min(600, Math.max(1, Number(cfgn(c, 'as-min', 5)) || 5)) * 60;
+    let asMax = Math.min(600, Math.max(1, Number(cfgn(c, 'as-max', 10)) || 10)) * 60;
+    if (cfgn(c, 'dnd-en', 0) === 1) { asMin = 30 * 60; asMax = 180 * 60; }
+    // 设置被调反（min>max）时按最短间隔兜底
+    if (asMax < asMin) asMax = asMin;
     const delay = (asMin + Math.random() * Math.max(1, asMax - asMin)) * 1000;
     autoTimer = setTimeout(() => {
       tryAutoSend();
       scheduleAutoSend();
     }, delay);
   }
+  // v3.7.x：设置变更后立即重排定时器——原实现只在启动和每轮触发后重算，
+  // 用户改了「主动发送概率/间隔」时，当前挂起的旧定时器（最长可能几小时）
+  // 不重排，新设置要等下一轮才生效（表现为"没按设置的时间和概率来"）。
+  window.rescheduleAutoSend = function () { try { scheduleAutoSend(); } catch (e) {} };
+  // v3.7.x：切换联系人后按新联系人的回复设置重排（各联系人设置独立存放）
+  document.addEventListener('contact-switched', function () {
+    try { if (window.replyCfg) scheduleAutoSend(); } catch (e) {}
+  });
   function tryAutoSend() {
     try {
     const c = cfg();
@@ -2725,7 +2765,8 @@ function partialRetractMsg(msgEl, side) {
     } else {
       // 问问TA
       // v3.6.x：回复类型——单选题选项已在收起半框前解析（askOpts，每行一个，
-      // 可写 选项~TA回应），发送后 TA 随机选一个选项作答，有预设回应则用预设回应回复
+      // 可写 选项~TA回应）；v3.7.x：发送后 TA 随机选一个选项、只用选项文字作答，
+      // 各选项预设回应保留在卡片里（点击已作答卡片展开可查看）
       const isSingle = !!askOpts;
       addRec({ side: 'out', text: '问：' + content, special: 'ask', askQuestion: content, askType: isSingle ? 'single' : 'text', askOptions: askOpts, askStatus: 'pending' });
       const askIdx = msgs.length - 1;
@@ -2733,15 +2774,12 @@ function partialRetractMsg(msgEl, side) {
       const recTs = Date.now();
       setTimeout(() => {
         const defs = ['嗯嗯', '我想想…', '应该吧', '好呀', '我陪你', '可以的', '那挺好呀', '我觉得可以', '听你的', '当然可以', '我很乐意'];
-        let text, replyText = null;
+        let text;
         if (isSingle && askOpts && askOpts.length) {
           const o = askOpts[Math.floor(Math.random() * askOpts.length)];
+          // v3.7.x：单选题 TA 只能用选项作答——选项预设回应不再作为聊天回复消息，
+          // 保留在选项数据里，点击已作答卡片展开可查看（选项+各自预设回应）
           text = o.t;
-          // v3.7.x：选项预设回应也参与混合（预设 + 字卡库自定义字卡随机）
-          const preset = (o.reply && String(o.reply).trim()) ? String(o.reply).trim() : '';
-          replyText = preset
-            ? (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset)
-            : (window.pickAskCardReply ? window.pickAskCardReply() : '收到你的回答。');
         } else {
           // v3.7.x：固定话术池 + 字卡库自定义字卡 混合随机
           text = (window.pickAskCardReply ? window.pickAskCardReply(defs) : defs[Math.floor(Math.random() * defs.length)]);
@@ -2750,14 +2788,13 @@ function partialRetractMsg(msgEl, side) {
         if (rec && rec.special === 'ask') {
           rec.askStatus = 'answered';
           rec.askAnswer = text;
-          if (replyText) rec.askReply = replyText;
           saveMsgs();
           const el = body.querySelector('.msg-ask[data-idx="' + askIdx + '"]');
           if (el) {
-            el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ TA：' + escTxt(text) + '</div>' + (replyText ? '<div class="msg-choose-r">TA：' + escTxt(replyText) + '</div>' : '') + favHeartHtml() + '</div>';
+            el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ TA：' + escTxt(text) + '</div>' + favHeartHtml() + '</div>';
           }
         }
-        addIn(replyText || text);
+        addIn(text);
         try {
           const list = JSON.parse(store.get('invite-ask-history') || '[]');
           list.unshift({ type: 'ask', q: content, a: text, ts: recTs });

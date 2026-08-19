@@ -1764,10 +1764,28 @@
   // ===== v3.6.x：卡片自由摆放（装修模式：上移/下移/移除；新增页可添加卡片） =====
   // 组件 id 列表（对应 template.html 中 [data-desk-widget]）；组件节点唯一，
   // 「添加」= 把节点移动到目标页（节点移动不重建，内部事件绑定保留）
-  const WIDGET_IDS = ['deco', 'quote-row', 'checkin', 'apps', 'music', 'p2apps', 'memo-row', 'week', 'weekend'];
+  const WIDGET_IDS = ['deco', 'quote-row', 'checkin', 'apps', 'music', 'p2apps', 'memo-row', 'week', 'weekend', 'desk-clock', 'desk-calendar', 'desk-timer', 'desk-anniv'];
   const WIDGET_NAMES = {
     deco: '纪念日卡', 'quote-row': '今日情话 / 已摸鱼', checkin: '打卡横幅', apps: '功能图标',
     music: '音乐播放器', p2apps: '第二页功能图标', 'memo-row': '今日备忘 / 心情', week: '本周日常', weekend: '周末倒计时',
+    'desk-clock': '时钟', 'desk-calendar': '月历', 'desk-timer': '计时器', 'desk-anniv': '纪念日倒计时',
+  };
+  // v3.7.x：装修模式组件库静态预览缩略图（纯 HTML+CSS 示意，不依赖真实数据/事件）
+  const PREV_BOX = 'display:flex;align-items:center;justify-content:center;width:72px;height:52px;border-radius:8px;background:rgba(0,0,0,.05);flex-shrink:0;overflow:hidden';
+  const WIDGET_PREV_HTML = {
+    deco: '<span style="display:flex;gap:4px;align-items:center"><span style="width:14px;height:14px;border-radius:50%;background:#ddd"></span><span style="color:#e88;font-size:13px">♥</span><span style="width:14px;height:14px;border-radius:50%;background:#ddd"></span></span>',
+    'quote-row': '<span style="display:flex;gap:4px"><span style="width:20px;height:28px;border-radius:4px;background:rgba(0,0,0,.12)"></span><span style="width:20px;height:28px;border-radius:4px;background:rgba(0,0,0,.12)"></span></span>',
+    checkin: '<span style="width:52px;height:16px;border-radius:8px;background:rgba(0,0,0,.12);display:block"></span>',
+    apps: '<span style="display:grid;grid-template-columns:repeat(3,12px);gap:4px">' + '<span style="width:12px;height:12px;border-radius:3px;background:rgba(0,0,0,.13)"></span>'.repeat(9) + '</span>',
+    music: '<span style="display:flex;gap:6px;align-items:center"><span style="width:26px;height:26px;border-radius:6px;background:rgba(0,0,0,.13)"></span><span style="width:26px;height:4px;border-radius:2px;background:rgba(0,0,0,.16);display:block"></span></span>',
+    p2apps: '<span style="display:grid;grid-template-columns:repeat(2,14px);gap:4px">' + '<span style="width:14px;height:14px;border-radius:3px;background:rgba(0,0,0,.13)"></span>'.repeat(4) + '</span>',
+    'memo-row': '<span style="display:flex;gap:4px"><span style="width:22px;height:26px;border-radius:4px;background:rgba(0,0,0,.12)"></span><span style="width:22px;height:26px;border-radius:4px;background:rgba(0,0,0,.12)"></span></span>',
+    week: '<span style="display:flex;gap:3px">' + '<span style="width:6px;height:6px;border-radius:50%;background:rgba(0,0,0,.16)"></span>'.repeat(7) + '</span>',
+    weekend: '<span style="font-size:10px;color:#999;text-align:center;line-height:1.3">离周末<br><b style="color:#444">3 天</b></span>',
+    'desk-clock': '<span style="font-size:17px;font-weight:700;color:#333;letter-spacing:1px">12:30</span>',
+    'desk-calendar': '<span style="display:grid;grid-template-columns:repeat(7,6px);gap:2px">' + '<span style="width:6px;height:6px;border-radius:2px;background:rgba(0,0,0,.13)"></span>'.repeat(21) + '</span>',
+    'desk-timer': '<span style="font-size:14px;font-weight:600;color:#333">00:00.0</span>',
+    'desk-anniv': '<span style="font-size:10px;color:#999;text-align:center;line-height:1.3">还有<br><b style="color:#444;font-size:14px">30 天</b></span>',
   };
   // 隐藏池：被移除的组件暂存（display:none），可从组件库重新添加
   function ensureWidgetPool() {
@@ -1825,6 +1843,7 @@
       if (node && !inLay && node.parentNode !== pool) pool.appendChild(node);
     });
     if (window.deskRebuild) window.deskRebuild();
+    try { renderDeskWidgets(); } catch (e) {}
   };
   applyDeskLayout();
   document.addEventListener('contact-switched', applyDeskLayout);
@@ -1848,7 +1867,15 @@
     WIDGET_IDS.forEach(wid => {
       const item = document.createElement('div');
       item.className = 'desk-lib-item';
+      // v3.7.x：静态预览缩略图
+      const prev = document.createElement('div');
+      prev.className = 'dl-prev';
+      prev.style.cssText = PREV_BOX;
+      prev.innerHTML = WIDGET_PREV_HTML[wid] || '';
+      const meta = document.createElement('div');
+      meta.className = 'dl-meta';
       const name = document.createElement('div');
+      name.className = 'dl-name';
       name.textContent = WIDGET_NAMES[wid] || wid;
       const node = document.querySelector('[data-desk-widget="' + wid + '"]');
       const curPage = node && node.closest('.page-slide') ? Array.prototype.indexOf.call(pagesBox.querySelectorAll('.page-slide'), node.closest('.page-slide')) : -1;
@@ -1871,20 +1898,31 @@
         lib.remove();
         toast('已添加到本页');
       });
-      item.appendChild(name); item.appendChild(where); item.appendChild(btn);
+      meta.appendChild(name); meta.appendChild(where);
+      item.appendChild(prev); item.appendChild(meta); item.appendChild(btn);
       box.appendChild(item);
     });
     // v3.6.x：图片组件——可多个，上传新图片到本页
     const imgItem = document.createElement('div');
     imgItem.className = 'desk-lib-item';
+    const imgPrev = document.createElement('div');
+    imgPrev.className = 'dl-prev';
+    imgPrev.style.cssText = PREV_BOX;
+    imgPrev.innerHTML = '<span style="width:30px;height:22px;border-radius:4px;background:linear-gradient(135deg,#cde,#fdc);display:block"></span>';
+    const imgMeta = document.createElement('div');
+    imgMeta.className = 'dl-meta';
     const imgName = document.createElement('div');
+    imgName.className = 'dl-name';
     imgName.textContent = '图片（上传新图片）';
-    imgName.style.cssText = 'flex:1';
+    const imgWhere = document.createElement('div');
+    imgWhere.className = 'dl-where';
+    imgWhere.textContent = '可多个';
     const imgBtn = document.createElement('button');
     imgBtn.className = 'dl-btn';
     imgBtn.textContent = '上传并添加';
     imgBtn.addEventListener('click', () => { addDeskImage(pageIdx); lib.remove(); });
-    imgItem.appendChild(imgName); imgItem.appendChild(imgBtn);
+    imgMeta.appendChild(imgName); imgMeta.appendChild(imgWhere);
+    imgItem.appendChild(imgPrev); imgItem.appendChild(imgMeta); imgItem.appendChild(imgBtn);
     box.appendChild(imgItem);
     const close = document.createElement('button');
     close.textContent = '关闭';
@@ -2832,6 +2870,181 @@
     });
   }
 
+  // ===== v3.7.x：新增桌面小组件（时钟 / 月历 / 计时器 / 纪念日倒计时） =====
+  // 时钟：实时更新时:分 + 星期 + 月日
+  let deskClockTimer = null;
+  function initDeskClock() {
+    const el = document.getElementById('dc-time');
+    const dateEl = document.getElementById('dc-date');
+    if (!el || !dateEl || deskClockTimer) return;
+    const week = ['日','一','二','三','四','五','六'];
+    const update = () => {
+      const d = new Date();
+      const p = (n) => (n < 10 ? '0' + n : '' + n);
+      el.textContent = p(d.getHours()) + ':' + p(d.getMinutes());
+      dateEl.textContent = '星期' + week[d.getDay()] + ' · ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日';
+    };
+    update();
+    deskClockTimer = setInterval(update, 5000);
+  }
+  // 月历：当月网格，高亮今天，标注有留言的日子，点击跳日历页
+  function renderDeskCalendar() {
+    const grid = document.getElementById('dcal-grid');
+    const title = document.getElementById('dcal-title');
+    if (!grid || !title) return;
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();
+    const p2 = (n) => (n < 10 ? '0' + n : '' + n);
+    title.textContent = y + ' 年 ' + (m + 1) + ' 月';
+    const firstDay = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < firstDay; i++) cells.push('<span class="dcal-cell empty"></span>');
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = y + '-' + p2(m + 1) + '-' + p2(d);
+      const isToday = d === now.getDate();
+      const hasMsg = !!store.get('cal-my-' + ds);
+      cells.push('<span class="dcal-cell' + (isToday ? ' today' : '') + (hasMsg ? ' has-msg' : '') + '" data-date="' + ds + '">' + d + '</span>');
+    }
+    grid.innerHTML = cells.join('');
+    grid.querySelectorAll('.dcal-cell:not(.empty)').forEach(c => {
+      c.addEventListener('click', () => {
+        const calApp = document.querySelector('.app[data-app="calendar"]');
+        if (calApp) calApp.click();
+      });
+    });
+  }
+  // 计时器：正计时 + 倒计时
+  let deskTimerBound = false, dtTimer = null;
+  let dtState = { mode: 'up', running: false, startTs: 0, elapsed: 0, target: 0 };
+  function initDeskTimer() {
+    const disp = document.getElementById('dt-disp');
+    const startBtn = document.getElementById('dt-start');
+    const resetBtn = document.getElementById('dt-reset');
+    const modeBtn = document.getElementById('dt-toggle-mode');
+    const modeLabel = document.getElementById('dt-mode-label');
+    if (!disp || !startBtn || deskTimerBound) return;
+    deskTimerBound = true;
+    const fmt = (ms) => {
+      if (ms < 0) ms = 0;
+      const t = Math.floor(ms / 100);
+      const mm = Math.floor(t / 600), ss = Math.floor((t % 600) / 10), ds = t % 10;
+      return (mm < 10 ? '0' + mm : '' + mm) + ':' + (ss < 10 ? '0' + ss : '' + ss) + '.' + ds;
+    };
+    const render = () => {
+      if (dtState.mode === 'up') {
+        const ms = dtState.running ? (Date.now() - dtState.startTs + dtState.elapsed) : dtState.elapsed;
+        disp.textContent = fmt(ms);
+      } else {
+        const remain = dtState.running ? (dtState.target - (Date.now() - dtState.startTs) - dtState.elapsed) : (dtState.target - dtState.elapsed);
+        disp.textContent = fmt(remain);
+        if (dtState.running && remain <= 0) {
+          dtState.running = false;
+          if (dtTimer) { clearInterval(dtTimer); dtTimer = null; }
+          startBtn.textContent = '开始';
+          disp.textContent = '00:00.0';
+          toast('倒计时结束');
+          try { if (navigator.vibrate) navigator.vibrate(200); } catch (e) {}
+        }
+      }
+    };
+    startBtn.addEventListener('click', () => {
+      if (dtState.mode === 'down' && !dtState.running && dtState.target <= 0) {
+        if (!window.openModal) return;
+        window.openModal('倒计时分钟数', '5', (v) => {
+          const min = parseFloat(v);
+          if (!min || min <= 0) { toast('请输入有效分钟数'); return; }
+          dtState.target = min * 60000;
+          dtState.elapsed = 0;
+          dtState.startTs = Date.now();
+          dtState.running = true;
+          startBtn.textContent = '暂停';
+          if (dtTimer) clearInterval(dtTimer);
+          dtTimer = setInterval(render, 100);
+          render();
+        });
+        return;
+      }
+      if (dtState.running) {
+        dtState.elapsed += Date.now() - dtState.startTs;
+        dtState.running = false;
+        if (dtTimer) { clearInterval(dtTimer); dtTimer = null; }
+        startBtn.textContent = '继续';
+      } else {
+        dtState.startTs = Date.now();
+        dtState.running = true;
+        if (dtTimer) clearInterval(dtTimer);
+        dtTimer = setInterval(render, 100);
+        startBtn.textContent = '暂停';
+      }
+      render();
+    });
+    resetBtn.addEventListener('click', () => {
+      dtState.running = false; dtState.elapsed = 0; dtState.target = 0;
+      if (dtTimer) { clearInterval(dtTimer); dtTimer = null; }
+      startBtn.textContent = '开始';
+      disp.textContent = '00:00.0';
+    });
+    modeBtn.addEventListener('click', () => {
+      if (dtState.running) { toast('请先暂停再切换模式'); return; }
+      dtState.mode = dtState.mode === 'up' ? 'down' : 'up';
+      dtState.elapsed = 0; dtState.target = 0;
+      modeLabel.textContent = dtState.mode === 'up' ? '正计时' : '倒计时';
+      modeBtn.textContent = dtState.mode === 'up' ? '倒计时' : '正计时';
+      startBtn.textContent = '开始';
+      disp.textContent = '00:00.0';
+    });
+    render();
+  }
+  // 纪念日倒计时：读 love-start + mem-extras，找未来最近的纪念日
+  function renderDeskAnniv() {
+    const daysEl = document.getElementById('da-days');
+    const nameEl = document.getElementById('da-name');
+    if (!daysEl || !nameEl) return;
+    const now = new Date();
+    const cands = [];
+    const start = store.get('love-start');
+    if (start) {
+      const d = new Date(start + 'T00:00:00');
+      if (!isNaN(d.getTime())) {
+        let ann = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+        if (ann.getTime() < now.getTime()) ann.setFullYear(ann.getFullYear() + 1);
+        cands.push({ name: '恋爱纪念日', date: ann });
+      }
+    }
+    try {
+      const extras = JSON.parse(store.get('mem-extras') || '[]');
+      extras.forEach(it => {
+        if (!it.date) return;
+        const d = new Date(it.date + 'T00:00:00');
+        if (isNaN(d.getTime())) return;
+        let dt = new Date(d.getTime());
+        if (dt.getTime() < now.getTime()) {
+          dt = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+          if (dt.getTime() < now.getTime()) dt.setFullYear(dt.getFullYear() + 1);
+        }
+        cands.push({ name: it.name || '纪念日', date: dt });
+      });
+    } catch (e) {}
+    if (!cands.length) {
+      daysEl.textContent = '—';
+      nameEl.textContent = '未设置纪念日';
+      return;
+    }
+    cands.sort((a, b) => a.date - b.date);
+    const next = cands[0];
+    const days = Math.ceil((next.date - now) / 864e5);
+    daysEl.textContent = days + ' 天';
+    nameEl.textContent = next.name + ' · ' + (next.date.getMonth() + 1) + ' 月 ' + next.date.getDate() + ' 日';
+  }
+  function renderDeskWidgets() {
+    try { initDeskClock(); } catch (e) {}
+    try { renderDeskCalendar(); } catch (e) {}
+    try { initDeskTimer(); } catch (e) {}
+    try { renderDeskAnniv(); } catch (e) {}
+  }
+  renderDeskWidgets();
+
   // v3.6.x：多桌面——切换联系人后刷新桌面外观（壁纸/自定义图标/打卡/摸鱼展示）。
   // store 是动态绑定当前联系人的，restoreAppIcons/applyBgVisibility 会读新桌面的值；
   // 打卡按钮状态按新桌面的 checkin 键重新判断。
@@ -2868,6 +3081,7 @@
     try { updateLove(); } catch (e) {}
     try { renderQuoteOfDay(); } catch (e) {}
     try { renderExtras(); } catch (e) {}
+    try { renderDeskWidgets(); } catch (e) {}
     // v3.6.x：桌面双方昵称（lbl-user / lbl-partner）只在加载时写一次，
     // 切换联系人后必须按新桌面的 store 重新渲染，否则残留上一个联系人的名字
     // （新联系人未设昵称时回退默认「我 / TA」）

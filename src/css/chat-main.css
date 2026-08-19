@@ -699,6 +699,15 @@
   background:var(--ink); color:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
 }
 .msg-inplace .ip-send:active { opacity:.85; }
+/* v3.7.x：问问TA 单选题已作答的选项查看——列出设置的选项+各选项预设回应，TA 选的选项高亮 */
+.msg-inplace .ip-opt-row {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:9px 12px; border:1px solid rgba(0,0,0,.1); border-radius:10px;
+  background:#fff; color:var(--ink); font-size:13px;
+}
+.msg-inplace .ip-opt-row.sel { border-color:var(--ink); background:rgba(0,0,0,.04); font-weight:600; }
+.msg-inplace .ip-opt-row .ip-opt-t { min-width:0; }
+.msg-inplace .ip-opt-row .ip-opt-reply { flex-shrink:0; font-size:12px; opacity:.6; }
 
 /* ===== TA的询问 ===== */
 /* 聊天里的询问卡片 */

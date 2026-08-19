@@ -624,16 +624,42 @@ box-shadow:0 8px 30px rgba(0,0,0,.2);
 .desk-lib-title { font-size:15px; font-weight:700; margin-bottom:4px; }
 .desk-lib-sub { font-size:11px; color:#888; margin-bottom:12px; }
 .desk-lib-item {
-display:flex; align-items:center; justify-content:space-between;
+display:flex; align-items:center; gap:10px;
 padding:10px 12px; border:1px solid #eee; border-radius:10px; margin-bottom:8px;
 font-size:13px;
 }
-.desk-lib-item .dl-where { font-size:11px; color:#999; }
+.desk-lib-item .dl-meta { flex:1; min-width:0; }
+.desk-lib-item .dl-name { font-size:13px; font-weight:600; color:var(--ink,#111); }
+.desk-lib-item .dl-where { font-size:11px; color:#999; margin-top:2px; }
 .desk-lib-item .dl-btn {
 font-size:12px; padding:4px 12px; border:none; border-radius:99px;
-background:#111; color:#fff; cursor:pointer; font-family:inherit;
+background:#111; color:#fff; cursor:pointer; font-family:inherit; flex-shrink:0;
 }
 .desk-lib-item .dl-btn:disabled { background:#ddd; color:#999; }
+.desk-clock { padding:14px 16px; text-align:center; }
+.desk-clock .dc-time { font-size:32px; font-weight:700; letter-spacing:2px; color:var(--ink,#111); line-height:1.1; }
+.desk-clock .dc-date { font-size:12px; color:var(--muted,#888); margin-top:4px; }
+.desk-cal { padding:12px 14px; }
+.desk-cal .dcal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.desk-cal .dcal-title { font-size:13px; font-weight:600; color:var(--ink,#111); }
+.desk-cal .dcal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.desk-cal .dcal-cell { text-align:center; font-size:11px; line-height:24px; height:24px; border-radius:6px; color:var(--ink,#333); }
+.desk-cal .dcal-cell.empty { visibility:hidden; }
+.desk-cal .dcal-cell.today { background:#111; color:#fff; font-weight:700; }
+.desk-cal .dcal-cell.has-msg { position:relative; color:var(--ink,#111); font-weight:600; }
+.desk-cal .dcal-cell.has-msg::after { content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; background:#e88; }
+.desk-cal .dcal-cell.today.has-msg::after { background:#fff; }
+.desk-cal .dcal-cell:not(.empty):active { background:rgba(0,0,0,.08); }
+.desk-timer { padding:14px 16px; text-align:center; }
+.desk-timer .dt-disp { font-size:28px; font-weight:700; letter-spacing:1px; color:var(--ink,#111); line-height:1.1; font-variant-numeric:tabular-nums; }
+.desk-timer .dt-mode-label { font-size:11px; color:var(--muted,#888); margin-top:4px; }
+.desk-timer .dt-controls { display:flex; gap:6px; margin-top:10px; }
+.desk-timer .dt-btn { flex:1; font-size:12px; padding:6px 0; border:1px solid rgba(0,0,0,.12); border-radius:8px; background:rgba(0,0,0,.03); color:var(--ink,#111); cursor:pointer; font-family:inherit; }
+.desk-timer .dt-btn:active { background:rgba(0,0,0,.08); }
+.desk-anniv { padding:14px 16px; text-align:center; }
+.desk-anniv .da-label { font-size:11px; color:var(--muted,#888); }
+.desk-anniv .da-days { font-size:26px; font-weight:700; color:var(--ink,#111); margin:2px 0; }
+.desk-anniv .da-name { font-size:12px; color:var(--muted,#666); }
 .desk-image-widget {
 position:relative; margin:10px 0; border-radius:var(--app-ico-radius,16px);
 overflow:hidden; cursor:pointer; background:rgba(0,0,0,.04);
@@ -1362,6 +1388,14 @@ flex-shrink:0; border:none; border-radius:10px; padding:0 18px;
 background:var(--ink); color:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
 }
 .msg-inplace .ip-send:active { opacity:.85; }
+.msg-inplace .ip-opt-row {
+display:flex; align-items:center; justify-content:space-between; gap:10px;
+padding:9px 12px; border:1px solid rgba(0,0,0,.1); border-radius:10px;
+background:#fff; color:var(--ink); font-size:13px;
+}
+.msg-inplace .ip-opt-row.sel { border-color:var(--ink); background:rgba(0,0,0,.04); font-weight:600; }
+.msg-inplace .ip-opt-row .ip-opt-t { min-width:0; }
+.msg-inplace .ip-opt-row .ip-opt-reply { flex-shrink:0; font-size:12px; opacity:.6; }
 .msg-ask { align-self:center; width:100%; display:flex; justify-content:center; padding:2px 0; }
 .msg-ask-card {
 max-width:78%; min-width:220px; text-align:center;
@@ -3483,6 +3517,8 @@ stroke: var(--ink);
 color: var(--muted);
 }
 .msg-inplace .ip-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+.msg-inplace .ip-opt-row { background:var(--dark-card); border-color:var(--dark-border-12); }
+.msg-inplace .ip-opt-row.sel { border-color:var(--ink); background:rgba(255,255,255,.06); }
 .msg-ask-card { background:var(--dark-card-92); border-color:var(--dark-border); }
 .msg-choose-card { background:var(--dark-card-92); border-color:var(--dark-border); }
 .call-minimize { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--dark-soft); }
@@ -3544,7 +3580,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.107 · 部署于 2026-08-19 12:29</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.109 · 部署于 2026-08-19 12:44</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3738,6 +3774,37 @@ color: var(--muted);
 </div>
 </div><!-- /page-slide 第二页 -->
       </div><!-- /desktop-pages -->
+
+      <!-- 桌面小组件隐藏池：被移除/未添加的组件暂存于此（display:none）。
+           新增组件默认放池里，用户从装修模式组件库添加到目标页。 -->
+      <div id="desk-widget-pool" style="display:none">
+        <!-- 时钟组件 -->
+        <div class="desk-clock glass" data-desk-widget="desk-clock" data-card-bg="desk-clock">
+          <div class="dc-time" id="dc-time">00:00</div>
+          <div class="dc-date" id="dc-date">— · — 月 — 日</div>
+        </div>
+        <!-- 月历组件 -->
+        <div class="desk-cal glass" data-desk-widget="desk-calendar" data-card-bg="desk-calendar">
+          <div class="dcal-head"><span class="dcal-title" id="dcal-title">—</span></div>
+          <div class="dcal-grid" id="dcal-grid"></div>
+        </div>
+        <!-- 计时器组件 -->
+        <div class="desk-timer glass" data-desk-widget="desk-timer" data-card-bg="desk-timer">
+          <div class="dt-disp" id="dt-disp">00:00.0</div>
+          <div class="dt-mode-label" id="dt-mode-label">正计时</div>
+          <div class="dt-controls">
+            <button class="dt-btn" id="dt-start">开始</button>
+            <button class="dt-btn" id="dt-reset">重置</button>
+            <button class="dt-btn" id="dt-toggle-mode">倒计时</button>
+          </div>
+        </div>
+        <!-- 纪念日倒计时组件 -->
+        <div class="desk-anniv glass" data-desk-widget="desk-anniv" data-card-bg="desk-anniv">
+          <div class="da-label">距下一个纪念日</div>
+          <div class="da-days" id="da-days">—</div>
+          <div class="da-name" id="da-name">未设置</div>
+        </div>
+      </div>
 
       <!-- 分页指示器 -->
       <div class="dots" id="desktop-dots">
@@ -4255,7 +4322,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.107</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.109</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -8654,10 +8721,27 @@ renderDeskImages();
 setupDeskImageClick();
 setupDeskImageViewerClose();
 document.addEventListener('contact-switched', renderDeskImages);
-const WIDGET_IDS = ['deco', 'quote-row', 'checkin', 'apps', 'music', 'p2apps', 'memo-row', 'week', 'weekend'];
+const WIDGET_IDS = ['deco', 'quote-row', 'checkin', 'apps', 'music', 'p2apps', 'memo-row', 'week', 'weekend', 'desk-clock', 'desk-calendar', 'desk-timer', 'desk-anniv'];
 const WIDGET_NAMES = {
 deco: '纪念日卡', 'quote-row': '今日情话 / 已摸鱼', checkin: '打卡横幅', apps: '功能图标',
 music: '音乐播放器', p2apps: '第二页功能图标', 'memo-row': '今日备忘 / 心情', week: '本周日常', weekend: '周末倒计时',
+'desk-clock': '时钟', 'desk-calendar': '月历', 'desk-timer': '计时器', 'desk-anniv': '纪念日倒计时',
+};
+const PREV_BOX = 'display:flex;align-items:center;justify-content:center;width:72px;height:52px;border-radius:8px;background:rgba(0,0,0,.05);flex-shrink:0;overflow:hidden';
+const WIDGET_PREV_HTML = {
+deco: '<span style="display:flex;gap:4px;align-items:center"><span style="width:14px;height:14px;border-radius:50%;background:#ddd"></span><span style="color:#e88;font-size:13px">♥</span><span style="width:14px;height:14px;border-radius:50%;background:#ddd"></span></span>',
+'quote-row': '<span style="display:flex;gap:4px"><span style="width:20px;height:28px;border-radius:4px;background:rgba(0,0,0,.12)"></span><span style="width:20px;height:28px;border-radius:4px;background:rgba(0,0,0,.12)"></span></span>',
+checkin: '<span style="width:52px;height:16px;border-radius:8px;background:rgba(0,0,0,.12);display:block"></span>',
+apps: '<span style="display:grid;grid-template-columns:repeat(3,12px);gap:4px">' + '<span style="width:12px;height:12px;border-radius:3px;background:rgba(0,0,0,.13)"></span>'.repeat(9) + '</span>',
+music: '<span style="display:flex;gap:6px;align-items:center"><span style="width:26px;height:26px;border-radius:6px;background:rgba(0,0,0,.13)"></span><span style="width:26px;height:4px;border-radius:2px;background:rgba(0,0,0,.16);display:block"></span></span>',
+p2apps: '<span style="display:grid;grid-template-columns:repeat(2,14px);gap:4px">' + '<span style="width:14px;height:14px;border-radius:3px;background:rgba(0,0,0,.13)"></span>'.repeat(4) + '</span>',
+'memo-row': '<span style="display:flex;gap:4px"><span style="width:22px;height:26px;border-radius:4px;background:rgba(0,0,0,.12)"></span><span style="width:22px;height:26px;border-radius:4px;background:rgba(0,0,0,.12)"></span></span>',
+week: '<span style="display:flex;gap:3px">' + '<span style="width:6px;height:6px;border-radius:50%;background:rgba(0,0,0,.16)"></span>'.repeat(7) + '</span>',
+weekend: '<span style="font-size:10px;color:#999;text-align:center;line-height:1.3">离周末<br><b style="color:#444">3 天</b></span>',
+'desk-clock': '<span style="font-size:17px;font-weight:700;color:#333;letter-spacing:1px">12:30</span>',
+'desk-calendar': '<span style="display:grid;grid-template-columns:repeat(7,6px);gap:2px">' + '<span style="width:6px;height:6px;border-radius:2px;background:rgba(0,0,0,.13)"></span>'.repeat(21) + '</span>',
+'desk-timer': '<span style="font-size:14px;font-weight:600;color:#333">00:00.0</span>',
+'desk-anniv': '<span style="font-size:10px;color:#999;text-align:center;line-height:1.3">还有<br><b style="color:#444;font-size:14px">30 天</b></span>',
 };
 function ensureWidgetPool() {
 let pool = document.getElementById('desk-widget-pool');
@@ -8706,6 +8790,7 @@ const inLay = lay.some(page => (page || []).indexOf(wid) >= 0);
 if (node && !inLay && node.parentNode !== pool) pool.appendChild(node);
 });
 if (window.deskRebuild) window.deskRebuild();
+try { renderDeskWidgets(); } catch (e) {}
 };
 applyDeskLayout();
 document.addEventListener('contact-switched', applyDeskLayout);
@@ -8727,7 +8812,14 @@ box.appendChild(title); box.appendChild(sub);
 WIDGET_IDS.forEach(wid => {
 const item = document.createElement('div');
 item.className = 'desk-lib-item';
+const prev = document.createElement('div');
+prev.className = 'dl-prev';
+prev.style.cssText = PREV_BOX;
+prev.innerHTML = WIDGET_PREV_HTML[wid] || '';
+const meta = document.createElement('div');
+meta.className = 'dl-meta';
 const name = document.createElement('div');
+name.className = 'dl-name';
 name.textContent = WIDGET_NAMES[wid] || wid;
 const node = document.querySelector('[data-desk-widget="' + wid + '"]');
 const curPage = node && node.closest('.page-slide') ? Array.prototype.indexOf.call(pagesBox.querySelectorAll('.page-slide'), node.closest('.page-slide')) : -1;
@@ -8749,19 +8841,30 @@ if (window.deskRebuild) window.deskRebuild();
 lib.remove();
 toast('已添加到本页');
 });
-item.appendChild(name); item.appendChild(where); item.appendChild(btn);
+meta.appendChild(name); meta.appendChild(where);
+item.appendChild(prev); item.appendChild(meta); item.appendChild(btn);
 box.appendChild(item);
 });
 const imgItem = document.createElement('div');
 imgItem.className = 'desk-lib-item';
+const imgPrev = document.createElement('div');
+imgPrev.className = 'dl-prev';
+imgPrev.style.cssText = PREV_BOX;
+imgPrev.innerHTML = '<span style="width:30px;height:22px;border-radius:4px;background:linear-gradient(135deg,#cde,#fdc);display:block"></span>';
+const imgMeta = document.createElement('div');
+imgMeta.className = 'dl-meta';
 const imgName = document.createElement('div');
+imgName.className = 'dl-name';
 imgName.textContent = '图片（上传新图片）';
-imgName.style.cssText = 'flex:1';
+const imgWhere = document.createElement('div');
+imgWhere.className = 'dl-where';
+imgWhere.textContent = '可多个';
 const imgBtn = document.createElement('button');
 imgBtn.className = 'dl-btn';
 imgBtn.textContent = '上传并添加';
 imgBtn.addEventListener('click', () => { addDeskImage(pageIdx); lib.remove(); });
-imgItem.appendChild(imgName); imgItem.appendChild(imgBtn);
+imgMeta.appendChild(imgName); imgMeta.appendChild(imgWhere);
+imgItem.appendChild(imgPrev); imgItem.appendChild(imgMeta); imgItem.appendChild(imgBtn);
 box.appendChild(imgItem);
 const close = document.createElement('button');
 close.textContent = '关闭';
@@ -9576,6 +9679,175 @@ const csPage = document.getElementById('page-call-settings');
 if (csPage) csPage.hidden = false;
 });
 }
+let deskClockTimer = null;
+function initDeskClock() {
+const el = document.getElementById('dc-time');
+const dateEl = document.getElementById('dc-date');
+if (!el || !dateEl || deskClockTimer) return;
+const week = ['日','一','二','三','四','五','六'];
+const update = () => {
+const d = new Date();
+const p = (n) => (n < 10 ? '0' + n : '' + n);
+el.textContent = p(d.getHours()) + ':' + p(d.getMinutes());
+dateEl.textContent = '星期' + week[d.getDay()] + ' · ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日';
+};
+update();
+deskClockTimer = setInterval(update, 5000);
+}
+function renderDeskCalendar() {
+const grid = document.getElementById('dcal-grid');
+const title = document.getElementById('dcal-title');
+if (!grid || !title) return;
+const now = new Date();
+const y = now.getFullYear(), m = now.getMonth();
+const p2 = (n) => (n < 10 ? '0' + n : '' + n);
+title.textContent = y + ' 年 ' + (m + 1) + ' 月';
+const firstDay = new Date(y, m, 1).getDay();
+const daysInMonth = new Date(y, m + 1, 0).getDate();
+const cells = [];
+for (let i = 0; i < firstDay; i++) cells.push('<span class="dcal-cell empty"></span>');
+for (let d = 1; d <= daysInMonth; d++) {
+const ds = y + '-' + p2(m + 1) + '-' + p2(d);
+const isToday = d === now.getDate();
+const hasMsg = !!store.get('cal-my-' + ds);
+cells.push('<span class="dcal-cell' + (isToday ? ' today' : '') + (hasMsg ? ' has-msg' : '') + '" data-date="' + ds + '">' + d + '</span>');
+}
+grid.innerHTML = cells.join('');
+grid.querySelectorAll('.dcal-cell:not(.empty)').forEach(c => {
+c.addEventListener('click', () => {
+const calApp = document.querySelector('.app[data-app="calendar"]');
+if (calApp) calApp.click();
+});
+});
+}
+let deskTimerBound = false, dtTimer = null;
+let dtState = { mode: 'up', running: false, startTs: 0, elapsed: 0, target: 0 };
+function initDeskTimer() {
+const disp = document.getElementById('dt-disp');
+const startBtn = document.getElementById('dt-start');
+const resetBtn = document.getElementById('dt-reset');
+const modeBtn = document.getElementById('dt-toggle-mode');
+const modeLabel = document.getElementById('dt-mode-label');
+if (!disp || !startBtn || deskTimerBound) return;
+deskTimerBound = true;
+const fmt = (ms) => {
+if (ms < 0) ms = 0;
+const t = Math.floor(ms / 100);
+const mm = Math.floor(t / 600), ss = Math.floor((t % 600) / 10), ds = t % 10;
+return (mm < 10 ? '0' + mm : '' + mm) + ':' + (ss < 10 ? '0' + ss : '' + ss) + '.' + ds;
+};
+const render = () => {
+if (dtState.mode === 'up') {
+const ms = dtState.running ? (Date.now() - dtState.startTs + dtState.elapsed) : dtState.elapsed;
+disp.textContent = fmt(ms);
+} else {
+const remain = dtState.running ? (dtState.target - (Date.now() - dtState.startTs) - dtState.elapsed) : (dtState.target - dtState.elapsed);
+disp.textContent = fmt(remain);
+if (dtState.running && remain <= 0) {
+dtState.running = false;
+if (dtTimer) { clearInterval(dtTimer); dtTimer = null; }
+startBtn.textContent = '开始';
+disp.textContent = '00:00.0';
+toast('倒计时结束');
+try { if (navigator.vibrate) navigator.vibrate(200); } catch (e) {}
+}
+}
+};
+startBtn.addEventListener('click', () => {
+if (dtState.mode === 'down' && !dtState.running && dtState.target <= 0) {
+if (!window.openModal) return;
+window.openModal('倒计时分钟数', '5', (v) => {
+const min = parseFloat(v);
+if (!min || min <= 0) { toast('请输入有效分钟数'); return; }
+dtState.target = min * 60000;
+dtState.elapsed = 0;
+dtState.startTs = Date.now();
+dtState.running = true;
+startBtn.textContent = '暂停';
+if (dtTimer) clearInterval(dtTimer);
+dtTimer = setInterval(render, 100);
+render();
+});
+return;
+}
+if (dtState.running) {
+dtState.elapsed += Date.now() - dtState.startTs;
+dtState.running = false;
+if (dtTimer) { clearInterval(dtTimer); dtTimer = null; }
+startBtn.textContent = '继续';
+} else {
+dtState.startTs = Date.now();
+dtState.running = true;
+if (dtTimer) clearInterval(dtTimer);
+dtTimer = setInterval(render, 100);
+startBtn.textContent = '暂停';
+}
+render();
+});
+resetBtn.addEventListener('click', () => {
+dtState.running = false; dtState.elapsed = 0; dtState.target = 0;
+if (dtTimer) { clearInterval(dtTimer); dtTimer = null; }
+startBtn.textContent = '开始';
+disp.textContent = '00:00.0';
+});
+modeBtn.addEventListener('click', () => {
+if (dtState.running) { toast('请先暂停再切换模式'); return; }
+dtState.mode = dtState.mode === 'up' ? 'down' : 'up';
+dtState.elapsed = 0; dtState.target = 0;
+modeLabel.textContent = dtState.mode === 'up' ? '正计时' : '倒计时';
+modeBtn.textContent = dtState.mode === 'up' ? '倒计时' : '正计时';
+startBtn.textContent = '开始';
+disp.textContent = '00:00.0';
+});
+render();
+}
+function renderDeskAnniv() {
+const daysEl = document.getElementById('da-days');
+const nameEl = document.getElementById('da-name');
+if (!daysEl || !nameEl) return;
+const now = new Date();
+const cands = [];
+const start = store.get('love-start');
+if (start) {
+const d = new Date(start + 'T00:00:00');
+if (!isNaN(d.getTime())) {
+let ann = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+if (ann.getTime() < now.getTime()) ann.setFullYear(ann.getFullYear() + 1);
+cands.push({ name: '恋爱纪念日', date: ann });
+}
+}
+try {
+const extras = JSON.parse(store.get('mem-extras') || '[]');
+extras.forEach(it => {
+if (!it.date) return;
+const d = new Date(it.date + 'T00:00:00');
+if (isNaN(d.getTime())) return;
+let dt = new Date(d.getTime());
+if (dt.getTime() < now.getTime()) {
+dt = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+if (dt.getTime() < now.getTime()) dt.setFullYear(dt.getFullYear() + 1);
+}
+cands.push({ name: it.name || '纪念日', date: dt });
+});
+} catch (e) {}
+if (!cands.length) {
+daysEl.textContent = '—';
+nameEl.textContent = '未设置纪念日';
+return;
+}
+cands.sort((a, b) => a.date - b.date);
+const next = cands[0];
+const days = Math.ceil((next.date - now) / 864e5);
+daysEl.textContent = days + ' 天';
+nameEl.textContent = next.name + ' · ' + (next.date.getMonth() + 1) + ' 月 ' + next.date.getDate() + ' 日';
+}
+function renderDeskWidgets() {
+try { initDeskClock(); } catch (e) {}
+try { renderDeskCalendar(); } catch (e) {}
+try { initDeskTimer(); } catch (e) {}
+try { renderDeskAnniv(); } catch (e) {}
+}
+renderDeskWidgets();
 document.addEventListener('contact-switched', function () {
 try { applyBgVisibility(); } catch (e) {}
 try { restoreAppIcons(); } catch (e) {}
@@ -9606,6 +9878,7 @@ try { updateFishDays(); } catch (e) {}
 try { updateLove(); } catch (e) {}
 try { renderQuoteOfDay(); } catch (e) {}
 try { renderExtras(); } catch (e) {}
+try { renderDeskWidgets(); } catch (e) {}
 try {
 const lu = document.getElementById('lbl-user');
 if (lu) { const v = store.get('lbl-user'); lu.textContent = v || '我'; }
@@ -10059,6 +10332,22 @@ const done =
 (type === 'curious' && rec.curiousStatus === 'answered') ||
 (type === 'roast' && rec.roastStatus === 'answered') ||
 (type === 'ask' && rec.askStatus === 'answered');
+if (done && type === 'ask' && rec.askType === 'single' && Array.isArray(rec.askOptions) && rec.askOptions.length) {
+const card = el.querySelector('.msg-ask-card');
+if (!card) return false;
+const wrap = document.createElement('div');
+wrap.className = 'msg-inplace';
+const chosen = String(rec.askAnswer || '');
+(rec.askOptions || []).forEach(o => {
+const row = document.createElement('div');
+row.className = 'ip-opt-row' + (String(o.t || '') === chosen ? ' sel' : '');
+row.innerHTML = '<span class="ip-opt-t">' + escTxt(String(o.t || '')) + '</span>' +
+((o.reply && String(o.reply).trim()) ? '<span class="ip-opt-reply">' + escTxt(String(o.reply)) + '</span>' : '');
+wrap.appendChild(row);
+});
+card.appendChild(wrap);
+return true;
+}
 if (done) return false;
 const card = el.querySelector('.msg-choose-card, .msg-ask-card');
 if (!card) return false;
@@ -10167,13 +10456,21 @@ const card = e.target.closest('.msg-ask-card, .msg-choose-card');
 if (!card) return;
 const item = card.closest('.msg-ask');
 if (!item || item.dataset.idx === undefined) return;
+const idx = Number(item.dataset.idx);
+const rec = msgs[idx];
+if (!rec) return;
+if (card.classList.contains('answered') && rec.special === 'ask' && rec.askType === 'single' && Array.isArray(rec.askOptions) && rec.askOptions.length) {
+e.stopPropagation();
+const hadFav = card.classList.contains('show-fav');
+body.querySelectorAll('.msg-ask-card.show-fav, .msg-choose-card.show-fav').forEach(c => c.classList.remove('show-fav'));
+if (!hadFav) card.classList.add('show-fav');
+expandCardInPlace(idx, 'ask');
+return;
+}
 const hadFav = card.classList.contains('show-fav');
 body.querySelectorAll('.msg-ask-card.show-fav, .msg-choose-card.show-fav').forEach(c => c.classList.remove('show-fav'));
 if (!hadFav) card.classList.add('show-fav');
 if (card.classList.contains('answered')) { e.stopPropagation(); return; } // 已作答：只切换收藏按钮
-const idx = Number(item.dataset.idx);
-const rec = msgs[idx];
-if (!rec) return;
 e.stopPropagation(); // 不冒泡触发气泡操作菜单
 let type = null;
 if (rec.special === 'ask-choose') type = 'choose';
@@ -11156,15 +11453,20 @@ if (cfgn(c, 'as-en', 1) !== 1) {
 autoTimer = setTimeout(scheduleAutoSend, 30000);
 return;
 }
-let asMin = Math.min(30, Number(cfgn(c, 'as-min', 5)) || 5) * 60;
-let asMax = Math.min(180, Number(cfgn(c, 'as-max', 10)) || 10) * 60;
-if (cfgn(c, 'dnd-en', 0) === 1) { asMin = 1; asMax = 180 * 60; }
+let asMin = Math.min(600, Math.max(1, Number(cfgn(c, 'as-min', 5)) || 5)) * 60;
+let asMax = Math.min(600, Math.max(1, Number(cfgn(c, 'as-max', 10)) || 10)) * 60;
+if (cfgn(c, 'dnd-en', 0) === 1) { asMin = 30 * 60; asMax = 180 * 60; }
+if (asMax < asMin) asMax = asMin;
 const delay = (asMin + Math.random() * Math.max(1, asMax - asMin)) * 1000;
 autoTimer = setTimeout(() => {
 tryAutoSend();
 scheduleAutoSend();
 }, delay);
 }
+window.rescheduleAutoSend = function () { try { scheduleAutoSend(); } catch (e) {} };
+document.addEventListener('contact-switched', function () {
+try { if (window.replyCfg) scheduleAutoSend(); } catch (e) {}
+});
 function tryAutoSend() {
 try {
 const c = cfg();
@@ -11829,14 +12131,10 @@ if (window.logFish) window.logFish();
 const recTs = Date.now();
 setTimeout(() => {
 const defs = ['嗯嗯', '我想想…', '应该吧', '好呀', '我陪你', '可以的', '那挺好呀', '我觉得可以', '听你的', '当然可以', '我很乐意'];
-let text, replyText = null;
+let text;
 if (isSingle && askOpts && askOpts.length) {
 const o = askOpts[Math.floor(Math.random() * askOpts.length)];
 text = o.t;
-const preset = (o.reply && String(o.reply).trim()) ? String(o.reply).trim() : '';
-replyText = preset
-? (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset)
-: (window.pickAskCardReply ? window.pickAskCardReply() : '收到你的回答。');
 } else {
 text = (window.pickAskCardReply ? window.pickAskCardReply(defs) : defs[Math.floor(Math.random() * defs.length)]);
 }
@@ -11844,14 +12142,13 @@ const rec = msgs[askIdx];
 if (rec && rec.special === 'ask') {
 rec.askStatus = 'answered';
 rec.askAnswer = text;
-if (replyText) rec.askReply = replyText;
 saveMsgs();
 const el = body.querySelector('.msg-ask[data-idx="' + askIdx + '"]');
 if (el) {
-el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ TA：' + escTxt(text) + '</div>' + (replyText ? '<div class="msg-choose-r">TA：' + escTxt(replyText) + '</div>' : '') + favHeartHtml() + '</div>';
+el.innerHTML = '<div class="msg-ask-card answered"><div class="msg-ask-q">问问TA · ' + escTxt(content) + '</div><div class="msg-ask-a">✓ TA：' + escTxt(text) + '</div>' + favHeartHtml() + '</div>';
 }
 }
-addIn(replyText || text);
+addIn(text);
 try {
 const list = JSON.parse(store.get('invite-ask-history') || '[]');
 list.unshift({ type: 'ask', q: content, a: text, ts: recTs });
@@ -13254,7 +13551,9 @@ let shown = grps;
 if (curGroup) shown = shown.filter(g => g[0] === curGroup);
 if (q) {
 shown = shown
-.map(([g, arr]) => [g, arr.filter(c => (typeof c === 'string' && c.indexOf('data:') !== 0) && c.indexOf(q) >= 0)])
+.map(([g, arr]) => [g, arr
+.map((c, oi) => ({ c: c, oi: oi }))
+.filter(x => (typeof x.c === 'string' && x.c.indexOf('data:') !== 0) && x.c.indexOf(q) >= 0)])
 .filter(([g, arr]) => arr.length || g.indexOf(q) >= 0);
 }
 updateCountsOnly();
@@ -13271,7 +13570,9 @@ return;
 const flat = [];
 shown.forEach(([gname, arr]) => {
 flat.push({ header: true, gname, count: arr.length });
-arr.forEach((c, i) => flat.push({ header: false, gname, c, i }));
+arr.forEach((o, i) => {
+flat.push({ header: false, gname, c: q ? o.c : o, i: q ? o.oi : i });
+});
 });
 const frag = document.createDocumentFragment();
 let pos = 0;
@@ -14580,7 +14881,13 @@ out[k] = n;
 return out;
 }
 window.replyCfg = getCfg;
-window.saveReplyCfg = function (k, v) { ls.set('reply-' + k, String(v)); };
+window.saveReplyCfg = function (k, v) {
+ls.set('reply-' + k, String(v));
+if (k === 'as-en' || k === 'as-prob' || k === 'as-min' || k === 'as-max' ||
+k === 'as-count-min' || k === 'as-count-max' || k === 'dnd-en') {
+try { if (window.rescheduleAutoSend) window.rescheduleAutoSend(); } catch (e) {}
+}
+};
 function showPage(id) {
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 const el = document.getElementById(id);

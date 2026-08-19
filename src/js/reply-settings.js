@@ -66,7 +66,15 @@
     return out;
   }
   window.replyCfg = getCfg;
-  window.saveReplyCfg = function (k, v) { ls.set('reply-' + k, String(v)); };
+  window.saveReplyCfg = function (k, v) {
+    ls.set('reply-' + k, String(v));
+    // v3.7.x：主动发送相关设置保存后立即重排定时器——原实现挂起的旧定时器
+    // 不重排，改了间隔/概率要等下一轮（最长几小时）才生效
+    if (k === 'as-en' || k === 'as-prob' || k === 'as-min' || k === 'as-max' ||
+        k === 'as-count-min' || k === 'as-count-max' || k === 'dnd-en') {
+      try { if (window.rescheduleAutoSend) window.rescheduleAutoSend(); } catch (e) {}
+    }
+  };
 
   // ---- 设置页 UI ----
   function showPage(id) {

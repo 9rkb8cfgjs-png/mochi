@@ -248,6 +248,37 @@
 </div><!-- /page-slide 第二页 -->
       </div><!-- /desktop-pages -->
 
+      <!-- 桌面小组件隐藏池：被移除/未添加的组件暂存于此（display:none）。
+           新增组件默认放池里，用户从装修模式组件库添加到目标页。 -->
+      <div id="desk-widget-pool" style="display:none">
+        <!-- 时钟组件 -->
+        <div class="desk-clock glass" data-desk-widget="desk-clock" data-card-bg="desk-clock">
+          <div class="dc-time" id="dc-time">00:00</div>
+          <div class="dc-date" id="dc-date">— · — 月 — 日</div>
+        </div>
+        <!-- 月历组件 -->
+        <div class="desk-cal glass" data-desk-widget="desk-calendar" data-card-bg="desk-calendar">
+          <div class="dcal-head"><span class="dcal-title" id="dcal-title">—</span></div>
+          <div class="dcal-grid" id="dcal-grid"></div>
+        </div>
+        <!-- 计时器组件 -->
+        <div class="desk-timer glass" data-desk-widget="desk-timer" data-card-bg="desk-timer">
+          <div class="dt-disp" id="dt-disp">00:00.0</div>
+          <div class="dt-mode-label" id="dt-mode-label">正计时</div>
+          <div class="dt-controls">
+            <button class="dt-btn" id="dt-start">开始</button>
+            <button class="dt-btn" id="dt-reset">重置</button>
+            <button class="dt-btn" id="dt-toggle-mode">倒计时</button>
+          </div>
+        </div>
+        <!-- 纪念日倒计时组件 -->
+        <div class="desk-anniv glass" data-desk-widget="desk-anniv" data-card-bg="desk-anniv">
+          <div class="da-label">距下一个纪念日</div>
+          <div class="da-days" id="da-days">—</div>
+          <div class="da-name" id="da-name">未设置</div>
+        </div>
+      </div>
+
       <!-- 分页指示器 -->
       <div class="dots" id="desktop-dots">
         <span class="dot active"></span>

@@ -436,8 +436,12 @@
     // 分组筛选
     if (curGroup) shown = shown.filter(g => g[0] === curGroup);
     if (q) {
+      // v3.7.x：保留原始索引——搜索过滤后 data-idx 必须仍是原始数组索引，
+      // 否则单卡点击编辑/删除会按错位索引改到别的字卡
       shown = shown
-        .map(([g, arr]) => [g, arr.filter(c => (typeof c === 'string' && c.indexOf('data:') !== 0) && c.indexOf(q) >= 0)])
+        .map(([g, arr]) => [g, arr
+          .map((c, oi) => ({ c: c, oi: oi }))
+          .filter(x => (typeof x.c === 'string' && x.c.indexOf('data:') !== 0) && x.c.indexOf(q) >= 0)])
         .filter(([g, arr]) => arr.length || g.indexOf(q) >= 0);
     }
     updateCountsOnly();
@@ -456,7 +460,10 @@
     const flat = [];
     shown.forEach(([gname, arr]) => {
       flat.push({ header: true, gname, count: arr.length });
-      arr.forEach((c, i) => flat.push({ header: false, gname, c, i }));
+      arr.forEach((o, i) => {
+        // 搜索过滤时元素是 {c, oi} 对象（保留原始索引）；否则是原始字卡字符串
+        flat.push({ header: false, gname, c: q ? o.c : o, i: q ? o.oi : i });
+      });
     });
     const frag = document.createDocumentFragment();
     let pos = 0;

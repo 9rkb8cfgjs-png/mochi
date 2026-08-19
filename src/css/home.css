@@ -256,16 +256,44 @@
 .desk-lib-title { font-size:15px; font-weight:700; margin-bottom:4px; }
 .desk-lib-sub { font-size:11px; color:#888; margin-bottom:12px; }
 .desk-lib-item {
-  display:flex; align-items:center; justify-content:space-between;
+  display:flex; align-items:center; gap:10px;
   padding:10px 12px; border:1px solid #eee; border-radius:10px; margin-bottom:8px;
   font-size:13px;
 }
-.desk-lib-item .dl-where { font-size:11px; color:#999; }
+.desk-lib-item .dl-meta { flex:1; min-width:0; }
+.desk-lib-item .dl-name { font-size:13px; font-weight:600; color:var(--ink,#111); }
+.desk-lib-item .dl-where { font-size:11px; color:#999; margin-top:2px; }
 .desk-lib-item .dl-btn {
   font-size:12px; padding:4px 12px; border:none; border-radius:99px;
-  background:#111; color:#fff; cursor:pointer; font-family:inherit;
+  background:#111; color:#fff; cursor:pointer; font-family:inherit; flex-shrink:0;
 }
 .desk-lib-item .dl-btn:disabled { background:#ddd; color:#999; }
+
+/* v3.7.x：新增桌面小组件（时钟 / 月历 / 计时器 / 纪念日倒计时） */
+.desk-clock { padding:14px 16px; text-align:center; }
+.desk-clock .dc-time { font-size:32px; font-weight:700; letter-spacing:2px; color:var(--ink,#111); line-height:1.1; }
+.desk-clock .dc-date { font-size:12px; color:var(--muted,#888); margin-top:4px; }
+.desk-cal { padding:12px 14px; }
+.desk-cal .dcal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.desk-cal .dcal-title { font-size:13px; font-weight:600; color:var(--ink,#111); }
+.desk-cal .dcal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.desk-cal .dcal-cell { text-align:center; font-size:11px; line-height:24px; height:24px; border-radius:6px; color:var(--ink,#333); }
+.desk-cal .dcal-cell.empty { visibility:hidden; }
+.desk-cal .dcal-cell.today { background:#111; color:#fff; font-weight:700; }
+.desk-cal .dcal-cell.has-msg { position:relative; color:var(--ink,#111); font-weight:600; }
+.desk-cal .dcal-cell.has-msg::after { content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; background:#e88; }
+.desk-cal .dcal-cell.today.has-msg::after { background:#fff; }
+.desk-cal .dcal-cell:not(.empty):active { background:rgba(0,0,0,.08); }
+.desk-timer { padding:14px 16px; text-align:center; }
+.desk-timer .dt-disp { font-size:28px; font-weight:700; letter-spacing:1px; color:var(--ink,#111); line-height:1.1; font-variant-numeric:tabular-nums; }
+.desk-timer .dt-mode-label { font-size:11px; color:var(--muted,#888); margin-top:4px; }
+.desk-timer .dt-controls { display:flex; gap:6px; margin-top:10px; }
+.desk-timer .dt-btn { flex:1; font-size:12px; padding:6px 0; border:1px solid rgba(0,0,0,.12); border-radius:8px; background:rgba(0,0,0,.03); color:var(--ink,#111); cursor:pointer; font-family:inherit; }
+.desk-timer .dt-btn:active { background:rgba(0,0,0,.08); }
+.desk-anniv { padding:14px 16px; text-align:center; }
+.desk-anniv .da-label { font-size:11px; color:var(--muted,#888); }
+.desk-anniv .da-days { font-size:26px; font-weight:700; color:var(--ink,#111); margin:2px 0; }
+.desk-anniv .da-name { font-size:12px; color:var(--muted,#666); }
 
 /* v3.6.x：桌面图片组件——用户可上传多张图片到任意页，点击全屏查看 */
 .desk-image-widget {
