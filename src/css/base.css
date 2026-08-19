@@ -290,6 +290,64 @@ html { margin:0; padding:0; }
   .fs-css-active .phone { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
 }
 
+/* ===== v3.7.x：平板（iPad）适配 =====
+   iPad 竖屏（768-834px CSS 视口）原命中上方 max-width:900px 手机全屏布局——
+   内容被整屏拉宽（桌面图标间距巨大、聊天气泡过宽）；iPad 横屏（≥1024px）
+   走桌面模拟器外壳（390px 小框 + 两侧灰底）。两者都不适合平板。
+   平板统一为「大屏手机」布局：全高 + 内容限宽 560px 居中 + 无模拟器外壳，
+   竖屏/横屏观感一致。.tablet 类由 mobile-adapt.js 检测 iPad 加在 <html> 上
+   （含 iPadOS 13+ Macintosh 伪装 UA），本区块选择器以 html.tablet 前缀提权，
+   优先于手机媒体查询与桌面外壳样式。 */
+html.tablet body { padding:0; }
+html.tablet .phone {
+  width:min(560px, 100vw); max-width:none; flex-shrink:0;
+  height:100vh; height:100svh; height:100dvh;
+  border-radius:0; box-shadow:none;
+  padding:0 18px 18px;
+}
+html.tablet .phone.no-statusbar { padding:0; }
+html.tablet .statusbar {
+  padding-top:max(calc(14px + env(safe-area-inset-top, 0px)), 14px);
+  padding-bottom:10px;
+}
+/* 平板真全屏（Fullscreen API / display_override）：仍是整屏铺满（与手机端一致） */
+html.tablet.fs-active .phone, html.tablet.fs-css-active .phone { width:100vw; max-width:none; }
+@media (display-mode: fullscreen) { html.tablet .phone { width:100vw; max-width:none; } }
+/* 平板 iOS「全屏模式」（隐藏应用内模拟状态栏）：顶部安全区兜底（同手机端规则） */
+html.tablet.ios-fs-active .phone { padding-top:max(env(safe-area-inset-top, 0px), 12px); }
+/* 聊天页通栏输入栏贴底（与手机端一致，横屏不再悬浮圆角卡片） */
+html.tablet .phone .page.full .chat-input-row {
+  margin:0; border-radius:0;
+  border-left:none; border-right:none; border-bottom:none;
+  padding-left:12px; padding-right:12px;
+  padding-top:10px;
+  padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px));
+}
+html.tablet .phone .page.full .chat-head { padding-top:calc(10px + env(safe-area-inset-top, 0px)); }
+html.tablet .phone .page.full { padding-bottom:0; }
+html.tablet #page-chat { background:var(--page-bg-grad); }
+html.tablet .tabbar { margin-bottom:env(safe-area-inset-bottom, 0px); }
+/* 平板不应用桌面缩放（zoom 是 iOS 卡顿红线；平板按手机端体验处理，与竖屏一致） */
+html.tablet .page-slide.desk-page { zoom:1; }
+html.tablet .deco-widget, html.tablet .mini-card, html.tablet .checkin,
+html.tablet .weekend-box, html.tablet .music-widget, html.tablet .memo-card,
+html.tablet .mood-card, html.tablet .week-card { zoom:1; }
+/* 平板大屏：桌面图标放大、消息气泡限宽（避免整行过长） */
+html.tablet .app .app-ico { width:64px; height:64px; }
+html.tablet .app .app-name { font-size:12px; }
+html.tablet .msg:not(.msg-ask):not(.msg-center) { max-width:70%; }
+/* 弹窗略宽（平板空间充裕，272px 偏小） */
+html.tablet .modal { width:min(320px, 82vw); }
+/* 输入框字号钉 16px：iOS 聚焦 <16px 输入框会自动放大整页——iPad 横屏（>900px）
+   不命中上方手机媒体查询，需单独覆盖，行为与手机端一致 */
+html.tablet .phone input:not([readonly]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([type="date"]):not([type="time"]):not([type="datetime-local"]):not([type="month"]):not([type="week"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+html.tablet .phone textarea:not([readonly]),
+html.tablet .phone select,
+html.tablet .phone [contenteditable="true"] { font-size:16px; }
+/* 平板手势：禁止双击缩放（iPad Safari 双击放大整页是常见误触），长按不弹系统菜单 */
+html.tablet, html.tablet * { touch-action:manipulation; }
+html.tablet body, html.tablet .phone, html.tablet img { -webkit-touch-callout:none; }
+
 /* v3.6.x：输入法弹出适配已改为「最小干预」——mobile-adapt.js 不再锁定 .phone 高度、
    不再写 --ime-h、不再加 ime-open（此前这套机制在部分安卓机引发输入法截断/闪屏）。
    viewport meta 的 interactive-widget=resizes-content 会让布局视口随键盘收缩，

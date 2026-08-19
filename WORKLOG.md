@@ -9,11 +9,36 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-19（本会话，用户反馈「网易云歌单导入：批量导入没写可导入歌单/没写仅免费可播；导入后列表无时长、播放才加载；手机浏览器可能拦截」）
+- [本会话·完成]（**已构建 verify 10/10 + CDP 冒烟 9/9 + 真实歌单 E2E，本次统一提交**）：`src/js/music-player.js`（AI-A 域，用户直接反馈故本会话统一实现）。三点全修：
+  ①**文案补全（issue#1）**：批量导入面板重写提示——3 种方式置顶（网易云歌单链接 / 网易云单曲 ID / 本地直链格式），明确「⚠ 网易云导入仅支持播放免费歌曲，VIP/付费歌曲可能无法播放；部分手机浏览器可能拦截，失败可稍后重试」；占位符加歌单链接示例；链接添加面板同补免费说明 + 歌单链接说明；歌单导入失败 toast 改「可能私密/已失效/被浏览器拦截」。
+  ②**时长一次性补全（issue#2）**：新增时长补全链路——`fetchV6Durations`（官方 v6 歌单详情含每曲 dt，经 3 个 CORS 代理并行拉、7s 兜底）+ `enqueueDurProbe`/`probeOneDuration`（<audio preload=metadata> 探测，与播放同源 meting URL、无需 CORS 代理、移动端可用，并发 4 后台跑）；`importNeteasePlaylist` 导入后自动触发（v6 快路径 → 探测兜底），链接添加/批量导入单曲同步探测，打开音乐页时 `probeAllMissingDurations()` 补历史遗留歌曲；`parseNeteasePageTitle` 顺带解析歌曲页 `music:duration` meta（零额外请求）；播放 `loadedmetadata` 补 `updateDurUI` 即时刷新列表时长（不再等整页重渲染）。CDP 实测：种子 2 首 1s 内补全（04:55/03:30 与官方 dt 一致）、真实导入热歌榜 200 首全部时长补全显示（仅 2 首 VIP 保持 00:00 属预期）。
+  ③**移动端防拦截（issue#3）**：`fetchNeteasePlaylist` 新增 i-meto meting 镜像源（独立域名，主源被拦时兜底，字段 title/author 兼容解析）；保留官方 v6 代理兜底；失败提示引导重试。
+  `node --check` 通过；本次构建同时包含会话内 RPS 猜拳/正在输入修复/表情包分组等已保存改动，统一提交。
+
+### 2026-08-19（本会话，用户需求「聊天更多功能新增猜拳互动，联系人随机出拳」）
+- [本会话·完成]（**已构建 verify 10/10 + CDP 猜拳功能 12/12，未提交**）：新增「猜拳」互动。①**入口**：`src/template.html` more-grid-fun 加 `more-rps` 按钮（手势 SVG 图标，位于拍一拍与头像互动之间）；②**半框**：`chat-rps-panel`（复用 .poke-card 容器）含战绩行（胜/负/平，存 localStorage `rps-score`）+ 提示行 + 三大出拳按钮（石头/剪刀/布，各带手势 SVG）；③**逻辑**：`src/js/chat.js` 绑定 more-rps→openRpsPanel（关闭其他半框+more-panel）、出拳→sendRps：联系人出拳 `['rock','scissors','paper'][Math.floor(Math.random()*3)]` 纯 1/3 均匀随机每次独立 → rpsJudge 判定 → addRec({special:'rps',rpsMine,rpsTa,rpsResult}) 写入聊天 → 战绩更新；④**消息卡片**：renderMsg 加 `special==='rps'` 分支，居中白底灰边卡片，双方手势 SVG 图标+「你·石头 VS TA·布」+ 结果文字（你赢了/你输了/平局），简约无彩色；⑤**样式**：`src/css/chat-main.css` 加 .rps-score/.rps-hint/.rps-choices/.rps-choice/.rps-c-ico + .msg-rps/.msg-rps-card/.msg-rps-hands/.msg-rps-hand/.msg-rps-ico/.msg-rps-name/.msg-rps-vs/.msg-rps-result；⑥**接线**：`src/js/mobile-adapt.js` FLOAT_SELECTORS 加 `#chat-rps-panel`（锁背景滚动）；`src/css/dark.css` 加暗色适配。涉及 AI-A 域（chat.js/chat-main.css）+ AI-B 域（template.html 已进对方 20adafe 提交/mobile-adapt.js/dark.css），用户直接反馈故跨域。**未提交**（chat.js 含对方未提交的 partialRetactMsg 改动，等待统一提交）。
+
 ### 2026-08-19（用户反馈「聊天页正在输入行又变成一整行图形、滑动遮挡消息」，二次反馈未解决）
 - [本会话·完成]（**已构建 verify 10/10 + CDP 双场景验证，随本次提交**）：`src/css/chat-main.css` `.chat-typing`（AI-A 域文件，用户直接反馈故越界修复）。**真实根因**：聊天页设置壁纸（cs-bg 铺满 #page-chat）时，`.chat-typing` 是 `#page-chat`（flex column）直接子项，`align-items` 默认 stretch 把它拉成**整行全宽透明块**（实测 354px），整行透出壁纸图案 = 用户看到"这一整行是一个图形"；v3.5.47 曾用 `width:fit-content` 解决，v3.6.x 改内嵌时漏掉，仅加 fit-content 在部分内核不可靠。修复：`.chat-typing` 加 **`align-self:flex-start`**（flex 交叉轴不拉伸，宽度收缩到内容，flex 基础属性所有内核必支持，不依赖 fit-content 关键字）+ 保留 `width:fit-content` 双保险。CDP 验证两场景（fit-content 正常 / 用 `width:auto!important` 模拟 fit-content 失效）：typing 行宽度均 121px 窄条、alignSelf=flex-start、滚动后无消息在行下（msgsUnderTyping=0）、elementFromPoint 命中 page-chat 而非消息。涉及 `src/css/chat-main.css` + 产物。本次构建同时包含 AI-A 已保存改动（chat.js 问问TA半框文字错位修复/音乐批量链接/互动回应池等 7 文件，node --check 全过），统一提交。
 
+### 2026-08-19（本会话，用户反馈「聊天表情包→我的表情包：管理分组图层不在最顶 + 新建分组不显示在顶部」）
+- [本会话·完成]（**已随 1f14419 构建提交推送**）：`src/js/chat.js` + `src/css/chat-pages.css`（均 AI-A 域）。三个问题一并修复：
+  ①**管理分组弹层不在最顶**：`.mg-mask` z-index 60 < 聊天表情半框 `.poke-card` 70 → 弹层被半框盖住。改 z-index 85（高于 poke-card 70/消息气泡菜单 80，低于 openModal `.modal-mask` 90，重命名/删除确认仍盖在其上）。
+  ②**新建分组不显示在顶部**：a) 分组栏 `renderEmojiGroupsBar` 只显示有内容的分组（`filter(g => g[1].length)`），新建的空分组永远不可见（且无法选中，点「添加」会加进别的组）→ 我的表情包模式改为显示全部分组（含空的，计数显示 0），TA 的表情包仍只显示有内容分组；b) 新建分组 `push` 到末尾 → 改 `unshift` 插到最前，创建后自动选中并打开该分组、自动关掉管理弹层（与字卡库管理分组一致）；「添加」无分组时自动建的「默认」同样 unshift。
+  ③**顺带修复隐藏大 bug：我的表情包刷新后整组消失**——`myEmojiLoad()`（读 localStorage）定义了但**从未被调用**，启动恢复块只在「IDB 内容比 LS 多」时才覆盖赋值，正常双写（LS=IDB）时 `myGroups` 恒为空数组 → 每次刷新后我的表情包显示「暂无」。修复：启动即 `myGroups = myEmojiLoad()`（与 chatcard.js cc-groups 的 loadGroups 模式对齐，恢复块仍保留 IDB 更多时覆盖）。
+  temp 隔离构建 + CDP 复测（seed LS+IDB → 刷新 → 全部通过）：刷新后分组栏 `[默认1, 猫咪0]`（修复前为空）、管理弹层 z 85>70、新建「猫猫」→ 弹层自动关 + chips `[猫猫0, 默认1, 猫咪0]` 置顶且选中、存储顺序 `[猫猫, 默认, 猫咪]`、再刷新持久。**已随 1f14419 构建提交推送**（对方统一构建包含本改动+产物）。
+
 ### 2026-08-19（本会话，用户反馈「问问TA 半框输入文字显示在输入框外面」（安卓 Chrome/Edge））
-- [本会话·完成]（**未构建未提交**，请构建者统一执行）：`src/js/chat.js` + `src/css/chat-main.css`（均 AI-A 域）。排查：半框输入框是安卓转换的 contenteditable（ce-box），位于 `position:fixed` 的 `.poke-card` 面板内；新版安卓 Chrome 键盘只缩放视觉视口（chromium issue 40251217），键盘弹出动画把 fixed 半框整体上移时，聚焦 contenteditable 的文本合成层偶发停在旧位置 = 文字显示在框外（聊天主输入栏在文档流内，不受影响）。修复：①chat-main.css `.chat-ask-input:focus`/`.chat-ask-opts:focus` 加 `transform:translateZ(0)`（聚焦期间独立合成层，逐帧按当前布局位置合成）；②chat.js `openChatAskPanel` 聚焦后给输入框内联 `translateZ(0)`（无头验证 `:focus` 在部分焦点态不匹配，内联样式兜底），`closeChatAskPanel` 与单选选项框显隐（syncOptsHidden）时清除/设置同款。已 temp 隔离构建 + CDP 复测：聚焦态 transform=matrix、键盘弹出动画后输入文字仍在框内（textInBox=true）、单选选项框同款、无 JS 错误。**未构建未提交**，等待统一提交/部署。提示 AI-B：如需通用化，可在 mobile-adapt.js 对 fixed 面板内（`#chat-search-input`/帮我决定/占卜问题框等）ce-box 聚焦时同样加内联 translateZ(0)——当前仅修了问问TA 半框。
+- [本会话·完成]（**已随 1f14419 构建提交推送**）：`src/js/chat.js` + `src/css/chat-main.css`（均 AI-A 域）。排查：半框输入框是安卓转换的 contenteditable（ce-box），位于 `position:fixed` 的 `.poke-card` 面板内；新版安卓 Chrome 键盘只缩放视觉视口（chromium issue 40251217），键盘弹出动画把 fixed 半框整体上移时，聚焦 contenteditable 的文本合成层偶发停在旧位置 = 文字显示在框外（聊天主输入栏在文档流内，不受影响）。修复：①chat-main.css `.chat-ask-input:focus`/`.chat-ask-opts:focus` 加 `transform:translateZ(0)`（聚焦期间独立合成层，逐帧按当前布局位置合成）；②chat.js `openChatAskPanel` 聚焦后给输入框内联 `translateZ(0)`（无头验证 `:focus` 在部分焦点态不匹配，内联样式兜底），`closeChatAskPanel` 与单选选项框显隐（syncOptsHidden）时清除/设置同款。已 temp 隔离构建 + CDP 复测：聚焦态 transform=matrix、键盘弹出动画后输入文字仍在框内（textInBox=true）、单选选项框同款、无 JS 错误。**已随 1f14419 构建提交推送**。提示 AI-B：如需通用化，可在 mobile-adapt.js 对 fixed 面板内（`#chat-search-input`/帮我决定/占卜问题框等）ce-box 聚焦时同样加内联 translateZ(0)——当前仅修了问问TA 半框。
+
+### 2026-08-19（本会话，AI-A：网易云歌单一键导入）
+- [本会话·完成]（**未构建未提交**，请构建者统一执行）：用户需求「直接导入网易云的歌单」。`src/js/music-player.js`（AI-A 域，未动 template.html）：
+  ①**识别**：`extractPlaylistId` 识别歌单分享链接（music.163.com/playlist?id=、y.music.163.com/m/playlist?id=、#/playlist?id= 等格式，8/8 单测通过）；
+  ②**数据源**：`fetchNeteasePlaylist` 主源 meting API `type=playlist`（api.injahow.cn，与播放同源稳定无 CORS，约 200 首上限；响应 url 提取歌曲 ID 复用 `neteaseMetingUrl` 播放）+ 兜底网易云官方 v6 歌单详情 API（无 Cookie 全曲目，经 allorigins/corsproxy/codetabs 代理——实测当前代理基本失效，保留作未来恢复能力）；
+  ③**入口**：「链接添加」输入框粘贴歌单链接自动导入整歌单（可多个混排，歌单行+单曲行共存时分别处理）；「批量导入」同样识别歌单链接（纯链接行、标签格式里的 URL 值均支持）；提示文案同步更新；
+  ④**去重**：按 neteaseId 跳过已有歌曲（重导入全跳过，实测）；失败歌单 toast 提示「可能私密或已失效」；封面 http→https 规范化；
+  ⑤**实测**：真实导入热歌榜 200 首（名/歌手/封面/直链齐全）、重导入 0 新增、无效歌单快速失败。`node --check` 通过。**未构建未提交**，等待统一提交/部署。
 
 ### 2026-08-19（本会话，AI-A：音乐支持批量上传数字链接）
 - [本会话·完成]（**未构建未提交**，请构建者统一执行）：用户需求「音乐里上传数字链接，可以批量上传」。`src/js/music-player.js`（AI-A 域，未动 template.html）：

@@ -343,6 +343,18 @@
   .call-minimize { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--dark-soft); }
   .call-mini { background:var(--dark-card-92); border-color:var(--dark-border); }
   .msg-poke-seg { background:var(--dark-card); border-color:var(--dark-border-12); }
+  .msg-rps-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .msg-rps-ico { background:rgba(255,255,255,.06); }
+  .msg-rps-ico svg { color:var(--dark-soft); }
+  .msg-rps-result { border-top-color:var(--dark-border-12); }
+  .msg-rp-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .msg-rp-card.opened { border-color:var(--dark-border); }
+  .rp-amt { background:var(--dark-card); border-color:var(--dark-border-12); }
+  .rp-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .rp-side { background:var(--dark-card); border-color:var(--dark-border-12); }
+  .rps-choice { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .rps-c-ico { background:rgba(255,255,255,.06); }
+  .rps-c-ico svg { color:var(--dark-soft); }
 
   /* chat-pages.css */
   .cc-manage-bar { background:var(--dark-card-97); border-color:var(--dark-border); }

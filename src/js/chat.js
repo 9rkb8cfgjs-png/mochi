@@ -757,6 +757,29 @@
         if (fItem && fItem.dataset.idx !== undefined) window.favCardFromMsg(Number(fItem.dataset.idx));
         return;
       }
+      // 红包卡片：点击领取（只有 TA 发的红包我能领取，入账 myBalance）
+      const rpCard = e.target.closest('.msg-rp-card');
+      if (rpCard) {
+        e.stopPropagation();
+        const rpItem = rpCard.closest('.msg-rp');
+        if (!rpItem || rpItem.dataset.idx === undefined) return;
+        const rpIdx = Number(rpItem.dataset.idx);
+        const rpRec = msgs[rpIdx];
+        if (!rpRec || rpRec.special !== 'redpacket') return;
+        if (rpRec.rpStatus !== 'pending') return;
+        if (rpRec.side !== 'in') { toast('等待 TA 领取'); return; }
+        rpRec.rpStatus = 'received';
+        rpRec.rpOpenedAt = Date.now();
+        const wallet = rpWalletGet();
+        wallet.myBalance += Math.round((rpRec.rpAmount || 0) * 100);
+        rpWalletSet(wallet);
+        saveMsgsNow();
+        toast('已领取 ¥' + Number(rpRec.rpAmount || 0).toFixed(2));
+        rpCard.classList.add('opened');
+        const statusEl = rpCard.querySelector('.msg-rp-status');
+        if (statusEl) statusEl.textContent = '已领取';
+        return;
+      }
       // 就地作答区内部（选项按钮/发送/输入框）的点击不触发卡片委托
       if (e.target.closest('.msg-inplace')) return;
       const card = e.target.closest('.msg-ask-card, .msg-choose-card');
@@ -913,6 +936,49 @@
       m.className = 'msg-poke';
       m.innerHTML = '<span>' + pokeIconHtml(rec.text) + '</span>' +
         (rec.img ? '<img class="msg-poke-img" src="' + attrEsc(rec.img) + '" alt="新头像">' : '');
+      body.appendChild(m);
+      maybeScrollChatBottom();
+      return m;
+    }
+    // 猜拳：居中白底卡片，显示双方出拳（灰色手势图标 + 名字）+ 结果文字，简约无彩色
+    if (rec.special === 'rps') {
+      m.className = 'msg-rps';
+      const rpsIco = {
+        rock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11V8.5a1.5 1.5 0 013 0V11"/><path d="M8 11V7a1.5 1.5 0 013 0v4"/><path d="M11 11V8a1.5 1.5 0 013 0v3.5"/><path d="M14 11.5V9a1.5 1.5 0 013 0v6c0 3-2.5 5-5.5 5-1.7 0-3-.6-4-1.6L5 16"/></svg>',
+        scissors: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>',
+        paper: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>'
+      };
+      const rpsName = { rock: '石头', scissors: '剪刀', paper: '布' };
+      const resTxt = rec.rpsResult > 0 ? '你赢了' : rec.rpsResult < 0 ? '你输了' : '平局';
+      m.innerHTML = '<div class="msg-rps-card">' +
+        '<div class="msg-rps-hands">' +
+          '<span class="msg-rps-hand"><span class="msg-rps-ico">' + (rpsIco[rec.rpsMine] || '') + '</span><span class="msg-rps-name">你 · ' + escTxt(rpsName[rec.rpsMine] || '') + '</span></span>' +
+          '<span class="msg-rps-vs">VS</span>' +
+          '<span class="msg-rps-hand"><span class="msg-rps-ico">' + (rpsIco[rec.rpsTa] || '') + '</span><span class="msg-rps-name">TA · ' + escTxt(rpsName[rec.rpsTa] || '') + '</span></span>' +
+        '</div>' +
+        '<div class="msg-rps-result">' + escTxt(resTxt) + '</div>' +
+      '</div>';
+      body.appendChild(m);
+      maybeScrollChatBottom();
+      return m;
+    }
+    // 红包：居中白底卡片，红包图标 + 金额 + 留言 + 领取状态（简约白灰风格）
+    if (rec.special === 'redpacket') {
+      m.className = 'msg-rp';
+      m.dataset.idx = msgs.length - 1;
+      const sideTxt = rec.side === 'out' ? '我' : (store.get('lbl-partner') || 'TA');
+      const cls = rpStatusCls(rec);
+      const rpIco = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9c3 2 6 3 9 3s6-1 9-3"/><circle cx="12" cy="9" r="1.4"/></svg>';
+      m.innerHTML = '<div class="msg-rp-card' + (cls ? ' ' + cls : '') + '">' +
+        '<div class="msg-rp-top"><span class="msg-rp-ico">' + rpIco + '</span><span class="msg-rp-label">红包</span></div>' +
+        '<div class="msg-rp-amt">¥' + escTxt(Number(rec.rpAmount || 0).toFixed(2)) + '</div>' +
+        '<div class="msg-rp-wish">' + escTxt(rec.rpWish || '心意') + '</div>' +
+        '<div class="msg-rp-foot">' +
+          '<span class="msg-rp-side">' + escTxt(sideTxt) + ' 发出</span>' +
+          '<span class="msg-rp-status">' + escTxt(rpStatusText(rec)) + '</span>' +
+        '</div>' +
+        favHeartHtml() +
+        '</div>';
       body.appendChild(m);
       maybeScrollChatBottom();
       return m;
@@ -1931,6 +1997,8 @@ function partialRetractMsg(msgEl, side) {
     // v3.6.x：来电挂钩——TA 回复消息后按「通话设置-来电概率」掷一次来电
     // （call.js 提供 window.callMaybeTrigger，与 maybeMusicRequest 同模式；延迟几秒更自然）
     setTimeout(() => { if (window.callMaybeTrigger) window.callMaybeTrigger(); }, 3500);
+    // 红包模拟器：回复完成后触发系统自动发红包（TA→我）+ pending 红包收取
+    setTimeout(() => { trySystemAutoSend(); tryCollectPending(); }, 2500);
   }
   // 「让对方继续说」：点击顶部联系人昵称触发，立即发 1 条（forceSingle）
   window.continueChat = function () {
@@ -2355,6 +2423,329 @@ function partialRetractMsg(msgEl, side) {
       e.stopPropagation();
       openPokeCard();
     });
+  }
+
+  // ---- 猜拳：聊天页底部半框（和联系人猜拳，联系人随机出拳，1/3 均匀）----
+  const rpsPanel = document.getElementById('chat-rps-panel');
+  const rpsCloseBtn = document.getElementById('chat-rps-close');
+  const rpsScoreEl = document.getElementById('rps-score');
+  const rpsHintEl = document.getElementById('rps-hint');
+  const rpsNameEl = document.getElementById('rps-partner-name');
+  function rpsReadScore() {
+    try { return JSON.parse(store.get('rps-score') || '{"w":0,"l":0,"d":0}'); }
+    catch (e) { return { w: 0, l: 0, d: 0 }; }
+  }
+  function rpsWriteScore(s) { store.set('rps-score', JSON.stringify(s)); }
+  function rpsRenderScore() {
+    if (!rpsScoreEl) return;
+    const s = rpsReadScore();
+    rpsScoreEl.textContent = '胜 ' + s.w + ' · 负 ' + s.l + ' · 平 ' + s.d;
+  }
+  function openRpsPanel() {
+    if (!rpsPanel) return;
+    const pc = document.getElementById('poke-card'); if (pc) pc.hidden = true;
+    const ep = document.getElementById('emoji-panel'); if (ep) ep.hidden = true;
+    const askP = document.getElementById('chat-ask-panel'); if (askP) askP.hidden = true;
+    const cs = document.getElementById('chat-search'); if (cs) cs.hidden = true;
+    const dv = document.getElementById('chat-divine-panel'); if (dv) dv.hidden = true;
+    const dp = document.getElementById('chat-decision-panel'); if (dp) dp.hidden = true;
+    if (window.closeAvlib) window.closeAvlib();
+    if (morePanel) morePanel.hidden = true;
+    if (rpsNameEl) rpsNameEl.textContent = store.get('lbl-partner') || 'TA';
+    if (rpsHintEl) rpsHintEl.textContent = '选择你要出的拳';
+    rpsRenderScore();
+    rpsPanel.hidden = false;
+  }
+  function closeRpsPanel() { if (rpsPanel) rpsPanel.hidden = true; }
+  // 判定胜负：0 平 / 1 我赢 / -1 我输
+  function rpsJudge(a, b) {
+    if (a === b) return 0;
+    if ((a === 'rock' && b === 'scissors') ||
+        (a === 'scissors' && b === 'paper') ||
+        (a === 'paper' && b === 'rock')) return 1;
+    return -1;
+  }
+  function sendRps(mine) {
+    // 联系人出拳纯随机（1/3 均匀），每次独立
+    const ta = ['rock', 'scissors', 'paper'][Math.floor(Math.random() * 3)];
+    const judge = rpsJudge(mine, ta);
+    const s = rpsReadScore();
+    if (judge > 0) s.w++; else if (judge < 0) s.l++; else s.d++;
+    rpsWriteScore(s);
+    rpsRenderScore();
+    addRec({ side: 'in', special: 'rps', rpsMine: mine, rpsTa: ta, rpsResult: judge });
+    if (window.logFish) window.logFish();
+    if (rpsHintEl) {
+      rpsHintEl.textContent =
+        judge > 0 ? '你赢了！再来一局？' :
+        judge < 0 ? '你输了，再来一局？' : '平局，再来一局？';
+    }
+  }
+  const moreRps = document.getElementById('more-rps');
+  if (moreRps) {
+    moreRps.addEventListener('click', (e) => { e.stopPropagation(); openRpsPanel(); });
+  }
+  if (rpsCloseBtn) {
+    rpsCloseBtn.addEventListener('click', (e) => { e.stopPropagation(); closeRpsPanel(); });
+  }
+  if (rpsPanel) {
+    rpsPanel.querySelectorAll('.rps-choice').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const v = btn.dataset.rps;
+        if (v) sendRps(v);
+      });
+    });
+  }
+
+  // ---- 红包：聊天页底部半框（我和 TA 互发红包，情侣特殊金额 / 随机 / 七夕特别）----
+  const rpPanel = document.getElementById('chat-rp-panel');
+  const rpCloseBtn = document.getElementById('chat-rp-close');
+  const rpNameEl = document.getElementById('rp-partner-name');
+  const rpQixiTag = document.getElementById('rp-qixi-tag');
+  const rpQixiSection = document.getElementById('rp-qixi-section');
+  const rpRandVal = document.getElementById('rp-rand-val');
+  const rpCustomInput = document.getElementById('rp-custom');
+  const rpWishInput = document.getElementById('rp-wish');
+  const rpSendBtn = document.getElementById('rp-send-btn');
+  let rpSide = 'out';
+  let rpPickedAmt = null;
+  // 七夕公历日期表（农历七月初七对应的公历，2024-2030），用于"今天七夕"高亮
+  const QIXI_DATES = ['2024-08-10','2025-08-29','2026-08-19','2027-08-08','2028-08-26','2029-08-15','2030-08-04'];
+  function isQixiToday() {
+    const d = new Date();
+    const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    return QIXI_DATES.indexOf(k) >= 0;
+  }
+  function openRpPanel() {
+    if (!rpPanel) return;
+    const pc = document.getElementById('poke-card'); if (pc) pc.hidden = true;
+    const ep = document.getElementById('emoji-panel'); if (ep) ep.hidden = true;
+    const askP = document.getElementById('chat-ask-panel'); if (askP) askP.hidden = true;
+    const cs = document.getElementById('chat-search'); if (cs) cs.hidden = true;
+    const dv = document.getElementById('chat-divine-panel'); if (dv) dv.hidden = true;
+    const dp = document.getElementById('chat-decision-panel'); if (dp) dp.hidden = true;
+    const rpsP = document.getElementById('chat-rps-panel'); if (rpsP) rpsP.hidden = true;
+    if (window.closeAvlib) window.closeAvlib();
+    if (morePanel) morePanel.hidden = true;
+    if (rpNameEl) rpNameEl.textContent = store.get('lbl-partner') || 'TA';
+    if (isQixiToday()) {
+      if (rpQixiTag) rpQixiTag.hidden = false;
+      if (rpQixiSection) rpQixiSection.classList.add('qixi-today');
+      if (rpWishInput) rpWishInput.placeholder = '七夕快乐';
+    } else {
+      if (rpQixiTag) rpQixiTag.hidden = true;
+      if (rpQixiSection) rpQixiSection.classList.remove('qixi-today');
+      if (rpWishInput) rpWishInput.placeholder = '心意';
+    }
+    rpSide = 'out';
+    rpPickedAmt = null;
+    if (rpCustomInput) rpCustomInput.value = '';
+    if (rpWishInput) rpWishInput.value = '';
+    if (rpRandVal) rpRandVal.textContent = '';
+    rpPanel.querySelectorAll('.rp-side').forEach(b => b.classList.toggle('sel', b.dataset.rpside === 'out'));
+    rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
+    closeIme();
+    rpPanel.hidden = false;
+  }
+  function closeRpPanel() { if (rpPanel) rpPanel.hidden = true; }
+  if (rpPanel) {
+    rpPanel.querySelectorAll('.rp-side').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        rpSide = btn.dataset.rpside || 'out';
+        rpPanel.querySelectorAll('.rp-side').forEach(b => b.classList.toggle('sel', b === btn));
+      });
+    });
+    rpPanel.querySelectorAll('.rp-amt').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const v = btn.dataset.rpamt;
+        if (v === 'rand') {
+          const r = Math.round(Math.random() * 20000 + 1) / 100;
+          rpPickedAmt = r;
+          if (rpRandVal) rpRandVal.textContent = '本次随机：¥' + r.toFixed(2);
+          if (rpCustomInput) rpCustomInput.value = '';
+          rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
+          btn.classList.add('sel');
+          return;
+        }
+        rpPickedAmt = parseFloat(v);
+        if (rpRandVal) rpRandVal.textContent = '';
+        if (rpCustomInput) rpCustomInput.value = '';
+        rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
+        btn.classList.add('sel');
+      });
+    });
+    if (rpCustomInput) {
+      rpCustomInput.addEventListener('input', () => {
+        rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
+        if (rpRandVal) rpRandVal.textContent = '';
+      });
+    }
+  }
+  // ---- 红包模拟器：双钱包账本 + 概率分支（系统自动发 / 退回 / 领取 / 过期）----
+  // 钱包单位：分（整数计算精确）；展示用元。默认各 99999999 分（约 100 万元）
+  const RP_WALLET_KEY = 'rp-wallet';
+  const RP_DAILY_PREFIX = 'ml2_rp_daily_';
+  const RP_EXPIRY_MS = 24 * 60 * 60 * 1000;
+  const RP_SPECIAL_FEN = [520, 5200, 52000, 520000, 1314, 131400]; // 5.2/52/520/5200/13.14/1314 元
+  function rpWalletGet() {
+    try {
+      const w = JSON.parse(store.get(RP_WALLET_KEY) || '');
+      if (typeof w.myBalance === 'number' && typeof w.systemBalance === 'number') return w;
+    } catch (e) {}
+    return { myBalance: 99999999, systemBalance: 99999999 };
+  }
+  function rpWalletSet(w) { store.set(RP_WALLET_KEY, JSON.stringify(w)); }
+  function rpDailyCount() {
+    const k = RP_DAILY_PREFIX + new Date().toISOString().slice(0, 10);
+    return Number(store.get(k)) || 0;
+  }
+  function rpDailyIncr() {
+    const k = RP_DAILY_PREFIX + new Date().toISOString().slice(0, 10);
+    store.set(k, String((Number(store.get(k)) || 0) + 1));
+  }
+  // 金额生成（分）：40% 特殊池 / 48% 随机小额 / 12% 随机大额
+  function genRpAmount(systemBalanceFen) {
+    let amt;
+    if (Math.random() < 0.4) {
+      amt = RP_SPECIAL_FEN[Math.floor(Math.random() * RP_SPECIAL_FEN.length)];
+    } else if (Math.random() < 0.8) {
+      const max = Math.min(5200000, systemBalanceFen); // 52000 元 = 5200000 分
+      amt = Math.floor(Math.random() * max) + 1;
+    } else {
+      amt = Math.floor(Math.random() * systemBalanceFen) + 1;
+    }
+    return Math.min(amt, systemBalanceFen);
+  }
+  function rpStatusText(rec) {
+    const st = rec.rpStatus || 'pending';
+    if (st === 'received') return '已领取';
+    if (st === 'expired') return '已过期·退回';
+    if (st === 'returned') return '已退回';
+    return rec.side === 'in' ? '待领取' : '待TA领取';
+  }
+  function rpStatusCls(rec) {
+    const st = rec.rpStatus || 'pending';
+    if (st === 'received') return 'opened';
+    if (st === 'expired' || st === 'returned') return 'expired';
+    return '';
+  }
+  // 系统自动发红包（TA → 我）：回复完成后 4% 概率，每日上限 5
+  function trySystemAutoSend() {
+    if (rpDailyCount() >= 5) return;
+    if (Math.random() >= 0.04) return;
+    const wallet = rpWalletGet();
+    if (wallet.systemBalance < 1) return;
+    const amtFen = genRpAmount(wallet.systemBalance);
+    if (amtFen < 1) return;
+    wallet.systemBalance -= amtFen;
+    rpWalletSet(wallet);
+    rpDailyIncr();
+    const amt = amtFen / 100;
+    const wish = pick(['心意', '给你花', '小礼物', '辛苦啦', '开心一下', '七夕快乐']);
+    setTimeout(() => {
+      addIn('', { special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now() });
+      if (window.logFish) window.logFish();
+    }, randInt(800, 2000));
+  }
+  // 我发红包后系统响应：20% 退回 / 70% 立即领取 / 10% pending
+  function handleSendResponse(msg) {
+    const idx = msgs.indexOf(msg);
+    if (idx < 0) return;
+    const rec = msgs[idx];
+    if (!rec || rec.rpStatus !== 'pending') return;
+    const r = Math.random();
+    const wallet = rpWalletGet();
+    const amtFen = Math.round((rec.rpAmount || 0) * 100);
+    if (r < 0.2) {
+      rec.rpStatus = 'returned';
+      wallet.myBalance += amtFen;
+      rpWalletSet(wallet);
+      saveMsgsNow();
+      renderWindow(false, true);
+    } else if (r < 0.9) {
+      rec.rpStatus = 'received';
+      rec.rpOpenedAt = Date.now();
+      wallet.systemBalance += amtFen;
+      rpWalletSet(wallet);
+      saveMsgsNow();
+      renderWindow(false, true);
+    }
+  }
+  // pending 红包后续收取：回复完成后 8% 概率收走最早一个我发出的 pending 红包
+  function tryCollectPending() {
+    if (Math.random() >= 0.08) return;
+    const idx = msgs.findIndex(m => m && m.special === 'redpacket' && m.side === 'out' && m.rpStatus === 'pending');
+    if (idx < 0) return;
+    const rec = msgs[idx];
+    rec.rpStatus = 'received';
+    rec.rpOpenedAt = Date.now();
+    const wallet = rpWalletGet();
+    wallet.systemBalance += Math.round((rec.rpAmount || 0) * 100);
+    rpWalletSet(wallet);
+    saveMsgsNow();
+    renderWindow(false, true);
+  }
+  // 过期处理：24h 未处理 → expired + 退回
+  function rpExpireCheck() {
+    const now = Date.now();
+    const wallet = rpWalletGet();
+    let changed = false;
+    for (let i = 0; i < msgs.length; i++) {
+      const rec = msgs[i];
+      if (rec && rec.special === 'redpacket' && rec.rpStatus === 'pending' && rec.rpTs) {
+        if (now - rec.rpTs > RP_EXPIRY_MS) {
+          rec.rpStatus = 'expired';
+          rec.expiredAt = now;
+          const amtFen = Math.round((rec.rpAmount || 0) * 100);
+          if (rec.side === 'out') wallet.myBalance += amtFen;
+          else wallet.systemBalance += amtFen;
+          changed = true;
+        }
+      }
+    }
+    if (changed) { rpWalletSet(wallet); saveMsgsNow(); }
+  }
+  function rpRenderBalance() {
+    const el = document.getElementById('rp-balance');
+    if (!el) return;
+    const w = rpWalletGet();
+    el.textContent = '我的 ¥' + (w.myBalance / 100).toFixed(2) + ' · TA ¥' + (w.systemBalance / 100).toFixed(2);
+  }
+
+  function sendRedpacket() {
+    let amt = rpPickedAmt;
+    if (rpCustomInput && rpCustomInput.value) {
+      const cv = parseFloat(rpCustomInput.value);
+      if (!isNaN(cv) && cv > 0) amt = Math.round(cv * 100) / 100;
+    }
+    if (!amt || amt <= 0 || isNaN(amt)) { toast('先选择或输入红包金额'); return; }
+    const wish = (rpWishInput && rpWishInput.value || '').trim() || (isQixiToday() ? '七夕快乐' : '心意');
+    const amtFen = Math.round(amt * 100);
+    const wallet = rpWalletGet();
+    if (rpSide === 'out') {
+      if (amtFen > wallet.myBalance) { toast('我的余额不足'); return; }
+      wallet.myBalance -= amtFen;
+    } else {
+      if (amtFen > wallet.systemBalance) { toast('TA 余额不足'); return; }
+      wallet.systemBalance -= amtFen;
+    }
+    rpWalletSet(wallet);
+    const msg = addRec({ side: rpSide, special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now() });
+    if (window.logFish) window.logFish();
+    // 我发的红包 → 系统延迟响应（退回/领取/pending）
+    if (rpSide === 'out') {
+      setTimeout(() => handleSendResponse(msg), randInt(3000, 8000));
+    }
+    closeRpPanel();
+  }
+  if (rpSendBtn) rpSendBtn.addEventListener('click', (e) => { e.stopPropagation(); sendRedpacket(); });
+  if (rpCloseBtn) rpCloseBtn.addEventListener('click', (e) => { e.stopPropagation(); closeRpPanel(); });
+  const moreRp = document.getElementById('more-rp');
+  if (moreRp) {
+    moreRp.addEventListener('click', (e) => { e.stopPropagation(); openRpPanel(); });
   }
 
   // ---- 占卜：聊天页底部半框（v3.5.53 露出聊天消息）----
@@ -3024,6 +3415,21 @@ function partialRetractMsg(msgEl, side) {
   // 收藏存储
   function getFav() { try { return JSON.parse(store.get('fav-msgs') || '[]'); } catch (e) { return []; } }
   function saveFav(list) { store.set('fav-msgs', JSON.stringify(list)); }
+  // 编辑消息后同步收藏：我的收藏 + TA 收藏里同一条消息（side=out 且文本一致）的
+  // 文本快照一起更新，避免联系人收藏夹里还是旧版错字（ts 不动，去重仍按 text+ts 匹配）
+  function syncFavMsgText(oldText, newText) {
+    if (oldText === newText) return;
+    const fav = getFav();
+    let changed = false;
+    fav.forEach(f => {
+      if ((f.kind || 'msg') === 'msg' && f.side === 'out' && f.text === oldText) {
+        f.text = newText;
+        f.type = 'text';
+        changed = true;
+      }
+    });
+    if (changed) saveFav(fav);
+  }
   // 收藏去重：同类型(kind) + 同内容(q/text) + 同时刻(ts) 视为同一条（旧消息收藏无 kind，
   // 统一按 'msg' 处理，匹配规则不变：仍比对 text+ts，避免收藏重复消息）
   function favDup(list, f) {
@@ -3175,6 +3581,7 @@ function partialRetractMsg(msgEl, side) {
             // 更新记录与 DOM
             rec.text = val;
             rec.type = 'text';
+            syncFavMsgText(orig, val); // v3.7.x：编辑后收藏夹里同一条消息快照同步更新（含 TA 收藏）
             sessionChangedIdx.add(idx); // v3.6.x：标记本会话变更，防 loadMsgs 合并回滚编辑
             saveMsgs();
             syncLastMineText(); // v3.6.x：编辑后 TA 引用/收藏不再拿旧文本
@@ -3204,6 +3611,11 @@ function partialRetractMsg(msgEl, side) {
   const favPage = document.getElementById('page-fav');
   const favList = document.getElementById('fav-list');
   let favTab = 'mine'; // mine=我的收藏 ta=联系人的收藏
+  let favKind = 'all'; // 收藏分类筛选：all=全部 msg=聊天消息 card=互动卡片 mail=信件 feed=朋友圈
+  const FAV_KINDS = [
+    { k: 'all', label: '全部' }, { k: 'msg', label: '聊天消息' },
+    { k: 'card', label: '互动卡片' }, { k: 'mail', label: '信件' }, { k: 'feed', label: '朋友圈' }
+  ];
   function renderFav() {
     if (!favList) return;
     const fav = getFav();
@@ -3219,21 +3631,40 @@ function partialRetractMsg(msgEl, side) {
       tabsEl.querySelectorAll('.fav-tab').forEach(t => t.classList.toggle('sel', t.dataset.tab === favTab));
     }
     const list = favTab === 'ta' ? taFav : myFav;
+    // 分类 tab 计数 + 高亮（全部/聊天消息/互动卡片/信件/朋友圈）
+    const kindTabsEl = document.getElementById('fav-kind-tabs');
+    if (kindTabsEl) {
+      const counts = { all: list.length, msg: 0, card: 0, mail: 0, feed: 0 };
+      list.forEach(f => { const k = f.kind || 'msg'; if (k in counts) counts[k]++; });
+      kindTabsEl.querySelectorAll('.fav-tab').forEach(t => {
+        const k = t.dataset.kind;
+        t.classList.toggle('sel', k === favKind);
+        const o = FAV_KINDS.find(x => x.k === k);
+        const n = counts[k] || 0;
+        t.textContent = o ? (o.label + (n ? ' ' + n : '')) : '';
+      });
+    }
+    // 按分类过滤
+    const list2 = favKind === 'all' ? list : list.filter(f => (f.kind || 'msg') === favKind);
     // 最新收藏在上
-    list.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    list2.sort((a, b) => (b.ts || 0) - (a.ts || 0));
     const title = favTab === 'ta' ? partnerName + ' 的收藏' : myName + ' 的收藏';
-    const empty = favTab === 'ta' ? 'TA 还没有收藏' : '暂无收藏';
+    let empty = favTab === 'ta' ? 'TA 还没有收藏' : '暂无收藏';
+    if (favKind !== 'all') {
+      const K_EMPTY = { msg: '聊天消息', card: '互动卡片', mail: '信件', feed: '朋友圈' };
+      empty = (favTab === 'ta' ? 'TA 还没有收藏' : '暂无') + K_EMPTY[favKind];
+    }
     // 组标题
     const h = document.createElement('div');
     h.className = 'cc-group-header';
-    h.innerHTML = '<span class="ccg-name">' + title + '</span><span class="ccg-count">' + list.length + '</span>';
+    h.innerHTML = '<span class="ccg-name">' + title + '</span><span class="ccg-count">' + list2.length + '</span>';
     favList.appendChild(h);
-    if (!list.length) {
+    if (!list2.length) {
       favList.innerHTML += '<div class="fav-empty">' + empty + '</div>';
       return;
     }
     // 互动卡片类型名 / 信箱回信 / 朋友圈动态 的分类标签
-    // 注意：必须在 list.forEach 之前声明（renderFavItem 提升后引用 const 会 TDZ 报错）
+    // 注意：必须在 list2.forEach 之前声明（renderFavItem 提升后引用 const 会 TDZ 报错）
     const FAV_KIND_LABEL = {
       'ask-choose': '小问题', 'ask-curious': '好奇', 'ask-roast': '吐槽',
       'ask-card': '问问TA', 'invite': '邀请TA'
@@ -3252,7 +3683,7 @@ function partialRetractMsg(msgEl, side) {
       html += escTxt(str.slice(last));
       return html;
     }
-    list.forEach(f => renderFavItem(f));
+    list2.forEach(f => renderFavItem(f));
     function renderFavItem(f) {
       const kind = f.kind || 'msg';
       const m = document.createElement('div');
@@ -3371,6 +3802,18 @@ function partialRetractMsg(msgEl, side) {
       renderFav();
     });
   }
+  // 收藏分类 tab（全部/聊天消息/互动卡片/信件/朋友圈）——JS 注入，不动 template.html
+  const favKindTabs = document.createElement('div');
+  favKindTabs.className = 'fav-tabs fav-kind-row';
+  favKindTabs.id = 'fav-kind-tabs';
+  favKindTabs.innerHTML = FAV_KINDS.map(o => '<button class="fav-tab" data-kind="' + o.k + '">' + o.label + '</button>').join('');
+  if (favTabs && favTabs.parentNode) favTabs.parentNode.insertBefore(favKindTabs, favTabs.nextSibling);
+  favKindTabs.addEventListener('click', (e) => {
+    const tb = e.target.closest('.fav-tab');
+    if (!tb) return;
+    favKind = tb.dataset.kind;
+    renderFav();
+  });
 
   // 桌面收藏图标进入
   const favApp = document.querySelector('.app[data-app="note"]');

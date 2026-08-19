@@ -404,6 +404,59 @@
 .more-item svg { width:22px; height:22px; }
 .more-item span { font-size:11px; }
 
+/* 猜拳半框（复用 .poke-card 容器）：战绩 + 提示 + 三个出拳按钮 */
+#chat-rps-panel { height:auto; max-height:56%; }
+#chat-rps-panel .poke-card-scroll { min-height:0; max-height:none; }
+.rps-score {
+  text-align:center; font-size:13px; font-weight:700; color:var(--ink);
+  padding:6px 0 10px; letter-spacing:.5px;
+}
+.rps-hint {
+  text-align:center; font-size:12px; color:var(--muted);
+  padding:0 0 14px;
+}
+.rps-choices {
+  display:flex; gap:12px; justify-content:center; padding:4px 0 6px;
+}
+.rps-choice {
+  flex:1; max-width:120px; display:flex; flex-direction:column; align-items:center; gap:8px;
+  padding:16px 8px; border:1px solid rgba(0,0,0,.1); border-radius:16px;
+  background:rgba(255,255,255,.92); color:var(--ink); cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent; transition:transform .15s ease, box-shadow .15s ease;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+}
+.rps-choice:active { transform:translateY(1px) scale(.97); box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.rps-c-ico {
+  width:46px; height:46px; border-radius:14px;
+  background:rgba(0,0,0,.04); display:flex; align-items:center; justify-content:center;
+}
+.rps-c-ico svg { width:26px; height:26px; color:#444; }
+.rps-choice span:last-child { font-size:13px; font-weight:600; }
+
+/* 猜拳结果消息：居中白底灰边卡片，双方手势对比 + 结果文字，简约无彩色 */
+.msg-rps { align-self:center; width:100%; display:flex; justify-content:center; padding:4px 0; }
+.msg-rps-card {
+  max-width:82%; min-width:240px; text-align:center;
+  background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; padding:12px 16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+}
+.msg-rps-hands {
+  display:flex; align-items:center; justify-content:center; gap:14px;
+  padding:2px 0 10px;
+}
+.msg-rps-hand {
+  display:flex; flex-direction:column; align-items:center; gap:6px; min-width:72px;
+}
+.msg-rps-ico {
+  width:44px; height:44px; border-radius:50%;
+  background:rgba(0,0,0,.04); display:flex; align-items:center; justify-content:center;
+}
+.msg-rps-ico svg { width:24px; height:24px; color:#555; }
+.msg-rps-name { font-size:11px; color:var(--muted); }
+.msg-rps-vs { font-size:12px; font-weight:700; color:#999; letter-spacing:1px; }
+.msg-rps-result { font-size:13px; font-weight:700; color:var(--ink); padding-top:4px; border-top:1px dashed rgba(0,0,0,.1); }
+
 /* 拍一拍浮层卡片（底部半框，露出顶部聊天消息，方便边看边玩）
    底部 96px：悬停在输入栏上方，不压住/不覆盖输入栏（输入栏顶部约 82px）
    v3.5.110：bottom 加 safe-area，全面屏全屏模式下与输入栏同步上移，不错位 */
@@ -914,5 +967,74 @@
 
 /* v3.5.126：移除 background-attachment:fixed 兜底——手机上 fixed 背景相对视口
    定位，全屏/输入法/安全区变化时比例错位、且移动端降采样发糊。
-   聊天页本身不滚动（overflow:hidden），默认 scroll 模式下背景即固定，无需 fixed。
-   背景铺满逻辑由 JS applySettings 设置（cover + center）。 */
+    聊天页本身不滚动（overflow:hidden），默认 scroll 模式下背景即固定，无需 fixed。
+    背景铺满逻辑由 JS applySettings 设置（cover + center）。 */
+
+/* ===== 红包面板（底部半框，白灰简约） ===== */
+.rp-side-row { display:flex; gap:8px; margin-bottom:14px; }
+.rp-side {
+  flex:1; padding:9px 0; font-size:13px; font-weight:600;
+  border:1px solid rgba(0,0,0,.1); border-radius:99px;
+  background:rgba(255,255,255,.92); color:#666; cursor:pointer;
+  font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.rp-side.sel { background:#111; color:#fff; border-color:#111; }
+.rp-section { margin-bottom:14px; }
+.rp-section-title {
+  font-size:12px; font-weight:700; color:var(--ink); margin-bottom:8px;
+  display:flex; align-items:center; gap:8px;
+}
+.rp-qixi-tag {
+  font-size:10px; font-weight:600; color:#fff; background:#aaa;
+  padding:2px 7px; border-radius:99px;
+}
+.rp-qixi-today .rp-qixi-tag { background:#111; }
+.rp-qixi-today .rp-section-title { color:var(--ink); }
+.rp-amounts { display:flex; flex-wrap:wrap; gap:8px; }
+.rp-amt {
+  padding:9px 14px; font-size:13px; font-weight:600;
+  border:1px solid rgba(0,0,0,.12); border-radius:12px;
+  background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent; transition:all .15s ease;
+}
+.rp-amt.sel { background:#111; color:#fff; border-color:#111; }
+.rp-amt:active { transform:translateY(1px); }
+.rp-amt.rp-rand { width:100%; text-align:center; }
+.rp-rand-val { font-size:12px; color:var(--muted); margin-top:8px; min-height:16px; }
+.rp-input {
+  width:100%; border:1px solid rgba(0,0,0,.12); border-radius:10px;
+  padding:10px 12px; font-size:14px; font-family:inherit; outline:none;
+  background:#fff; color:var(--ink); box-sizing:border-box;
+}
+.rp-input:focus { border-color:var(--ink); }
+.rp-send {
+  width:100%; padding:12px 0; font-size:14px; font-weight:700;
+  border:none; border-radius:12px; background:#111; color:#fff;
+  cursor:pointer; font-family:inherit; margin-top:4px;
+  -webkit-tap-highlight-color:transparent;
+}
+.rp-send:active { opacity:.85; }
+
+/* ===== 红包消息卡片（居中白底，简约白灰） ===== */
+.msg-rp { align-self:center; width:100%; display:flex; justify-content:center; padding:2px 0; }
+.msg-rp-card {
+  max-width:78%; min-width:220px; text-align:center;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; padding:14px 18px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+  cursor:pointer; position:relative;
+}
+.msg-rp-top { display:flex; align-items:center; justify-content:center; gap:6px; color:var(--muted); }
+.msg-rp-ico { display:inline-flex; }
+.msg-rp-ico svg { width:18px; height:18px; color:#888; }
+.msg-rp-label { font-size:12px; font-weight:600; color:#888; }
+.msg-rp-amt { font-size:24px; font-weight:800; color:var(--ink); margin:8px 0 4px; font-variant-numeric:tabular-nums; }
+.msg-rp-wish { font-size:13px; color:var(--ink); margin-bottom:10px; }
+.msg-rp-foot {
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:11px; color:var(--muted);
+  padding-top:8px; border-top:1px dashed rgba(0,0,0,.1);
+}
+.msg-rp-status { font-weight:600; }
+.msg-rp-card.opened .msg-rp-status { color:var(--ink); }
+.msg-rp-card.opened { border-color:rgba(0,0,0,.18); }

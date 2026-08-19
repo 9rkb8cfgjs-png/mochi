@@ -464,6 +464,8 @@
   -webkit-tap-highlight-color:transparent;
 }
 .fav-tab.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+/* 收藏页分类 tab 第二行（全部/聊天消息/互动卡片/信件/朋友圈）：不重复顶部留白 */
+.fav-tabs.fav-kind-row { padding-top:0; padding-bottom:12px; }
 .fav-body { padding:6px 18px; }
 
 /* 日历页 */

@@ -8,7 +8,25 @@
   // 原 768px 上限会误判为桌面（显示 390px 小手机框 + 两侧灰底）
   let isMobile = false;
   try { isMobile = window.matchMedia && window.matchMedia('(max-width: 900px)').matches; } catch (e) {}
-  if (!isMobile) return;
+
+  // v3.7.x：iPad/平板检测——iPad 竖屏（768-834px CSS 视口）命中 isMobile 走手机全屏
+  // 布局，内容被整屏拉宽（桌面图标间距巨大、气泡过宽）；iPad 横屏（≥1024px）走
+  // 桌面模拟器外壳（390px 小框 + 两侧灰底）。两者都不适合平板。
+  // 命中给 <html> 加 .tablet 类（base.css 平板布局：全高 + 内容限宽居中 +
+  // 无模拟器外壳，竖屏/横屏观感一致）。
+  // iPadOS 13+ 的 UA 伪装成 Macintosh（桌面 macOS UA + 触摸屏 maxTouchPoints>1），
+  // 老系统 UA 带 iPad 关键字，两种都覆盖。
+  let isTablet = false;
+  try {
+    const ua = String(navigator.userAgent || '');
+    const plat = String(navigator.platform || '');
+    isTablet = /iPad/i.test(ua) || plat === 'iPad' ||
+      ((plat === 'MacIntel' || /Macintosh/i.test(ua)) && navigator.maxTouchPoints > 1 && 'ontouchstart' in window);
+  } catch (e) {}
+  if (isTablet) { try { document.documentElement.classList.add('tablet'); } catch (e) {} }
+
+  // 手机窄屏或平板都启用本文件适配（桌面模拟器外壳不受影响）
+  if (!isMobile && !isTablet) return;
 
   // v3.6.x：iOS 检测——iOS Safari 上不启用 contenteditable 转换器（见下方 ceConvert 说明）
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
@@ -441,7 +459,7 @@
   // v3.6.x：去掉 #desk-msg——新消息横幅只是顶部 fixed 小提示条（6 秒自动隐藏，
   //   不遮挡滚动区域），把它当浮层锁滚动会让整个页面在横幅弹出的 6 秒内滑不动，
   //   用户感知为「页面卡住/滑动失效」（iPad 夸克反馈）。横幅自身交互由 chat.js 处理。
-  const FLOAT_SELECTORS = ['#tc-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions'];
+  const FLOAT_SELECTORS = ['#tc-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#chat-rps-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions'];
   let locked = false;
   function applyLock() {
     const anyOpen = FLOAT_SELECTORS.some(function (sel) {

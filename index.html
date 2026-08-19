@@ -196,6 +196,46 @@ padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
 @media (max-width: 900px) {
 .fs-css-active .phone { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
 }
+html.tablet body { padding:0; }
+html.tablet .phone {
+width:min(560px, 100vw); max-width:none; flex-shrink:0;
+height:100vh; height:100svh; height:100dvh;
+border-radius:0; box-shadow:none;
+padding:0 18px 18px;
+}
+html.tablet .phone.no-statusbar { padding:0; }
+html.tablet .statusbar {
+padding-top:max(calc(14px + env(safe-area-inset-top, 0px)), 14px);
+padding-bottom:10px;
+}
+html.tablet.fs-active .phone, html.tablet.fs-css-active .phone { width:100vw; max-width:none; }
+@media (display-mode: fullscreen) { html.tablet .phone { width:100vw; max-width:none; } }
+html.tablet.ios-fs-active .phone { padding-top:max(env(safe-area-inset-top, 0px), 12px); }
+html.tablet .phone .page.full .chat-input-row {
+margin:0; border-radius:0;
+border-left:none; border-right:none; border-bottom:none;
+padding-left:12px; padding-right:12px;
+padding-top:10px;
+padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px));
+}
+html.tablet .phone .page.full .chat-head { padding-top:calc(10px + env(safe-area-inset-top, 0px)); }
+html.tablet .phone .page.full { padding-bottom:0; }
+html.tablet #page-chat { background:var(--page-bg-grad); }
+html.tablet .tabbar { margin-bottom:env(safe-area-inset-bottom, 0px); }
+html.tablet .page-slide.desk-page { zoom:1; }
+html.tablet .deco-widget, html.tablet .mini-card, html.tablet .checkin,
+html.tablet .weekend-box, html.tablet .music-widget, html.tablet .memo-card,
+html.tablet .mood-card, html.tablet .week-card { zoom:1; }
+html.tablet .app .app-ico { width:64px; height:64px; }
+html.tablet .app .app-name { font-size:12px; }
+html.tablet .msg:not(.msg-ask):not(.msg-center) { max-width:70%; }
+html.tablet .modal { width:min(320px, 82vw); }
+html.tablet .phone input:not([readonly]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([type="date"]):not([type="time"]):not([type="datetime-local"]):not([type="month"]):not([type="week"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+html.tablet .phone textarea:not([readonly]),
+html.tablet .phone select,
+html.tablet .phone [contenteditable="true"] { font-size:16px; }
+html.tablet, html.tablet * { touch-action:manipulation; }
+html.tablet body, html.tablet .phone, html.tablet img { -webkit-touch-callout:none; }
 .cc-import-progress {
 position:fixed; inset:0; z-index:99999;
 background:rgba(0,0,0,.45);
@@ -1156,6 +1196,55 @@ box-shadow:0 1px 3px rgba(0,0,0,.06);
 }
 .more-item svg { width:22px; height:22px; }
 .more-item span { font-size:11px; }
+#chat-rps-panel { height:auto; max-height:56%; }
+#chat-rps-panel .poke-card-scroll { min-height:0; max-height:none; }
+.rps-score {
+text-align:center; font-size:13px; font-weight:700; color:var(--ink);
+padding:6px 0 10px; letter-spacing:.5px;
+}
+.rps-hint {
+text-align:center; font-size:12px; color:var(--muted);
+padding:0 0 14px;
+}
+.rps-choices {
+display:flex; gap:12px; justify-content:center; padding:4px 0 6px;
+}
+.rps-choice {
+flex:1; max-width:120px; display:flex; flex-direction:column; align-items:center; gap:8px;
+padding:16px 8px; border:1px solid rgba(0,0,0,.1); border-radius:16px;
+background:rgba(255,255,255,.92); color:var(--ink); cursor:pointer; font-family:inherit;
+-webkit-tap-highlight-color:transparent; transition:transform .15s ease, box-shadow .15s ease;
+box-shadow:0 2px 8px rgba(0,0,0,.05);
+}
+.rps-choice:active { transform:translateY(1px) scale(.97); box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.rps-c-ico {
+width:46px; height:46px; border-radius:14px;
+background:rgba(0,0,0,.04); display:flex; align-items:center; justify-content:center;
+}
+.rps-c-ico svg { width:26px; height:26px; color:#444; }
+.rps-choice span:last-child { font-size:13px; font-weight:600; }
+.msg-rps { align-self:center; width:100%; display:flex; justify-content:center; padding:4px 0; }
+.msg-rps-card {
+max-width:82%; min-width:240px; text-align:center;
+background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+border-radius:16px; padding:12px 16px;
+box-shadow:0 2px 8px rgba(0,0,0,.05);
+}
+.msg-rps-hands {
+display:flex; align-items:center; justify-content:center; gap:14px;
+padding:2px 0 10px;
+}
+.msg-rps-hand {
+display:flex; flex-direction:column; align-items:center; gap:6px; min-width:72px;
+}
+.msg-rps-ico {
+width:44px; height:44px; border-radius:50%;
+background:rgba(0,0,0,.04); display:flex; align-items:center; justify-content:center;
+}
+.msg-rps-ico svg { width:24px; height:24px; color:#555; }
+.msg-rps-name { font-size:11px; color:var(--muted); }
+.msg-rps-vs { font-size:12px; font-weight:700; color:#999; letter-spacing:1px; }
+.msg-rps-result { font-size:13px; font-weight:700; color:var(--ink); padding-top:4px; border-top:1px dashed rgba(0,0,0,.1); }
 .poke-card {
 position:fixed; top:auto; bottom:calc(96px + env(safe-area-inset-bottom, 0px)); left:18px; right:18px;
 height:auto; max-height:48%;
@@ -1601,6 +1690,71 @@ margin-top:6px; padding:8px 12px; border-radius:10px;
 background:rgba(0,0,0,.04); font-size:12px; color:var(--ink); line-height:1.8;
 }
 .msg-poke svg, .msg-center-card svg { width:15px; height:15px; vertical-align:-2px; margin-right:3px; color:inherit; }
+.rp-side-row { display:flex; gap:8px; margin-bottom:14px; }
+.rp-side {
+flex:1; padding:9px 0; font-size:13px; font-weight:600;
+border:1px solid rgba(0,0,0,.1); border-radius:99px;
+background:rgba(255,255,255,.92); color:#666; cursor:pointer;
+font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.rp-side.sel { background:#111; color:#fff; border-color:#111; }
+.rp-section { margin-bottom:14px; }
+.rp-section-title {
+font-size:12px; font-weight:700; color:var(--ink); margin-bottom:8px;
+display:flex; align-items:center; gap:8px;
+}
+.rp-qixi-tag {
+font-size:10px; font-weight:600; color:#fff; background:#aaa;
+padding:2px 7px; border-radius:99px;
+}
+.rp-qixi-today .rp-qixi-tag { background:#111; }
+.rp-qixi-today .rp-section-title { color:var(--ink); }
+.rp-amounts { display:flex; flex-wrap:wrap; gap:8px; }
+.rp-amt {
+padding:9px 14px; font-size:13px; font-weight:600;
+border:1px solid rgba(0,0,0,.12); border-radius:12px;
+background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
+-webkit-tap-highlight-color:transparent; transition:all .15s ease;
+}
+.rp-amt.sel { background:#111; color:#fff; border-color:#111; }
+.rp-amt:active { transform:translateY(1px); }
+.rp-amt.rp-rand { width:100%; text-align:center; }
+.rp-rand-val { font-size:12px; color:var(--muted); margin-top:8px; min-height:16px; }
+.rp-input {
+width:100%; border:1px solid rgba(0,0,0,.12); border-radius:10px;
+padding:10px 12px; font-size:14px; font-family:inherit; outline:none;
+background:#fff; color:var(--ink); box-sizing:border-box;
+}
+.rp-input:focus { border-color:var(--ink); }
+.rp-send {
+width:100%; padding:12px 0; font-size:14px; font-weight:700;
+border:none; border-radius:12px; background:#111; color:#fff;
+cursor:pointer; font-family:inherit; margin-top:4px;
+-webkit-tap-highlight-color:transparent;
+}
+.rp-send:active { opacity:.85; }
+.msg-rp { align-self:center; width:100%; display:flex; justify-content:center; padding:2px 0; }
+.msg-rp-card {
+max-width:78%; min-width:220px; text-align:center;
+background:#fff; border:1px solid rgba(0,0,0,.1);
+border-radius:16px; padding:14px 18px;
+box-shadow:0 2px 8px rgba(0,0,0,.05);
+cursor:pointer; position:relative;
+}
+.msg-rp-top { display:flex; align-items:center; justify-content:center; gap:6px; color:var(--muted); }
+.msg-rp-ico { display:inline-flex; }
+.msg-rp-ico svg { width:18px; height:18px; color:#888; }
+.msg-rp-label { font-size:12px; font-weight:600; color:#888; }
+.msg-rp-amt { font-size:24px; font-weight:800; color:var(--ink); margin:8px 0 4px; font-variant-numeric:tabular-nums; }
+.msg-rp-wish { font-size:13px; color:var(--ink); margin-bottom:10px; }
+.msg-rp-foot {
+display:flex; justify-content:space-between; align-items:center;
+font-size:11px; color:var(--muted);
+padding-top:8px; border-top:1px dashed rgba(0,0,0,.1);
+}
+.msg-rp-status { font-weight:600; }
+.msg-rp-card.opened .msg-rp-status { color:var(--ink); }
+.msg-rp-card.opened { border-color:rgba(0,0,0,.18); }
 #page-chatcard { scrollbar-width:none; -ms-overflow-style:none; }
 #page-chatcard::-webkit-scrollbar { display:none; }
 .chat-title { font-size:22px; font-weight:700; padding:4px 2px 8px; letter-spacing:1px; }
@@ -3564,6 +3718,18 @@ color: var(--muted);
 .call-minimize { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--dark-soft); }
 .call-mini { background:var(--dark-card-92); border-color:var(--dark-border); }
 .msg-poke-seg { background:var(--dark-card); border-color:var(--dark-border-12); }
+.msg-rps-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+.msg-rps-ico { background:rgba(255,255,255,.06); }
+.msg-rps-ico svg { color:var(--dark-soft); }
+.msg-rps-result { border-top-color:var(--dark-border-12); }
+.msg-rp-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+.msg-rp-card.opened { border-color:var(--dark-border); }
+.rp-amt { background:var(--dark-card); border-color:var(--dark-border-12); }
+.rp-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+.rp-side { background:var(--dark-card); border-color:var(--dark-border-12); }
+.rps-choice { background:var(--dark-card-92); border-color:var(--dark-border); }
+.rps-c-ico { background:rgba(255,255,255,.06); }
+.rps-c-ico svg { color:var(--dark-soft); }
 .cc-manage-bar { background:var(--dark-card-97); border-color:var(--dark-border); }
 .cc-m-btn { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
 .cc-m-btn:active { background:var(--dark-hover); }
@@ -3619,7 +3785,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.117 · 部署于 2026-08-19 14:32</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.118 · 部署于 2026-08-19 15:05</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4362,7 +4528,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.117</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.118</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5781,6 +5947,54 @@ color: var(--muted);
           </div>
         </div>
       </div>
+      <!-- 红包：聊天页底部半框（我和 TA 互发红包，情侣特殊金额 / 随机 / 七夕特别） -->
+      <div class="poke-card" id="chat-rp-panel" hidden>
+        <div class="poke-card-head">
+          <span>红包 · <b id="rp-partner-name">TA</b></span>
+          <button class="poke-card-close" id="chat-rp-close">✕</button>
+        </div>
+        <div class="poke-card-scroll">
+          <div class="rp-side-row">
+            <button class="rp-side sel" data-rpside="out" type="button">我发红包</button>
+            <button class="rp-side" data-rpside="in" type="button">TA发红包</button>
+          </div>
+          <div class="rp-section" id="rp-qixi-section">
+            <div class="rp-section-title">七夕特别红包<span class="rp-qixi-tag" id="rp-qixi-tag">今天七夕</span></div>
+            <div class="rp-amounts">
+              <button class="rp-amt" data-rpamt="7.77" type="button">¥7.77</button>
+              <button class="rp-amt" data-rpamt="77.77" type="button">¥77.77</button>
+              <button class="rp-amt" data-rpamt="777.77" type="button">¥777.77</button>
+            </div>
+          </div>
+          <div class="rp-section">
+            <div class="rp-section-title">情侣特殊金额</div>
+            <div class="rp-amounts">
+              <button class="rp-amt" data-rpamt="5.20" type="button">¥5.20</button>
+              <button class="rp-amt" data-rpamt="13.14" type="button">¥13.14</button>
+              <button class="rp-amt" data-rpamt="52.00" type="button">¥52.00</button>
+              <button class="rp-amt" data-rpamt="99.99" type="button">¥99.99</button>
+              <button class="rp-amt" data-rpamt="131.40" type="button">¥131.40</button>
+              <button class="rp-amt" data-rpamt="520.00" type="button">¥520.00</button>
+            </div>
+          </div>
+          <div class="rp-section">
+            <div class="rp-section-title">随机幸运金额</div>
+            <div class="rp-amounts">
+              <button class="rp-amt rp-rand" data-rpamt="rand" type="button">摇一个随机金额</button>
+            </div>
+            <div class="rp-rand-val" id="rp-rand-val"></div>
+          </div>
+          <div class="rp-section">
+            <div class="rp-section-title">自定义金额</div>
+            <input class="rp-input" id="rp-custom" type="number" min="0.01" step="0.01" placeholder="输入金额，如 88.88">
+          </div>
+          <div class="rp-section">
+            <div class="rp-section-title">留言</div>
+            <input class="rp-input" id="rp-wish" type="text" placeholder="心意" maxlength="20">
+          </div>
+          <button class="rp-send" id="rp-send-btn" type="button">发送红包</button>
+        </div>
+      </div>
       <!-- 聊天页输入半框（邀请TA / 问问TA，露出聊天消息，星言式） -->
       <div class="poke-card" id="chat-ask-panel" hidden>
         <div class="poke-card-head">
@@ -5871,6 +6085,10 @@ color: var(--muted);
           <button class="more-item" id="more-rps" title="猜拳">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11V8.5a1.5 1.5 0 013 0V11"/><path d="M8 11V7a1.5 1.5 0 013 0v4"/><path d="M11 11V8a1.5 1.5 0 013 0v3.5"/><path d="M14 11.5V9a1.5 1.5 0 013 0v6c0 3-2.5 5-5.5 5-1.7 0-3-.6-4-1.6L5 16"/></svg></span>
             <span>猜拳</span>
+          </button>
+          <button class="more-item" id="more-rp" title="发红包">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9c3 2 6 3 9 3s6-1 9-3"/><circle cx="12" cy="9" r="1.4"/></svg></span>
+            <span>红包</span>
           </button>
           <button class="more-item" id="more-avatar" title="头像互动">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></span>
@@ -10918,6 +11136,28 @@ const fItem = favBtn.closest('.msg-ask');
 if (fItem && fItem.dataset.idx !== undefined) window.favCardFromMsg(Number(fItem.dataset.idx));
 return;
 }
+const rpCard = e.target.closest('.msg-rp-card');
+if (rpCard) {
+e.stopPropagation();
+const rpItem = rpCard.closest('.msg-rp');
+if (!rpItem || rpItem.dataset.idx === undefined) return;
+const rpIdx = Number(rpItem.dataset.idx);
+const rpRec = msgs[rpIdx];
+if (!rpRec || rpRec.special !== 'redpacket') return;
+if (rpRec.rpStatus !== 'pending') return;
+if (rpRec.side !== 'in') { toast('等待 TA 领取'); return; }
+rpRec.rpStatus = 'received';
+rpRec.rpOpenedAt = Date.now();
+const wallet = rpWalletGet();
+wallet.myBalance += Math.round((rpRec.rpAmount || 0) * 100);
+rpWalletSet(wallet);
+saveMsgsNow();
+toast('已领取 ¥' + Number(rpRec.rpAmount || 0).toFixed(2));
+rpCard.classList.add('opened');
+const statusEl = rpCard.querySelector('.msg-rp-status');
+if (statusEl) statusEl.textContent = '已领取';
+return;
+}
 if (e.target.closest('.msg-inplace')) return;
 const card = e.target.closest('.msg-ask-card, .msg-choose-card');
 if (!card) return;
@@ -11051,6 +11291,47 @@ if (rec.special === 'poke' || rec.special === 'ask-msg') {
 m.className = 'msg-poke';
 m.innerHTML = '<span>' + pokeIconHtml(rec.text) + '</span>' +
 (rec.img ? '<img class="msg-poke-img" src="' + attrEsc(rec.img) + '" alt="新头像">' : '');
+body.appendChild(m);
+maybeScrollChatBottom();
+return m;
+}
+if (rec.special === 'rps') {
+m.className = 'msg-rps';
+const rpsIco = {
+rock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11V8.5a1.5 1.5 0 013 0V11"/><path d="M8 11V7a1.5 1.5 0 013 0v4"/><path d="M11 11V8a1.5 1.5 0 013 0v3.5"/><path d="M14 11.5V9a1.5 1.5 0 013 0v6c0 3-2.5 5-5.5 5-1.7 0-3-.6-4-1.6L5 16"/></svg>',
+scissors: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>',
+paper: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>'
+};
+const rpsName = { rock: '石头', scissors: '剪刀', paper: '布' };
+const resTxt = rec.rpsResult > 0 ? '你赢了' : rec.rpsResult < 0 ? '你输了' : '平局';
+m.innerHTML = '<div class="msg-rps-card">' +
+'<div class="msg-rps-hands">' +
+'<span class="msg-rps-hand"><span class="msg-rps-ico">' + (rpsIco[rec.rpsMine] || '') + '</span><span class="msg-rps-name">你 · ' + escTxt(rpsName[rec.rpsMine] || '') + '</span></span>' +
+'<span class="msg-rps-vs">VS</span>' +
+'<span class="msg-rps-hand"><span class="msg-rps-ico">' + (rpsIco[rec.rpsTa] || '') + '</span><span class="msg-rps-name">TA · ' + escTxt(rpsName[rec.rpsTa] || '') + '</span></span>' +
+'</div>' +
+'<div class="msg-rps-result">' + escTxt(resTxt) + '</div>' +
+'</div>';
+body.appendChild(m);
+maybeScrollChatBottom();
+return m;
+}
+if (rec.special === 'redpacket') {
+m.className = 'msg-rp';
+m.dataset.idx = msgs.length - 1;
+const sideTxt = rec.side === 'out' ? '我' : (store.get('lbl-partner') || 'TA');
+const cls = rpStatusCls(rec);
+const rpIco = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9c3 2 6 3 9 3s6-1 9-3"/><circle cx="12" cy="9" r="1.4"/></svg>';
+m.innerHTML = '<div class="msg-rp-card' + (cls ? ' ' + cls : '') + '">' +
+'<div class="msg-rp-top"><span class="msg-rp-ico">' + rpIco + '</span><span class="msg-rp-label">红包</span></div>' +
+'<div class="msg-rp-amt">¥' + escTxt(Number(rec.rpAmount || 0).toFixed(2)) + '</div>' +
+'<div class="msg-rp-wish">' + escTxt(rec.rpWish || '心意') + '</div>' +
+'<div class="msg-rp-foot">' +
+'<span class="msg-rp-side">' + escTxt(sideTxt) + ' 发出</span>' +
+'<span class="msg-rp-status">' + escTxt(rpStatusText(rec)) + '</span>' +
+'</div>' +
+favHeartHtml() +
+'</div>';
 body.appendChild(m);
 maybeScrollChatBottom();
 return m;
@@ -11856,6 +12137,7 @@ setTimeout(() => { hideTyping(); replyOnce(c, null); }, 600);
 }, 900);
 }
 setTimeout(() => { if (window.callMaybeTrigger) window.callMaybeTrigger(); }, 3500);
+setTimeout(() => { trySystemAutoSend(); tryCollectPending(); }, 2500);
 }
 window.continueChat = function () {
 const c = cfg();
@@ -12213,6 +12495,313 @@ morePoke.addEventListener('click', (e) => {
 e.stopPropagation();
 openPokeCard();
 });
+}
+const rpsPanel = document.getElementById('chat-rps-panel');
+const rpsCloseBtn = document.getElementById('chat-rps-close');
+const rpsScoreEl = document.getElementById('rps-score');
+const rpsHintEl = document.getElementById('rps-hint');
+const rpsNameEl = document.getElementById('rps-partner-name');
+function rpsReadScore() {
+try { return JSON.parse(store.get('rps-score') || '{"w":0,"l":0,"d":0}'); }
+catch (e) { return { w: 0, l: 0, d: 0 }; }
+}
+function rpsWriteScore(s) { store.set('rps-score', JSON.stringify(s)); }
+function rpsRenderScore() {
+if (!rpsScoreEl) return;
+const s = rpsReadScore();
+rpsScoreEl.textContent = '胜 ' + s.w + ' · 负 ' + s.l + ' · 平 ' + s.d;
+}
+function openRpsPanel() {
+if (!rpsPanel) return;
+const pc = document.getElementById('poke-card'); if (pc) pc.hidden = true;
+const ep = document.getElementById('emoji-panel'); if (ep) ep.hidden = true;
+const askP = document.getElementById('chat-ask-panel'); if (askP) askP.hidden = true;
+const cs = document.getElementById('chat-search'); if (cs) cs.hidden = true;
+const dv = document.getElementById('chat-divine-panel'); if (dv) dv.hidden = true;
+const dp = document.getElementById('chat-decision-panel'); if (dp) dp.hidden = true;
+if (window.closeAvlib) window.closeAvlib();
+if (morePanel) morePanel.hidden = true;
+if (rpsNameEl) rpsNameEl.textContent = store.get('lbl-partner') || 'TA';
+if (rpsHintEl) rpsHintEl.textContent = '选择你要出的拳';
+rpsRenderScore();
+rpsPanel.hidden = false;
+}
+function closeRpsPanel() { if (rpsPanel) rpsPanel.hidden = true; }
+function rpsJudge(a, b) {
+if (a === b) return 0;
+if ((a === 'rock' && b === 'scissors') ||
+(a === 'scissors' && b === 'paper') ||
+(a === 'paper' && b === 'rock')) return 1;
+return -1;
+}
+function sendRps(mine) {
+const ta = ['rock', 'scissors', 'paper'][Math.floor(Math.random() * 3)];
+const judge = rpsJudge(mine, ta);
+const s = rpsReadScore();
+if (judge > 0) s.w++; else if (judge < 0) s.l++; else s.d++;
+rpsWriteScore(s);
+rpsRenderScore();
+addRec({ side: 'in', special: 'rps', rpsMine: mine, rpsTa: ta, rpsResult: judge });
+if (window.logFish) window.logFish();
+if (rpsHintEl) {
+rpsHintEl.textContent =
+judge > 0 ? '你赢了！再来一局？' :
+judge < 0 ? '你输了，再来一局？' : '平局，再来一局？';
+}
+}
+const moreRps = document.getElementById('more-rps');
+if (moreRps) {
+moreRps.addEventListener('click', (e) => { e.stopPropagation(); openRpsPanel(); });
+}
+if (rpsCloseBtn) {
+rpsCloseBtn.addEventListener('click', (e) => { e.stopPropagation(); closeRpsPanel(); });
+}
+if (rpsPanel) {
+rpsPanel.querySelectorAll('.rps-choice').forEach(btn => {
+btn.addEventListener('click', (e) => {
+e.stopPropagation();
+const v = btn.dataset.rps;
+if (v) sendRps(v);
+});
+});
+}
+const rpPanel = document.getElementById('chat-rp-panel');
+const rpCloseBtn = document.getElementById('chat-rp-close');
+const rpNameEl = document.getElementById('rp-partner-name');
+const rpQixiTag = document.getElementById('rp-qixi-tag');
+const rpQixiSection = document.getElementById('rp-qixi-section');
+const rpRandVal = document.getElementById('rp-rand-val');
+const rpCustomInput = document.getElementById('rp-custom');
+const rpWishInput = document.getElementById('rp-wish');
+const rpSendBtn = document.getElementById('rp-send-btn');
+let rpSide = 'out';
+let rpPickedAmt = null;
+const QIXI_DATES = ['2024-08-10','2025-08-29','2026-08-19','2027-08-08','2028-08-26','2029-08-15','2030-08-04'];
+function isQixiToday() {
+const d = new Date();
+const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+return QIXI_DATES.indexOf(k) >= 0;
+}
+function openRpPanel() {
+if (!rpPanel) return;
+const pc = document.getElementById('poke-card'); if (pc) pc.hidden = true;
+const ep = document.getElementById('emoji-panel'); if (ep) ep.hidden = true;
+const askP = document.getElementById('chat-ask-panel'); if (askP) askP.hidden = true;
+const cs = document.getElementById('chat-search'); if (cs) cs.hidden = true;
+const dv = document.getElementById('chat-divine-panel'); if (dv) dv.hidden = true;
+const dp = document.getElementById('chat-decision-panel'); if (dp) dp.hidden = true;
+const rpsP = document.getElementById('chat-rps-panel'); if (rpsP) rpsP.hidden = true;
+if (window.closeAvlib) window.closeAvlib();
+if (morePanel) morePanel.hidden = true;
+if (rpNameEl) rpNameEl.textContent = store.get('lbl-partner') || 'TA';
+if (isQixiToday()) {
+if (rpQixiTag) rpQixiTag.hidden = false;
+if (rpQixiSection) rpQixiSection.classList.add('qixi-today');
+if (rpWishInput) rpWishInput.placeholder = '七夕快乐';
+} else {
+if (rpQixiTag) rpQixiTag.hidden = true;
+if (rpQixiSection) rpQixiSection.classList.remove('qixi-today');
+if (rpWishInput) rpWishInput.placeholder = '心意';
+}
+rpSide = 'out';
+rpPickedAmt = null;
+if (rpCustomInput) rpCustomInput.value = '';
+if (rpWishInput) rpWishInput.value = '';
+if (rpRandVal) rpRandVal.textContent = '';
+rpPanel.querySelectorAll('.rp-side').forEach(b => b.classList.toggle('sel', b.dataset.rpside === 'out'));
+rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
+closeIme();
+rpPanel.hidden = false;
+}
+function closeRpPanel() { if (rpPanel) rpPanel.hidden = true; }
+if (rpPanel) {
+rpPanel.querySelectorAll('.rp-side').forEach(btn => {
+btn.addEventListener('click', (e) => {
+e.stopPropagation();
+rpSide = btn.dataset.rpside || 'out';
+rpPanel.querySelectorAll('.rp-side').forEach(b => b.classList.toggle('sel', b === btn));
+});
+});
+rpPanel.querySelectorAll('.rp-amt').forEach(btn => {
+btn.addEventListener('click', (e) => {
+e.stopPropagation();
+const v = btn.dataset.rpamt;
+if (v === 'rand') {
+const r = Math.round(Math.random() * 20000 + 1) / 100;
+rpPickedAmt = r;
+if (rpRandVal) rpRandVal.textContent = '本次随机：¥' + r.toFixed(2);
+if (rpCustomInput) rpCustomInput.value = '';
+rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
+btn.classList.add('sel');
+return;
+}
+rpPickedAmt = parseFloat(v);
+if (rpRandVal) rpRandVal.textContent = '';
+if (rpCustomInput) rpCustomInput.value = '';
+rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
+btn.classList.add('sel');
+});
+});
+if (rpCustomInput) {
+rpCustomInput.addEventListener('input', () => {
+rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
+if (rpRandVal) rpRandVal.textContent = '';
+});
+}
+}
+const RP_WALLET_KEY = 'rp-wallet';
+const RP_DAILY_PREFIX = 'ml2_rp_daily_';
+const RP_EXPIRY_MS = 24 * 60 * 60 * 1000;
+const RP_SPECIAL_FEN = [520, 5200, 52000, 520000, 1314, 131400]; // 5.2/52/520/5200/13.14/1314 元
+function rpWalletGet() {
+try {
+const w = JSON.parse(store.get(RP_WALLET_KEY) || '');
+if (typeof w.myBalance === 'number' && typeof w.systemBalance === 'number') return w;
+} catch (e) {}
+return { myBalance: 99999999, systemBalance: 99999999 };
+}
+function rpWalletSet(w) { store.set(RP_WALLET_KEY, JSON.stringify(w)); }
+function rpDailyCount() {
+const k = RP_DAILY_PREFIX + new Date().toISOString().slice(0, 10);
+return Number(store.get(k)) || 0;
+}
+function rpDailyIncr() {
+const k = RP_DAILY_PREFIX + new Date().toISOString().slice(0, 10);
+store.set(k, String((Number(store.get(k)) || 0) + 1));
+}
+function genRpAmount(systemBalanceFen) {
+let amt;
+if (Math.random() < 0.4) {
+amt = RP_SPECIAL_FEN[Math.floor(Math.random() * RP_SPECIAL_FEN.length)];
+} else if (Math.random() < 0.8) {
+const max = Math.min(5200000, systemBalanceFen); // 52000 元 = 5200000 分
+amt = Math.floor(Math.random() * max) + 1;
+} else {
+amt = Math.floor(Math.random() * systemBalanceFen) + 1;
+}
+return Math.min(amt, systemBalanceFen);
+}
+function rpStatusText(rec) {
+const st = rec.rpStatus || 'pending';
+if (st === 'received') return '已领取';
+if (st === 'expired') return '已过期·退回';
+if (st === 'returned') return '已退回';
+return rec.side === 'in' ? '待领取' : '待TA领取';
+}
+function rpStatusCls(rec) {
+const st = rec.rpStatus || 'pending';
+if (st === 'received') return 'opened';
+if (st === 'expired' || st === 'returned') return 'expired';
+return '';
+}
+function trySystemAutoSend() {
+if (rpDailyCount() >= 5) return;
+if (Math.random() >= 0.04) return;
+const wallet = rpWalletGet();
+if (wallet.systemBalance < 1) return;
+const amtFen = genRpAmount(wallet.systemBalance);
+if (amtFen < 1) return;
+wallet.systemBalance -= amtFen;
+rpWalletSet(wallet);
+rpDailyIncr();
+const amt = amtFen / 100;
+const wish = pick(['心意', '给你花', '小礼物', '辛苦啦', '开心一下', '七夕快乐']);
+setTimeout(() => {
+addIn('', { special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now() });
+if (window.logFish) window.logFish();
+}, randInt(800, 2000));
+}
+function handleSendResponse(msg) {
+const idx = msgs.indexOf(msg);
+if (idx < 0) return;
+const rec = msgs[idx];
+if (!rec || rec.rpStatus !== 'pending') return;
+const r = Math.random();
+const wallet = rpWalletGet();
+const amtFen = Math.round((rec.rpAmount || 0) * 100);
+if (r < 0.2) {
+rec.rpStatus = 'returned';
+wallet.myBalance += amtFen;
+rpWalletSet(wallet);
+saveMsgsNow();
+renderWindow(false, true);
+} else if (r < 0.9) {
+rec.rpStatus = 'received';
+rec.rpOpenedAt = Date.now();
+wallet.systemBalance += amtFen;
+rpWalletSet(wallet);
+saveMsgsNow();
+renderWindow(false, true);
+}
+}
+function tryCollectPending() {
+if (Math.random() >= 0.08) return;
+const idx = msgs.findIndex(m => m && m.special === 'redpacket' && m.side === 'out' && m.rpStatus === 'pending');
+if (idx < 0) return;
+const rec = msgs[idx];
+rec.rpStatus = 'received';
+rec.rpOpenedAt = Date.now();
+const wallet = rpWalletGet();
+wallet.systemBalance += Math.round((rec.rpAmount || 0) * 100);
+rpWalletSet(wallet);
+saveMsgsNow();
+renderWindow(false, true);
+}
+function rpExpireCheck() {
+const now = Date.now();
+const wallet = rpWalletGet();
+let changed = false;
+for (let i = 0; i < msgs.length; i++) {
+const rec = msgs[i];
+if (rec && rec.special === 'redpacket' && rec.rpStatus === 'pending' && rec.rpTs) {
+if (now - rec.rpTs > RP_EXPIRY_MS) {
+rec.rpStatus = 'expired';
+rec.expiredAt = now;
+const amtFen = Math.round((rec.rpAmount || 0) * 100);
+if (rec.side === 'out') wallet.myBalance += amtFen;
+else wallet.systemBalance += amtFen;
+changed = true;
+}
+}
+}
+if (changed) { rpWalletSet(wallet); saveMsgsNow(); }
+}
+function rpRenderBalance() {
+const el = document.getElementById('rp-balance');
+if (!el) return;
+const w = rpWalletGet();
+el.textContent = '我的 ¥' + (w.myBalance / 100).toFixed(2) + ' · TA ¥' + (w.systemBalance / 100).toFixed(2);
+}
+function sendRedpacket() {
+let amt = rpPickedAmt;
+if (rpCustomInput && rpCustomInput.value) {
+const cv = parseFloat(rpCustomInput.value);
+if (!isNaN(cv) && cv > 0) amt = Math.round(cv * 100) / 100;
+}
+if (!amt || amt <= 0 || isNaN(amt)) { toast('先选择或输入红包金额'); return; }
+const wish = (rpWishInput && rpWishInput.value || '').trim() || (isQixiToday() ? '七夕快乐' : '心意');
+const amtFen = Math.round(amt * 100);
+const wallet = rpWalletGet();
+if (rpSide === 'out') {
+if (amtFen > wallet.myBalance) { toast('我的余额不足'); return; }
+wallet.myBalance -= amtFen;
+} else {
+if (amtFen > wallet.systemBalance) { toast('TA 余额不足'); return; }
+wallet.systemBalance -= amtFen;
+}
+rpWalletSet(wallet);
+const msg = addRec({ side: rpSide, special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now() });
+if (window.logFish) window.logFish();
+if (rpSide === 'out') {
+setTimeout(() => handleSendResponse(msg), randInt(3000, 8000));
+}
+closeRpPanel();
+}
+if (rpSendBtn) rpSendBtn.addEventListener('click', (e) => { e.stopPropagation(); sendRedpacket(); });
+if (rpCloseBtn) rpCloseBtn.addEventListener('click', (e) => { e.stopPropagation(); closeRpPanel(); });
+const moreRp = document.getElementById('more-rp');
+if (moreRp) {
+moreRp.addEventListener('click', (e) => { e.stopPropagation(); openRpPanel(); });
 }
 const chatDivinePanel = document.getElementById('chat-divine-panel');
 const chatDivineBody = document.getElementById('chat-divine-body');
@@ -16279,6 +16868,7 @@ const m = library.find(x => x.id === ids[i]);
 if (m && info && info.name) {
 m.name = info.name;
 if (info.artist) m.artist = info.artist;
+if (info.duration && !m.duration) m.duration = info.duration;
 saveLibrary();
 renderPage();
 }
@@ -16418,14 +17008,17 @@ if (!html || typeof html !== 'string') return null;
 let m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
 if (!m) return null;
 let title = m[1].trim().replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ');
+let duration = 0;
+const dm = html.match(/property=["']music:duration["'][^>]*content=["'](\d+)["']/i) || html.match(/content=["'](\d+)["'][^>]*property=["']music:duration["']/i);
+if (dm) duration = parseInt(dm[1], 10) || 0;
 title = title.replace(/\s*[-－]\s*单曲\s*[-－]\s*网易云音乐\s*$/i, '');
 title = title.replace(/\s*[-－]\s*网易云音乐\s*$/i, '');
 const parts = title.split(/\s*[-－]\s*/);
 if (parts.length >= 2) {
-return { name: parts[0].trim(), artist: parts.slice(1).join(' - ').trim(), pic: '' };
+return { name: parts[0].trim(), artist: parts.slice(1).join(' - ').trim(), pic: '', duration: duration };
 }
 if (parts.length === 1 && parts[0]) {
-return { name: parts[0].trim(), artist: '', pic: '' };
+return { name: parts[0].trim(), artist: '', pic: '', duration: duration };
 }
 return null;
 }
@@ -16443,7 +17036,7 @@ let d; try { d = typeof t === 'string' ? JSON.parse(t) : t; } catch(e) { return 
 if (d && d.songs && d.songs[0]) {
 const s = d.songs[0];
 const artist = (s.artists || []).map(a => a.name).join('/');
-return { name: s.name, artist: artist, pic: (s.album && s.album.picUrl) || '' };
+return { name: s.name, artist: artist, pic: (s.album && s.album.picUrl) || '', duration: s.dt ? Math.round(s.dt / 1000) : 0 };
 }
 return null; } },
 { url: 'https://corsproxy.io/?url=' + encodeURIComponent('https://music.163.com/api/song/detail/?ids=' + id), isText: true, parse(t) {
@@ -16451,7 +17044,7 @@ let d; try { d = typeof t === 'string' ? JSON.parse(t) : t; } catch(e) { return 
 if (d && d.songs && d.songs[0]) {
 const s = d.songs[0];
 const artist = (s.artists || []).map(a => a.name).join('/');
-return { name: s.name, artist: artist, pic: (s.album && s.album.picUrl) || '' };
+return { name: s.name, artist: artist, pic: (s.album && s.album.picUrl) || '', duration: s.dt ? Math.round(s.dt / 1000) : 0 };
 }
 return null; } }
 ];
@@ -16474,6 +17067,236 @@ if (res && res.name) cb(res); else tryNext();
 .catch(() => { clearTimeout(timer); tryNext(); });
 }
 tryNext();
+}
+function extractPlaylistId(line) {
+if (!line || typeof line !== 'string') return '';
+if (/\.mp3/i.test(line)) return '';
+const m = line.match(/playlist[\/?#]*(?:id=)?(\d+)/i);
+return m ? m[1] : '';
+}
+function fetchNeteasePlaylist(id, cb) {
+const apiUrl = 'https://music.163.com/api/v6/playlist/detail?id=' + encodeURIComponent(String(id)) + '&n=1000&s=8';
+const sources = [
+{ url: 'https://api.injahow.cn/meting/?type=playlist&id=' + encodeURIComponent(String(id)), parse(txt) {
+let j; try { j = JSON.parse(txt); } catch (e) { return null; }
+if (!Array.isArray(j) || !j.length) return null;
+return j.map(t => {
+const mid = (t.url || '').match(/type=url&id=(\d+)/);
+return {
+neteaseId: mid ? mid[1] : '',
+name: t.name || '',
+artist: t.artist || '',
+cover: String(t.pic || '').replace(/^http:\/\//i, 'https://'),
+url: mid ? neteaseMetingUrl(mid[1]) : (t.url || ''),
+duration: 0
+};
+}).filter(t => t.url);
+} },
+{ url: 'https://api.i-meto.com/meting/api?server=netease&type=playlist&id=' + encodeURIComponent(String(id)), parse(txt) {
+let j; try { j = JSON.parse(txt); } catch (e) { return null; }
+if (!Array.isArray(j) || !j.length) return null;
+return j.map(t => {
+const mid = (t.url || '').match(/type=url&id=(\d+)/);
+return {
+neteaseId: mid ? mid[1] : '',
+name: t.title || t.name || '',
+artist: t.author || t.artist || '',
+cover: String(t.pic || '').replace(/^http:\/\//i, 'https://'),
+url: mid ? neteaseMetingUrl(mid[1]) : (t.url || ''),
+duration: 0
+};
+}).filter(t => t.url);
+} },
+{ url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(apiUrl), parse(txt) {
+let j; try { j = JSON.parse(txt); } catch (e) { return null; }
+const pl = j && j.playlist;
+if (!pl || !Array.isArray(pl.tracks) || !pl.tracks.length) return null;
+return pl.tracks.map(s => ({
+neteaseId: String(s.id || ''),
+name: s.name || '',
+artist: ((s.ar || []).map(a => a.name).filter(Boolean).join('/')),
+cover: String((s.al && s.al.picUrl) || '').replace(/^http:\/\//i, 'https://'),
+url: s.id ? neteaseMetingUrl(s.id) : '',
+duration: s.dt ? Math.round(s.dt / 1000) : 0
+})).filter(t => t.url);
+} },
+{ url: 'https://corsproxy.io/?url=' + encodeURIComponent(apiUrl), parse(txt) {
+let j; try { j = JSON.parse(txt); } catch (e) { return null; }
+const pl = j && j.playlist;
+if (!pl || !Array.isArray(pl.tracks) || !pl.tracks.length) return null;
+return pl.tracks.map(s => ({
+neteaseId: String(s.id || ''),
+name: s.name || '',
+artist: ((s.ar || []).map(a => a.name).filter(Boolean).join('/')),
+cover: String((s.al && s.al.picUrl) || '').replace(/^http:\/\//i, 'https://'),
+url: s.id ? neteaseMetingUrl(s.id) : '',
+duration: s.dt ? Math.round(s.dt / 1000) : 0
+})).filter(t => t.url);
+} },
+{ url: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(apiUrl), parse(txt) {
+let j; try { j = JSON.parse(txt); } catch (e) { return null; }
+const pl = j && j.playlist;
+if (!pl || !Array.isArray(pl.tracks) || !pl.tracks.length) return null;
+return pl.tracks.map(s => ({
+neteaseId: String(s.id || ''),
+name: s.name || '',
+artist: ((s.ar || []).map(a => a.name).filter(Boolean).join('/')),
+cover: String((s.al && s.al.picUrl) || '').replace(/^http:\/\//i, 'https://'),
+url: s.id ? neteaseMetingUrl(s.id) : '',
+duration: s.dt ? Math.round(s.dt / 1000) : 0
+})).filter(t => t.url);
+} }
+];
+let idx = 0;
+function tryNext() {
+if (idx >= sources.length) { cb(null); return; }
+const src = sources[idx++];
+let controller;
+try { controller = new AbortController(); } catch (e) { controller = null; }
+const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 10000);
+fetch(src.url, controller ? { signal: controller.signal } : undefined)
+.then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+.then(txt => {
+clearTimeout(timer);
+try {
+const res = src.parse(txt);
+if (res && res.length) cb(res); else tryNext();
+} catch (e) { tryNext(); }
+})
+.catch(() => { clearTimeout(timer); tryNext(); });
+}
+tryNext();
+}
+function importNeteasePlaylist(id, done) {
+fetchNeteasePlaylist(id, function (tracks) {
+if (!tracks || !tracks.length) { done({ ok: false }); return; }
+let added = 0, skipped = 0;
+const now = Date.now();
+const addedIds = [];
+tracks.forEach((t, i) => {
+if (t.neteaseId && library.some(m => m.neteaseId === t.neteaseId)) { skipped++; return; }
+const nid = 'sm_pl_' + now + '_' + i + '_' + Math.random().toString(36).substr(2, 4);
+library.push({ id: nid, neteaseId: t.neteaseId, name: t.name || '网易云音乐-' + (t.neteaseId || i), artist: t.artist || '', cover: t.cover || '', url: t.url, source: 'url', duration: t.duration || 0, playlistId: 'default', addedAt: now });
+addedIds.push(nid);
+added++;
+});
+done({ ok: true, added: added, skipped: skipped });
+if (addedIds.length) enrichImportedDurations(id, addedIds);
+});
+}
+function enrichImportedDurations(id, trackIds) {
+const missing = trackIds.map(findTrack).filter(m => m && m.neteaseId && !m.duration);
+if (!missing.length) return;
+fetchV6Durations(id, function (durMap) {
+if (durMap && Object.keys(durMap).length) {
+let any = false;
+missing.forEach(m => { if (durMap[m.neteaseId] && !m.duration) { m.duration = durMap[m.neteaseId]; any = true; } });
+if (any) { saveLibrary(); renderPage(); }
+}
+missing.forEach(m => { if (!m.duration) enqueueDurProbe(m); });
+});
+}
+function fetchV6Durations(id, cb) {
+const apiUrl = 'https://music.163.com/api/v6/playlist/detail?id=' + encodeURIComponent(String(id)) + '&n=1000&s=8';
+const prox = [
+'https://api.allorigins.win/raw?url=',
+'https://corsproxy.io/?url=',
+'https://api.codetabs.com/v1/proxy?quest='
+];
+const out = {};
+let settled = false;
+const finish = () => { if (settled) return; settled = true; cb(out); };
+prox.forEach(p => {
+let controller;
+try { controller = new AbortController(); } catch (e) { controller = null; }
+const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 6000);
+fetch(p + encodeURIComponent(apiUrl), controller ? { signal: controller.signal } : undefined)
+.then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+.then(txt => {
+clearTimeout(timer);
+try {
+const j = JSON.parse(txt);
+const pl = j && j.playlist;
+if (pl && Array.isArray(pl.tracks) && pl.tracks.length) {
+pl.tracks.forEach(s => { if (s && s.id && s.dt) out[String(s.id)] = Math.round(s.dt / 1000); });
+finish();
+}
+} catch (e) {}
+})
+.catch(() => { clearTimeout(timer); });
+});
+setTimeout(finish, 7000);
+}
+function updateDurUI(id, dur) {
+if (!dur) return;
+const txt = fmtDur(dur);
+document.querySelectorAll('#music-lib-list .sm-song, #tc-body .sm-song').forEach(row => {
+if (row.dataset.id === id) {
+const el = row.querySelector('.sm-song-dur');
+if (el) el.textContent = txt;
+}
+});
+}
+let durProbeRunning = false;
+const durProbeQueue = [];
+const DUR_PROBE_CONCURRENCY = 4;
+function enqueueDurProbe(m) {
+if (!m || !m.neteaseId || m.duration > 0) return;
+if (durProbeQueue.some(x => x.id === m.id)) return;
+durProbeQueue.push(m);
+if (durProbeQueue.length <= DUR_PROBE_CONCURRENCY) runDurProbe();
+}
+function runDurProbe() {
+if (durProbeRunning) return;
+durProbeRunning = true;
+const next = () => {
+if (!durProbeQueue.length) { durProbeRunning = false; return; }
+const m = durProbeQueue.shift();
+probeOneDuration(m, next);
+};
+for (let i = 0; i < DUR_PROBE_CONCURRENCY; i++) next();
+}
+function probeOneDuration(m, done) {
+let tmp = null;
+let finished = false;
+const timer = setTimeout(() => finish(0), 12000);
+function finish(dur) {
+if (finished) return;
+finished = true;
+clearTimeout(timer);
+try { if (tmp) { tmp.onerror = null; tmp.onloadedmetadata = null; tmp.removeAttribute('src'); tmp.load(); } } catch (e) {}
+if (dur > 0) {
+const mm = findTrack(m.id);
+if (mm && !mm.duration) {
+mm.duration = dur;
+saveLibrary();
+updateDurUI(m.id, dur);
+}
+}
+done();
+}
+try {
+tmp = new Audio();
+tmp.preload = 'metadata';
+tmp.onloadedmetadata = function () { finish(tmp.duration || 0); };
+tmp.onerror = function () { finish(0); };
+tmp.src = neteaseMetingUrl(m.neteaseId);
+} catch (e) { finish(0); }
+}
+function probeAllMissingDurations() {
+library.forEach(m => { if (m && m.neteaseId && !m.duration) enqueueDurProbe(m); });
+}
+function importPlaylistIds(ids, cb) {
+let total = 0, plOk = 0, plFail = 0, skipped = 0;
+const next = (i) => {
+if (i >= ids.length) { cb({ total: total, plOk: plOk, plFail: plFail, skipped: skipped }); return; }
+importNeteasePlaylist(ids[i], (res) => {
+if (res.ok) { plOk++; total += res.added; skipped += res.skipped; }
+else plFail++;
+next(i + 1);
+});
+};
+next(0);
 }
 function triggerUpload() {
 const inp = document.createElement('input');
@@ -16605,7 +17428,7 @@ window.openTCPanel('添加链接音乐', '' +
 '<div class="sm-fld"><label>歌曲名称</label><input class="tc-input" id="sm-url-name" placeholder="可留空，识别后自动补全"></div>' +
 '<div class="sm-fld"><label>歌手</label><input class="tc-input" id="sm-url-artist" placeholder="可留空"></div>' +
 '<div class="sm-fld"><label>网易云歌曲ID 或 音乐直链</label><textarea class="tc-input" id="sm-url-link" rows="3" placeholder="如 2064961530&#10;每行一个，支持批量"></textarea></div>' +
-'<div class="sm-fld-hint">直接填网易云歌曲数字 ID（如 2064961530）即自动导入；也可粘贴完整链接或 mp3 直链。支持批量：每行一个 ID 或链接；批量时歌曲名/歌手自动识别，可不填</div>' +
+'<div class="sm-fld-hint">直接填网易云歌曲数字 ID（如 2064961530）即自动导入；也可粘贴完整链接或 mp3 直链。支持批量：每行一个 ID 或链接；批量时歌曲名/歌手自动识别，可不填。<br>粘贴歌单分享链接（music.163.com/playlist?id=xxx 或 #/playlist?id=xxx）自动导入整个歌单。<br><span style="opacity:.75">⚠ 网易云导入仅支持播放免费歌曲，VIP/付费歌曲可能无法播放；歌单导入受网络环境影响，失败可稍后重试</span></div>' +
 '</div>' +
 '<div class="mail-actions"><button class="cc-tool" id="sm-url-cancel">取消</button><button class="cc-tool" id="sm-url-ok">确认添加</button></div>');
 document.getElementById('sm-url-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
@@ -16617,8 +17440,16 @@ if (!raw) { toast('请输入网易云ID或音乐链接'); return; }
 const lines = raw.split(/\r?\n+/).map(s => s.trim()).filter(Boolean);
 if (!lines.length) { toast('请输入网易云ID或音乐链接'); return; }
 const isBatch = lines.length > 1;
+const playlistIds = [];
+const trackLines = [];
+lines.forEach(ln => {
+const plId = extractPlaylistId(ln);
+if (plId) { if (playlistIds.indexOf(plId) < 0) playlistIds.push(plId); }
+else trackLines.push(ln);
+});
+const addLinkLines = (lins, batchMode) => {
 let added = 0;
-lines.forEach((ln, li) => {
+lins.forEach((ln, li) => {
 let neteaseId = '';
 if (/^\d+$/.test(ln)) neteaseId = ln;
 else {
@@ -16630,46 +17461,66 @@ if (pathMatch) neteaseId = pathMatch[1];
 }
 }
 let url = ln;
-let nm = isBatch ? '' : name;
+let nm = batchMode ? '' : name;
 if (neteaseId) {
 url = neteaseMetingUrl(neteaseId);
 if (!nm) nm = '网易云音乐-' + neteaseId;
 }
 if (!/^(https?:\/\/|file:\/\/|data:|\/)/i.test(url)) return;
 const id = 'sm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '_' + li;
-library.push({ id: id, neteaseId: neteaseId || '', name: nm, artist: isBatch ? '' : artist, url: url, source: 'url', duration: 0, playlistId: 'default', addedAt: Date.now() });
+const item = { id: id, neteaseId: neteaseId || '', name: nm, artist: batchMode ? '' : artist, url: url, source: 'url', duration: 0, playlistId: 'default', addedAt: Date.now() };
+library.push(item);
 added++;
 if (neteaseId) {
+enqueueDurProbe(item);
 fetchNeteaseInfo(neteaseId, info => {
 const m = findTrack(id);
 if (m && info && info.name) {
 m.name = info.name;
 if (info.artist) m.artist = info.artist;
+if (info.duration && !m.duration) { m.duration = info.duration; updateDurUI(m.id, m.duration); }
 saveLibrary();
 renderPage();
-if (!isBatch) toast('已识别：' + info.name + (info.artist ? ' - ' + info.artist : ''));
+if (!batchMode) toast('已识别：' + info.name + (info.artist ? ' - ' + info.artist : ''));
 }
 });
 }
 });
-if (!added) { toast('没有识别到有效的ID或链接'); return; }
+if (!added) return;
 saveLibrary();
 document.getElementById('tc-mask').hidden = true;
 renderPage();
-toast(isBatch ? '已批量添加 ' + added + ' 首链接音乐' : '链接音乐已添加');
+if (!playlistIds.length) toast(batchMode ? '已批量添加 ' + added + ' 首链接音乐' : '链接音乐已添加');
+};
+if (playlistIds.length) {
+toast('正在导入 ' + playlistIds.length + ' 个歌单…');
+importPlaylistIds(playlistIds, (res) => {
+if (trackLines.length) addLinkLines(trackLines, isBatch);
+else { saveLibrary(); document.getElementById('tc-mask').hidden = true; renderPage(); }
+let msg = res.total
+? '已导入 ' + res.plOk + ' 个歌单 / ' + res.total + ' 首' + (res.skipped ? '（跳过已有 ' + res.skipped + ' 首）' : '')
+: '歌单导入失败';
+if (res.plFail) msg += res.total ? '；' + res.plFail + ' 个失败（可能私密/已失效/被浏览器拦截）' : '：可能为私密歌单、已失效或被浏览器拦截，可稍后重试';
+toast(msg);
+});
+return;
+}
+addLinkLines(lines, isBatch);
 });
 }
 function openBatch() {
 if (!window.openTCPanel) return;
 window.openTCPanel('批量导入音乐', '' +
-'<div class="sm-fld-hint" style="margin-bottom:8px">按格式粘贴，每首歌空一行分隔。<br>「音乐直链URL」直接填网易云歌曲数字 ID 就行（如 2064961530），会自动导入：<br>歌曲名称：xxx<br>歌手：xxx<br>音乐直链URL：2064961530<br><br>也可以不写格式：直接每行一个网易云 ID 或音乐链接，同样自动导入并识别歌名。</div>' +
-'<textarea id="sm-batch-input" class="tc-input" rows="8" placeholder="歌曲名称：Baby&#10;歌手：EXO-K&#10;音乐直链URL：27538343&#10;&#10;歌曲名称：歌名2&#10;歌手：歌手2&#10;音乐直链URL：https://example.com/music2.mp3"></textarea>' +
+'<div class="sm-fld-hint" style="margin-bottom:8px"><b>支持 3 种导入方式：</b><br>① <b>网易云歌单</b>：直接粘贴歌单分享链接（music.163.com/playlist?id=xxx 或 #/playlist?id=xxx），自动导入整个歌单；<br>② <b>网易云单曲</b>：每行一个歌曲数字 ID（如 2064961530）或歌曲链接，自动识别歌名；<br>③ <b>本地/直链</b>：按「歌曲名称 / 歌手 / 音乐直链URL」格式粘贴，每首歌空一行分隔。<br><br><span style="opacity:.75">⚠ 网易云导入仅支持播放免费歌曲，VIP/付费歌曲可能无法播放；歌单导入受网络环境影响（部分手机浏览器可能拦截），失败可稍后重试</span></div>' +
+'<textarea id="sm-batch-input" class="tc-input" rows="8" placeholder="网易云歌单链接：https://music.163.com/playlist?id=3778678&#10;网易云单曲ID：27538343&#10;&#10;歌曲名称：Baby&#10;歌手：EXO-K&#10;音乐直链URL：https://example.com/music2.mp3"></textarea>' +
 '<div class="mail-actions"><button class="cc-tool" id="sm-batch-cancel">取消</button><button class="cc-tool" id="sm-batch-ok">开始导入</button></div>');
 document.getElementById('sm-batch-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
 document.getElementById('sm-batch-ok').addEventListener('click', () => {
 const raw = readCeInput('sm-batch-input');
 if (!raw) { toast('请输入内容'); return; }
 const rawLines = raw.split(/\r?\n+/).map(s => s.trim()).filter(Boolean);
+const plIds = [];
+rawLines.forEach(l => { const pid = extractPlaylistId(l); if (pid && plIds.indexOf(pid) < 0) plIds.push(pid); });
 const isLabelLine = (l) => {
 if (/^https?:\/\//i.test(l) || /^\/\//.test(l)) return false;
 return /^[^:=：＝/]+?[:：＝=]\s*\S+/.test(l);
@@ -16677,7 +17528,7 @@ return /^[^:=：＝/]+?[:：＝=]\s*\S+/.test(l);
 const hasLabels = rawLines.some(isLabelLine);
 const units = hasLabels
 ? raw.split(/\n\s*\n/).map(b => ({ lines: b.split('\n').map(s => s.trim()).filter(Boolean), plain: false }))
-: rawLines.map(l => ({ lines: [l], plain: true }));
+: rawLines.filter(l => !extractPlaylistId(l)).map(l => ({ lines: [l], plain: true }));
 let added = 0;
 units.forEach((unit, ui) => {
 let name = '', artist = '', url = '';
@@ -16695,6 +17546,7 @@ else if (/^(音乐直链url|音乐直链|音乐链接|链接|直链|url|音乐ur
 });
 }
 if (!url) return;
+if (extractPlaylistId(url)) return; // 歌单链接单独走歌单导入，不当作单曲
 let neteaseId = '';
 if (/^\d+$/.test(url)) {
 neteaseId = url;
@@ -16714,21 +17566,38 @@ name = fn || '链接音乐';
 }
 if (!/^(https?:\/\/|file:\/\/|data:|\/)/i.test(url)) return;
 const nid = 'sm_batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '_' + ui;
-library.push({ id: nid, neteaseId: neteaseId || '', name: name, artist: artist, url: url, source: 'url', duration: 0, playlistId: 'default', addedAt: Date.now() });
+const item = { id: nid, neteaseId: neteaseId || '', name: name, artist: artist, url: url, source: 'url', duration: 0, playlistId: 'default', addedAt: Date.now() };
+library.push(item);
 added++;
 if (neteaseId) {
+enqueueDurProbe(item);
 fetchNeteaseInfo(neteaseId, info => {
 const mm = library.find(x => x.id === nid);
 if (mm && info && info.name) {
 mm.name = info.name;
 if (info.artist) mm.artist = info.artist;
+if (info.duration && !mm.duration) { mm.duration = info.duration; updateDurUI(mm.id, mm.duration); }
 saveLibrary();
 renderPage();
 }
 });
 }
 });
-if (!added) { toast('没有识别到有效歌曲，请检查格式'); return; }
+if (!added && !plIds.length) { toast('没有识别到有效歌曲，请检查格式'); return; }
+if (plIds.length) {
+toast('正在导入 ' + plIds.length + ' 个歌单…');
+importPlaylistIds(plIds, (res) => {
+saveLibrary();
+document.getElementById('tc-mask').hidden = true;
+renderPage();
+let msg = (added ? '已导入 ' + added + ' 首音乐 + ' : '已导入 ');
+msg += res.total ? res.plOk + ' 个歌单 / ' + res.total + ' 首' : '0 首歌单（可能私密/已失效/被浏览器拦截，可稍后重试）';
+if (res.skipped) msg += '（跳过已有 ' + res.skipped + ' 首）';
+if (res.plFail && res.total) msg += '；' + res.plFail + ' 个歌单失败（可能私密/已失效/被拦截）';
+toast(msg);
+});
+return;
+}
 saveLibrary();
 document.getElementById('tc-mask').hidden = true;
 renderPage();
@@ -17291,7 +18160,7 @@ audio.onloadedmetadata = function () {
 const dur = audio.duration || 0;
 const el = document.getElementById('sm-pb-dur');
 if (el) el.textContent = fmtDur(dur);
-if (m && dur) { m.duration = dur; saveLibrary(); }
+if (m && dur) { m.duration = dur; saveLibrary(); updateDurUI(m.id, dur); }
 if (playRejected && currentId === m.id) {
 playRejected = false;
 try { audio.muted = true; } catch (e) {}
@@ -18030,6 +18899,7 @@ if (editing) return;
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 musicPage.hidden = false;
 renderPage();
+probeAllMissingDurations();
 });
 }
 const musicBack = document.getElementById('music-back');
@@ -18107,6 +18977,7 @@ const mm = findTrack(m.id);
 if (mm && info && info.name) {
 mm.name = info.name;
 if (info.artist) mm.artist = info.artist;
+if (info.duration && !mm.duration) mm.duration = info.duration;
 saveLibrary();
 renderPage();
 }
@@ -26848,7 +27719,15 @@ setTimeout(maybeShow, 300); // 留一点开屏退出动画缓冲
 (function () {
 let isMobile = false;
 try { isMobile = window.matchMedia && window.matchMedia('(max-width: 900px)').matches; } catch (e) {}
-if (!isMobile) return;
+let isTablet = false;
+try {
+const ua = String(navigator.userAgent || '');
+const plat = String(navigator.platform || '');
+isTablet = /iPad/i.test(ua) || plat === 'iPad' ||
+((plat === 'MacIntel' || /Macintosh/i.test(ua)) && navigator.maxTouchPoints > 1 && 'ontouchstart' in window);
+} catch (e) {}
+if (isTablet) { try { document.documentElement.classList.add('tablet'); } catch (e) {} }
+if (!isMobile && !isTablet) return;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
 document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
 document.addEventListener('dblclick', function (e) { e.preventDefault(); });
@@ -27138,7 +28017,7 @@ if (_kbActive && !isTextEl(document.activeElement)) restoreKb();
 });
 } catch (e) {}
 }
-const FLOAT_SELECTORS = ['#tc-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions'];
+const FLOAT_SELECTORS = ['#tc-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#chat-rps-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions'];
 let locked = false;
 function applyLock() {
 const anyOpen = FLOAT_SELECTORS.some(function (sel) {
