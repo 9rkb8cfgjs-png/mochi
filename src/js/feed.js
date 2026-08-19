@@ -85,25 +85,50 @@
     return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
   function normPost(p) { if (p.by && !p.role) { p.role = p.by; if (!p.owner) p.owner = 'default'; } return p; }
+  // v3.7.x：feedDbReady 门槛——对齐 mail.js mailDbReady。Edge/OPPO 上 IndexedDB 打开/
+  //   读取慢或挂起时，启动早期 store.get(KEY) 返回 null（大键不在 LS、memoryCache 未回填）、
+  //   快照也缺失 → load() 返回 []。此时任何 save（maybeAutoPost 定时器/用户发布/点赞）都会
+  //   用空或单条覆盖 IDB 里的全部旧动态 → 「关掉 Edge 重开就丢」。门槛：权威未从 IDB 读回前，
+  //   save 只暂存内存（feedPending），绝不落盘；load 合并暂存，弹窗提示过的动态都可见。
+  let feedDbReady = false;
+  let feedPending = null;
+  // 按 id 合并两个动态列表（后者覆盖同 id），按 ts 倒序
+  function mergePosts(a, b) {
+    const map = {};
+    (a || []).forEach(p => { if (p && p.id) map[p.id] = p; });
+    (b || []).forEach(p => { if (p && p.id) map[p.id] = p; });
+    return Object.keys(map).map(k => map[k]).sort((x, y) => (y.ts || 0) - (x.ts || 0));
+  }
   function load() {
     // 主键存在（含清空后的 '[]'）→ 直接用它；键缺失（null）才走剥图快照兜底——
     // 原写法 `store.get(KEY) || '[]'` 在键缺失时返回空数组提前 return，快照兜底永不生效
+    let list = [];
     const raw = store.get(KEY);
     if (raw !== null) {
       try {
         const a = JSON.parse(raw);
-        if (Array.isArray(a)) return a.map(normPost);
+        if (Array.isArray(a)) list = a.map(normPost);
       } catch (e) {}
     }
     // v3.7.x：LS 主键缺失兜底——大列表只进 IDB（Edge 丢 IDB / LS 被清）时读剥图快照，
     // 文本+作者+时间保留；IDB 存活时模块底部 idbGet 会随后用完整数据重渲染
-    try {
-      const v = loadSnap();
-      if (v.length) return v.map(normPost);
-    } catch (e) {}
-    return [];
+    if (!list.length) {
+      try {
+        const v = loadSnap();
+        if (v.length) list = v.map(normPost);
+      } catch (e) {}
+    }
+    // v3.7.x：权威读取（feedDbReady=false）期间收到的动态只暂存在 feedPending，原 load()
+    //   只读持久层 → 弹窗/通知提示了新动态、朋友圈列表却是空白（OPPO Edge IDB 慢时复现）；
+    //   这里把暂存动态按 id 合并在持久层之上，提示过的一切动态都可见可赞可评。
+    if (!feedDbReady && feedPending && feedPending.length) {
+      list = mergePosts(list, feedPending);
+    }
+    return list;
   }
   function save(list) {
+    // v3.7.x：门槛——权威未从 IDB 读回前只暂存内存，绝不落盘（防 save([]) 覆盖 IDB 旧动态）
+    if (!feedDbReady) { try { feedPending = (list || []).slice(); } catch (e) {} return; }
     const raw = JSON.stringify(list);
     store.set(KEY, raw);
     // 清空时同步清掉旧快照（防清空后又被陈旧快照"恢复"出已删除的动态）
@@ -111,14 +136,14 @@
       try { localStorage.removeItem('xy-home-v2:default:' + SNAP_KEY); } catch (e) {}
       return;
     }
-    // v3.7.x：主键 >200KB 时写剥图快照（见 SNAP_KEY 注释）；快照本身也限制 ≤200KB，
-    // 防被 idb.js 大键迁移搬走（迁移只认 LS 键不认命名空间）
-    if (raw.length > LS_BIG_LIMIT) {
-      try {
-        const snap = JSON.stringify(list.map(stripPostImg));
-        if (snap.length <= LS_BIG_LIMIT) localStorage.setItem('xy-home-v2:default:' + SNAP_KEY, snap);
-      } catch (e) {}
-    }
+    // v3.7.x：总是写剥图快照（原实现仅主键 >200KB 时写）——Edge 丢 IDB 后，主键若也写 LS
+    //   失败（配额满/被清），剥图快照（更小，剥掉图片/头像 dataURL 只保文本）是最后兜底。
+    //   快照限制 ≤200KB，防被 idb.js 大键迁移搬走（迁移只认 LS 键不认命名空间）。
+    //   主键 ≤200KB 时快照与主键近似（重复存一份换兜底机会，LS 5MB 配额下可接受）。
+    try {
+      const snap = JSON.stringify(list.map(stripPostImg));
+      if (snap.length <= LS_BIG_LIMIT) localStorage.setItem('xy-home-v2:default:' + SNAP_KEY, snap);
+    } catch (e) {}
   }
   function avHtml(data, cls) {
     const c = cls || 'feed-av';
@@ -1005,13 +1030,24 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     const cs = window.activeStore();
     const taName = cs.get('lbl-partner') || 'TA';
     const taAv = cs.get('avatar-partner') || '';
-    const post = { id: id, role: 'me', owner: me.owner, authorName: me.authorName, authorAv: me.authorAv, taName: taName, taAv: taAv, content: content, imgs: pickedImgs.slice(), ts: Date.now(), likes: [], comments: [] };
+    // v3.7.x：不存 authorAv/taAv（头像 dataURL）——render 有 p.authorAv||实时读 兜底，
+    //   实时读当前头像即可。原实现把头像 base64 塞进每条动态，哪怕正文纯文字，
+    //   头像稍大就把主键撑到 >200KB → 只进 IndexedDB 不进 localStorage → Edge 丢 IDB
+    //   后纯文字动态也丢（OPPO Reno6 Edge 实现）。去掉后纯文字主键真的 <200KB 能写 LS。
+    const post = { id: id, role: 'me', owner: me.owner, authorName: me.authorName, authorAv: '', taName: taName, taAv: '', content: content, imgs: pickedImgs.slice(), ts: Date.now(), likes: [], comments: [] };
     list.unshift(post);
     save(list);
     pickedImgs = [];
     renderPreview();
     if (input) input.value = '';
     render();
+    // v3.7.x 兜底：render 后若列表没出现刚发布的动态（Edge 上 IDB 慢/门槛暂存时序异常），
+    //   强制把 list 直接落盘 + 重渲染，确保发布后立刻可见。用户主动发布应立即持久化，
+    //   绕过 save 门槛（门槛防的是 maybeAutoPost 等自动 save 覆盖，用户主动发布含完整 list）
+    if (!document.getElementById('feed-post-' + id)) {
+      try { store.set(KEY, JSON.stringify(list)); } catch (e) {}
+      render();
+    }
     toast('已发布');
     // v3.5.59：发布后收起发布框
     const pubCardEl = document.getElementById('feed-publish-card');
@@ -1131,7 +1167,7 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
       const taName = cs.get('lbl-partner') || 'TA';
       const taAv = cs.get('avatar-partner') || '';
       const list = load();
-      const post = { id: 'f_' + Date.now() + '_' + cid, role: 'ta', owner: cid, authorName: taName, authorAv: taAv, taName: taName, taAv: taAv, content: g.content, imgs: g.imgs, ts: Date.now(), likes: [], comments: [] };
+      const post = { id: 'f_' + Date.now() + '_' + cid, role: 'ta', owner: cid, authorName: taName, authorAv: '', taName: taName, taAv: '', content: g.content, imgs: g.imgs, ts: Date.now(), likes: [], comments: [] };
       list.unshift(post);
       save(list);
       cs.set('feed-last', String(now));
@@ -1423,26 +1459,34 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     });
   }
   render();
-  // v3.5.93：朋友圈大键（动态里的图片 dataURL）可能只存在 IndexedDB（导入兜底写入）——
-  // 启动时从 IDB 补读进内存缓存后重新渲染
-  // v3.5.95：localStorage 有值时不再覆盖（防旧 IDB 值回退掉较新的本地更新）
-  // v3.6.x：多桌面——美化类大键按当前桌面命名空间（activePrefix）读写，全局旧键兜底
+  // v3.7.x：朋友圈权威加载——对齐 mail.js mailMergeFromIdb。原实现「有就不读」
+  //   （!store.get(KEY)），本会话已写入新动态时 IDB 里的更多旧动态被忽略；且无门槛，
+  //   启动早期 load()=[] 时 save 覆盖 IDB（见 save 注释）。改为从 IDB 读 feed-posts 与
+  //   当前 LS/快照/暂存按 id 合并后落盘，就绪后重渲染。Edge 丢 IDB 后重建的空库不会
+  //   覆盖本地较新数据（合并取并集，本地有而 IDB 没的动态保留）。
+  function feedMergeFromIdb(v) {
+    try {
+      const pending = feedPending || [];
+      feedPending = null;
+      let base = [];
+      if (v && typeof v === 'string' && v.length > 2) {
+        const idbArr = JSON.parse(v);
+        if (Array.isArray(idbArr)) base = idbArr.map(normPost);
+      }
+      let cur = [];
+      const raw = store.get(KEY);
+      if (raw !== null) { try { const a = JSON.parse(raw); if (Array.isArray(a)) cur = a.map(normPost); } catch (e) {} }
+      if (!cur.length) cur = loadSnap().map(normPost);
+      const merged = mergePosts(base, mergePosts(cur, pending));
+      if (merged.length) store.set(KEY, JSON.stringify(merged));
+    } catch (e) { /* 解析失败仍置就绪，避免下次启动重复合并 */ }
+  }
   try {
     if (window.idbGet) {
       window.idbGet(uid + ':' + KEY).then(v => {
-        if (v && typeof v === 'string' && v.length > 2 && !store.get(KEY)) {
-          // v3.7.x：IDB 权威比剥图快照旧时不回退——Edge 清过 IDB 后重建的空库、
-          // 或上次写入 IDB 失败，恢复旧值会让快照里的新动态「消失」
-          const snapTs = maxPostTs(loadSnap());
-          if (snapTs > 0) {
-            try {
-              const idbArr = JSON.parse(v);
-              if (maxPostTs(idbArr) < snapTs) return;
-            } catch (e) {}
-          }
-          store.set(KEY, v);
-          render();
-        }
+        feedMergeFromIdb(v);
+        feedDbReady = true;
+        render();
       });
       // v3.5.94：TA 朋友圈封面也可能 >200KB → 同样补读（主列表 + 全部朋友圈封面都刷新）
       window.idbGet(window.activePrefix() + ':feed-ta-cover').then(v => {
@@ -1473,7 +1517,17 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
         }
       });
     }
-  } catch (e) {}
+  } catch (e) { feedDbReady = true; }
+  // v3.7.x：权威读取保险丝——IndexedDB 打开/读取在 OPPO Edge 后台挂起/存储异常时可能
+  //   迟迟不返回，feedDbReady 一直 false，save 只暂存内存不落盘 → 新动态刷新即丢、
+  //   maybeAutoPost 也写不进。15 秒后强制就绪并把暂存动态落盘（与 mail.js 15s 保险同理；
+  //   正常情况 idbGet 早已返回，该保险只在病理场景触发，feedDbReady 已真时直接跳过）
+  setTimeout(function () {
+    if (feedDbReady) return;
+    try { const all = load(); if (all.length) store.set(KEY, JSON.stringify(all)); } catch (e) {}
+    feedDbReady = true;
+    render();
+  }, 15000);
   // v3.6.x：多桌面——切换联系人后刷新朋友圈封面（我/TA 的头像昵称背景按新桌面）
   document.addEventListener('contact-switched', function () {
     try { renderCover(); } catch (e) {}

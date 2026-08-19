@@ -9,6 +9,10 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-19（本会话，用户需求「猜拳手势矢量图重设计，旧版太丑」）
+- [本会话·完成]（**已构建 verify 10/10，已提交**）：猜拳全套手势图标换为 Phosphor Icons（MIT）三件套——石头=hand-fist 拳头 / 剪刀=hand-peace V 手势 / 布=hand-palm 张开手掌（viewBox 0 0 256 256，path 带 fill="currentColor"，颜色仍走各处 CSS color，深浅色自动适配）。替换 4 处：①`src/template.html` more-rps 更多面板入口图标——旧版是四指抬手，与「拍一拍」入口几乎一模一样（用户觉得丑/混淆的主因），改用拳头（「猜拳」字面即拳头，区分度明显）；②③④半框三个出拳按钮（template.html rps-choices）+ `src/js/chat.js` renderMsg 消息卡片 rpsIco 映射——旧版为手绘直线拼凑路径（石头=带竖线方块、剪刀=两根悬空竖线，辨识度差）。选型过程：Iconify API 拉取 Phosphor 常规与 FA6 实心两套候选 → 无头 Chrome 截图对比页 + 视觉评估（Phosphor 手势一眼可辨、线宽与邻居图标协调，胜出）；构建产物里拳头 3 处（入口+按钮+消息卡）/剪刀布各 2 处嵌入计数验证，浅色卡片/深色卡片/出拳按钮三场景渲染确认正常。`.shot-tmp/` 临时预览已清理。
+- 本次提交同时包含对方 20:25-20:34 保存的完整批次（feed.js IndexedDB 就绪门槛 feedDbReady+feedPending 防 Edge 丢动态 / mail.js / music-player.js / ta-ask.js 相关完善），均已进过 20:35 产物、内容完整自洽，按惯例随本次产物统一提交。
+
 ### 2026-08-19（本会话，用户需求「来电概率也改成每 30 秒检查一次」）
 - [本会话·完成]（**已构建 verify 10/10 + 已提交 2276bb7**）：`src/js/call.js`（AI-B 域）来电触发机制微调——
   TA 回复消息/主动发消息后按「通话设置-来电概率」掷一次来电**保持不变**（chat.js 钩子未动）；独立兜底定时器 `setInterval(maybeIncoming, 60000)` → **30000**（每 30 秒检查一次，5 分钟冷却与后台不触发逻辑不变），同步更新文件头/段注释。

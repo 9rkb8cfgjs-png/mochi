@@ -146,16 +146,22 @@
     // v3.6.x：种子歌 url 直接用 meting API（api.injahow.cn/meting 302 → https CDN），
     // 不经 music.163.com/song/media/outer/url（302 → http CDN，HTTPS 页面下被
     // 混合内容拦截）。旧数据/备份恢复后自动规范成 meting URL，不管数据怎么来的
+    // v3.7.x：加强自愈——
+    // ① 检测所有 url 含 outer/url 旧格式的歌（不只种子歌），替换成 meting URL
+    //    （旧版导入的歌也可能是 outer/url，HTTPS 下全被混合内容拦截）
+    // ② 种子歌额外强制 source='url'，避免旧数据 source='local' 导致 playTrack
+    //    走本地路径（IDB 无数据 → 兜底内置旋律，用户听不到原曲）
     library.forEach(m => {
-      const seedId = m ? String(m.neteaseId || '') : '';
-      if (!m || !seedId || (seedId !== '2613048732' && seedId !== '27538343')) return;
+      if (!m || !m.neteaseId) return;
+      const seedId = String(m.neteaseId);
+      const isSeed = (seedId === '2613048732' || seedId === '27538343');
       const target = neteaseMetingUrl(seedId);
-      if (m.url !== target) {
+      const hasOldOuterUrl = m.url && /music\.163\.com\/song\/media\/outer\/url/i.test(m.url);
+      if (hasOldOuterUrl || (isSeed && (m.url !== target || m.source !== 'url'))) {
         m.url = target;
         m.source = 'url';
         saveLibrary();
-        // 清理可能残留的本地合成旋律数据
-        try { if (window.idbDelete) window.idbDelete(window.activePrefix() + ':music-file:' + m.id); } catch (e) {}
+        if (isSeed) { try { if (window.idbDelete) window.idbDelete(window.activePrefix() + ':music-file:' + m.id); } catch (e) {} }
       }
     });
     // v3.6.x：种子歌自愈——若 2 首内置示例歌在本地丢失（清除数据/备份恢复后

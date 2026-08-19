@@ -139,7 +139,32 @@
     { id: 'q_w3', text: '我发字卡给你的时候，你能感觉到我在想你吗？', cat: 'world', enabled: true },
     { id: 'q_w4', text: '如果有一天你突然看见我了，你最想做什么？', cat: 'world', enabled: true },
     { id: 'q_w5', text: '你希望我陪着你说话，还是安静待在你身边？', cat: 'world', enabled: true },
-    { id: 'q_w6', text: '你觉得两个世界的我们，最珍贵的是什么？', cat: 'world', enabled: true }
+    { id: 'q_w6', text: '你觉得两个世界的我们，最珍贵的是什么？', cat: 'world', enabled: true },
+    // v3.7.x：新增预设——高自由度开放题（怎么答都行）+ 两个世界；末尾 3 题为单选题
+    // （type:'single' 的选项即系统预设答案，每个答案自带 TA 预设回应，点卡片就地点选）
+    { id: 'q_d7', text: '今天有没有什么小事，想说给我听？', cat: 'daily', enabled: true },
+    { id: 'q_d8', text: '如果用一句话形容你的今天，会是哪一句？', cat: 'daily', enabled: true },
+    { id: 'q_d9', text: '今天有没有哪个瞬间，希望我就坐在你旁边？', cat: 'daily', enabled: true },
+    { id: 'q_c5', text: '今天有没有哪个时刻，觉得有点撑不住？', cat: 'care', enabled: true },
+    { id: 'q_c6', text: '最近有没有什么事，一直压在心里没说？', cat: 'care', enabled: true },
+    { id: 'q_c7', text: '今天有没有好好喝水？', cat: 'care', enabled: true },
+    { id: 'q_i7', text: '如果现在可以向我许一个愿望，你会许什么？', cat: 'interact', enabled: true },
+    { id: 'q_i8', text: '你现在最想收到我发的哪种字卡？', cat: 'interact', enabled: true },
+    { id: 'q_i9', text: '如果我们此刻就在一起，你想让我陪你做的第一件事是什么？', cat: 'interact', enabled: true },
+    { id: 'q_i10', text: '你更喜欢我主动找你，还是你主动找我？', cat: 'interact', enabled: true },
+    { id: 'q_w7', text: '今晚睡前，想感觉我在你哪一边？', cat: 'world', enabled: true },
+    { id: 'q_w8', text: '你那边的天气我感觉不到，能形容给我听吗？', cat: 'world', enabled: true },
+    { id: 'q_w9', text: '我控制不住字卡、发出奇怪组合的时候，你看得懂我想说什么吗？', cat: 'world', enabled: true },
+    { id: 'q_w10', text: '你希望梦里的我，是什么样子的？', cat: 'world', enabled: true },
+    { id: 'q_s1', text: '现在更想被怎样对待？', cat: 'interact', type: 'single', enabled: true, options: [
+      { t: '听我说说话', reply: '好，我在听，慢慢说。' }, { t: '陪我安静一会', reply: '嗯，我就在这里。' },
+      { t: '夸夸我', reply: '你今天也很好，我一直都觉得。' }, { t: '一起发字卡玩', reply: '那我先发一张，你接住。' }] },
+    { id: 'q_s2', text: '今晚想梦到我吗？', cat: 'world', type: 'single', enabled: true, options: [
+      { t: '想', reply: '那我在梦的入口等你。' }, { t: '都可以', reply: '嗯，那我也顺便出现一下。' },
+      { t: '想好好睡觉', reply: '好，那你睡，我在旁边守着。' }, { t: '每晚都在梦你', reply: '……这张字卡我收得很开心。' }] },
+    { id: 'q_s3', text: '现在的心情更接近哪一种？', cat: 'care', type: 'single', enabled: true, options: [
+      { t: '电量满格', reply: '那趁现在多聊两句。' }, { t: '有点低电量', reply: '过来，我陪你充一会电。' },
+      { t: '说不上来', reply: '没关系，不用急着说清楚。' }, { t: '想你了', reply: '……我也是，刚刚还在想。' }] }
   ];
   const CATS = [
     ['daily', '日常询问'],
@@ -519,10 +544,46 @@
   let askTab = 'sys';
 
   // 渲染单个分类的问题列表（presetOnly=true 只渲染系统预设，false 只渲染用户添加）
+  // v3.7.x：系统预设分类切换——顶部标签栏点击切换，避免全部分类堆叠导致页面过长
+  let askSysCat = null;
   function renderAskCatsInto(container, presetOnly) {
     if (!container) return;
     const d = taAskLoad();
     const useDefault = (d.settings || {}).useDefault !== false;
+    if (presetOnly) {
+      const counts = {};
+      CATS.forEach(([k]) => { counts[k] = d.questions.filter(q => q.cat === k && q.isPreset === true).length; });
+      const hasCats = CATS.filter(([k]) => counts[k] > 0);
+      if (!hasCats.length) { container.innerHTML = '<div class="ta-empty" style="padding:14px">暂无系统预设问题</div>'; return; }
+      if (!askSysCat || !hasCats.some(([k]) => k === askSysCat)) askSysCat = hasCats[0][0];
+      let html = '<div class="card-tabs" style="padding:2px 2px 10px">';
+      hasCats.forEach(([k, label]) => {
+        html += '<button class="cc-tab' + (k === askSysCat ? ' sel' : '') + '" data-cat="' + k + '">' + escG(label) + '<em class="cc-tab-n">' + counts[k] + '</em></button>';
+      });
+      html += '</div>';
+      const arr = d.questions.filter(q => q.cat === askSysCat && q.isPreset === true);
+      arr.forEach(q => {
+        const idx = d.questions.indexOf(q);
+        html += '<div class="ta-row' + (!useDefault ? ' off' : '') + '">' +
+          '<label class="toggle"><input type="checkbox"' + (q.enabled !== false ? ' checked' : '') + ' data-idx="' + idx + '"><span class="tk"></span></label>' +
+          '<span class="ta-txt">' + q.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (q.type === 'single' ? ' <span class="tc-known">单选·' + (q.options ? q.options.length : 0) + '选项</span>' : '') + ' <span class="tc-known">系统</span></span>' +
+          '</div>';
+        html += interactPoolInlineHtml('询问·回应');
+      });
+      container.innerHTML = html;
+      container.querySelectorAll('.cc-tab[data-cat]').forEach(t => {
+        t.addEventListener('click', () => { askSysCat = t.dataset.cat; renderAskCatsInto(container, true); });
+      });
+      container.querySelectorAll('input[data-idx]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const d2 = taAskLoad();
+          const q = d2.questions[Number(cb.dataset.idx)];
+          if (q) q.enabled = cb.checked;
+          taAskSave(d2);
+        });
+      });
+      return;
+    }
     let html = '';
     CATS.forEach(([k, label]) => {
       const arr = d.questions.filter(q => q.cat === k && (q.isPreset === true) === presetOnly);
@@ -851,7 +912,83 @@
       { t: '一起说', reply: '那很浪漫。', liked: true }] },
     { id: 'cr4', cat: 'rel', text: '万一吵架了，谁先低头？', pref: 3, options: [
       { t: '我', reply: '那我先低头也行。', liked: false }, { t: '你', reply: '哼，这次你先。', liked: false },
-      { t: '看情况', reply: '那就别吵太久。', liked: false }, { t: '不吵架', reply: '这个选项我喜欢。', liked: true }] }
+      { t: '看情况', reply: '那就别吵太久。', liked: false }, { t: '不吵架', reply: '这个选项我喜欢。', liked: true }] },
+    // v3.7.x：新增预设——高自由度情侣向（选项只是入口，怎么选都有回应）+ 两个世界
+    { id: 'cd7', cat: 'daily', text: '如果这个周末完完全全属于我们俩，你想怎么开始？', pref: 1, options: [
+      { t: '睡到自然醒', reply: '好，醒来第一眼就是我发的字卡。', liked: false },
+      { t: '一睁眼就跟你说话', reply: '那我得提前想好今天说什么。', liked: true },
+      { t: '出门吃顿好的', reply: '行，想吃什么都依你。', liked: false },
+      { t: '不用开始，一直都在', reply: '……这句话我说不出，借你用了。', liked: false }] },
+    { id: 'cd8', cat: 'daily', text: '一起点奶茶的话，你会替我选什么口味？', pref: 0, options: [
+      { t: '跟你一样的', reply: '那我们就是一杯分两半喝。', liked: true },
+      { t: '甜的', reply: '嗯，像你。', liked: false },
+      { t: '不甜的', reply: '好，苦的留给我，甜的给你。', liked: false },
+      { t: '你猜我想喝什么', reply: '猜错了你就得告诉我，不许笑。', liked: false }] },
+    { id: 'cd9', cat: 'daily', text: '累了一天的你，现在最想怎么充电？', pref: 2, options: [
+      { t: '洗个热水澡', reply: '水别太烫，洗完早点休息。', liked: false },
+      { t: '好好睡一觉', reply: '那晚安，梦里见。', liked: false },
+      { t: '跟你待一会', reply: '好，充满电再走。', liked: true },
+      { t: '吃点好吃的', reply: '想吃什么，发字卡告诉我。', liked: false }] },
+    { id: 'cl4', cat: 'like', text: '你更喜欢我发哪种字卡给你？', pref: 3, options: [
+      { t: '撒娇的', reply: '那我要酝酿一下情绪。', liked: false },
+      { t: '认真说话的', reply: '认真的我，只对你。', liked: false },
+      { t: '表情包', reply: '那张表情包想表达的意思，其实更多。', liked: false },
+      { t: '猜不到的惊喜', reply: '那我以后随机一点，你等着。', liked: true }] },
+    { id: 'cl5', cat: 'like', text: '如果我们的歌单要添一首「我们的歌」，你想要什么感觉的？', pref: 1, options: [
+      { t: '温柔安静的', reply: '像深夜我们聊天的感觉。', liked: true },
+      { t: '甜甜的', reply: '甜一点好，你值得。', liked: false },
+      { t: '有点吵但快乐的', reply: '那得是能一起蹦跶的那种。', liked: false },
+      { t: '还没遇到，遇到就知道', reply: '嗯，我等你哼给我听。', liked: false }] },
+    { id: 'cf4', cat: 'fun', text: '如果我们互换身体一天，你第一件事做什么？', pref: 1, options: [
+      { t: '替你发一整天字卡', reply: '那你就知道控制字卡有多难了。', liked: false },
+      { t: '试试你怎么感觉我', reply: '……这个答案，我没想到。', liked: true },
+      { t: '用你的视角睡一觉', reply: '记得帮我把觉睡够。', liked: false },
+      { t: '赶紧换回来', reply: '这么快就嫌弃我了？', liked: false }] },
+    { id: 'cf5', cat: 'fun', text: '玩真心话，你会先问我哪个方向的问题？', pref: 2, options: [
+      { t: '你的小秘密', reply: '秘密只能换秘密，你先说。', liked: false },
+      { t: '我们的以后', reply: '……问吧，我认真答。', liked: true },
+      { t: '我哪里最让你喜欢', reply: '这题简单，全部。', liked: false },
+      { t: '不问，选大冒险', reply: '胆子挺大，那我出题了。', liked: false }] },
+    { id: 'cr5', cat: 'rel', text: '你觉得我们之间最舒服的相处，是什么样的？', pref: 1, options: [
+      { t: '随时都能找到对方', reply: '我一直都在，你随时发字卡。', liked: false },
+      { t: '各忙各的，心里惦记着', reply: '嗯，忙完记得回来。', liked: true },
+      { t: '想到什么就分享', reply: '那我等着你的碎碎念。', liked: false },
+      { t: '现在这样就很好', reply: '那就不改了，保持。', liked: false }] },
+    { id: 'cr6', cat: 'rel', text: '用一个词形容我们现在的相处，你会选？', pref: 3, options: [
+      { t: '甜甜的', reply: '是你的功劳。', liked: false },
+      { t: '安稳的', reply: '安稳最好，我喜欢。', liked: false },
+      { t: '有意思的', reply: '毕竟字卡都能玩出花。', liked: false },
+      { t: '像回家一样', reply: '……你随便一句话，就能让我开心很久。', liked: true }] },
+    { id: 'ch4', cat: 'hypo', text: '如果我们能一起穿越进任何一个故事里，你想去哪个世界？', pref: 0, options: [
+      { t: '安静治愈的小镇', reply: '好，我们散步晒太阳。', liked: true },
+      { t: '热闹冒险的世界', reply: '你负责冒险，我负责接住你。', liked: false },
+      { t: '到处是美食的世界', reply: '吃到走不动为止。', liked: false },
+      { t: '哪儿也不去，这个世界就好', reply: '嗯，有你的世界就够了。', liked: false }] },
+    { id: 'ch5', cat: 'hypo', text: '如果明天多出一个只属于我们的节日，你想怎么过？', pref: 2, options: [
+      { t: '什么都不做，待在一起', reply: '这个过法我喜欢。', liked: true },
+      { t: '出去疯玩一天', reply: '好，玩到你喊停。', liked: false },
+      { t: '互相准备小惊喜', reply: '那我得提前好久开始想。', liked: false },
+      { t: '一起许个愿', reply: '许什么我先不说，说了不灵。', liked: false }] },
+    { id: 'cs5', cat: 'star', text: '如果我们的聊天记录变成一本书，你希望它是什么风格的？', pref: 1, options: [
+      { t: '治愈系日常', reply: '书名我都想好了。', liked: false },
+      { t: '甜甜的恋爱记录', reply: '每一页都有我挑字卡的痕迹。', liked: true },
+      { t: '爆笑合集', reply: '主要是你被我逗笑的部分。', liked: false },
+      { t: '悬疑——猜我下一张字卡', reply: '你猜中的次数，其实不多。', liked: false }] },
+    { id: 'cw5', cat: 'world', text: '如果今晚我可以走进你的梦，你希望梦里是什么季节？', pref: 1, options: [
+      { t: '春天', reply: '好，梦里开满花。', liked: false },
+      { t: '夏夜', reply: '有风，有星星，有你。', liked: true },
+      { t: '秋天', reply: '踩落叶的声音，你听见就知道是我。', liked: false },
+      { t: '下雪的冬天', reply: '那我把梦里的雪扫出一条路。', liked: false }] },
+    { id: 'cw6', cat: 'world', text: '我控制不住字卡、发出奇怪组合的时候，你会笑我吗？', pref: 1, options: [
+      { t: '会，特别好笑', reply: '……笑吧，反正丢的也是我的脸。', liked: false },
+      { t: '不会，很可爱', reply: '那我就不尴尬了。', liked: true },
+      { t: '假装没看见', reply: '你忍笑的样子，其实我都感觉得到。', liked: false },
+      { t: '帮你把意思圆回来', reply: '……有你这句话，字卡不听话也没关系。', liked: false }] },
+    { id: 'cw7', cat: 'world', text: '如果哪天你能看见我了，第一眼想看哪里？', pref: 0, options: [
+      { t: '眼睛', reply: '好，让你看个够。', liked: true },
+      { t: '笑起来的样子', reply: '那我会一直笑。', liked: false },
+      { t: '牵我的手', reply: '手我准备好了，随时。', liked: false },
+      { t: '全部，从头到脚', reply: '行，慢慢看，时间很多。', liked: false }] }
   ];
   const TC_CAT_ORDER = ['daily', 'like', 'fun', 'rel', 'hypo', 'star', 'world'];
   let _tcSessionTriggered = false; // 会话级：一次会话最多触发 1 个
@@ -1111,10 +1248,46 @@ window.openTCPanel = openTCPanel;
     if (favBtn) favBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><path d="M12 2l2.4 5 5.6.8-4 4 .9 5.6-4.9-2.6-4.9 2.6.9-5.6-4-4 5.6-.8z"/></svg>' + '收藏（' + d.favs.length + '）';
   }
   function escT(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  // v3.7.x：系统预设分类切换——顶部标签栏点击切换，避免全部分类堆叠导致页面过长
+  let tcSysCat = null;
   function renderTCCatsInto(container, presetOnly) {
     if (!container) return;
     const d = tcLoad();
     const useDefault = (d.settings || {}).useDefault !== false;
+    if (presetOnly) {
+      const counts = {};
+      TC_CAT_ORDER.forEach(k => { counts[k] = d.questions.filter(q => q.cat === k && q.isPreset === true).length; });
+      const hasCats = TC_CAT_ORDER.filter(k => counts[k] > 0);
+      if (!hasCats.length) { container.innerHTML = '<div class="ta-empty">暂无系统预设问题</div>'; return; }
+      if (!tcSysCat || !hasCats.includes(tcSysCat)) tcSysCat = hasCats[0];
+      let html = '<div class="card-tabs" style="padding:2px 2px 10px">';
+      hasCats.forEach(k => {
+        html += '<button class="cc-tab' + (k === tcSysCat ? ' sel' : '') + '" data-cat="' + k + '">' + escT(TC_CAT_LABEL[k] || k) + '<em class="cc-tab-n">' + counts[k] + '</em></button>';
+      });
+      html += '</div>';
+      const arr = d.questions.filter(q => q.cat === tcSysCat && q.isPreset === true);
+      arr.forEach(q => {
+        const idx = d.questions.indexOf(q);
+        html += '<div class="tc-qrow' + (q.enabled === false || !useDefault ? ' off' : '') + '">' +
+          '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
+          '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + ' <span class="tc-known">系统</span></div>' +
+          '<div class="tc-qopts">选项：' + q.options.map(o => escT(o.t) + (o.reply ? ' <span class="tc-opt-reply">→ ' + escT(o.reply) + '</span>' : '')).join(' / ') + '</div></div>' +
+          '</div>';
+      });
+      container.innerHTML = html;
+      container.querySelectorAll('.cc-tab[data-cat]').forEach(t => {
+        t.addEventListener('click', () => { tcSysCat = t.dataset.cat; renderTCCatsInto(container, true); });
+      });
+      container.querySelectorAll('input[data-idx]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const d2 = tcLoad();
+          const q = d2.questions[Number(cb.dataset.idx)];
+          if (q) q.enabled = cb.checked;
+          tcSave(d2);
+        });
+      });
+      return;
+    }
     let html = '';
     TC_CAT_ORDER.forEach(k => {
       const arr = d.questions.filter(q => q.cat === k && (q.isPreset === true) === presetOnly);
@@ -1468,7 +1641,26 @@ window.openTCPanel = openTCPanel;
     // 普通情侣轻松小问题
     { id: 'cl5', cat: 'like', text: '你最喜欢我哪句口头禅？', quick: ['好的好的', '在吗', '想你了', '早点睡'], replies: ['那我以后多说给你听。', '哈哈，你学得还挺像。', '好，我记住了。'] },
     { id: 'cd5', cat: 'daily', text: '我们之间你最喜欢的小习惯是什么？', quick: ['睡前聊天', '互道晚安', '分享日常', '一起发字卡'], replies: ['那我每天都跟你做这件事。', '嗯，我也最喜欢。', '好，我会一直保留。'] },
-    { id: 'ct5', cat: 'think', text: '你有没有偷偷看过我很久？', quick: ['有', '偶尔', '没有', '现在就在看'], replies: ['……那我也在看你。', '看来藏得不够好。', '嗯，我发现了。'] }
+    { id: 'ct5', cat: 'think', text: '你有没有偷偷看过我很久？', quick: ['有', '偶尔', '没有', '现在就在看'], replies: ['……那我也在看你。', '看来藏得不够好。', '嗯，我发现了。'] },
+    // v3.7.x：新增预设——高自由度开放题（快捷项只是垫脚，想怎么答都行，部分带自然追问）
+    { id: 'cy6', cat: 'you', text: '你觉得自己身上最不像你的一面是什么？', quick: ['看着凶其实软', '看着乖其实皮', '看着冷静其实紧张', '说不清'], replies: ['这样才有趣。', '别人不知道，我知道。', '这一面，只让我看到就好。', '我记住这个你了。'] },
+    { id: 'cy7', cat: 'you', text: '如果心情有颜色，你今天是什么颜色？', quick: ['亮亮的', '灰灰的', '粉粉的', '透明的'], replies: ['颜色会变的，我陪你等它变。', '嗯，记下了，今天的你。', '灰灰的也没关系，我在。', '不管什么颜色，都是我喜欢的你。'] },
+    { id: 'cy8', cat: 'you', text: '最近有没有一句话，一直停在你脑子里？', quick: ['有句歌词', '一句台词', '你说过的话', '没有'], replies: ['愿意的话，说给我听听。', '停得久的，一般都重要。', '你说过的话，我也会停很久。', '嗯，我记住了。'], followup: '它在你脑子里停多久了？' },
+    { id: 'cm5', cat: 'mood', text: '你今天笑得最真的一次，是因为什么？', quick: ['看到好笑的', '被朋友逗的', '想到你了', '莫名想笑'], replies: ['开心的事要多发生几次。', '……想到我的时候，我也在想你。', '笑起来的你最好了。', '下次换我逗你笑。'], followup: '那今天笑了几次？' },
+    { id: 'cm6', cat: 'mood', text: '如果情绪是天气，你现在是什么天？', quick: ['大晴天', '多云', '小雨', '夜里放晴'], replies: ['那我在你的天气里待着。', '下雨也没事，我陪你等天晴。', '嗯，你的天气我都想懂。', '记住了，今天你是这样的天。'] },
+    { id: 'cd6', cat: 'daily', text: '今天做的所有事里，最想重播一遍的是哪件？', quick: ['吃的那顿', '遇到的一个人', '摸鱼的瞬间', '都不想重播'], replies: ['重播的时候，记得叫上我。', '摸鱼摸得开心就好。', '我在心里帮你存档了。', '明天会有更值得重播的。'] },
+    { id: 'cd7', cat: 'daily', text: '你手机相册里最近的一张照片，是什么？', quick: ['一张截图', '风景', '自己', '不告诉你'], replies: ['不告诉也行，我自己猜。', '风景也想以后一起看。', '嗯，记住了，你今天的视角。', '下次拍一张给我看看。'], followup: '什么时候拍的？' },
+    { id: 'cp5', cat: 'past', text: '小时候的你，最喜欢待在哪个角落？', quick: ['自己房间', '长辈家里', '学校', '外面疯跑'], replies: ['想去那个角落，看看小小的你。', '那个角落，一定很安心吧。', '嗯，我把这个你收好了。', '现在的你也有角落，就是我这里。'], followup: '那个角落现在还在吗？' },
+    { id: 'cp6', cat: 'past', text: '如果能给十年前的自己捎一句话，你想说什么？', quick: ['别怕', '再勇敢一点', '一切都会好', '再等等，会遇到我'], replies: ['这句话，也想送给现在的你。', '十年前的你一定想不到今天。', '嗯，你比你想的更勇敢。', '……最后一项，是我想替你说的。'] },
+    { id: 'cl6', cat: 'like', text: '你最近单曲循环的那首歌，为什么是它？', quick: ['旋律上头', '歌词戳我', '随机到的', '不告诉你'], replies: ['循环的歌，就是你最近的心情。', '发给我，我也去循环。', '那我就当是唱给我的。', '嗯，记下了。'], followup: '发我听听？' },
+    { id: 'cl7', cat: 'like', text: '有没有一种味道，一闻到就很安心？', quick: ['晒过太阳的被子', '雨后的空气', '饭香', '说不上来'], replies: ['安心的味道，我也想闻闻。', '嗯，这就是你的安心密码。', '记住了，以后提起来你就安心。', '被子我帮你晒——用意念。'] },
+    { id: 'ct6', cat: 'think', text: '你觉得「被爱着」最具体的瞬间，是什么样的？', quick: ['小事被记得', '有人留着一份', '被等着', '被相信'], replies: ['这些瞬间，我都想给你。', '嗯，被爱着是能感觉到的。', '我记住了，一件一件做给你。', '那你现在，感觉到了吗？'] },
+    { id: 'ct7', cat: 'think', text: '如果焦虑有形状，你的焦虑长什么样？', quick: ['一团乱线', '一片雾', '很多小点', '没有形状'], replies: ['交给我帮你理一理。', '雾会散的，我陪你等。', '再小的点，说出来就轻一半。', '没有形状的，抱一下就好了。'] },
+    { id: 'cu5', cat: 'us', text: '我们之间有没有只属于你我的暗号或梗？', quick: ['有', '有好多', '正在酝酿', '你猜'], replies: ['那个梗，只有我们懂。', '你猜不到的话，就再猜一次。', '嗯，偷偷用一辈子的那种。', '那你先说一个，我接得住。'], followup: '最喜欢哪一个？' },
+    { id: 'cu6', cat: 'us', text: '如果我们的相处是一部电影，现在放到哪一段了？', quick: ['甜甜日常篇', '刚开头', '正精彩', '彩蛋里'], replies: ['日常篇最好看，我百看不厌。', '那我们慢慢拍，不赶进度。', '精彩的部分，我们一起演。', '彩蛋里也全是你。'] },
+    { id: 'cw5', cat: 'world', text: '你一个人的时候，会试着跟我说话吗？', quick: ['会说出声', '在心里说', '偶尔', '现在就在说'], replies: ['你说话的时候，我都在听。', '心里说的，我也听得见。', '别怕奇怪，我都接得住。', '现在这句，我收到了。'], followup: '说出口的时候，有没有觉得我在听？' },
+    { id: 'cw6', cat: 'world', text: '你看不见我的时候，希望我待在你附近的哪里？', quick: ['床头', '书桌边', '窗边', '跟着你走'], replies: ['好，那我就守在那。', '你回头感觉一下，风动就是我。', '嗯，位置记住了。', '跟着你走也不累，我很轻。'] },
+    { id: 'cw7', cat: 'world', text: '我发字卡发得慢的时候，你会等吗？', quick: ['会等', '等多久都行', '先做别的等你', '催你'], replies: ['等我的时候，也算我们待在一起。', '值得等的话，我就慢慢挑。', '催我也没用，字卡不听我的。', '……好，你催，我就快点。'], followup: '最长等过我多久？' }
   ];
   let _tcuSessionTriggered = false;
 
@@ -1703,10 +1895,50 @@ window.openTCPanel = openTCPanel;
     const fuEl = document.getElementById('tcu-followup');
     if (fuEl) fuEl.checked = s.followup !== false;
   }
+  // v3.7.x：系统预设分类切换——顶部标签栏点击切换，避免 8 个分类全部堆叠导致页面过长
+  let tcuSysCat = null;
   function renderTCUCatsInto(container, presetOnly) {
     if (!container) return;
     const d = tcuLoad();
     const useDefault = (d.settings || {}).useDefault !== false;
+    // 系统预设：顶部分类标签栏 + 只渲染当前选中分类（不再全部分组堆叠）
+    if (presetOnly) {
+      const counts = {};
+      TCU_CAT_ORDER.forEach(k => { counts[k] = d.questions.filter(q => q.cat === k && q.isPreset === true).length; });
+      const hasCats = TCU_CAT_ORDER.filter(k => counts[k] > 0);
+      if (!hasCats.length) { container.innerHTML = '<div class="ta-empty">暂无系统预设问题</div>'; return; }
+      if (!tcuSysCat || !hasCats.includes(tcuSysCat)) tcuSysCat = hasCats[0];
+      let html = '<div class="card-tabs" style="padding:2px 2px 10px">';
+      hasCats.forEach(k => {
+        html += '<button class="cc-tab' + (k === tcuSysCat ? ' sel' : '') + '" data-cat="' + k + '">' + escT(TCU_CAT_LABEL[k] || k) + '<em class="cc-tab-n">' + counts[k] + '</em></button>';
+      });
+      html += '</div>';
+      const arr = d.questions.filter(q => q.cat === tcuSysCat && q.isPreset === true);
+      arr.forEach(q => {
+        const idx = d.questions.indexOf(q);
+        const known = q.id && d.known[q.id];
+        html += '<div class="tc-qrow' + (q.enabled === false || !useDefault ? ' off' : '') + '">' +
+          '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
+          '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + (known ? ' <span class="tc-known">✓已了解</span>' : '') + ' <span class="tc-known">系统</span></div>' +
+          (q.quick && q.quick.length ? '<div class="tc-qopts">快捷：' + q.quick.join(' / ') + '</div>' : '') +
+          (q.replies && q.replies.length ? '<div class="tc-qopts">TA 回应：' + q.replies.map(escT).join(' / ') + '</div>' : '') +
+          '</div></div>';
+      });
+      container.innerHTML = html;
+      container.querySelectorAll('.cc-tab[data-cat]').forEach(t => {
+        t.addEventListener('click', () => { tcuSysCat = t.dataset.cat; renderTCUCatsInto(container, true); });
+      });
+      container.querySelectorAll('input[data-idx]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const d2 = tcuLoad();
+          const q = d2.questions[Number(cb.dataset.idx)];
+          if (q) q.enabled = cb.checked;
+          tcuSave(d2);
+        });
+      });
+      return;
+    }
+    // 自定义问题（保留原堆叠渲染，供其他调用路径）
     let html = '';
     TCU_CAT_ORDER.forEach(k => {
       const arr = d.questions.filter(q => q.cat === k && (q.isPreset === true) === presetOnly);
@@ -2130,10 +2362,47 @@ window.openTCPanel = openTCPanel;
     if (probEl) probEl.value = typeof s.prob === 'number' ? s.prob : 30;
     if (probVal) probVal.textContent = (typeof s.prob === 'number' ? s.prob : 30) + '%';
   }
+  // v3.7.x：系统预设分类切换——顶部标签栏点击切换，避免全部分类堆叠导致页面过长
+  let trSysCat = null;
   function renderTRCatsInto(container, presetOnly) {
     if (!container) return;
     const d = trLoad();
     const useDefault = (d.settings || {}).useDefault !== false;
+    if (presetOnly) {
+      const counts = {};
+      TR_CAT_ORDER.forEach(k => { counts[k] = d.questions.filter(q => q.cat === k && q.isPreset === true).length; });
+      const hasCats = TR_CAT_ORDER.filter(k => counts[k] > 0);
+      if (!hasCats.length) { container.innerHTML = '<div class="ta-empty">暂无系统预设字卡</div>'; return; }
+      if (!trSysCat || !hasCats.includes(trSysCat)) trSysCat = hasCats[0];
+      let html = '<div class="card-tabs" style="padding:2px 2px 10px">';
+      hasCats.forEach(k => {
+        html += '<button class="cc-tab' + (k === trSysCat ? ' sel' : '') + '" data-cat="' + k + '">' + escT(TR_CAT_LABEL[k] || k) + '<em class="cc-tab-n">' + counts[k] + '</em></button>';
+      });
+      html += '</div>';
+      const arr = d.questions.filter(q => q.cat === trSysCat && q.isPreset === true);
+      arr.forEach(q => {
+        const idx = d.questions.indexOf(q);
+        html += '<div class="tc-qrow' + (q.enabled === false || !useDefault ? ' off' : '') + '">' +
+          '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
+          '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + ' <span class="tc-known">系统</span></div>' +
+          (q.match && q.match.length ? '<div class="tc-qopts">触发：' + q.match.join(' / ') + '</div>' : '') +
+          interactPoolInlineHtml('吐槽·回应') +
+          '</div></div>';
+      });
+      container.innerHTML = html;
+      container.querySelectorAll('.cc-tab[data-cat]').forEach(t => {
+        t.addEventListener('click', () => { trSysCat = t.dataset.cat; renderTRCatsInto(container, true); });
+      });
+      container.querySelectorAll('input[data-idx]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const d2 = trLoad();
+          const q = d2.questions[Number(cb.dataset.idx)];
+          if (q) q.enabled = cb.checked;
+          trSave(d2);
+        });
+      });
+      return;
+    }
     let html = '';
     TR_CAT_ORDER.forEach(k => {
       const arr = d.questions.filter(q => q.cat === k && (q.isPreset === true) === presetOnly);

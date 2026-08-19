@@ -4,6 +4,11 @@
   const uid = window.activePrefix();
   const store = window.activeStore();
   const KEY = 'mail-letters';
+  // v3.7.x：LS 剥图快照兜底——对齐 feed.js feed-posts-snap。信件含图片 dataURL 时主键
+  //   >200KB 只进 IndexedDB（LS 5MB 配额保护），Edge 杀后台/强制关闭丢 IDB 后信件全没。
+  //   与 feed.js 同策略：剥掉图片 dataURL 只保文本，写一份 ≤200KB 的 LS 快照兜底。
+  const SNAP_KEY = 'mail-letters-snap';
+  const LS_BIG_LIMIT = 200 * 1024;
   const TITLES = ['好久不见', '最近还好吗', '想你了', '给你写了封信', '深夜随想', '一些想说的话'];
   let mtab = 'in';
   let viewLetter = null;
@@ -26,9 +31,34 @@
   // mailPending，原 load() 只读持久层 → 来信弹窗已提示「给你寄来了一封信」、信箱列表
   // 却是空白（OPPO 雨见浏览器 IndexedDB 打开/读取慢或挂起时真实复现）；这里把暂存
   // 信件按 id 合并在持久层之上，弹窗提示过的一切信件都可见可回可清角标。
+  function loadSnap() {
+    try {
+      const v = localStorage.getItem(uid + ':' + SNAP_KEY);
+      if (v) { const a = JSON.parse(v); if (Array.isArray(a)) return a; }
+    } catch (e) {}
+    return [];
+  }
+  // 剥图：信件正文/回信/对方回信里的图片 dataURL 换 [图片]，快照只保文本历史
+  function stripLetterImg(l) {
+    if (!l || typeof l !== 'object') return l;
+    const c = Object.assign({}, l);
+    const strip = (s) => { if (typeof s !== 'string') return s; let t = s.replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[图片]'); if (t.length > 8192) t = t.slice(0, 8192) + '…'; return t; };
+    c.content = strip(c.content);
+    if (c.myReply) { c.myReply = Object.assign({}, c.myReply); c.myReply.content = strip(c.myReply.content); }
+    if (c.partnerReply) { c.partnerReply = Object.assign({}, c.partnerReply); c.partnerReply.content = strip(c.partnerReply.content); }
+    return c;
+  }
+  function writeSnap(list) {
+    if (!list || !list.length) { try { localStorage.removeItem(uid + ':' + SNAP_KEY); } catch (e) {} return; }
+    try { const snap = JSON.stringify(list.map(stripLetterImg)); if (snap.length <= LS_BIG_LIMIT) localStorage.setItem(uid + ':' + SNAP_KEY, snap); } catch (e) {}
+  }
   function load() {
     let list = [];
-    try { list = JSON.parse(store.get(KEY) || '[]'); } catch (e) { list = []; }
+    const raw = store.get(KEY);
+    if (raw !== null) { try { list = JSON.parse(raw); } catch (e) { list = []; } }
+    // v3.7.x：主键缺失兜底——大列表只进 IDB（Edge 丢 IDB / LS 被清）时读剥图快照，
+    //   文本+标题+时间保留；IDB 存活时模块底部 idbGet 会随后用完整数据重渲染
+    if (!list.length) { try { const v = loadSnap(); if (v.length) list = v; } catch (e) {} }
     if (!mailDbReady && mailPending && mailPending.length) {
       const map = {};
       list.forEach(x => { if (x && x.id) map[x.id] = x; });
@@ -53,6 +83,7 @@
   function save(list) {
     if (!mailDbReady) { try { mailPending = (list || []).slice(); } catch (e) {} return; }
     store.set(KEY, JSON.stringify(list));
+    writeSnap(list);
   }
 
   // v3.5.99：桌面「信箱」图标未读角标——有新来信（未读）时显示数字，进入信箱或打开信件后清除
@@ -776,7 +807,7 @@
         try { cur = JSON.parse(store.get(KEY) || '[]'); } catch (e) { cur = []; }
       }
       const merged = mergeLists(base, mergeLists(cur || [], pending));
-      if (merged.length) store.set(KEY, JSON.stringify(merged));
+      if (merged.length) { store.set(KEY, JSON.stringify(merged)); writeSnap(merged); }
     } catch (e) { /* 解析失败：仍置就绪，避免下次启动重复合并 */ }
   }
   try {
