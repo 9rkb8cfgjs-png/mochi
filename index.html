@@ -3581,7 +3581,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.110 · 部署于 2026-08-19 13:08</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.112 · 部署于 2026-08-19 13:22</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3652,7 +3652,7 @@ color: var(--muted);
           </div>
 
       <!-- 桌面功能（直接显示） -->
-      <div class="app-grid" data-app="main">
+      <div class="app-grid" data-app="main" data-desk-widget="apps">
         <div class="app" data-app="chat">
           <div class="app-badge-box"><div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><span class="app-badge" id="chat-badge" hidden></span></div>
           <div class="app-name">聊天</div>
@@ -3729,7 +3729,7 @@ color: var(--muted);
         </div>
 
 <!-- 第二页功能：音乐 / 聊天统计 / 小互动 -->
-<div class="app-grid p2-grid" data-app="p2">
+<div class="app-grid p2-grid" data-app="p2" data-desk-widget="p2apps">
 <div class="app" data-app="music">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
 <div class="app-name">音乐</div>
@@ -4323,7 +4323,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.110</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.112</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -8800,6 +8800,7 @@ syncPageHint(slide);
 });
 const pool = ensureWidgetPool();
 WIDGET_IDS.forEach(wid => {
+if (wid === 'apps' || wid === 'p2apps') return;
 const node = document.querySelector('[data-desk-widget="' + wid + '"]');
 const inLay = lay.some(page => (page || []).indexOf(wid) >= 0);
 if (node && !inLay && node.parentNode !== pool) pool.appendChild(node);
@@ -8889,6 +8890,7 @@ box.appendChild(close);
 lib.appendChild(box);
 document.body.appendChild(lib);
 }
+window.__openDeskLib = openDeskLib; // 临时测试
 function loadDeskImagesMeta() {
 try { const v = JSON.parse(store.get('desk-images') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
 }
@@ -13477,21 +13479,45 @@ if (val === c) return; // 内容未变化，直接关闭
 const dup = g[1].find((x, xi) => xi !== i && x === val);
 if (dup !== undefined) { toast('该分组已有相同内容'); return; }
 g[1][i] = val;
-saveGroups(groups);
 updateCardDom(gname, i, val);
+scheduleSave();
 toast('字卡已更新');
 });
 }
 function updateCardDom(gname, i, val) {
-if (q) { renderGroupsBar(); render(); return; }
+if (rendering) { renderGroupsBar(); render(); return; }
 const sel = (window.CSS && CSS.escape) ? CSS.escape(String(gname)) : String(gname).replace(/["\\]/g, '\\/*__SCRIPTS__*/');
 const node = list.querySelector('.cc-item[data-g="' + sel + '"][data-idx="' + i + '"]');
 if (node) {
 if (imgObserver) node.querySelectorAll('img[data-src]').forEach(im => { try { imgObserver.unobserve(im); } catch (e) {} });
+if (q) {
+const matches = (typeof val === 'string' && val.indexOf('data:') !== 0) && val.indexOf(q) >= 0;
+if (matches) {
+node.innerHTML = cardItemHtml(val);
+attachCardData(node, val);
+} else {
+node.remove();
+const h = list.querySelector('.cc-group-header[data-g="' + sel + '"]');
+if (h) {
+const cnt = h.querySelector('.ccg-count');
+if (cnt) cnt.textContent = Math.max(0, (parseInt(cnt.textContent, 10) || 1) - 1);
+if (cnt && parseInt(cnt.textContent, 10) === 0 && gname.indexOf(q) < 0) h.remove();
+}
+}
+} else {
 node.innerHTML = cardItemHtml(val);
 attachCardData(node, val);
 }
+}
 updateCountsOnly();
+}
+let editSaveTimer = null;
+function scheduleSave() {
+clearTimeout(editSaveTimer);
+editSaveTimer = setTimeout(function () {
+editSaveTimer = null;
+try { saveGroups(groups); } catch (e) {}
+}, 120);
 }
 function updateCountsOnly() {
 renderTabCounts();

@@ -326,24 +326,56 @@
       const dup = g[1].find((x, xi) => xi !== i && x === val);
       if (dup !== undefined) { toast('该分组已有相同内容'); return; }
       g[1][i] = val;
-      saveGroups(groups);
       updateCardDom(gname, i, val);
+      // v3.7.x：内存与 DOM 即时生效，持久化延后（saveGroups 序列化大库会卡住确认）
+      scheduleSave();
       toast('字卡已更新');
     });
   }
 
   // 编辑后局部更新单张卡的 DOM（图片懒加载/语音按钮数据同步重挂），大列表不全量重渲染；
-  // 搜索过滤开启时内容可能不再匹配关键词，直接全量重渲染保证过滤结果正确
+  // 搜索过滤开启时内容可能不再匹配关键词——匹配则原地更新，不匹配则移除该卡并同步分组
+  // header 计数（与 render() 的过滤条件一致：卡按内容过滤，组因组名含关键词时可保留空 header）
   function updateCardDom(gname, i, val) {
-    if (q) { renderGroupsBar(); render(); return; }
+    // 分块渲染进行中：局部更新会被旧批次覆盖，改走全量 render（render 的 token 会废弃旧批次）
+    if (rendering) { renderGroupsBar(); render(); return; }
     const sel = (window.CSS && CSS.escape) ? CSS.escape(String(gname)) : String(gname).replace(/["\\]/g, '\\$&');
     const node = list.querySelector('.cc-item[data-g="' + sel + '"][data-idx="' + i + '"]');
     if (node) {
       if (imgObserver) node.querySelectorAll('img[data-src]').forEach(im => { try { imgObserver.unobserve(im); } catch (e) {} });
-      node.innerHTML = cardItemHtml(val);
-      attachCardData(node, val);
+      if (q) {
+        const matches = (typeof val === 'string' && val.indexOf('data:') !== 0) && val.indexOf(q) >= 0;
+        if (matches) {
+          node.innerHTML = cardItemHtml(val);
+          attachCardData(node, val);
+        } else {
+          node.remove();
+          const h = list.querySelector('.cc-group-header[data-g="' + sel + '"]');
+          if (h) {
+            const cnt = h.querySelector('.ccg-count');
+            if (cnt) cnt.textContent = Math.max(0, (parseInt(cnt.textContent, 10) || 1) - 1);
+            if (cnt && parseInt(cnt.textContent, 10) === 0 && gname.indexOf(q) < 0) h.remove();
+          }
+        }
+      } else {
+        node.innerHTML = cardItemHtml(val);
+        attachCardData(node, val);
+      }
     }
     updateCountsOnly();
+  }
+
+  // v3.7.x：编辑持久化延后执行——saveGroups 会序列化整个字卡库（表情包/图片/语音
+  // dataURL 可让库达几 MB~几十 MB），在确认回调里同步执行会阻塞弹窗关闭（用户反馈
+  // 「点击确认卡顿」）。内存与 DOM 已即时更新，延后到下一帧后再写 LS+IDB；
+  // 120ms 内连续编辑合并成一次写入，避免高频操作反复序列化大库
+  let editSaveTimer = null;
+  function scheduleSave() {
+    clearTimeout(editSaveTimer);
+    editSaveTimer = setTimeout(function () {
+      editSaveTimer = null;
+      try { saveGroups(groups); } catch (e) {}
+    }, 120);
   }
 
   // v3.6.x：只更新各类计数（tab 徽标/分组栏/总数），不重建列表 DOM——
