@@ -187,6 +187,9 @@
 .app-grid.editing .app-ico { outline:2px solid var(--ink); outline-offset:3px; }
 .app .app-name { font-size:11px; color:var(--ink); letter-spacing:.5px; }
 
+/* v3.7.x：单个功能图标移出 app-grid 作为独立组件时居中显示 */
+.page-slide .app[data-desk-widget^="app-"] { align-self:center; margin:8px 0; }
+
 /* 桌面功能区（直接显示） */
 .app-grid { margin-top:8px; }
 

@@ -574,6 +574,7 @@ box-shadow:0 1px 4px rgba(0,0,0,.08); box-sizing:border-box;
 .app-badge[hidden] { display:none; }
 .app-grid.editing .app-ico { outline:2px solid var(--ink); outline-offset:3px; }
 .app .app-name { font-size:11px; color:var(--ink); letter-spacing:.5px; }
+.page-slide .app[data-desk-widget^="app-"] { align-self:center; margin:8px 0; }
 .app-grid { margin-top:8px; }
 .desktop-pages {
 flex:1; min-height:0; display:flex;
@@ -1993,6 +1994,7 @@ color:#666; border-radius:12px; cursor:pointer; font-family:inherit;
 -webkit-tap-highlight-color:transparent;
 }
 .fav-tab.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+.fav-tabs.fav-kind-row { padding-top:0; padding-bottom:12px; }
 .fav-body { padding:6px 18px; }
 .cal-scroll { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; padding:0 18px; }
 .cal-scroll::-webkit-scrollbar { display:none; }
@@ -3617,7 +3619,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.116 · 部署于 2026-08-19 14:24</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.117 · 部署于 2026-08-19 14:32</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -3690,35 +3692,35 @@ color: var(--muted);
 
       <!-- 桌面功能（直接显示） -->
       <div class="app-grid" data-app="main" data-desk-widget="apps">
-        <div class="app" data-app="chat">
+        <div class="app" data-app="chat" data-desk-widget="app-chat">
           <div class="app-badge-box"><div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><span class="app-badge" id="chat-badge" hidden></span></div>
           <div class="app-name">聊天</div>
         </div>
-        <div class="app" data-app="home">
+        <div class="app" data-app="home" data-desk-widget="app-home">
           <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11.5L12 4l8.5 7.5"/><path d="M5.5 10v10h13V10"/><path d="M9.5 20v-5.5h5V20"/></svg></div>
           <div class="app-name">主页</div>
         </div>
-        <div class="app" data-app="mail">
+        <div class="app" data-app="mail" data-desk-widget="app-mail">
           <div class="app-badge-box"><div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13.5" rx="2.5"/><path d="M3.5 7.5L12 13l8.5-5.5"/><path d="M5 17.5l4.5-4M19 17.5l-4.5-4"/></svg></div><span class="app-badge" id="mail-badge" hidden></span></div>
           <div class="app-name">信箱</div>
         </div>
-        <div class="app" data-app="feed">
+        <div class="app" data-app="feed" data-desk-widget="app-feed">
           <div class="app-badge-box"><div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div><span class="app-badge" id="feed-app-badge" hidden></span></div>
           <div class="app-name">朋友圈</div>
         </div>
-        <div class="app" data-app="calendar">
+        <div class="app" data-app="calendar" data-desk-widget="app-calendar">
           <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v3.5M16 3v3.5"/><path d="M8 14h3M13 14h3M8 17.5h3"/></svg></div>
           <div class="app-name">日历</div>
         </div>
-        <div class="app" data-app="memory">
+        <div class="app" data-app="memory" data-desk-widget="app-memory">
           <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5S4.5 15.2 4.5 9.9A4.9 4.9 0 0112 7.1a4.9 4.9 0 017.5 2.8c0 5.3-7.5 10.6-7.5 10.6z"/></svg></div>
           <div class="app-name">纪念</div>
         </div>
-        <div class="app" data-app="divination">
+        <div class="app" data-app="divination" data-desk-widget="app-divination">
           <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg></div>
           <div class="app-name">占卜</div>
         </div>
-        <div class="app" data-app="note">
+        <div class="app" data-app="note" data-desk-widget="app-note">
           <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5h11a1 1 0 011 1v16l-6.5-4-6.5 4v-16a1 1 0 011-1z"/></svg></div>
           <div class="app-name">收藏</div>
         </div>
@@ -3767,19 +3769,19 @@ color: var(--muted);
 
 <!-- 第二页功能：音乐 / 聊天统计 / 小互动 -->
 <div class="app-grid p2-grid" data-app="p2" data-desk-widget="p2apps">
-<div class="app" data-app="music">
+<div class="app" data-app="music" data-desk-widget="app-music">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
 <div class="app-name">音乐</div>
 </div>
-<div class="app" data-app="stats">
+<div class="app" data-app="stats" data-desk-widget="app-stats">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="11"/></svg></div>
 <div class="app-name">聊天统计</div>
 </div>
-<div class="app" data-app="interact">
+<div class="app" data-app="interact" data-desk-widget="app-interact">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>
 <div class="app-name">提问记录</div>
 </div>
-<div class="app" data-app="checkin">
+<div class="app" data-app="checkin" data-desk-widget="app-checkin">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/><path d="M12 3a9 9 0 000 18"/></svg></div>
 <div class="app-name">查岗</div>
 </div>
@@ -4360,7 +4362,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.116</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.117</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5754,6 +5756,31 @@ color: var(--muted);
           </div>
         </div>
       </div>
+      <!-- 猜拳：聊天页底部半框（露出聊天消息，和联系人猜拳，联系人随机出拳） -->
+      <div class="poke-card" id="chat-rps-panel" hidden>
+        <div class="poke-card-head">
+          <span>猜拳 · <b id="rps-partner-name">TA</b></span>
+          <button class="poke-card-close" id="chat-rps-close">✕</button>
+        </div>
+        <div class="poke-card-scroll">
+          <div class="rps-score" id="rps-score">胜 0 · 负 0 · 平 0</div>
+          <div class="rps-hint" id="rps-hint">选择你要出的拳</div>
+          <div class="rps-choices">
+            <button class="rps-choice" data-rps="rock" type="button">
+              <span class="rps-c-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11V8.5a1.5 1.5 0 013 0V11"/><path d="M8 11V7a1.5 1.5 0 013 0v4"/><path d="M11 11V8a1.5 1.5 0 013 0v3.5"/><path d="M14 11.5V9a1.5 1.5 0 013 0v6c0 3-2.5 5-5.5 5-1.7 0-3-.6-4-1.6L5 16"/></svg></span>
+              <span>石头</span>
+            </button>
+            <button class="rps-choice" data-rps="scissors" type="button">
+              <span class="rps-c-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></span>
+              <span>剪刀</span>
+            </button>
+            <button class="rps-choice" data-rps="paper" type="button">
+              <span class="rps-c-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></span>
+              <span>布</span>
+            </button>
+          </div>
+        </div>
+      </div>
       <!-- 聊天页输入半框（邀请TA / 问问TA，露出聊天消息，星言式） -->
       <div class="poke-card" id="chat-ask-panel" hidden>
         <div class="poke-card-head">
@@ -5840,6 +5867,10 @@ color: var(--muted);
           <button class="more-item" id="more-poke" title="打开拍一拍页面">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12"/><path d="M11 12V4.5a1.5 1.5 0 0 1 3 0V12.5"/><path d="M14 12.5V7a1.5 1.5 0 0 1 3 0v6c0 3-2.5 5.5-5.5 5.5-1.7 0-3-.6-4-1.6L5 14.3"/></svg></span>
             <span>拍一拍</span>
+          </button>
+          <button class="more-item" id="more-rps" title="猜拳">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11V8.5a1.5 1.5 0 013 0V11"/><path d="M8 11V7a1.5 1.5 0 013 0v4"/><path d="M11 11V8a1.5 1.5 0 013 0v3.5"/><path d="M14 11.5V9a1.5 1.5 0 013 0v6c0 3-2.5 5-5.5 5-1.7 0-3-.6-4-1.6L5 16"/></svg></span>
+            <span>猜拳</span>
           </button>
           <button class="more-item" id="more-avatar" title="头像互动">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></span>
@@ -8912,16 +8943,21 @@ renderDeskCountdowns();
 setupDeskCountdownClick();
 document.addEventListener('contact-switched', renderDeskTexts);
 document.addEventListener('contact-switched', renderDeskCountdowns);
-const WIDGET_IDS = ['deco', 'quote-row', 'checkin', 'apps', 'music', 'p2apps', 'memo-row', 'week', 'weekend', 'desk-clock', 'desk-calendar', 'desk-timer', 'desk-anniv'];
+const WIDGET_IDS = ['deco', 'quote-row', 'checkin', 'apps', 'music', 'p2apps', 'memo-row', 'week', 'weekend', 'desk-clock', 'desk-calendar', 'desk-timer', 'desk-anniv',
+'app-chat', 'app-home', 'app-mail', 'app-feed', 'app-calendar', 'app-memory', 'app-divination', 'app-note', 'app-music', 'app-stats', 'app-interact', 'app-checkin'];
 const WIDGET_NAMES = {
-deco: '纪念日卡', 'quote-row': '今日情话 / 已摸鱼', checkin: '打卡横幅', apps: '功能图标',
-music: '音乐播放器', p2apps: '第二页功能图标', 'memo-row': '今日备忘 / 心情', week: '本周日常', weekend: '周末倒计时',
+deco: '纪念日卡', 'quote-row': '今日情话 / 已摸鱼', checkin: '打卡横幅', apps: '功能图标(整组)',
+music: '音乐播放器', p2apps: '第二页功能图标(整组)', 'memo-row': '今日备忘 / 心情', week: '本周日常', weekend: '周末倒计时',
 'desk-clock': '时钟', 'desk-calendar': '月历', 'desk-timer': '计时器', 'desk-anniv': '纪念日倒计时',
+'app-chat': '聊天图标', 'app-home': '主页图标', 'app-mail': '信箱图标', 'app-feed': '朋友圈图标',
+'app-calendar': '日历图标', 'app-memory': '纪念图标', 'app-divination': '占卜图标', 'app-note': '收藏图标',
+'app-music': '音乐图标', 'app-stats': '聊天统计图标', 'app-interact': '提问记录图标', 'app-checkin': '查岗图标',
 };
 const PREV_BOX = 'display:flex;align-items:center;justify-content:center;width:78px;height:58px;border-radius:10px;background:linear-gradient(135deg,#fff,#f6f6f6);border:1px solid rgba(0,0,0,.07);box-shadow:0 1px 3px rgba(0,0,0,.06);flex-shrink:0;overflow:hidden;padding:4px;box-sizing:border-box';
 const _av = '<span style="width:15px;height:15px;border-radius:50%;background:#f2f2f2;display:flex;align-items:center;justify-content:center"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></span>';
 const _card = (top) => '<span style="width:26px;height:34px;border-radius:6px;background:#fff;border:1px solid rgba(0,0,0,.07);display:flex;flex-direction:column;padding:4px 3px;gap:2px;box-sizing:border-box"><span style="font-size:6px;color:#bbb;font-weight:600">' + top + '</span><span style="height:3px;border-radius:2px;background:#e0e0e0;width:70%"></span><span style="height:3px;border-radius:2px;background:#eee;width:55%"></span></span>';
 const _ico = (svg) => '<span style="display:flex;align-items:center;justify-content:center">' + svg + '</span>';
+const _appIcoPrev = (label) => '<span style="display:flex;flex-direction:column;align-items:center;gap:3px"><span style="width:26px;height:26px;border-radius:8px;background:#f4f4f4;display:flex;align-items:center;justify-content:center"><span style="width:14px;height:14px;border-radius:4px;background:#ddd"></span></span><span style="font-size:6px;color:#999">' + label + '</span></span>';
 const _appIcos = [
 '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
 '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11.5L12 4l8.5 7.5"/><path d="M5.5 10v10h13V10"/></svg>',
@@ -8947,6 +8983,9 @@ weekend: '<span style="display:flex;flex-direction:column;align-items:center;jus
 'desk-calendar': '<span style="display:grid;grid-template-columns:repeat(7,6px);gap:2px">' + Array.from({ length: 21 }, (_, i) => '<span style="width:6px;height:6px;border-radius:2px;' + (i === 10 ? 'background:#111' : 'background:#eee') + '"></span>').join('') + '</span>',
 'desk-timer': '<span style="display:flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:14px;font-weight:700;color:#222;font-variant-numeric:tabular-nums">00:00.0</span><span style="display:flex;gap:3px"><span style="font-size:5px;color:#666;background:#f0f0f0;padding:1px 4px;border-radius:4px">开始</span><span style="font-size:5px;color:#666;background:#f0f0f0;padding:1px 4px;border-radius:4px">重置</span></span></span>',
 'desk-anniv': '<span style="display:flex;flex-direction:column;align-items:center;gap:1px"><span style="font-size:7px;color:#bbb">距下一个纪念日</span><span style="font-size:15px;font-weight:700;color:#333">30 天</span><span style="font-size:6px;color:#999">生日 · 9 月 18 日</span></span>',
+'app-chat': _appIcoPrev('聊天'), 'app-home': _appIcoPrev('主页'), 'app-mail': _appIcoPrev('信箱'), 'app-feed': _appIcoPrev('朋友圈'),
+'app-calendar': _appIcoPrev('日历'), 'app-memory': _appIcoPrev('纪念'), 'app-divination': _appIcoPrev('占卜'), 'app-note': _appIcoPrev('收藏'),
+'app-music': _appIcoPrev('音乐'), 'app-stats': _appIcoPrev('统计'), 'app-interact': _appIcoPrev('提问'), 'app-checkin': _appIcoPrev('查岗'),
 };
 function ensureWidgetPool() {
 let pool = document.getElementById('desk-widget-pool');
@@ -8992,8 +9031,10 @@ const pool = ensureWidgetPool();
 WIDGET_IDS.forEach(wid => {
 if (wid === 'apps' || wid === 'p2apps') return;
 const node = document.querySelector('[data-desk-widget="' + wid + '"]');
+if (!node) return;
+if (wid.indexOf('app-') === 0 && node.closest('.app-grid')) return;
 const inLay = lay.some(page => (page || []).indexOf(wid) >= 0);
-if (node && !inLay && node.parentNode !== pool) pool.appendChild(node);
+if (!inLay && node.parentNode !== pool) pool.appendChild(node);
 });
 if (window.deskRebuild) window.deskRebuild();
 try { renderDeskWidgets(); } catch (e) {}
@@ -12768,6 +12809,19 @@ let activeSide = 'in';    // 当前操作消息方向
 let lastQuote = null;     // 待引用内容
 function getFav() { try { return JSON.parse(store.get('fav-msgs') || '[]'); } catch (e) { return []; } }
 function saveFav(list) { store.set('fav-msgs', JSON.stringify(list)); }
+function syncFavMsgText(oldText, newText) {
+if (oldText === newText) return;
+const fav = getFav();
+let changed = false;
+fav.forEach(f => {
+if ((f.kind || 'msg') === 'msg' && f.side === 'out' && f.text === oldText) {
+f.text = newText;
+f.type = 'text';
+changed = true;
+}
+});
+if (changed) saveFav(fav);
+}
 function favDup(list, f) {
 return list.some(x => (x.kind || 'msg') === (f.kind || 'msg') &&
 (x.q || '') === (f.q || '') && (x.text || '') === (f.text || '') && x.ts === f.ts);
@@ -12894,6 +12948,7 @@ const val = (v || '').trim();
 if (!val) return;
 rec.text = val;
 rec.type = 'text';
+syncFavMsgText(orig, val); // v3.7.x：编辑后收藏夹里同一条消息快照同步更新（含 TA 收藏）
 sessionChangedIdx.add(idx); // v3.6.x：标记本会话变更，防 loadMsgs 合并回滚编辑
 saveMsgs();
 syncLastMineText(); // v3.6.x：编辑后 TA 引用/收藏不再拿旧文本
@@ -12920,6 +12975,11 @@ t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
 const favPage = document.getElementById('page-fav');
 const favList = document.getElementById('fav-list');
 let favTab = 'mine'; // mine=我的收藏 ta=联系人的收藏
+let favKind = 'all'; // 收藏分类筛选：all=全部 msg=聊天消息 card=互动卡片 mail=信件 feed=朋友圈
+const FAV_KINDS = [
+{ k: 'all', label: '全部' }, { k: 'msg', label: '聊天消息' },
+{ k: 'card', label: '互动卡片' }, { k: 'mail', label: '信件' }, { k: 'feed', label: '朋友圈' }
+];
 function renderFav() {
 if (!favList) return;
 const fav = getFav();
@@ -12933,14 +12993,31 @@ if (tabsEl) {
 tabsEl.querySelectorAll('.fav-tab').forEach(t => t.classList.toggle('sel', t.dataset.tab === favTab));
 }
 const list = favTab === 'ta' ? taFav : myFav;
-list.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+const kindTabsEl = document.getElementById('fav-kind-tabs');
+if (kindTabsEl) {
+const counts = { all: list.length, msg: 0, card: 0, mail: 0, feed: 0 };
+list.forEach(f => { const k = f.kind || 'msg'; if (k in counts) counts[k]++; });
+kindTabsEl.querySelectorAll('.fav-tab').forEach(t => {
+const k = t.dataset.kind;
+t.classList.toggle('sel', k === favKind);
+const o = FAV_KINDS.find(x => x.k === k);
+const n = counts[k] || 0;
+t.textContent = o ? (o.label + (n ? ' ' + n : '')) : '';
+});
+}
+const list2 = favKind === 'all' ? list : list.filter(f => (f.kind || 'msg') === favKind);
+list2.sort((a, b) => (b.ts || 0) - (a.ts || 0));
 const title = favTab === 'ta' ? partnerName + ' 的收藏' : myName + ' 的收藏';
-const empty = favTab === 'ta' ? 'TA 还没有收藏' : '暂无收藏';
+let empty = favTab === 'ta' ? 'TA 还没有收藏' : '暂无收藏';
+if (favKind !== 'all') {
+const K_EMPTY = { msg: '聊天消息', card: '互动卡片', mail: '信件', feed: '朋友圈' };
+empty = (favTab === 'ta' ? 'TA 还没有收藏' : '暂无') + K_EMPTY[favKind];
+}
 const h = document.createElement('div');
 h.className = 'cc-group-header';
-h.innerHTML = '<span class="ccg-name">' + title + '</span><span class="ccg-count">' + list.length + '</span>';
+h.innerHTML = '<span class="ccg-name">' + title + '</span><span class="ccg-count">' + list2.length + '</span>';
 favList.appendChild(h);
-if (!list.length) {
+if (!list2.length) {
 favList.innerHTML += '<div class="fav-empty">' + empty + '</div>';
 return;
 }
@@ -12961,7 +13038,7 @@ last = mm.index + mm[0].length;
 html += escTxt(str.slice(last));
 return html;
 }
-list.forEach(f => renderFavItem(f));
+list2.forEach(f => renderFavItem(f));
 function renderFavItem(f) {
 const kind = f.kind || 'msg';
 const m = document.createElement('div');
@@ -13069,6 +13146,17 @@ favTab = tb.dataset.tab;
 renderFav();
 });
 }
+const favKindTabs = document.createElement('div');
+favKindTabs.className = 'fav-tabs fav-kind-row';
+favKindTabs.id = 'fav-kind-tabs';
+favKindTabs.innerHTML = FAV_KINDS.map(o => '<button class="fav-tab" data-kind="' + o.k + '">' + o.label + '</button>').join('');
+if (favTabs && favTabs.parentNode) favTabs.parentNode.insertBefore(favKindTabs, favTabs.nextSibling);
+favKindTabs.addEventListener('click', (e) => {
+const tb = e.target.closest('.fav-tab');
+if (!tb) return;
+favKind = tb.dataset.kind;
+renderFav();
+});
 const favApp = document.querySelector('.app[data-app="note"]');
 if (favApp && favPage) {
 favApp.addEventListener('click', () => {
@@ -13103,6 +13191,7 @@ let myGroups = [];           // 我的表情包 [[分组名, [dataURL...]], ...]
 let mySel = new Set();       // 批量勾选：分组名\u0001索引
 let emojiInsertCb = null;    // v3.6.x：写信/回信「插入模式」回调（点击表情插入信纸）
 function MYE_KEY() { return window.activePrefix() + ':my-emoji-groups'; }
+myGroups = myEmojiLoad();
 function saveEmojiGroupPref() {
 store.set('emoji-last', JSON.stringify({ ta: emojiCurGroup, mine: myCurGroup }));
 }
