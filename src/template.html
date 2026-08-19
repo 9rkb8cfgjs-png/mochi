@@ -34,7 +34,6 @@
       <!-- v3.5.112：开屏公告（发布说明） -->
       <!-- v3.6.x：公告内容可由 notice.json 远程覆盖（clock.js 拉取），此处写死内容为离线兜底 -->
       <div class="splash-notice" id="splash-notice">
-        <div class="splash-notice-title">关于 Mochi 字卡</div>
         <div class="splash-notice-sub">【8.12开搓三十个小时，8.15发布，目前还在日更修，暂时不建议开始二传二改】</div>
         <div class="splash-notice-list">
           <p>1. 感谢内测反馈：大家的每条反馈我都有认真看，谢谢参与内测的各位</p>
@@ -331,12 +330,12 @@
 </div>
 <div class="chat-item glass" id="li-ta-curious">
   <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18"/><circle cx="12" cy="12" r="2"/></svg></div>
-  <div class="ci"><div class="n">Ta的好奇</div><div class="m">开放式提问 · 回答后 TA 记住你</div></div>
+  <div class="ci"><div class="n">TA的好奇</div><div class="m">开放式提问 · 回答后 TA 记住你</div></div>
   <div class="t">26</div>
 </div>
 <div class="chat-item glass" id="li-ta-roast">
   <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.4 5.7.3-4.4 3.6 1.5 5.5-4.6-3.3-4.6 3.3 1.5-5.5-4.4-3.6 5.7-.3z"/></svg></div>
-  <div class="ci"><div class="n">Ta的吐槽</div><div class="m">突然吐槽你一句 · 情侣式调侃</div></div>
+  <div class="ci"><div class="n">TA的吐槽</div><div class="m">突然吐槽你一句 · 情侣式调侃</div></div>
   <div class="t">46</div>
 </div>
 </div>
@@ -444,13 +443,13 @@
   </div>
 </div>
 
-<!-- Ta的好奇（开放式提问管理页，独立页面） -->
+<!-- TA的好奇（开放式提问管理页，独立页面） -->
 <div class="page" id="page-ta-curious" hidden>
   <div class="chat-head">
     <span class="ch-back" id="tc-curious-back">
       <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
     </span>
-    <span class="ch-name">Ta的好奇</span>
+    <span class="ch-name">TA的好奇</span>
   </div>
   <div class="gs-scroll">
     <button class="div-draw" id="tcu-now">
@@ -503,13 +502,13 @@
   </div>
 </div>
 
-<!-- Ta的吐槽（吐槽字卡管理页，独立页面） -->
+<!-- TA的吐槽（吐槽字卡管理页，独立页面） -->
 <div class="page" id="page-ta-roast" hidden>
   <div class="chat-head">
     <span class="ch-back" id="tc-roast-back">
       <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
     </span>
-    <span class="ch-name">Ta的吐槽</span>
+    <span class="ch-name">TA的吐槽</span>
   </div>
   <div class="gs-scroll">
     <button class="div-draw" id="tr-now">
@@ -634,7 +633,7 @@
   </div>
 </div>
 
-<!-- 通用回答弹层（Ta的好奇 / Ta的吐槽 共用） -->
+<!-- 通用回答弹层（TA的好奇 / TA的吐槽 共用） -->
 <div class="qa-mask" id="qa-mask" hidden>
   <div class="qa-panel">
     <div class="mg-head"><span id="qa-title">回答</span><button class="mg-close" id="qa-mask-close">✕</button></div>
@@ -1696,8 +1695,8 @@
   <div class="fav-tabs">
     <button class="fav-tab sel" data-tab="ask">TA的询问</button>
     <button class="fav-tab" data-tab="choose">TA的小问题</button>
-    <button class="fav-tab" data-tab="curious">Ta的好奇</button>
-    <button class="fav-tab" data-tab="roast">Ta的吐槽</button>
+    <button class="fav-tab" data-tab="curious">TA的好奇</button>
+    <button class="fav-tab" data-tab="roast">TA的吐槽</button>
     <button class="fav-tab" data-tab="invite">邀请/问问</button>
   </div>
   <div class="cal-scroll">
@@ -1712,12 +1711,12 @@
       <button class="mem-add" id="ar-choose-clear">清空小问题记录</button>
     </div>
     <div class="cal-card glass" data-panel="curious" hidden>
-      <div class="cal-card-title">Ta的好奇</div>
+      <div class="cal-card-title">TA的好奇</div>
       <div id="ar-curious"></div>
       <button class="mem-add" id="ar-curious-clear">清空好奇记录</button>
     </div>
     <div class="cal-card glass" data-panel="roast" hidden>
-      <div class="cal-card-title">Ta的吐槽</div>
+      <div class="cal-card-title">TA的吐槽</div>
       <div id="ar-roast"></div>
       <button class="mem-add" id="ar-roast-clear">清空吐槽记录</button>
     </div>
@@ -2271,11 +2270,11 @@
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
             <span>小问题</span>
           </button>
-          <button class="more-item" id="more-curious-now" title="让TA现在好奇一次（Ta的好奇）">
+          <button class="more-item" id="more-curious-now" title="让TA现在好奇一次（TA的好奇）">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18"/><circle cx="12" cy="12" r="2"/></svg></span>
             <span>好奇</span>
           </button>
-          <button class="more-item" id="more-roast-now" title="让TA现在吐槽一次（Ta的吐槽）">
+          <button class="more-item" id="more-roast-now" title="让TA现在吐槽一次（TA的吐槽）">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.4 5.7.3-4.4 3.6 1.5 5.5-4.6-3.3-4.6 3.3 1.5-5.5-4.4-3.6 5.7-.3z"/></svg></span>
             <span>吐槽</span>
           </button>

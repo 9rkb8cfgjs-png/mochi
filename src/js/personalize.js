@@ -1770,22 +1770,36 @@
     music: '音乐播放器', p2apps: '第二页功能图标', 'memo-row': '今日备忘 / 心情', week: '本周日常', weekend: '周末倒计时',
     'desk-clock': '时钟', 'desk-calendar': '月历', 'desk-timer': '计时器', 'desk-anniv': '纪念日倒计时',
   };
-  // v3.7.x：装修模式组件库静态预览缩略图（纯 HTML+CSS 示意，不依赖真实数据/事件）
-  const PREV_BOX = 'display:flex;align-items:center;justify-content:center;width:72px;height:52px;border-radius:8px;background:rgba(0,0,0,.05);flex-shrink:0;overflow:hidden';
+  // v3.7.x：装修模式组件库静态预览缩略图（glass 质感 + 真实 SVG 图标，不依赖真实数据/事件）
+  const PREV_BOX = 'display:flex;align-items:center;justify-content:center;width:78px;height:58px;border-radius:10px;background:linear-gradient(135deg,#fff,#f6f6f6);border:1px solid rgba(0,0,0,.07);box-shadow:0 1px 3px rgba(0,0,0,.06);flex-shrink:0;overflow:hidden;padding:4px;box-sizing:border-box';
+  const _av = '<span style="width:15px;height:15px;border-radius:50%;background:#f2f2f2;display:flex;align-items:center;justify-content:center"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></span>';
+  const _card = (top) => '<span style="width:26px;height:34px;border-radius:6px;background:#fff;border:1px solid rgba(0,0,0,.07);display:flex;flex-direction:column;padding:4px 3px;gap:2px;box-sizing:border-box"><span style="font-size:6px;color:#bbb;font-weight:600">' + top + '</span><span style="height:3px;border-radius:2px;background:#e0e0e0;width:70%"></span><span style="height:3px;border-radius:2px;background:#eee;width:55%"></span></span>';
+  const _ico = (svg) => '<span style="display:flex;align-items:center;justify-content:center">' + svg + '</span>';
+  const _appIcos = [
+    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
+    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11.5L12 4l8.5 7.5"/><path d="M5.5 10v10h13V10"/></svg>',
+    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13.5" rx="2.5"/><path d="M3.5 7.5L12 13l8.5-5.5"/></svg>',
+    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
+    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v3.5M16 3v3.5"/></svg>',
+    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5S4.5 15.2 4.5 9.9A4.9 4.9 0 0112 7.1a4.9 4.9 0 017.5 2.8c0 5.3-7.5 10.6-7.5 10.6z"/></svg>',
+    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg>',
+    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5h11a1 1 0 011 1v16l-6.5-4-6.5 4v-16a1 1 0 011-1z"/></svg>',
+    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+  ];
   const WIDGET_PREV_HTML = {
-    deco: '<span style="display:flex;gap:4px;align-items:center"><span style="width:14px;height:14px;border-radius:50%;background:#ddd"></span><span style="color:#e88;font-size:13px">♥</span><span style="width:14px;height:14px;border-radius:50%;background:#ddd"></span></span>',
-    'quote-row': '<span style="display:flex;gap:4px"><span style="width:20px;height:28px;border-radius:4px;background:rgba(0,0,0,.12)"></span><span style="width:20px;height:28px;border-radius:4px;background:rgba(0,0,0,.12)"></span></span>',
-    checkin: '<span style="width:52px;height:16px;border-radius:8px;background:rgba(0,0,0,.12);display:block"></span>',
-    apps: '<span style="display:grid;grid-template-columns:repeat(3,12px);gap:4px">' + '<span style="width:12px;height:12px;border-radius:3px;background:rgba(0,0,0,.13)"></span>'.repeat(9) + '</span>',
-    music: '<span style="display:flex;gap:6px;align-items:center"><span style="width:26px;height:26px;border-radius:6px;background:rgba(0,0,0,.13)"></span><span style="width:26px;height:4px;border-radius:2px;background:rgba(0,0,0,.16);display:block"></span></span>',
-    p2apps: '<span style="display:grid;grid-template-columns:repeat(2,14px);gap:4px">' + '<span style="width:14px;height:14px;border-radius:3px;background:rgba(0,0,0,.13)"></span>'.repeat(4) + '</span>',
-    'memo-row': '<span style="display:flex;gap:4px"><span style="width:22px;height:26px;border-radius:4px;background:rgba(0,0,0,.12)"></span><span style="width:22px;height:26px;border-radius:4px;background:rgba(0,0,0,.12)"></span></span>',
-    week: '<span style="display:flex;gap:3px">' + '<span style="width:6px;height:6px;border-radius:50%;background:rgba(0,0,0,.16)"></span>'.repeat(7) + '</span>',
-    weekend: '<span style="font-size:10px;color:#999;text-align:center;line-height:1.3">离周末<br><b style="color:#444">3 天</b></span>',
-    'desk-clock': '<span style="font-size:17px;font-weight:700;color:#333;letter-spacing:1px">12:30</span>',
-    'desk-calendar': '<span style="display:grid;grid-template-columns:repeat(7,6px);gap:2px">' + '<span style="width:6px;height:6px;border-radius:2px;background:rgba(0,0,0,.13)"></span>'.repeat(21) + '</span>',
-    'desk-timer': '<span style="font-size:14px;font-weight:600;color:#333">00:00.0</span>',
-    'desk-anniv': '<span style="font-size:10px;color:#999;text-align:center;line-height:1.3">还有<br><b style="color:#444;font-size:14px">30 天</b></span>',
+    deco: '<span style="display:flex;gap:3px;align-items:center">' + _av + '<svg width="10" height="10" viewBox="0 0 24 24" fill="#ccc"><path d="M12 21s-7-4.5-9-8.5a4.5 4.5 0 019-3 4.5 4.5 0 019 3c-2 4-9 8.5-9 8.5z"/></svg>' + _av + '</span>',
+    'quote-row': '<span style="display:flex;gap:4px">' + _card('情话') + _card('摸鱼') + '</span>',
+    checkin: '<span style="display:flex;align-items:center;gap:4px;width:64px;height:22px;padding:0 6px;border-radius:11px;background:#fff;border:1px solid rgba(0,0,0,.07);box-sizing:border-box"><svg width="9" height="9" viewBox="0 0 24 24" fill="#ccc"><path d="M12 21s-7-4.5-9-8.5a4.5 4.5 0 019-3 4.5 4.5 0 019 3c-2 4-9 8.5-9 8.5z"/></svg><span style="flex:1;font-size:6px;color:#999">一起摸鱼</span><span style="font-size:6px;color:#fff;background:#111;padding:1px 5px;border-radius:5px">打卡</span></span>',
+    apps: '<span style="display:grid;grid-template-columns:repeat(3,14px);gap:4px">' + _appIcos.map(_ico).join('') + '</span>',
+    music: '<span style="display:flex;gap:5px;align-items:center;width:64px"><span style="width:26px;height:26px;border-radius:7px;background:#f4f4f4;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span><span style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="height:3px;border-radius:2px;background:#ccc;width:90%"></span><span style="height:3px;border-radius:2px;background:#eee;width:60%"></span><span style="height:2px;border-radius:1px;background:#111;width:40%"></span></span></span>',
+    p2apps: '<span style="display:grid;grid-template-columns:repeat(2,16px);gap:4px">' + _appIcos.slice(0, 4).map(_ico).join('') + '</span>',
+    'memo-row': '<span style="display:flex;gap:4px">' + _card('备忘') + _card('心情') + '</span>',
+    week: '<span style="display:flex;gap:3px;align-items:center">' + ['日','一','二','三','四','五','六'].map((d, i) => '<span style="width:7px;height:7px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:5px;' + (i === 3 ? 'background:#111;color:#fff;font-weight:700' : 'background:#f0f0f0;color:#bbb') + '">' + d + '</span>').join('') + '</span>',
+    weekend: '<span style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:56px;height:38px;border-radius:8px;background:#fff;border:1px solid rgba(0,0,0,.07);gap:1px"><span style="font-size:7px;color:#bbb">离周末还有</span><span style="font-size:13px;font-weight:700;color:#333">3 天</span></span>',
+    'desk-clock': '<span style="display:flex;flex-direction:column;align-items:center;gap:2px"><span style="font-size:18px;font-weight:700;color:#222;letter-spacing:1px;font-variant-numeric:tabular-nums">12:30</span><span style="font-size:7px;color:#aaa">星期一 · 8 月 19 日</span></span>',
+    'desk-calendar': '<span style="display:grid;grid-template-columns:repeat(7,6px);gap:2px">' + Array.from({ length: 21 }, (_, i) => '<span style="width:6px;height:6px;border-radius:2px;' + (i === 10 ? 'background:#111' : 'background:#eee') + '"></span>').join('') + '</span>',
+    'desk-timer': '<span style="display:flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:14px;font-weight:700;color:#222;font-variant-numeric:tabular-nums">00:00.0</span><span style="display:flex;gap:3px"><span style="font-size:5px;color:#666;background:#f0f0f0;padding:1px 4px;border-radius:4px">开始</span><span style="font-size:5px;color:#666;background:#f0f0f0;padding:1px 4px;border-radius:4px">重置</span></span></span>',
+    'desk-anniv': '<span style="display:flex;flex-direction:column;align-items:center;gap:1px"><span style="font-size:7px;color:#bbb">距下一个纪念日</span><span style="font-size:15px;font-weight:700;color:#333">30 天</span><span style="font-size:6px;color:#999">生日 · 9 月 18 日</span></span>',
   };
   // 隐藏池：被移除的组件暂存（display:none），可从组件库重新添加
   function ensureWidgetPool() {
@@ -1908,7 +1922,7 @@
     const imgPrev = document.createElement('div');
     imgPrev.className = 'dl-prev';
     imgPrev.style.cssText = PREV_BOX;
-    imgPrev.innerHTML = '<span style="width:30px;height:22px;border-radius:4px;background:linear-gradient(135deg,#cde,#fdc);display:block"></span>';
+    imgPrev.innerHTML = '<span style="width:40px;height:30px;border-radius:6px;background:linear-gradient(135deg,#cde4ff,#ffdce8);display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.06)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.8"/><path d="M5.5 17l4-4 3 3 2.5-2.5L19 17"/></svg></span>';
     const imgMeta = document.createElement('div');
     imgMeta.className = 'dl-meta';
     const imgName = document.createElement('div');
@@ -1932,6 +1946,7 @@
     lib.appendChild(box);
     document.body.appendChild(lib);
   }
+
 
   // ===== v3.6.x：桌面图片组件（可多个，每页可放多张不同图片） =====
   // 存储：desk-images（localStorage，元数据数组 [{id,page,addedAt,w}]）

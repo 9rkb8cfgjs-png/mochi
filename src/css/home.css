@@ -252,7 +252,9 @@
   width:min(88vw,380px); max-height:78vh; overflow:auto;
   background:#fff; border-radius:16px; padding:16px;
   box-shadow:0 8px 30px rgba(0,0,0,.2);
+  scrollbar-width:none;
 }
+.desk-lib-box::-webkit-scrollbar { display:none; }
 .desk-lib-title { font-size:15px; font-weight:700; margin-bottom:4px; }
 .desk-lib-sub { font-size:11px; color:#888; margin-bottom:12px; }
 .desk-lib-item {

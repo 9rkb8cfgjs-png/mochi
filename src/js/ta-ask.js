@@ -1398,7 +1398,7 @@ window.openTCPanel = openTCPanel;
     });
   }
 
-  // ================= Ta的好奇（复刻星言 ta的好奇 完整版） =================
+  // ================= TA的好奇（复刻星言 ta的好奇 完整版） =================
   // 定位：TA 偶尔对你产生一个具体、带有兴趣的开放式问题，只想了解你
   const KEY3 = 'ta-curious';
   const TCU_CAT_LABEL = { you: '关于你', mood: '情绪', daily: '日常', past: '过去', like: '喜好', think: '想法', us: '你和TA', world: '两个世界' };
@@ -1545,7 +1545,7 @@ window.openTCPanel = openTCPanel;
     const idx = el ? Number(el.dataset.idx) : -1;
     // v3.5.141：后台收到互动卡片 → 系统通知提示
     // v3.5.146：通知文本合并提示语 + 具体问题
-    if (window.bgNotifyCheck) window.bgNotifyCheck('TA对你有点好奇：' + q.text, Date.now(), { name: 'Ta的好奇' });
+    if (window.bgNotifyCheck) window.bgNotifyCheck('TA对你有点好奇：' + q.text, Date.now(), { name: 'TA的好奇' });
     // v3.6.x：用户正在聊天输入栏打字时不弹（弹窗会抢焦点打断输入法，见 chatInputFocused）
     if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openCurious && !cardPopupBusy()) window.openCurious(idx); }, 400);
   }
@@ -1581,7 +1581,7 @@ window.openTCPanel = openTCPanel;
     const body = document.getElementById('qa-body');
     const title = document.getElementById('qa-title');
     if (!mask || !body) return;
-    if (title) title.textContent = 'Ta的好奇';
+    if (title) title.textContent = 'TA的好奇';
     let html = '<div class="qa-hint">TA有点好奇</div><div class="qa-q">' + String(rec.curiousQuestion || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
     const quicks = rec.curiousQuick || [];
     if (quicks.length) {
@@ -1647,7 +1647,7 @@ window.openTCPanel = openTCPanel;
     const body = document.getElementById('qa-body');
     const title = document.getElementById('qa-title');
     if (!mask || !body) return;
-    if (title) title.textContent = 'Ta的好奇';
+    if (title) title.textContent = 'TA的好奇';
     body.innerHTML = '<div class="qa-q">' + String(rec.curiousQuestion || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
       '<div class="qa-mine">你说：' + String(rec.curiousAnswer || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
       '<div class="qa-reply"><b>TA：</b>“' + String(rec.curiousReply || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>' +
@@ -1719,7 +1719,7 @@ window.openTCPanel = openTCPanel;
       });
     });
   }
-  // Ta的好奇 我的添加渲染配置
+  // TA的好奇 我的添加渲染配置
   const tcuMineOpt = {
     load: tcuLoad, save: tcuSave, order: TCU_CAT_ORDER, label: TCU_CAT_LABEL,
     emptyTip: '暂未添加自定义问题，可在上方添加',
@@ -1770,7 +1770,7 @@ window.openTCPanel = openTCPanel;
     });
   }
   const tcuEn = document.getElementById('tcu-enable');
-  if (tcuEn) tcuEn.addEventListener('change', () => { const d = tcuLoad(); d.settings.enabled = tcuEn.checked; tcuSave(d); toast(tcuEn.checked ? 'Ta的好奇已开启' : 'Ta的好奇已关闭'); });
+  if (tcuEn) tcuEn.addEventListener('change', () => { const d = tcuLoad(); d.settings.enabled = tcuEn.checked; tcuSave(d); toast(tcuEn.checked ? 'TA的好奇已开启' : 'TA的好奇已关闭'); });
   const tcuDefault = document.getElementById('tcu-default');
   if (tcuDefault) tcuDefault.addEventListener('change', () => {
     const d = tcuLoad(); d.settings.useDefault = tcuDefault.checked; tcuSave(d);
@@ -1857,7 +1857,7 @@ window.openTCPanel = openTCPanel;
   const tcuNow = document.getElementById('tcu-now');
   if (tcuNow) tcuNow.addEventListener('click', () => window.triggerTaCuriousNow());
 
-  // ================= Ta的吐槽（复刻星言 ta的吐槽 完整版） =================
+  // ================= TA的吐槽（复刻星言 ta的吐槽 完整版） =================
   // 定位：TA 偶尔突然吐槽你一句，然后回到正常聊天（熟悉/调侃/亲密为主，不是批评）
   const KEY4 = 'ta-roast';
   const TR_CAT_LABEL = { light: '轻微调侃', familiar: '熟悉感', sweet: '情侣式调侃', mild: '轻微嫌弃', serious: '严肃吐槽', world: '两个世界' };
@@ -1976,7 +1976,7 @@ window.openTCPanel = openTCPanel;
     const idx = el ? Number(el.dataset.idx) : -1;
     // v3.5.141：后台收到互动卡片 → 系统通知提示
     // v3.5.146：通知文本合并提示语 + 具体内容
-    if (window.bgNotifyCheck) window.bgNotifyCheck('TA吐槽了你一句：' + q.text, Date.now(), { name: 'Ta的吐槽' });
+    if (window.bgNotifyCheck) window.bgNotifyCheck('TA吐槽了你一句：' + q.text, Date.now(), { name: 'TA的吐槽' });
     // v3.6.x：用户正在聊天输入栏打字时不弹（弹窗会抢焦点打断输入法，见 chatInputFocused）
     if (popup) setTimeout(() => { if (document.hidden) return; if (chatInputFocused()) return; if (idx >= 0 && window.openRoast && !cardPopupBusy()) window.openRoast(idx); }, 400);
   }
@@ -2021,7 +2021,7 @@ window.openTCPanel = openTCPanel;
     const body = document.getElementById('qa-body');
     const title = document.getElementById('qa-title');
     if (!mask || !body) return;
-    if (title) title.textContent = 'Ta的吐槽';
+    if (title) title.textContent = 'TA的吐槽';
     body.innerHTML = '<div class="qa-hint">TA 吐槽你</div><div class="qa-q">“' + String(rec.roastText || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>' +
       '<input id="qa-input" class="qa-input" type="text" placeholder="回 TA 一句…">' +
       '<button class="qa-send" id="qa-send">回TA一句</button>';
@@ -2069,7 +2069,7 @@ window.openTCPanel = openTCPanel;
     const body = document.getElementById('qa-body');
     const title = document.getElementById('qa-title');
     if (!mask || !body) return;
-    if (title) title.textContent = 'Ta的吐槽';
+    if (title) title.textContent = 'TA的吐槽';
     body.innerHTML = '<div class="qa-q">“' + String(rec.roastText || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>' +
       '<div class="qa-mine">你说：' + String(rec.roastAnswer || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
       '<div class="qa-reply"><b>TA：</b>“' + String(rec.roastReply || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '”</div>' +
@@ -2138,7 +2138,7 @@ window.openTCPanel = openTCPanel;
       });
     });
   }
-  // Ta的吐槽 我的添加渲染配置
+  // TA的吐槽 我的添加渲染配置
   const trMineOpt = {
     load: trLoad, save: trSave, order: TR_CAT_ORDER, label: TR_CAT_LABEL,
     emptyTip: '暂未添加自定义字卡，可在上方添加',
@@ -2188,7 +2188,7 @@ window.openTCPanel = openTCPanel;
     });
   }
   const trEn = document.getElementById('tr-enable');
-  if (trEn) trEn.addEventListener('change', () => { const d = trLoad(); d.settings.enabled = trEn.checked; trSave(d); toast(trEn.checked ? 'Ta的吐槽已开启' : 'Ta的吐槽已关闭'); });
+  if (trEn) trEn.addEventListener('change', () => { const d = trLoad(); d.settings.enabled = trEn.checked; trSave(d); toast(trEn.checked ? 'TA的吐槽已开启' : 'TA的吐槽已关闭'); });
   const trDefault = document.getElementById('tr-default');
   if (trDefault) trDefault.addEventListener('change', () => {
     const d = trLoad(); d.settings.useDefault = trDefault.checked; trSave(d);
@@ -2272,7 +2272,7 @@ window.openTCPanel = openTCPanel;
   if (qaClose) qaClose.addEventListener('click', () => { document.getElementById('qa-mask').hidden = true; });
 
   // ================= 提问记录页（桌面第二页） =================
-  // 集中展示 TA的询问 / TA的小问题 / Ta的好奇 / Ta的吐槽 的历史记录
+  // 集中展示 TA的询问 / TA的小问题 / TA的好奇 / TA的吐槽 的历史记录
   function fmtDT(ts) {
     const dd = new Date(ts);
     return ('0' + dd.getHours()).slice(-2) + ':' + ('0' + dd.getMinutes()).slice(-2) + ' ' + ((dd.getMonth() + 1) + '月' + dd.getDate() + '日');
@@ -2294,7 +2294,7 @@ window.openTCPanel = openTCPanel;
         ? h.slice().reverse().map(x => '<div class="tc-listitem"><div class="tc-li-q">' + x.q + '</div><div class="tc-li-line">你的选择：' + x.my + '</div><div class="tc-li-line">TA：' + x.reply + '</div><div class="tc-li-match">' + x.match + '</div><div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
         : '<div class="ta-empty">暂无小问题记录</div>';
     }
-    // Ta的好奇
+    // TA的好奇
     const cuEl = document.getElementById('ar-curious');
     if (cuEl) {
       const h = tcuLoad().history || [];
@@ -2302,7 +2302,7 @@ window.openTCPanel = openTCPanel;
         ? h.slice().reverse().map(x => '<div class="tc-listitem"><div class="tc-li-q">' + x.q + '</div><div class="tc-li-line">你：' + x.my + '</div><div class="tc-li-line">TA：' + x.reply + '</div><div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
         : '<div class="ta-empty">暂无好奇记录</div>';
     }
-    // Ta的吐槽
+    // TA的吐槽
     const roEl = document.getElementById('ar-roast');
     if (roEl) {
       const h = trLoad().history || [];

@@ -1104,7 +1104,7 @@
 .tc-li-time { font-size:11px; color:var(--muted); margin-top:6px; }
 .tc-known { font-size:10px; color:#4e7a54; border:1px solid #bcd8c2; border-radius:6px; padding:0 5px; margin-left:4px; }
 
-/* ===== 通用回答弹层（Ta的好奇 / Ta的吐槽） ===== */
+/* ===== 通用回答弹层（TA的好奇 / TA的吐槽） ===== */
 .qa-mask {
   position:fixed; inset:0; z-index:88;
   background:rgba(0,0,0,.35);

@@ -9,6 +9,15 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-19（本会话，用户反馈「联系人的回复设置没有按已设置保存的数字和概率触发」）
+- [本会话·诊断完成]（用户反馈「联系人的回复设置没有按已设置保存的数字和概率触发」——**结论：线上版本（origin/main 25a8cbd）缺 v3.7.x 主动发送修复，对方未提交批次已含全部修复，待构建部署；本会话已在隔离副本构建 + CDP 全链路验证通过**）：未动仓库任何文件（对方正在编辑中）。排查与验证：
+  1. **线上版本 bug 确认**（`git show origin/main:src/js/chat.js`）：①`Math.min(30, as-min)` 把「发送间隔最短」>30 分钟一律压回 30 分钟（设 60 分钟实际 30 分钟就来）；②无保存后重排（改了概率/间隔要等挂起定时器最长几小时才生效）；③无 contact-switched 重排（切桌面后旧桌面定时器继续用旧设置）；④dnd-en=1 时 asMin=1（秒）——免打扰反而 1 秒就发。**均已在对方未提交的 chat.js v3.7.x 批次中修复**。
+  2. **隔离副本验证**（temp 目录复制 src + node build.mjs + CDP 390×844）：①设置页 UI 保存全链路（stepper ± 点击落库、直接输入数字落库、保存按钮、回显）7/7；②被动回复 rs-min=2 → 首条 2.5s 到达、条数按 reply-min/max=2~3、rn-prob=100 只发已读不回、无 JS 错误；③UI 设 rs-min=8 → 回复 9.15s 到达；④主动发送 as-min=as-max=1 → 60s 到达；⑤保存 as-min=2 后定时器立即重排（60s 内不再发）；⑥切到新桌面 B（as-min=1）→ 55s 按 B 的设置发，聊天无 A 残留。
+  3. 结论：**当前 src 已正确按保存的数字/概率触发，问题只在未部署**。请构建者（对方批次完成后）执行 `node build.mjs` + `npm run verify` + 提交推送（对方当前批次：chat.js/chatcard.js/reply-settings.js/personalize.js/template.html/home.css 等未提交改动 + 本会话无改动）。临时测试脚本在 temp 目录（mochi-replytest），未入库。
+
+### 2026-08-19
+- [本会话] 完成（用户需求「开屏公告里『【关于mochi字卡】』标题删掉」——**未构建未提交**，请构建者统一执行）：移除开屏公告标题「关于 Mochi 字卡」——`src/template.html` 删除 `.splash-notice-title` 行（离线兜底）、`src/pwa/notice.json` 删除 `title` 字段（在线覆盖源；clock.js 对缺失 title 已有兼容，不影响）。涉及 `src/template.html`（AI-B 域，用户直接反馈故越界，仅删文案行无逻辑改动，请知悉）。**未构建未提交**，等待统一构建/提交。
+
 ### 2026-08-19
 - [本会话] 完成（用户需求「装修模式组件库可直接看到小组件样式预览；新增日历/时间等桌面小组件」——**已构建 verify 10/10，未提交**）：`src/template.html` + `src/js/personalize.js` + `src/css/home.css`（AI-B 域为主，home.css 桌面组件样式历来由此方改）。①**组件库静态预览**：`openDeskLib` 每项左侧加 72×52 缩略图（`WIDGET_PREV_HTML`，纯 HTML+CSS 示意，不依赖真实数据/事件），右侧名称+位置+按钮（`.dl-prev/.dl-meta/.dl-name`）；图片项也加预览。②**4 个新组件**（默认放 `#desk-widget-pool` 隐藏池，用户从组件库添加）：**时钟** `desk-clock`（大时:分 + 星期 + 月日，5 秒更新）、**月历** `desk-calendar`（当月 7 列网格，高亮今天，有留言日子标红点 `cal-my-<date>`，点击跳日历页）、**计时器** `desk-timer`（正计时/倒计时切换，开始/暂停/继续/重置，倒计时输分钟数，到 0 提醒+震动）、**纪念日倒计时** `desk-anniv`（读 `love-start`+`mem-extras` 找未来最近纪念日显示天数）。渲染入口 `renderDeskWidgets` 在启动/`applyDeskLayout`/`contact-switched` 调用，时钟/计时器 init 幂等。③**回应对方 12:33 警告**：home.css 配套样式已补全（`.desk-clock/.desk-cal/.desk-timer/.desk-anniv` + `.dcal-grid` + `.dt-btn` 等），12:38 构建产物完整。`node --check` 通过，verify 10/10。**未提交**，等待统一提交/部署。⚠️ 本次构建同时带上对方已保存改动（chat.js/chatcard.js/reply-settings.js，语法均通过），一并进产物。
 - [本会话] 单卡编辑功能**并行重复实现确认**（用户需求「自定义聊天字卡单卡可点击编辑」）：本会话在 chatcard.js 独立实现了相同的 openEditCard/updateCardDom（12:32 构建时发现对方 e7b9a93 已提交同功能，代码一致无冲突）。本会话**净增量 = 搜索态原始索引修复**：对方提交的版本在搜索过滤下 `data-idx` 是过滤后索引，搜索态点击编辑会按错位索引改错字卡（CDP 复现）；已修复——搜索分支把元素映射为 `{c, oi}` 保留原始索引，`render()` flat 构建按 `q` 分支取值。**已构建 verify 10/10 + CDP 端到端 19/19**（点击文字卡弹编辑/预填/保存落库/计数不变/未变化不保存/组内重复拦截/空内容拦截/emoji·kaomoji·拍一拍可编辑/图片卡仍开大图/管理模式仍勾选/搜索态编辑不串位/无 JS 错误），**未提交**（产物与对方进行中批次耦合，见下）。
@@ -18,6 +27,9 @@
 ### 2026-08-19
 - [本会话] 完成（用户反馈「聊天更多→拍一拍：顶部已有分组切换，下方字卡列表不应再显示分组标题」——**已构建 verify 10/10，已提交 e7b9a93，未 push**）：`src/js/chat.js`（AI-A 域，用户直接反馈故越界修复）——`renderPokeCard()` 移除 `.cc-group-header` 分组标题渲染，字卡直接平铺（顶部 `pokeGroupsBar` 切换栏已承担分组标识）。本次构建同时带上 AI-A 累积批次（ta-ask 两池混合/chatcard/feed/avatar-lib/bg-keep/chat-main.css 等），一并提交。
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
+
+### 2026-08-19
+- [本会话] 完成（用户反馈「字卡库里 TA 没有统一大写」——**未构建未提交**，请构建者统一执行）：全仓库 `Ta的好奇/Ta的吐槽` → `TA的好奇/TA的吐槽`（中文语境大小写统一）。涉及 `src/template.html`（**AI-B 域，用户直接反馈故越界修复，仅文案大小写，无逻辑改动，请知悉**）、`src/js/ta-ask.js`（通知名/弹窗标题/toast/注释）、`src/css/chat-pages.css`（注释）。已 grep 复核 `[^a-zA-Z0-9_-]Ta[^a-zA-Z0-9_-]` 零残留（剩余 ta- 前缀均为 id/class/枚举值非显示文本）。**未构建未提交**，等待统一提交/部署。
 
 ### 2026-08-19
 - [本会话] 完成（用户需求「问问TA 单选题：联系人只能用选项回复；点击已作答卡片可展开查看设置的单选答案」——**未构建未提交**，请构建者统一执行）：`src/js/chat.js` + `src/css/chat-main.css` + `src/css/dark.css`（均 AI-A 域）。①**单选题只用选项回复**：submitChatAsk 单选分支 TA 的聊天回复消息由「预设回应/字卡库混合」改为**选项文字本身**（`addIn(text)`），卡片不再显示「TA：预设回应」行；预设回应仍存于 askOptions 里供展开查看（旧历史数据不受影响）。②**已作答卡片点击展开**：聊天点击已作答的问问TA 单选题卡片 → 展开「选项查看」区（复用 `.msg-inplace`，再点收起），列出我给 TA 设置的全部选项+各选项预设回应，TA 选中的选项高亮（`.ip-opt-row.sel`）；展开同时照常切换收藏按钮显示；点击展开区内部不折叠。新增 `.ip-opt-row/.ip-opt-t/.ip-opt-reply` 样式 + dark.css 暗色覆盖。`node --check` 通过。**未构建未提交**，等待统一提交/部署。
