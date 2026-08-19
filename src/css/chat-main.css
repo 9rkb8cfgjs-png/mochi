@@ -404,6 +404,31 @@
 .more-item svg { width:22px; height:22px; }
 .more-item span { font-size:11px; }
 
+/* 通话半框（复用 .poke-card 容器）：状态行 + 拨打/挂断大按钮 + 通话小框开关 */
+#chat-call-panel .poke-card-scroll { min-height:0; max-height:none; }
+.call-panel-status {
+  text-align:center; font-size:13px; font-weight:600; color:var(--ink);
+  padding:10px 0 12px;
+}
+.call-panel-dial,
+.call-panel-hang {
+  width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:14px; margin-bottom:10px; border:none; border-radius:16px;
+  font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
+}
+.call-panel-dial { background:var(--ink); color:#fff; }
+.call-panel-hang { background:#e5484d; color:#fff; }
+.call-panel-dial:active, .call-panel-hang:active { opacity:.85; }
+.call-panel-dial svg, .call-panel-hang svg { width:18px; height:18px; flex-shrink:0; }
+.call-panel-switch { margin:6px 2px 4px; }
+.call-panel-switch .call-panel-switch-sub {
+  display:block; font-style:normal; font-weight:400; font-size:11px;
+  color:var(--muted); margin-top:2px; line-height:1.4;
+}
+.call-panel-hint {
+  font-size:11px; color:var(--muted); padding:2px 4px 8px; line-height:1.6;
+}
+
 /* 猜拳半框（复用 .poke-card 容器）：战绩 + 提示 + 三个出拳按钮 */
 #chat-rps-panel { height:auto; max-height:56%; }
 #chat-rps-panel .poke-card-scroll { min-height:0; max-height:none; }
@@ -1016,32 +1041,60 @@
 }
 .rp-send:active { opacity:.85; }
 
-/* ===== 红包消息卡片（居中白底，简约白灰） ===== */
+/* ===== 红包消息卡片（微信红色风格，可叠加封面图） ===== */
 .msg-rp { align-self:center; width:100%; display:flex; justify-content:center; padding:2px 0; }
 .msg-rp-card {
   max-width:78%; min-width:220px; text-align:center;
-  background:#fff; border:1px solid rgba(0,0,0,.1);
-  border-radius:16px; padding:14px 18px;
-  box-shadow:0 2px 8px rgba(0,0,0,.05);
-  cursor:pointer; position:relative;
+  background:linear-gradient(135deg, #ee3d34, #c92a2a);
+  border:none; border-radius:16px; padding:16px 18px;
+  box-shadow:0 4px 14px rgba(238,61,52,.28);
+  cursor:pointer; position:relative; overflow:hidden;
 }
-.msg-rp-top { display:flex; align-items:center; justify-content:center; gap:6px; color:var(--muted); }
+.msg-rp-card.has-cover { background-size:cover; background-position:center; }
+.msg-rp-top { display:flex; align-items:center; justify-content:center; gap:6px; color:rgba(255,255,255,.88); }
 .msg-rp-ico { display:inline-flex; }
-.msg-rp-ico svg { width:18px; height:18px; color:#888; }
-.msg-rp-label { font-size:12px; font-weight:600; color:#888; }
-.msg-rp-amt { font-size:24px; font-weight:800; color:var(--ink); margin:8px 0 4px; font-variant-numeric:tabular-nums; }
-.msg-rp-wish { font-size:13px; color:var(--ink); margin-bottom:10px; }
+.msg-rp-ico svg { width:18px; height:18px; color:#fff; }
+.msg-rp-label { font-size:12px; font-weight:600; color:rgba(255,255,255,.88); }
+.msg-rp-amt { font-size:26px; font-weight:800; color:#fff; margin:8px 0 4px; font-variant-numeric:tabular-nums; }
+.msg-rp-wish { font-size:13px; color:rgba(255,255,255,.92); margin-bottom:10px; }
 .msg-rp-foot {
   display:flex; justify-content:space-between; align-items:center;
-  font-size:11px; color:var(--muted);
-  padding-top:8px; border-top:1px dashed rgba(0,0,0,.1);
+  font-size:11px; color:rgba(255,255,255,.72);
+  padding-top:8px; border-top:1px solid rgba(255,255,255,.18);
 }
 .msg-rp-status { font-weight:600; }
-.msg-rp-card.opened .msg-rp-status { color:var(--ink); }
-.msg-rp-card.opened { border-color:rgba(0,0,0,.18); }
-.msg-rp-card.expired { opacity:.6; }
-.msg-rp-card.expired .msg-rp-status { color:var(--muted); }
+.msg-rp-card.opened { filter:saturate(.65) brightness(.82); }
+.msg-rp-card.expired { filter:grayscale(.55) brightness(.78); }
 .rp-balance {
   font-size:11px; color:var(--muted); text-align:center;
   padding:4px 0 8px; border-bottom:1px solid rgba(0,0,0,.06); margin-bottom:10px;
 }
+/* 红包封面上传区 */
+.rp-cover-row { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.rp-cover-preview {
+  width:72px; height:48px; border-radius:8px; flex-shrink:0;
+  background:linear-gradient(135deg, #ee3d34, #c92a2a);
+  background-size:cover; background-position:center;
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden; border:1px solid rgba(0,0,0,.1);
+}
+.rp-cover-preview span { font-size:9px; color:rgba(255,255,255,.9); text-align:center; padding:0 4px; }
+.rp-cover-actions { display:flex; flex-direction:column; gap:6px; }
+.rp-cover-btn {
+  padding:6px 12px; font-size:12px; font-weight:600;
+  border:1px solid rgba(0,0,0,.12); border-radius:8px;
+  background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.rp-cover-btn:active { background:rgba(0,0,0,.05); }
+.rp-cover-btn[hidden] { display:none; }
+/* 领取概率档位 */
+.rp-rate-row { display:flex; gap:8px; }
+.rp-rate {
+  flex:1; padding:8px 0; font-size:12px; font-weight:600;
+  border:1px solid rgba(0,0,0,.12); border-radius:10px;
+  background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.rp-rate.sel { background:#111; color:#fff; border-color:#111; }
+.rp-rate:active { transform:translateY(1px); }

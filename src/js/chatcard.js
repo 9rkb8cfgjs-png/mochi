@@ -206,6 +206,8 @@
       c.textContent = label + ' (' + n + ')';
       c.addEventListener('click', () => {
         curGroup = val;
+        // v3.7.x：管理模式放宽视图变化时清空已选——避免选中屏幕外（被过滤隐藏）的卡
+        if (manageMode) { selected.clear(); updateCount(); }
         renderGroupsBar();
         render();
       });
@@ -565,16 +567,18 @@
     // v3.6.x：120ms 防抖——字卡多时每敲一个字全量渲染会卡，输入停顿后再筛
     let searchTimer = null;
     searchInput.addEventListener('input', () => {
-      // 管理模式禁用搜索——搜索过滤会让勾选下标与原始数组错位，
-      // 删除/移动会误删别的卡片（数据丢失），输入立即清空
-      if (manageMode) { searchInput.value = ''; return; }
+      // v3.7.x：管理模式放开搜索——搜索过滤已保留原始索引（{c,oi}），
+      // 勾选删除/移动按原始索引匹配不会错位（v3.5.130 禁用的误删风险已消除）；
+      // 过滤视图变化时清空已选并刷新计数，避免残留选中屏幕外的卡
       q = searchInput.value.trim();
+      if (manageMode) { selected.clear(); updateCount(); }
       clearTimeout(searchTimer);
       searchTimer = setTimeout(render, 120);
     });
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         searchInput.value = ''; q = '';
+        if (manageMode) { selected.clear(); updateCount(); }
         clearTimeout(searchTimer);
         render();
         searchInput.blur();
@@ -683,7 +687,15 @@
   }
   function selectedKeys() {
     const keys = [];
-    (groups[cur] || []).forEach(([gname, arr]) => arr.forEach((c, i) => keys.push(gname + '\u0001' + i)));
+    (groups[cur] || []).forEach(([gname, arr]) => {
+      if (curGroup && curGroup !== gname) return;
+      arr.forEach((c, i) => {
+        // v3.7.x：搜索态下「全选」只选当前过滤视图可见的卡（与 render 过滤条件一致），
+        // 避免连带选中屏幕外的卡片
+        if (q && !((typeof c === 'string' && c.indexOf('data:') !== 0) && c.indexOf(q) >= 0)) return;
+        keys.push(gname + '\u0001' + i);
+      });
+    });
     return keys;
   }
   function delSelected() {
@@ -703,8 +715,10 @@
     selected.clear();
     saveGroups(groups);
     // v3.6.x：局部移除被删卡片 + 重建受影响分组，不再整页 render（删除卡顿主因）；
-    // 但分块渲染进行中时不能局部更新——旧批次会把已删的卡重新挂载，改走全量 render
-    if (rendering) { render(); updateCount(); toast('已删除 ' + removed + ' 张字卡'); return; }
+    // 但分块渲染进行中时不能局部更新——旧批次会把已删的卡重新挂载，改走全量 render；
+    // v3.7.x：搜索过滤开启时同样全量 render——rebuildGroupAfterRemove 重建整组不带
+    // 搜索过滤，会把不匹配关键词的卡片重新显示出来
+    if (rendering || q) { render(); updateCount(); toast('已删除 ' + removed + ' 张字卡'); return; }
     touched.forEach((gname) => {
       rebuildGroupAfterRemove(gname);
     });
@@ -735,13 +749,9 @@
   function enterManage() {
     manageMode = true;
     selected.clear();
-    // v3.5.130：管理模式禁用搜索——搜索过滤会让勾选下标与原始数组错位，
-    // 删除/移动会误删别的卡片（数据丢失）
-    q = '';
-    const qEl = document.getElementById('cc-search-input');
-    if (qEl) qEl.value = '';
-    // v3.6.x：清空搜索后必须重新渲染——否则列表仍是搜索过滤后的子集，
-    // 勾选用的是过滤后索引，删除/移动按原始数组索引匹配会错位误删别的字卡
+    // v3.7.x：管理模式放开搜索——保留当前搜索/分组筛选视图继续筛选；
+    // 搜索过滤已保留原始索引（{c,oi}），勾选删除/移动按原始索引匹配不会错位
+    // （v3.5.130 禁用搜索的原因——过滤后索引与原始数组错位——已被 v3.7.x 修复）
     render();
     list.classList.add('cc-managing');
     document.querySelectorAll('.cc-toolbar').forEach(t => { t.style.display = 'none'; });

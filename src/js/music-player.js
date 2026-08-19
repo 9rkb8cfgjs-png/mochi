@@ -1377,9 +1377,18 @@
     }
     revokeObjectUrl();
     playRejected = false;
+    endedHandled = false;
     disarmAutoResume();
     clearStallGuard();
     if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+    // v3.9.x：真正停止（非切歌）后让 bg-keep 恢复"后台保活"媒体会话条；
+    // 切歌时 currentId 已指向新歌，此处不触发
+    setTimeout(function () {
+      if (!audio && !currentId) {
+        try { if (navigator.mediaSession) navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+        try { document.dispatchEvent(new Event('music-media-release')); } catch (e) {}
+      }
+    }, 0);
   }
   // v3.5.112：内置种子歌曲判定与本地旋律兜底（共享：外链播放失败 / 本地数据缺失时使用）
   function seedIdxOf(m) {
@@ -1440,6 +1449,7 @@
     renderLibrary();
     startProgress();
     addRecord(m.id, '');
+    updateMediaSession(true);
   }
   // v3.6.x：自动播放被拒后的手势恢复——移动端 play() 被拒（异步链丢手势）后，
   // 挂一次性手势监听，用户下一次触摸/点击（任意位置）时 audio.play()，
@@ -1582,13 +1592,62 @@
     if (idx >= 0) return; // 兜底合成/播放进行中，静默等待结果
     toast('播放失败：网络链接可能已失效');
   }
+  // v3.9.x：onended 兜底——网易云 meting 外链某些流不触发 ended 事件（duration=Infinity
+  // 或 chunked 流无 Content-Length），导致自动下一首/循环/随机全失效，只能手动切歌。
+  // endedHandled 去重：ended 事件与 startProgress 的 checkAutoEnd 任一先到都只处理一次。
+  let endedHandled = false;
+  function handleEnded() {
+    if (endedHandled) return;
+    endedHandled = true;
+    revokeObjectUrl();
+    let handled = false;
+    try { handled = maybeTAAutoAction(); } catch(e) {}
+    if (!handled) next();
+  }
+  function checkAutoEnd() {
+    if (!audio || endedHandled || audio.paused) return;
+    if (audio.ended) { handleEnded(); return; }
+    const d = audio.duration;
+    if (!d || !isFinite(d)) {
+      // 流式音频（duration=Infinity）：用 buffered 末尾兜底
+      try {
+        if (audio.buffered && audio.buffered.length > 0) {
+          const end = audio.buffered.end(audio.buffered.length - 1);
+          if (end > 1 && audio.currentTime >= end - 0.3) handleEnded();
+        }
+      } catch (e) {}
+      return;
+    }
+    if (audio.currentTime > 0 && audio.currentTime >= d - 0.15) handleEnded();
+  }
+  // v3.9.x：MediaSession——通知栏/锁屏媒体控制条。播放时覆盖 bg-keep 的"后台保活"条，
+  // 让用户在通知栏直接切歌/暂停；停止后 dispatch music-media-release 让 bg-keep 恢复
+  function updateMediaSession(playing) {
+    try {
+      if (!('mediaSession' in navigator) || !navigator.mediaSession) return;
+      const m = findTrack(currentId);
+      if (!m) return;
+      if (window.MediaMetadata) {
+        const artwork = m.cover ? [{ src: m.cover, sizes: '512x512', type: 'image/jpeg' }] : [];
+        navigator.mediaSession.metadata = new window.MediaMetadata({
+          title: m.name || '未知歌曲',
+          artist: m.artist || '未知歌手',
+          album: 'Mochi 音乐',
+          artwork: artwork
+        });
+      }
+      try { navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'; } catch (e) {}
+      try {
+        navigator.mediaSession.setActionHandler('play', function () { try { toggle(); } catch (e) {} });
+        navigator.mediaSession.setActionHandler('pause', function () { try { toggle(); } catch (e) {} });
+        navigator.mediaSession.setActionHandler('nexttrack', function () { try { next(); } catch (e) {} });
+        navigator.mediaSession.setActionHandler('previoustrack', function () { try { prev(); } catch (e) {} });
+      } catch (e) {}
+      try { window.__musicPlaying = playing; } catch (e) {}
+    } catch (e) {}
+  }
   function setupHandlers(m) {
-    audio.onended = function () {
-      revokeObjectUrl();
-      let handled = false;
-      try { handled = maybeTAAutoAction(); } catch(e) {}
-      if (!handled) next();
-    };
+    audio.onended = function () { handleEnded(); };
     audio.onerror = function () {
       // v3.5.112：网易云外链播放失败 → 若为内置种子歌曲，自动回退本地合成旋律；
       // 本地旋律也失败时不再递归（demoFallbackBusy 置位）
@@ -1620,8 +1679,8 @@
         } else { armAutoResume(); }
       }
     };
-    audio.onplay = function () { playRejected = false; clearStallGuard(); disarmAutoResume(); syncPlayIcons(true); };
-    audio.onpause = function () { syncPlayIcons(false); };
+    audio.onplay = function () { playRejected = false; clearStallGuard(); disarmAutoResume(); syncPlayIcons(true); try { if (navigator.mediaSession) navigator.mediaSession.playbackState = 'playing'; } catch (e) {} try { window.__musicPlaying = true; } catch (e) {} };
+    audio.onpause = function () { syncPlayIcons(false); try { if (navigator.mediaSession) navigator.mediaSession.playbackState = 'paused'; } catch (e) {} try { window.__musicPlaying = false; } catch (e) {} };
   }
   function playTrack(id) {
     const m = findTrack(id);
@@ -1701,12 +1760,12 @@
   function startProgress() {
     if (progressTimer) clearInterval(progressTimer);
     progressTimer = setInterval(() => {
-      if (!audio || !audio.duration) return;
-      // v3.6.x：有真实播放进度 → 取消停滞守卫（正常播放/慢网缓冲都算有进度）
+      if (!audio) return;
+      checkAutoEnd();
+      if (!audio.duration) return;
       if (audio.currentTime > 0) clearStallGuard();
       const cur = document.getElementById('sm-pb-cur');
       if (cur) cur.textContent = fmtDur(audio.currentTime);
-      // 悬浮小框进度
       const fill = document.getElementById('sm-f-fill');
       if (fill) fill.style.width = Math.min(100, audio.currentTime / audio.duration * 100) + '%';
     }, 500);
@@ -2477,44 +2536,58 @@
   }
 
   // ================= 初始化 =================
-  loadAll();
-  // 迁移：默认歌单里旧版占位名（网易云音乐-xxxx）→ 已知歌名/封面，其余异步识别；
-  // 删除默认歌单第四首（28815250），第三首（2064961530）保留并异步识别歌名
-  {
-    const known = { 2613048732: { name: 'Moonlit Dream', artist: 'DLSS · shell（月光梦）', cover: 'https://p2.music.126.net/cXuoNwFzgFoQF7bGvC2mIQ==/109951169832660411.jpg' }, 27538343: { name: 'Baby', artist: 'EXO-K', cover: '' } };
-    let changed = false;
-    const before = library.length;
-    library = library.filter(m => !(m.playlistId === 'spl_default' && (m.neteaseId === '28815250' || m.neteaseId === '2064961530')));
-    if (library.length !== before) changed = true;
-    library.forEach(m => {
-      if (m.playlistId === 'spl_default' && m.neteaseId) {
-        const k = known[m.neteaseId];
-        if (k && (!m.name || m.name.indexOf('网易云音乐-') === 0)) {
-          m.name = k.name; m.artist = k.artist; changed = true;
-        }
-        if (k && k.cover && !m.cover) { m.cover = k.cover; changed = true; }
-      }
-    });
-    if (changed) saveLibrary();
-    // 仍为占位名的默认歌单歌曲：异步识别
-    library.forEach(m => {
-      if (m.playlistId === 'spl_default' && m.neteaseId && m.name && m.name.indexOf('网易云音乐-') === 0) {
-        fetchNeteaseInfo(String(m.neteaseId), (info) => {
-          const mm = findTrack(m.id);
-          if (mm && info && info.name) {
-            mm.name = info.name;
-            if (info.artist) mm.artist = info.artist;
-            if (info.duration && !mm.duration) mm.duration = info.duration;
-            saveLibrary();
-            renderPage();
+  // v3.9.x：loadAll 必须在 IndexedDB 回填完成后执行——music-library 可能是大键
+  //（导入大量网易云歌单后 JSON >200KB）只进 IDB 不进 localStorage；若 loadAll 先于
+  // idbRestore 执行，读到空会触发种子自愈并 saveLibrary 覆盖 IDB，导入的歌单刷新
+  // 后永久丢失。故推迟到数据就绪（__mochiDataReady / mochi-restore-done）后再加载。
+  function bootMusic() {
+    loadAll();
+    // 迁移：默认歌单里旧版占位名（网易云音乐-xxxx）→ 已知歌名/封面，其余异步识别；
+    // 删除默认歌单第四首（28815250），第三首（2064961530）保留并异步识别歌名
+    {
+      const known = { 2613048732: { name: 'Moonlit Dream', artist: 'DLSS · shell（月光梦）', cover: 'https://p2.music.126.net/cXuoNwFzgFoQF7bGvC2mIQ==/109951169832660411.jpg' }, 27538343: { name: 'Baby', artist: 'EXO-K', cover: '' } };
+      let changed = false;
+      const before = library.length;
+      library = library.filter(m => !(m.playlistId === 'spl_default' && (m.neteaseId === '28815250' || m.neteaseId === '2064961530')));
+      if (library.length !== before) changed = true;
+      library.forEach(m => {
+        if (m.playlistId === 'spl_default' && m.neteaseId) {
+          const k = known[m.neteaseId];
+          if (k && (!m.name || m.name.indexOf('网易云音乐-') === 0)) {
+            m.name = k.name; m.artist = k.artist; changed = true;
           }
-        });
-      }
-    });
+          if (k && k.cover && !m.cover) { m.cover = k.cover; changed = true; }
+        }
+      });
+      if (changed) saveLibrary();
+      // 仍为占位名的默认歌单歌曲：异步识别
+      library.forEach(m => {
+        if (m.playlistId === 'spl_default' && m.neteaseId && m.name && m.name.indexOf('网易云音乐-') === 0) {
+          fetchNeteaseInfo(String(m.neteaseId), (info) => {
+            const mm = findTrack(m.id);
+            if (mm && info && info.name) {
+              mm.name = info.name;
+              if (info.artist) mm.artist = info.artist;
+              if (info.duration && !mm.duration) mm.duration = info.duration;
+              saveLibrary();
+              renderPage();
+            }
+          });
+        }
+      });
+    }
+    renderPage();
   }
   setupFloatDrag();
   bindWidget();
-  renderPage();
+  if (window.__mochiDataReady) {
+    bootMusic();
+  } else {
+    document.addEventListener('mochi-restore-done', function h() {
+      document.removeEventListener('mochi-restore-done', h);
+      bootMusic();
+    });
+  }
 
   // v3.6.x：多桌面——切换联系人后重新加载歌单/播放列表/历史（store 动态绑定，
   // loadAll 会读新桌面的 music-* 键），并停止正在播放的旧桌面歌曲（防止串桌面继续放）

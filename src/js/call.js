@@ -101,6 +101,18 @@
   } catch (e) {}
   applyCallBg();
 
+  // v3.7.x：通话小框开关（每联系人桌面独立，默认开启）
+  //   - 开启：接通后 2 秒自动最小化为底部悬浮小框（原行为）
+  //   - 隐藏：接通后保持通话大面板常驻；点「缩小」收起进后台，不显示悬浮小框
+  const CALL_MINI_KEY = 'call-mini-enabled';
+  function callMiniEnabled() {
+    try { return store.get(CALL_MINI_KEY) !== '0'; } catch (e) { return true; }
+  }
+  window.getCallMiniEnabled = function () { return callMiniEnabled(); };
+  window.setCallMiniEnabled = function (v) {
+    try { store.set(CALL_MINI_KEY, v ? '1' : '0'); } catch (e) {}
+  };
+
   // ---- 来电 / 去电 / 通话中 ----
   let currentCall = null; // { direction, status, startTime, connectedTime, timer }
   let durationTimer = null;
@@ -181,15 +193,20 @@
     if (answerBtn) answerBtn.hidden = !(mode === 'ringing');
     if (miniBtn) miniBtn.hidden = !(mode === 'calling' || mode === 'active');
   }
-  // 缩小到小框（弹层 → 底部小框）
+  // 缩小到小框（弹层 → 底部小框；小框被隐藏时仅收起大面板，通话转后台）
+  // v3.7.x：通话小框开关关闭 → 不显示悬浮小框（后台通话，经通话半框挂断）
   function minimizeCall() {
     if (!currentCall) return;
     if (mask) mask.hidden = true;
     if (cdEl) cdEl.hidden = true;
     if (mini) {
-      if (miniName) miniName.textContent = currentCall.name || partnerName();
-      fillAv(miniAv, currentCall.av || partnerAv());
-      mini.hidden = false;
+      if (callMiniEnabled()) {
+        if (miniName) miniName.textContent = currentCall.name || partnerName();
+        fillAv(miniAv, currentCall.av || partnerAv());
+        mini.hidden = false;
+      } else {
+        mini.hidden = true;
+      }
     }
   }
   function stopTimers() {
@@ -354,14 +371,16 @@
     setMaskBtns('active');
     if (window.chatAddSystem) window.chatAddSystem('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg> 通话已接通');
     startCallDuration();
-    // 2 秒后最小化小框（星言一致）
+    // 2 秒后最小化小框（星言一致）；v3.7.x：小框开关隐藏时保持大面板常驻
     setTimeout(() => {
       if (currentCall && currentCall.status === 'connected') {
-        if (mask) mask.hidden = true;
-        if (mini) {
-          if (miniName) miniName.textContent = currentCall.name || partnerName();
-          fillAv(miniAv, currentCall.av || partnerAv());
-          mini.hidden = false;
+        if (callMiniEnabled()) {
+          if (mask) mask.hidden = true;
+          if (mini) {
+            if (miniName) miniName.textContent = currentCall.name || partnerName();
+            fillAv(miniAv, currentCall.av || partnerAv());
+            mini.hidden = false;
+          }
         }
       }
     }, 2000);
@@ -410,10 +429,13 @@
         callRef.status = 'connected';
         if (statusEl) statusEl.textContent = '正在通话...';
         startCallDuration();
+        // v3.7.x：小框开关隐藏时接通后保持大面板常驻（不自动最小化）
         setTimeout(() => {
           if (currentCall === callRef && callRef.status === 'connected') {
-            if (mask) mask.hidden = true;
-            if (mini) { if (miniName) miniName.textContent = callRef.name || partnerName(); fillAv(miniAv, callRef.av || partnerAv()); mini.hidden = false; }
+            if (callMiniEnabled()) {
+              if (mask) mask.hidden = true;
+              if (mini) { if (miniName) miniName.textContent = callRef.name || partnerName(); fillAv(miniAv, callRef.av || partnerAv()); mini.hidden = false; }
+            }
           }
         }, 2000);
       } else {
@@ -502,6 +524,18 @@
   // v3.6.x：暴露给聊天模块——TA 回复消息/主动发消息后按「通话设置-来电概率」掷一次来电
   // （与 maybeMusicRequest 同模式：chat.js 只调 window 钩子，来电逻辑全在本模块）
   window.callMaybeTrigger = maybeIncoming;
+  // v3.7.x：通话半框用的状态快照 + 挂断（chat.js 打开半框时每秒轮询显示）
+  window.getCallState = function () {
+    if (!currentCall) return null;
+    const start = currentCall.connectedTime || currentCall.startTime;
+    return {
+      status: currentCall.status,           // ringing(来电) | calling(呼出中) | connected(通话中)
+      direction: currentCall.direction,     // in | out
+      name: currentCall.name || partnerName(),
+      durationSec: Math.max(0, Math.floor((Date.now() - start) / 1000))
+    };
+  };
+  window.hangupCall = function () { userHangup(); };
   setTimeout(() => {
     setInterval(maybeIncoming, 60000);
     maybeIncoming();

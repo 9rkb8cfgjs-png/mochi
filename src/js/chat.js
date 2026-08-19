@@ -944,9 +944,9 @@
     if (rec.special === 'rps') {
       m.className = 'msg-rps';
       const rpsIco = {
-        rock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11V8.5a1.5 1.5 0 013 0V11"/><path d="M8 11V7a1.5 1.5 0 013 0v4"/><path d="M11 11V8a1.5 1.5 0 013 0v3.5"/><path d="M14 11.5V9a1.5 1.5 0 013 0v6c0 3-2.5 5-5.5 5-1.7 0-3-.6-4-1.6L5 16"/></svg>',
-        scissors: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>',
-        paper: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>'
+        rock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V9a2 2 0 012-2h6a2 2 0 012 2v2"/><path d="M7 11h12v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6z"/><path d="M10 9v2M14 9v2"/><path d="M7 13c-1.5 0-2 1-2 2s.5 2 2 2"/></svg>',
+        scissors: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9"/><path d="M14 4v8"/><path d="M7 11h12v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6z"/><path d="M7 13c-1.5 0-2 1-2 2s.5 2 2 2"/></svg>',
+        paper: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12V9a1 1 0 012 0v3"/><path d="M12 11V6a1 1 0 012 0v5"/><path d="M16 11V7a1 1 0 012 0v4"/><path d="M6 13c-1.5 0-2 1-2 2s.5 3 2 4c1 .8 3 .8 4 .8h6c2 0 3-1.5 3-3.5v-6"/></svg>'
       };
       const rpsName = { rock: '石头', scissors: '剪刀', paper: '布' };
       const resTxt = rec.rpsResult > 0 ? '你赢了' : rec.rpsResult < 0 ? '你输了' : '平局';
@@ -979,6 +979,16 @@
         '</div>' +
         favHeartHtml() +
         '</div>';
+      if (rec.rpCover) {
+        const cover = rpCoverGet();
+        if (cover) {
+          const card = m.querySelector('.msg-rp-card');
+          if (card) {
+            card.classList.add('has-cover');
+            card.style.backgroundImage = 'linear-gradient(rgba(180,30,30,.45),rgba(140,20,20,.6)), url("' + cover + '")';
+          }
+        }
+      }
       body.appendChild(m);
       maybeScrollChatBottom();
       return m;
@@ -2537,11 +2547,10 @@ function partialRetractMsg(msgEl, side) {
     if (rpNameEl) rpNameEl.textContent = store.get('lbl-partner') || 'TA';
     if (isQixiToday()) {
       if (rpQixiTag) rpQixiTag.hidden = false;
-      if (rpQixiSection) rpQixiSection.classList.add('qixi-today');
+      if (rpQixiSection) { rpQixiSection.hidden = false; rpQixiSection.classList.add('qixi-today'); }
       if (rpWishInput) rpWishInput.placeholder = '七夕快乐';
     } else {
-      if (rpQixiTag) rpQixiTag.hidden = true;
-      if (rpQixiSection) rpQixiSection.classList.remove('qixi-today');
+      if (rpQixiSection) { rpQixiSection.hidden = true; rpQixiSection.classList.remove('qixi-today'); }
       if (rpWishInput) rpWishInput.placeholder = '心意';
     }
     rpSide = 'out';
@@ -2551,8 +2560,11 @@ function partialRetractMsg(msgEl, side) {
     if (rpRandVal) rpRandVal.textContent = '';
     rpPanel.querySelectorAll('.rp-side').forEach(b => b.classList.toggle('sel', b.dataset.rpside === 'out'));
     rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
+    const curRate = store.get('rp-rate-mode') || 'mid';
+    rpPanel.querySelectorAll('.rp-rate').forEach(b => b.classList.toggle('sel', b.dataset.rprate === curRate));
     closeIme();
     rpRenderBalance();
+    rpRenderCover();
     rpPanel.hidden = false;
   }
   function closeRpPanel() { if (rpPanel) rpPanel.hidden = true; }
@@ -2590,6 +2602,14 @@ function partialRetractMsg(msgEl, side) {
         if (rpRandVal) rpRandVal.textContent = '';
       });
     }
+    // 领取概率档位
+    rpPanel.querySelectorAll('.rp-rate').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        store.set('rp-rate-mode', btn.dataset.rprate || 'mid');
+        rpPanel.querySelectorAll('.rp-rate').forEach(b => b.classList.toggle('sel', b === btn));
+      });
+    });
   }
   // ---- 红包模拟器：双钱包账本 + 概率分支（系统自动发 / 退回 / 领取 / 过期）----
   // 钱包单位：分（整数计算精确）；展示用元。默认各 99999999 分（约 100 万元）
@@ -2653,32 +2673,61 @@ function partialRetractMsg(msgEl, side) {
     const amt = amtFen / 100;
     const wish = pick(['心意', '给你花', '小礼物', '辛苦啦', '开心一下', '七夕快乐']);
     setTimeout(() => {
-      addIn('', { special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now() });
+      addIn('', { special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now(), rpCover: rpCoverGet() ? 1 : 0 });
       if (window.logFish) window.logFish();
     }, randInt(800, 2000));
   }
   // 我发红包后系统响应：20% 退回 / 70% 立即领取 / 10% pending
+  // 领取概率档位：low 退回30%/领取50%/待领20% · mid 20%/70%/10% · high 10%/85%/5%
+  function rpRateCfg() {
+    const m = store.get('rp-rate-mode') || 'mid';
+    if (m === 'low') return { ret: 0.3, collect: 0.8 };
+    if (m === 'high') return { ret: 0.1, collect: 0.95 };
+    return { ret: 0.2, collect: 0.9 };
+  }
+  function rpThanksMsg() {
+    return pick(['谢谢亲爱的～', '收到啦❤', '嘿嘿谢谢宝宝', '爱你哟', '🥰 谢谢', '开心！谢谢～', '么么哒']);
+  }
+  // 领取后反馈：50% 感谢表情 / 30% 正常聊天字卡 / 20% 静默
+  function rpCollectFeedback() {
+    const r = Math.random();
+    if (r < 0.5) {
+      setTimeout(() => addIn(rpThanksMsg(), {}), randInt(600, 1800));
+    } else if (r < 0.8) {
+      setTimeout(() => {
+        try {
+          const c = cfg();
+          const rep = genOneReply(c);
+          addIn(rep.text, { type: rep.type, parts: rep.parts });
+        } catch (e) {}
+      }, randInt(800, 2000));
+    }
+  }
   function handleSendResponse(msg) {
     const idx = msgs.indexOf(msg);
     if (idx < 0) return;
     const rec = msgs[idx];
     if (!rec || rec.rpStatus !== 'pending') return;
     const r = Math.random();
+    const cfg = rpRateCfg();
     const wallet = rpWalletGet();
     const amtFen = Math.round((rec.rpAmount || 0) * 100);
-    if (r < 0.2) {
+    if (r < cfg.ret) {
       rec.rpStatus = 'returned';
       wallet.myBalance += amtFen;
       rpWalletSet(wallet);
       saveMsgsNow();
       renderWindow(false, true);
-    } else if (r < 0.9) {
+      setTimeout(() => addIn('红包 24 小时未被领取，已退回', { special: 'poke' }), randInt(500, 1200));
+    } else if (r < cfg.collect) {
       rec.rpStatus = 'received';
       rec.rpOpenedAt = Date.now();
       wallet.systemBalance += amtFen;
       rpWalletSet(wallet);
       saveMsgsNow();
       renderWindow(false, true);
+      // TA 领取后发感谢表情/消息
+      rpCollectFeedback();
     }
   }
   // pending 红包后续收取：回复完成后 8% 概率收走最早一个我发出的 pending 红包
@@ -2694,6 +2743,8 @@ function partialRetractMsg(msgEl, side) {
     rpWalletSet(wallet);
     saveMsgsNow();
     renderWindow(false, true);
+    // TA 收取后发感谢
+    rpCollectFeedback();
   }
   // 过期处理：24h 未处理 → expired + 退回
   function rpExpireCheck() {
@@ -2722,6 +2773,91 @@ function partialRetractMsg(msgEl, side) {
     el.textContent = '我的 ¥' + (w.myBalance / 100).toFixed(2) + ' · TA ¥' + (w.systemBalance / 100).toFixed(2);
   }
 
+  // 红包封面预设：存 ls + idb（大键），键 {prefix}:rp-cover
+  const RP_COVER_KEY = 'rp-cover';
+  function rpCoverGet() { return store.get(RP_COVER_KEY) || ''; }
+  function rpCoverSet(dataUrl) {
+    if (dataUrl) {
+      store.set(RP_COVER_KEY, dataUrl);
+      try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + RP_COVER_KEY, dataUrl); } catch (e) {}
+    } else {
+      try { store.remove(RP_COVER_KEY); } catch (e) {}
+      try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + RP_COVER_KEY, ''); } catch (e) {}
+    }
+  }
+  function rpCompressCover(dataUrl) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, 400 / Math.max(img.width, img.height));
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL('image/jpeg', 0.8));
+        } catch (e) { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = dataUrl;
+    });
+  }
+  const rpCoverPreview = document.getElementById('rp-cover-preview');
+  const rpCoverUploadBtn = document.getElementById('rp-cover-upload');
+  const rpCoverDelBtn = document.getElementById('rp-cover-del');
+  let rpCoverFileInput = null;
+  function rpRenderCover() {
+    const cover = rpCoverGet();
+    if (cover) {
+      if (rpCoverPreview) {
+        rpCoverPreview.style.backgroundImage = 'url("' + cover + '")';
+        const sp = rpCoverPreview.querySelector('span'); if (sp) sp.style.display = 'none';
+      }
+      if (rpCoverDelBtn) rpCoverDelBtn.hidden = false;
+    } else {
+      if (rpCoverPreview) {
+        rpCoverPreview.style.backgroundImage = '';
+        const sp = rpCoverPreview.querySelector('span'); if (sp) sp.style.display = '';
+      }
+      if (rpCoverDelBtn) rpCoverDelBtn.hidden = true;
+    }
+  }
+  if (rpCoverUploadBtn) {
+    rpCoverUploadBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!rpCoverFileInput) {
+        rpCoverFileInput = document.createElement('input');
+        rpCoverFileInput.type = 'file';
+        rpCoverFileInput.accept = 'image/*';
+        rpCoverFileInput.addEventListener('change', () => {
+          const f = rpCoverFileInput.files[0];
+          if (!f) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            rpCompressCover(reader.result).then(data => {
+              if (!data) { toast('图片处理失败'); return; }
+              rpCoverSet(data);
+              rpRenderCover();
+              toast('封面已设置');
+            });
+          };
+          reader.readAsDataURL(f);
+          rpCoverFileInput.value = '';
+        });
+      }
+      rpCoverFileInput.click();
+    });
+  }
+  if (rpCoverDelBtn) {
+    rpCoverDelBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      rpCoverSet('');
+      rpRenderCover();
+      toast('已恢复默认封面');
+    });
+  }
+
   function sendRedpacket() {
     let amt = rpPickedAmt;
     if (rpCustomInput && rpCustomInput.value) {
@@ -2740,7 +2876,8 @@ function partialRetractMsg(msgEl, side) {
       wallet.systemBalance -= amtFen;
     }
     rpWalletSet(wallet);
-    const msg = addRec({ side: rpSide, special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now() });
+    const cover = rpCoverGet();
+    const msg = addRec({ side: rpSide, special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now(), rpCover: cover ? 1 : 0 });
     if (window.logFish) window.logFish();
     // 我发的红包 → 系统延迟响应（退回/领取/pending）
     if (rpSide === 'out') {
@@ -3380,22 +3517,107 @@ function partialRetractMsg(msgEl, side) {
     }
   });
 
-  // ---- 通话（星言版：拨号 → 接通/未接，模拟通话）----
+  // ---- 通话：聊天页底部半框（v3.7.x 更多功能「通话」→ 打开半框，不再直接拨打） ----
+  // 半框内含：当前通话状态 + 拨打/挂断 + 「通话小框」开关（隐藏后接通不弹悬浮小框）
+  const chatCallPanel = document.getElementById('chat-call-panel');
+  const chatCallClose = document.getElementById('chat-call-close');
+  const callPanelName = document.getElementById('call-panel-name');
+  const callPanelStatus = document.getElementById('call-panel-status');
+  const callPanelDial = document.getElementById('call-panel-dial');
+  const callPanelHang = document.getElementById('call-panel-hang');
+  const callMiniToggle = document.getElementById('call-mini-toggle');
+  let callPanelTimer = null;
+  function fmtCallDur(sec) {
+    if (isNaN(sec) || sec < 0) return '00:00';
+    const m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? '0' + m : '' + m) + ':' + (s < 10 ? '0' + s : '' + s);
+  }
+  function updateCallPanel() {
+    if (!chatCallPanel || chatCallPanel.hidden) return;
+    const pName = store.get('lbl-partner') || 'TA';
+    if (callPanelName) callPanelName.textContent = pName;
+    let st = null;
+    try { st = (window.getCallState && window.getCallState()) || null; } catch (err) { st = null; }
+    if (st && st.status !== 'ended') {
+      if (callPanelStatus) {
+        callPanelStatus.textContent =
+          st.status === 'connected' ? ('与 ' + (st.name || pName) + ' 通话中 · ' + fmtCallDur(st.durationSec)) :
+          st.status === 'ringing' ? ((st.name || pName) + ' 来电…') :
+          st.status === 'calling' ? ('正在呼叫 ' + (st.name || pName) + '…') : '通话中';
+      }
+      if (callPanelDial) callPanelDial.hidden = true;
+      if (callPanelHang) callPanelHang.hidden = false;
+    } else {
+      if (callPanelStatus) callPanelStatus.textContent = '空闲 · 点击拨打语音通话';
+      if (callPanelDial) callPanelDial.hidden = false;
+      if (callPanelHang) callPanelHang.hidden = true;
+    }
+  }
+  function openChatCall() {
+    if (!chatCallPanel) return;
+    // 关闭其他底部半框（与 openChatDivine 同步维护）
+    const pc = document.getElementById('poke-card'); if (pc) pc.hidden = true;
+    const ep = document.getElementById('emoji-panel'); if (ep) ep.hidden = true;
+    const askP = document.getElementById('chat-ask-panel'); if (askP) askP.hidden = true;
+    const cs = document.getElementById('chat-search'); if (cs) cs.hidden = true;
+    const dv = document.getElementById('chat-divine-panel'); if (dv) dv.hidden = true;
+    const rp = document.getElementById('chat-rps-panel'); if (rp) rp.hidden = true;
+    if (window.closeAvlib) window.closeAvlib();
+    chatCallPanel.hidden = false;
+    closeIme();
+    // 同步小框开关（每联系人桌面独立）
+    if (callMiniToggle) {
+      let on = true;
+      try { on = !!(window.getCallMiniEnabled && window.getCallMiniEnabled()); } catch (err) {}
+      callMiniToggle.checked = on;
+    }
+    updateCallPanel();
+    clearInterval(callPanelTimer);
+    callPanelTimer = setInterval(updateCallPanel, 1000);
+  }
+  function closeChatCall() {
+    if (chatCallPanel) chatCallPanel.hidden = true;
+    clearInterval(callPanelTimer);
+    callPanelTimer = null;
+  }
   const moreCall = document.getElementById('more-call');
   if (moreCall) {
     moreCall.addEventListener('click', (e) => {
       e.stopPropagation();
       if (morePanel) morePanel.hidden = true;
-      // 完整通话系统：拨打弹窗 → 忙线/拒绝/接通 → 接通后小框
-      if (window.placeCall) window.placeCall();
-      else {
-        // 降级：旧逻辑
-        const name = store.get('lbl-partner') || 'TA';
-        addRec({ side: 'out', text: '拨打 ' + name + ' 语音通话', special: 'call' });
-        if (window.logFish) window.logFish();
-      }
+      openChatCall();
     });
   }
+  if (chatCallClose) chatCallClose.addEventListener('click', (e) => { e.stopPropagation(); closeChatCall(); });
+  // 拨打（降级保留旧逻辑兜底）
+  if (callPanelDial) callPanelDial.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (window.placeCall) window.placeCall();
+    else {
+      const name = store.get('lbl-partner') || 'TA';
+      addRec({ side: 'out', text: '拨打 ' + name + ' 语音通话', special: 'call' });
+      if (window.logFish) window.logFish();
+    }
+    setTimeout(updateCallPanel, 120);
+  });
+  // 挂断（呼出中取消 / 通话中挂断 / 来电即拒接）
+  if (callPanelHang) callPanelHang.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (window.hangupCall) window.hangupCall();
+    setTimeout(updateCallPanel, 120);
+  });
+  // 通话小框开关
+  if (callMiniToggle) callMiniToggle.addEventListener('change', (e) => {
+    e.stopPropagation();
+    const on = callMiniToggle.checked;
+    if (window.setCallMiniEnabled) window.setCallMiniEnabled(on);
+    toast(on ? '通话小框已开启：接通后自动最小化为悬浮小框' : '通话小框已隐藏：接通后保持通话面板，不弹出悬浮小框');
+  });
+  // v3.7.x：切换联系人桌面时关闭通话半框（防半框残留到新桌面）
+  document.addEventListener('contact-switched', function () {
+    try { closeChatCall(); } catch (e) {}
+  });
+
   if (pokeClose) pokeClose.addEventListener('click', (e) => { e.stopPropagation(); closePokeCard(); });
   // 打开拍一拍：关掉其他底部半框（表情包/头像互动），露出聊天消息
   function openPokeCard() {
@@ -4496,6 +4718,14 @@ function partialRetractMsg(msgEl, side) {
   // 红包过期检查：启动后 2s（待数据就绪）+ 每小时定时
   setTimeout(rpExpireCheck, 2000);
   setInterval(rpExpireCheck, 60 * 60 * 1000);
+  // 红包封面：从 idb 补读到 ls（大键可能只存 idb）
+  try {
+    if (window.idbGet) {
+      window.idbGet(window.activePrefix() + ':' + RP_COVER_KEY).then(v => {
+        if (v && typeof v === 'string' && v.length > 2) store.set(RP_COVER_KEY, v);
+      });
+    }
+  } catch (e) {}
   // 对外发送消息接口（占卜结果发送给 TA 等复用）
   window.chatSendMsg = (text) => { if (typeof text === 'string' && text.trim()) addMsg(text.trim()); };
   // v3.5.94：收藏消息含图片，可能只存在 IndexedDB → 启动补读（收藏页打开时才渲染，届时读到）

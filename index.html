@@ -7,6 +7,8 @@
 <meta name="description" content="情侣专属的摸鱼字卡聊天模拟器">
 <meta name="theme-color" content="#111111">
 <link rel="manifest" href="./manifest.json">
+<!-- v3.5.158：站点图标用带 mochi 字母的 icon-512——Chrome 安卓通知左侧小图标取自站点图标 -->
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1201,6 +1203,29 @@ box-shadow:0 1px 3px rgba(0,0,0,.06);
 }
 .more-item svg { width:22px; height:22px; }
 .more-item span { font-size:11px; }
+#chat-call-panel .poke-card-scroll { min-height:0; max-height:none; }
+.call-panel-status {
+text-align:center; font-size:13px; font-weight:600; color:var(--ink);
+padding:10px 0 12px;
+}
+.call-panel-dial,
+.call-panel-hang {
+width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
+padding:14px; margin-bottom:10px; border:none; border-radius:16px;
+font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
+}
+.call-panel-dial { background:var(--ink); color:#fff; }
+.call-panel-hang { background:#e5484d; color:#fff; }
+.call-panel-dial:active, .call-panel-hang:active { opacity:.85; }
+.call-panel-dial svg, .call-panel-hang svg { width:18px; height:18px; flex-shrink:0; }
+.call-panel-switch { margin:6px 2px 4px; }
+.call-panel-switch .call-panel-switch-sub {
+display:block; font-style:normal; font-weight:400; font-size:11px;
+color:var(--muted); margin-top:2px; line-height:1.4;
+}
+.call-panel-hint {
+font-size:11px; color:var(--muted); padding:2px 4px 8px; line-height:1.6;
+}
 #chat-rps-panel { height:auto; max-height:56%; }
 #chat-rps-panel .poke-card-scroll { min-height:0; max-height:none; }
 .rps-score {
@@ -1742,31 +1767,57 @@ cursor:pointer; font-family:inherit; margin-top:4px;
 .msg-rp { align-self:center; width:100%; display:flex; justify-content:center; padding:2px 0; }
 .msg-rp-card {
 max-width:78%; min-width:220px; text-align:center;
-background:#fff; border:1px solid rgba(0,0,0,.1);
-border-radius:16px; padding:14px 18px;
-box-shadow:0 2px 8px rgba(0,0,0,.05);
-cursor:pointer; position:relative;
+background:linear-gradient(135deg, #ee3d34, #c92a2a);
+border:none; border-radius:16px; padding:16px 18px;
+box-shadow:0 4px 14px rgba(238,61,52,.28);
+cursor:pointer; position:relative; overflow:hidden;
 }
-.msg-rp-top { display:flex; align-items:center; justify-content:center; gap:6px; color:var(--muted); }
+.msg-rp-card.has-cover { background-size:cover; background-position:center; }
+.msg-rp-top { display:flex; align-items:center; justify-content:center; gap:6px; color:rgba(255,255,255,.88); }
 .msg-rp-ico { display:inline-flex; }
-.msg-rp-ico svg { width:18px; height:18px; color:#888; }
-.msg-rp-label { font-size:12px; font-weight:600; color:#888; }
-.msg-rp-amt { font-size:24px; font-weight:800; color:var(--ink); margin:8px 0 4px; font-variant-numeric:tabular-nums; }
-.msg-rp-wish { font-size:13px; color:var(--ink); margin-bottom:10px; }
+.msg-rp-ico svg { width:18px; height:18px; color:#fff; }
+.msg-rp-label { font-size:12px; font-weight:600; color:rgba(255,255,255,.88); }
+.msg-rp-amt { font-size:26px; font-weight:800; color:#fff; margin:8px 0 4px; font-variant-numeric:tabular-nums; }
+.msg-rp-wish { font-size:13px; color:rgba(255,255,255,.92); margin-bottom:10px; }
 .msg-rp-foot {
 display:flex; justify-content:space-between; align-items:center;
-font-size:11px; color:var(--muted);
-padding-top:8px; border-top:1px dashed rgba(0,0,0,.1);
+font-size:11px; color:rgba(255,255,255,.72);
+padding-top:8px; border-top:1px solid rgba(255,255,255,.18);
 }
 .msg-rp-status { font-weight:600; }
-.msg-rp-card.opened .msg-rp-status { color:var(--ink); }
-.msg-rp-card.opened { border-color:rgba(0,0,0,.18); }
-.msg-rp-card.expired { opacity:.6; }
-.msg-rp-card.expired .msg-rp-status { color:var(--muted); }
+.msg-rp-card.opened { filter:saturate(.65) brightness(.82); }
+.msg-rp-card.expired { filter:grayscale(.55) brightness(.78); }
 .rp-balance {
 font-size:11px; color:var(--muted); text-align:center;
 padding:4px 0 8px; border-bottom:1px solid rgba(0,0,0,.06); margin-bottom:10px;
 }
+.rp-cover-row { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.rp-cover-preview {
+width:72px; height:48px; border-radius:8px; flex-shrink:0;
+background:linear-gradient(135deg, #ee3d34, #c92a2a);
+background-size:cover; background-position:center;
+display:flex; align-items:center; justify-content:center;
+overflow:hidden; border:1px solid rgba(0,0,0,.1);
+}
+.rp-cover-preview span { font-size:9px; color:rgba(255,255,255,.9); text-align:center; padding:0 4px; }
+.rp-cover-actions { display:flex; flex-direction:column; gap:6px; }
+.rp-cover-btn {
+padding:6px 12px; font-size:12px; font-weight:600;
+border:1px solid rgba(0,0,0,.12); border-radius:8px;
+background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
+-webkit-tap-highlight-color:transparent;
+}
+.rp-cover-btn:active { background:rgba(0,0,0,.05); }
+.rp-cover-btn[hidden] { display:none; }
+.rp-rate-row { display:flex; gap:8px; }
+.rp-rate {
+flex:1; padding:8px 0; font-size:12px; font-weight:600;
+border:1px solid rgba(0,0,0,.12); border-radius:10px;
+background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
+-webkit-tap-highlight-color:transparent;
+}
+.rp-rate.sel { background:#111; color:#fff; border-color:#111; }
+.rp-rate:active { transform:translateY(1px); }
 #page-chatcard { scrollbar-width:none; -ms-overflow-style:none; }
 #page-chatcard::-webkit-scrollbar { display:none; }
 .chat-title { font-size:22px; font-weight:700; padding:4px 2px 8px; letter-spacing:1px; }
@@ -3734,11 +3785,10 @@ color: var(--muted);
 .msg-rps-ico { background:rgba(255,255,255,.06); }
 .msg-rps-ico svg { color:var(--dark-soft); }
 .msg-rps-result { border-top-color:var(--dark-border-12); }
-.msg-rp-card { background:var(--dark-card-92); border-color:var(--dark-border); }
-.msg-rp-card.opened { border-color:var(--dark-border); }
 .rp-amt { background:var(--dark-card); border-color:var(--dark-border-12); }
 .rp-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
 .rp-side { background:var(--dark-card); border-color:var(--dark-border-12); }
+.rp-balance { border-bottom-color:var(--dark-border-12); }
 .rps-choice { background:var(--dark-card-92); border-color:var(--dark-border); }
 .rps-c-ico { background:rgba(255,255,255,.06); }
 .rps-c-ico svg { color:var(--dark-soft); }
@@ -3797,7 +3847,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.119 · 部署于 2026-08-19 15:24</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.120 · 部署于 2026-08-19 16:48</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4540,7 +4590,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.119</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.120</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5934,6 +5984,29 @@ color: var(--muted);
           </div>
         </div>
       </div>
+      <!-- 通话：聊天页底部半框（v3.7.x 露出聊天消息，可开关「通话小框」） -->
+      <div class="poke-card" id="chat-call-panel" hidden>
+        <div class="poke-card-head">
+          <span>通话 · <b id="call-panel-name">TA</b></span>
+          <button class="poke-card-close" id="chat-call-close">✕</button>
+        </div>
+        <div class="poke-card-scroll">
+          <div class="call-panel-status" id="call-panel-status">空闲 · 点击拨打语音通话</div>
+          <button class="call-panel-dial" id="call-panel-dial" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+            拨打语音通话
+          </button>
+          <button class="call-panel-hang" id="call-panel-hang" type="button" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+            挂断通话
+          </button>
+          <label class="div-switch-row div-chat-switch call-panel-switch">
+            <span class="div-switch-t">通话小框<em class="call-panel-switch-sub">接通后自动最小化为悬浮小框</em></span>
+            <span class="div-switch"><input type="checkbox" id="call-mini-toggle"><span class="div-switch-knob"></span></span>
+          </label>
+          <div class="call-panel-hint">关闭后：通话接通不再弹出悬浮小框，改由通话大面板常驻显示；点「缩小」可收起转入后台，仍可在这里挂断。</div>
+        </div>
+      </div>
       <!-- 猜拳：聊天页底部半框（露出聊天消息，和联系人猜拳，联系人随机出拳） -->
       <div class="poke-card" id="chat-rps-panel" hidden>
         <div class="poke-card-head">
@@ -5945,15 +6018,15 @@ color: var(--muted);
           <div class="rps-hint" id="rps-hint">选择你要出的拳</div>
           <div class="rps-choices">
             <button class="rps-choice" data-rps="rock" type="button">
-              <span class="rps-c-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11V8.5a1.5 1.5 0 013 0V11"/><path d="M8 11V7a1.5 1.5 0 013 0v4"/><path d="M11 11V8a1.5 1.5 0 013 0v3.5"/><path d="M14 11.5V9a1.5 1.5 0 013 0v6c0 3-2.5 5-5.5 5-1.7 0-3-.6-4-1.6L5 16"/></svg></span>
+              <span class="rps-c-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V9a2 2 0 012-2h6a2 2 0 012 2v2"/><path d="M7 11h12v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6z"/><path d="M10 9v2M14 9v2"/><path d="M7 13c-1.5 0-2 1-2 2s.5 2 2 2"/></svg></span>
               <span>石头</span>
             </button>
             <button class="rps-choice" data-rps="scissors" type="button">
-              <span class="rps-c-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></span>
+              <span class="rps-c-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9"/><path d="M14 4v8"/><path d="M7 11h12v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6z"/><path d="M7 13c-1.5 0-2 1-2 2s.5 2 2 2"/></svg></span>
               <span>剪刀</span>
             </button>
             <button class="rps-choice" data-rps="paper" type="button">
-              <span class="rps-c-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></span>
+              <span class="rps-c-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12V9a1 1 0 012 0v3"/><path d="M12 11V6a1 1 0 012 0v5"/><path d="M16 11V7a1 1 0 012 0v4"/><path d="M6 13c-1.5 0-2 1-2 2s.5 3 2 4c1 .8 3 .8 4 .8h6c2 0 3-1.5 3-3.5v-6"/></svg></span>
               <span>布</span>
             </button>
           </div>
@@ -5967,6 +6040,13 @@ color: var(--muted);
         </div>
         <div class="rp-balance" id="rp-balance"></div>
         <div class="poke-card-scroll">
+          <div class="rp-cover-row">
+            <div class="rp-cover-preview" id="rp-cover-preview"><span>默认红色封面</span></div>
+            <div class="rp-cover-actions">
+              <button class="rp-cover-btn" id="rp-cover-upload" type="button">上传封面</button>
+              <button class="rp-cover-btn" id="rp-cover-del" type="button" hidden>删除封面</button>
+            </div>
+          </div>
           <div class="rp-side-row">
             <button class="rp-side sel" data-rpside="out" type="button">我发红包</button>
             <button class="rp-side" data-rpside="in" type="button">TA发红包</button>
@@ -5996,6 +6076,14 @@ color: var(--muted);
               <button class="rp-amt rp-rand" data-rpamt="rand" type="button">摇一个随机金额</button>
             </div>
             <div class="rp-rand-val" id="rp-rand-val"></div>
+          </div>
+          <div class="rp-section">
+            <div class="rp-section-title">TA 领取概率</div>
+            <div class="rp-rate-row">
+              <button class="rp-rate" data-rprate="low" type="button">低·50%</button>
+              <button class="rp-rate" data-rprate="mid" type="button">中·70%</button>
+              <button class="rp-rate" data-rprate="high" type="button">高·85%</button>
+            </div>
           </div>
           <div class="rp-section">
             <div class="rp-section-title">自定义金额</div>
@@ -6192,6 +6280,15 @@ color: var(--muted);
           <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </span>
         <span class="ch-name">聊天设置</span>
+      </div>
+      <!-- v3.7.x：全屏模式（镜像设置页 #sf-fullscreen，同一状态双向同步） -->
+      <div class="gs-title" style="padding-top:2px">全屏</div>
+      <div class="set-group glass">
+        <div class="set-row" id="cs-fullscreen-row">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg></div>
+          <div class="txt">全屏模式（隐藏手机状态栏）</div>
+          <label class="toggle"><input type="checkbox" id="cs-fullscreen"><span class="tk"></span></label>
+        </div>
       </div>
       <div class="gs-title" style="padding-top:2px">壁纸</div>
       <div class="set-group glass">
@@ -11311,9 +11408,9 @@ return m;
 if (rec.special === 'rps') {
 m.className = 'msg-rps';
 const rpsIco = {
-rock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11V8.5a1.5 1.5 0 013 0V11"/><path d="M8 11V7a1.5 1.5 0 013 0v4"/><path d="M11 11V8a1.5 1.5 0 013 0v3.5"/><path d="M14 11.5V9a1.5 1.5 0 013 0v6c0 3-2.5 5-5.5 5-1.7 0-3-.6-4-1.6L5 16"/></svg>',
-scissors: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>',
-paper: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>'
+rock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V9a2 2 0 012-2h6a2 2 0 012 2v2"/><path d="M7 11h12v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6z"/><path d="M10 9v2M14 9v2"/><path d="M7 13c-1.5 0-2 1-2 2s.5 2 2 2"/></svg>',
+scissors: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9"/><path d="M14 4v8"/><path d="M7 11h12v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6z"/><path d="M7 13c-1.5 0-2 1-2 2s.5 2 2 2"/></svg>',
+paper: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12V9a1 1 0 012 0v3"/><path d="M12 11V6a1 1 0 012 0v5"/><path d="M16 11V7a1 1 0 012 0v4"/><path d="M6 13c-1.5 0-2 1-2 2s.5 3 2 4c1 .8 3 .8 4 .8h6c2 0 3-1.5 3-3.5v-6"/></svg>'
 };
 const rpsName = { rock: '石头', scissors: '剪刀', paper: '布' };
 const resTxt = rec.rpsResult > 0 ? '你赢了' : rec.rpsResult < 0 ? '你输了' : '平局';
@@ -11345,6 +11442,16 @@ m.innerHTML = '<div class="msg-rp-card' + (cls ? ' ' + cls : '') + '">' +
 '</div>' +
 favHeartHtml() +
 '</div>';
+if (rec.rpCover) {
+const cover = rpCoverGet();
+if (cover) {
+const card = m.querySelector('.msg-rp-card');
+if (card) {
+card.classList.add('has-cover');
+card.style.backgroundImage = 'linear-gradient(rgba(180,30,30,.45),rgba(140,20,20,.6)), url("' + cover + '")';
+}
+}
+}
 body.appendChild(m);
 maybeScrollChatBottom();
 return m;
@@ -12611,11 +12718,10 @@ if (morePanel) morePanel.hidden = true;
 if (rpNameEl) rpNameEl.textContent = store.get('lbl-partner') || 'TA';
 if (isQixiToday()) {
 if (rpQixiTag) rpQixiTag.hidden = false;
-if (rpQixiSection) rpQixiSection.classList.add('qixi-today');
+if (rpQixiSection) { rpQixiSection.hidden = false; rpQixiSection.classList.add('qixi-today'); }
 if (rpWishInput) rpWishInput.placeholder = '七夕快乐';
 } else {
-if (rpQixiTag) rpQixiTag.hidden = true;
-if (rpQixiSection) rpQixiSection.classList.remove('qixi-today');
+if (rpQixiSection) { rpQixiSection.hidden = true; rpQixiSection.classList.remove('qixi-today'); }
 if (rpWishInput) rpWishInput.placeholder = '心意';
 }
 rpSide = 'out';
@@ -12625,8 +12731,11 @@ if (rpWishInput) rpWishInput.value = '';
 if (rpRandVal) rpRandVal.textContent = '';
 rpPanel.querySelectorAll('.rp-side').forEach(b => b.classList.toggle('sel', b.dataset.rpside === 'out'));
 rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
+const curRate = store.get('rp-rate-mode') || 'mid';
+rpPanel.querySelectorAll('.rp-rate').forEach(b => b.classList.toggle('sel', b.dataset.rprate === curRate));
 closeIme();
 rpRenderBalance();
+rpRenderCover();
 rpPanel.hidden = false;
 }
 function closeRpPanel() { if (rpPanel) rpPanel.hidden = true; }
@@ -12664,6 +12773,13 @@ rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
 if (rpRandVal) rpRandVal.textContent = '';
 });
 }
+rpPanel.querySelectorAll('.rp-rate').forEach(btn => {
+btn.addEventListener('click', (e) => {
+e.stopPropagation();
+store.set('rp-rate-mode', btn.dataset.rprate || 'mid');
+rpPanel.querySelectorAll('.rp-rate').forEach(b => b.classList.toggle('sel', b === btn));
+});
+});
 }
 const RP_WALLET_KEY = 'rp-wallet';
 const RP_DAILY_PREFIX = 'ml2_rp_daily_';
@@ -12723,9 +12839,32 @@ rpDailyIncr();
 const amt = amtFen / 100;
 const wish = pick(['心意', '给你花', '小礼物', '辛苦啦', '开心一下', '七夕快乐']);
 setTimeout(() => {
-addIn('', { special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now() });
+addIn('', { special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now(), rpCover: rpCoverGet() ? 1 : 0 });
 if (window.logFish) window.logFish();
 }, randInt(800, 2000));
+}
+function rpRateCfg() {
+const m = store.get('rp-rate-mode') || 'mid';
+if (m === 'low') return { ret: 0.3, collect: 0.8 };
+if (m === 'high') return { ret: 0.1, collect: 0.95 };
+return { ret: 0.2, collect: 0.9 };
+}
+function rpThanksMsg() {
+return pick(['谢谢亲爱的～', '收到啦❤', '嘿嘿谢谢宝宝', '爱你哟', '🥰 谢谢', '开心！谢谢～', '么么哒']);
+}
+function rpCollectFeedback() {
+const r = Math.random();
+if (r < 0.5) {
+setTimeout(() => addIn(rpThanksMsg(), {}), randInt(600, 1800));
+} else if (r < 0.8) {
+setTimeout(() => {
+try {
+const c = cfg();
+const rep = genOneReply(c);
+addIn(rep.text, { type: rep.type, parts: rep.parts });
+} catch (e) {}
+}, randInt(800, 2000));
+}
 }
 function handleSendResponse(msg) {
 const idx = msgs.indexOf(msg);
@@ -12733,21 +12872,24 @@ if (idx < 0) return;
 const rec = msgs[idx];
 if (!rec || rec.rpStatus !== 'pending') return;
 const r = Math.random();
+const cfg = rpRateCfg();
 const wallet = rpWalletGet();
 const amtFen = Math.round((rec.rpAmount || 0) * 100);
-if (r < 0.2) {
+if (r < cfg.ret) {
 rec.rpStatus = 'returned';
 wallet.myBalance += amtFen;
 rpWalletSet(wallet);
 saveMsgsNow();
 renderWindow(false, true);
-} else if (r < 0.9) {
+setTimeout(() => addIn('红包 24 小时未被领取，已退回', { special: 'poke' }), randInt(500, 1200));
+} else if (r < cfg.collect) {
 rec.rpStatus = 'received';
 rec.rpOpenedAt = Date.now();
 wallet.systemBalance += amtFen;
 rpWalletSet(wallet);
 saveMsgsNow();
 renderWindow(false, true);
+rpCollectFeedback();
 }
 }
 function tryCollectPending() {
@@ -12762,6 +12904,7 @@ wallet.systemBalance += Math.round((rec.rpAmount || 0) * 100);
 rpWalletSet(wallet);
 saveMsgsNow();
 renderWindow(false, true);
+rpCollectFeedback();
 }
 function rpExpireCheck() {
 const now = Date.now();
@@ -12788,6 +12931,89 @@ if (!el) return;
 const w = rpWalletGet();
 el.textContent = '我的 ¥' + (w.myBalance / 100).toFixed(2) + ' · TA ¥' + (w.systemBalance / 100).toFixed(2);
 }
+const RP_COVER_KEY = 'rp-cover';
+function rpCoverGet() { return store.get(RP_COVER_KEY) || ''; }
+function rpCoverSet(dataUrl) {
+if (dataUrl) {
+store.set(RP_COVER_KEY, dataUrl);
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + RP_COVER_KEY, dataUrl); } catch (e) {}
+} else {
+try { store.remove(RP_COVER_KEY); } catch (e) {}
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + RP_COVER_KEY, ''); } catch (e) {}
+}
+}
+function rpCompressCover(dataUrl) {
+return new Promise((resolve) => {
+const img = new Image();
+img.onload = () => {
+try {
+const scale = Math.min(1, 400 / Math.max(img.width, img.height));
+const w = Math.max(1, Math.round(img.width * scale));
+const h = Math.max(1, Math.round(img.height * scale));
+const c = document.createElement('canvas');
+c.width = w; c.height = h;
+c.getContext('2d').drawImage(img, 0, 0, w, h);
+resolve(c.toDataURL('image/jpeg', 0.8));
+} catch (e) { resolve(null); }
+};
+img.onerror = () => resolve(null);
+img.src = dataUrl;
+});
+}
+const rpCoverPreview = document.getElementById('rp-cover-preview');
+const rpCoverUploadBtn = document.getElementById('rp-cover-upload');
+const rpCoverDelBtn = document.getElementById('rp-cover-del');
+let rpCoverFileInput = null;
+function rpRenderCover() {
+const cover = rpCoverGet();
+if (cover) {
+if (rpCoverPreview) {
+rpCoverPreview.style.backgroundImage = 'url("' + cover + '")';
+const sp = rpCoverPreview.querySelector('span'); if (sp) sp.style.display = 'none';
+}
+if (rpCoverDelBtn) rpCoverDelBtn.hidden = false;
+} else {
+if (rpCoverPreview) {
+rpCoverPreview.style.backgroundImage = '';
+const sp = rpCoverPreview.querySelector('span'); if (sp) sp.style.display = '';
+}
+if (rpCoverDelBtn) rpCoverDelBtn.hidden = true;
+}
+}
+if (rpCoverUploadBtn) {
+rpCoverUploadBtn.addEventListener('click', (e) => {
+e.stopPropagation();
+if (!rpCoverFileInput) {
+rpCoverFileInput = document.createElement('input');
+rpCoverFileInput.type = 'file';
+rpCoverFileInput.accept = 'image/*';
+rpCoverFileInput.addEventListener('change', () => {
+const f = rpCoverFileInput.files[0];
+if (!f) return;
+const reader = new FileReader();
+reader.onload = () => {
+rpCompressCover(reader.result).then(data => {
+if (!data) { toast('图片处理失败'); return; }
+rpCoverSet(data);
+rpRenderCover();
+toast('封面已设置');
+});
+};
+reader.readAsDataURL(f);
+rpCoverFileInput.value = '';
+});
+}
+rpCoverFileInput.click();
+});
+}
+if (rpCoverDelBtn) {
+rpCoverDelBtn.addEventListener('click', (e) => {
+e.stopPropagation();
+rpCoverSet('');
+rpRenderCover();
+toast('已恢复默认封面');
+});
+}
 function sendRedpacket() {
 let amt = rpPickedAmt;
 if (rpCustomInput && rpCustomInput.value) {
@@ -12806,7 +13032,8 @@ if (amtFen > wallet.systemBalance) { toast('TA 余额不足'); return; }
 wallet.systemBalance -= amtFen;
 }
 rpWalletSet(wallet);
-const msg = addRec({ side: rpSide, special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now() });
+const cover = rpCoverGet();
+const msg = addRec({ side: rpSide, special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now(), rpCover: cover ? 1 : 0 });
 if (window.logFish) window.logFish();
 if (rpSide === 'out') {
 setTimeout(() => handleSendResponse(msg), randInt(3000, 8000));
@@ -13380,19 +13607,98 @@ if (last) {
 try { last.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (e2) { last.scrollIntoView(); }
 }
 });
+const chatCallPanel = document.getElementById('chat-call-panel');
+const chatCallClose = document.getElementById('chat-call-close');
+const callPanelName = document.getElementById('call-panel-name');
+const callPanelStatus = document.getElementById('call-panel-status');
+const callPanelDial = document.getElementById('call-panel-dial');
+const callPanelHang = document.getElementById('call-panel-hang');
+const callMiniToggle = document.getElementById('call-mini-toggle');
+let callPanelTimer = null;
+function fmtCallDur(sec) {
+if (isNaN(sec) || sec < 0) return '00:00';
+const m = Math.floor(sec / 60), s = sec % 60;
+return (m < 10 ? '0' + m : '' + m) + ':' + (s < 10 ? '0' + s : '' + s);
+}
+function updateCallPanel() {
+if (!chatCallPanel || chatCallPanel.hidden) return;
+const pName = store.get('lbl-partner') || 'TA';
+if (callPanelName) callPanelName.textContent = pName;
+let st = null;
+try { st = (window.getCallState && window.getCallState()) || null; } catch (err) { st = null; }
+if (st && st.status !== 'ended') {
+if (callPanelStatus) {
+callPanelStatus.textContent =
+st.status === 'connected' ? ('与 ' + (st.name || pName) + ' 通话中 · ' + fmtCallDur(st.durationSec)) :
+st.status === 'ringing' ? ((st.name || pName) + ' 来电…') :
+st.status === 'calling' ? ('正在呼叫 ' + (st.name || pName) + '…') : '通话中';
+}
+if (callPanelDial) callPanelDial.hidden = true;
+if (callPanelHang) callPanelHang.hidden = false;
+} else {
+if (callPanelStatus) callPanelStatus.textContent = '空闲 · 点击拨打语音通话';
+if (callPanelDial) callPanelDial.hidden = false;
+if (callPanelHang) callPanelHang.hidden = true;
+}
+}
+function openChatCall() {
+if (!chatCallPanel) return;
+const pc = document.getElementById('poke-card'); if (pc) pc.hidden = true;
+const ep = document.getElementById('emoji-panel'); if (ep) ep.hidden = true;
+const askP = document.getElementById('chat-ask-panel'); if (askP) askP.hidden = true;
+const cs = document.getElementById('chat-search'); if (cs) cs.hidden = true;
+const dv = document.getElementById('chat-divine-panel'); if (dv) dv.hidden = true;
+const rp = document.getElementById('chat-rps-panel'); if (rp) rp.hidden = true;
+if (window.closeAvlib) window.closeAvlib();
+chatCallPanel.hidden = false;
+closeIme();
+if (callMiniToggle) {
+let on = true;
+try { on = !!(window.getCallMiniEnabled && window.getCallMiniEnabled()); } catch (err) {}
+callMiniToggle.checked = on;
+}
+updateCallPanel();
+clearInterval(callPanelTimer);
+callPanelTimer = setInterval(updateCallPanel, 1000);
+}
+function closeChatCall() {
+if (chatCallPanel) chatCallPanel.hidden = true;
+clearInterval(callPanelTimer);
+callPanelTimer = null;
+}
 const moreCall = document.getElementById('more-call');
 if (moreCall) {
 moreCall.addEventListener('click', (e) => {
 e.stopPropagation();
 if (morePanel) morePanel.hidden = true;
+openChatCall();
+});
+}
+if (chatCallClose) chatCallClose.addEventListener('click', (e) => { e.stopPropagation(); closeChatCall(); });
+if (callPanelDial) callPanelDial.addEventListener('click', (e) => {
+e.stopPropagation();
 if (window.placeCall) window.placeCall();
 else {
 const name = store.get('lbl-partner') || 'TA';
 addRec({ side: 'out', text: '拨打 ' + name + ' 语音通话', special: 'call' });
 if (window.logFish) window.logFish();
 }
+setTimeout(updateCallPanel, 120);
 });
-}
+if (callPanelHang) callPanelHang.addEventListener('click', (e) => {
+e.stopPropagation();
+if (window.hangupCall) window.hangupCall();
+setTimeout(updateCallPanel, 120);
+});
+if (callMiniToggle) callMiniToggle.addEventListener('change', (e) => {
+e.stopPropagation();
+const on = callMiniToggle.checked;
+if (window.setCallMiniEnabled) window.setCallMiniEnabled(on);
+toast(on ? '通话小框已开启：接通后自动最小化为悬浮小框' : '通话小框已隐藏：接通后保持通话面板，不弹出悬浮小框');
+});
+document.addEventListener('contact-switched', function () {
+try { closeChatCall(); } catch (e) {}
+});
 if (pokeClose) pokeClose.addEventListener('click', (e) => { e.stopPropagation(); closePokeCard(); });
 function openPokeCard() {
 if (!pokeCard) return;
@@ -14351,6 +14657,13 @@ bootAutoSend();
 loadMsgs();
 setTimeout(rpExpireCheck, 2000);
 setInterval(rpExpireCheck, 60 * 60 * 1000);
+try {
+if (window.idbGet) {
+window.idbGet(window.activePrefix() + ':' + RP_COVER_KEY).then(v => {
+if (v && typeof v === 'string' && v.length > 2) store.set(RP_COVER_KEY, v);
+});
+}
+} catch (e) {}
 window.chatSendMsg = (text) => { if (typeof text === 'string' && text.trim()) addMsg(text.trim()); };
 try {
 if (window.idbGet) {
@@ -14531,6 +14844,7 @@ c.className = 'cc-g-chip' + (curGroup === val ? ' sel' : '');
 c.textContent = label + ' (' + n + ')';
 c.addEventListener('click', () => {
 curGroup = val;
+if (manageMode) { selected.clear(); updateCount(); }
 renderGroupsBar();
 render();
 });
@@ -14810,14 +15124,15 @@ const searchInput = document.getElementById('cc-search-input');
 if (searchInput) {
 let searchTimer = null;
 searchInput.addEventListener('input', () => {
-if (manageMode) { searchInput.value = ''; return; }
 q = searchInput.value.trim();
+if (manageMode) { selected.clear(); updateCount(); }
 clearTimeout(searchTimer);
 searchTimer = setTimeout(render, 120);
 });
 searchInput.addEventListener('keydown', (e) => {
 if (e.key === 'Escape') {
 searchInput.value = ''; q = '';
+if (manageMode) { selected.clear(); updateCount(); }
 clearTimeout(searchTimer);
 render();
 searchInput.blur();
@@ -14916,7 +15231,13 @@ if (mgCountEl) mgCountEl.textContent = '已选 ' + selected.size + ' 张';
 }
 function selectedKeys() {
 const keys = [];
-(groups[cur] || []).forEach(([gname, arr]) => arr.forEach((c, i) => keys.push(gname + '\u0001' + i)));
+(groups[cur] || []).forEach(([gname, arr]) => {
+if (curGroup && curGroup !== gname) return;
+arr.forEach((c, i) => {
+if (q && !((typeof c === 'string' && c.indexOf('data:') !== 0) && c.indexOf(q) >= 0)) return;
+keys.push(gname + '\u0001' + i);
+});
+});
 return keys;
 }
 function delSelected() {
@@ -14934,7 +15255,7 @@ removed++;
 if (!removed) return;
 selected.clear();
 saveGroups(groups);
-if (rendering) { render(); updateCount(); toast('已删除 ' + removed + ' 张字卡'); return; }
+if (rendering || q) { render(); updateCount(); toast('已删除 ' + removed + ' 张字卡'); return; }
 touched.forEach((gname) => {
 rebuildGroupAfterRemove(gname);
 });
@@ -14965,9 +15286,6 @@ toast('已移动 ' + total + ' 张字卡到「' + target + '」');
 function enterManage() {
 manageMode = true;
 selected.clear();
-q = '';
-const qEl = document.getElementById('cc-search-input');
-if (qEl) qEl.value = '';
 render();
 list.classList.add('cc-managing');
 document.querySelectorAll('.cc-toolbar').forEach(t => { t.style.display = 'none'; });
@@ -16015,6 +16333,18 @@ applyFont();
 document.addEventListener('contact-switched', function () {
 try { applySettings(); } catch (e) {}
 });
+const csFs = document.getElementById('cs-fullscreen');
+const sfFs = document.getElementById('sf-fullscreen');
+if (csFs && sfFs) {
+const syncCsFs = () => { if (sfFs.checked !== csFs.checked) csFs.checked = sfFs.checked; };
+syncCsFs();
+csFs.addEventListener('change', () => {
+if (csFs.checked === sfFs.checked) return;
+sfFs.checked = csFs.checked;
+sfFs.dispatchEvent(new Event('change', { bubbles: true }));
+});
+setInterval(syncCsFs, 500);
+}
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
@@ -17990,9 +18320,16 @@ audio = null;
 }
 revokeObjectUrl();
 playRejected = false;
+endedHandled = false;
 disarmAutoResume();
 clearStallGuard();
 if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+setTimeout(function () {
+if (!audio && !currentId) {
+try { if (navigator.mediaSession) navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+try { document.dispatchEvent(new Event('music-media-release')); } catch (e) {}
+}
+}, 0);
 }
 function seedIdxOf(m) {
 const seedId = m ? String(m.neteaseId || '') : '';
@@ -18044,6 +18381,7 @@ updatePlayerBar();
 renderLibrary();
 startProgress();
 addRecord(m.id, '');
+updateMediaSession(true);
 }
 let autoResumeArmed = false;
 function armAutoResume() {
@@ -18160,13 +18498,56 @@ return;
 if (idx >= 0) return; // 兜底合成/播放进行中，静默等待结果
 toast('播放失败：网络链接可能已失效');
 }
-function setupHandlers(m) {
-audio.onended = function () {
+let endedHandled = false;
+function handleEnded() {
+if (endedHandled) return;
+endedHandled = true;
 revokeObjectUrl();
 let handled = false;
 try { handled = maybeTAAutoAction(); } catch(e) {}
 if (!handled) next();
-};
+}
+function checkAutoEnd() {
+if (!audio || endedHandled || audio.paused) return;
+if (audio.ended) { handleEnded(); return; }
+const d = audio.duration;
+if (!d || !isFinite(d)) {
+try {
+if (audio.buffered && audio.buffered.length > 0) {
+const end = audio.buffered.end(audio.buffered.length - 1);
+if (end > 1 && audio.currentTime >= end - 0.3) handleEnded();
+}
+} catch (e) {}
+return;
+}
+if (audio.currentTime > 0 && audio.currentTime >= d - 0.15) handleEnded();
+}
+function updateMediaSession(playing) {
+try {
+if (!('mediaSession' in navigator) || !navigator.mediaSession) return;
+const m = findTrack(currentId);
+if (!m) return;
+if (window.MediaMetadata) {
+const artwork = m.cover ? [{ src: m.cover, sizes: '512x512', type: 'image/jpeg' }] : [];
+navigator.mediaSession.metadata = new window.MediaMetadata({
+title: m.name || '未知歌曲',
+artist: m.artist || '未知歌手',
+album: 'Mochi 音乐',
+artwork: artwork
+});
+}
+try { navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'; } catch (e) {}
+try {
+navigator.mediaSession.setActionHandler('play', function () { try { toggle(); } catch (e) {} });
+navigator.mediaSession.setActionHandler('pause', function () { try { toggle(); } catch (e) {} });
+navigator.mediaSession.setActionHandler('nexttrack', function () { try { next(); } catch (e) {} });
+navigator.mediaSession.setActionHandler('previoustrack', function () { try { prev(); } catch (e) {} });
+} catch (e) {}
+try { window.__musicPlaying = playing; } catch (e) {}
+} catch (e) {}
+}
+function setupHandlers(m) {
+audio.onended = function () { handleEnded(); };
 audio.onerror = function () {
 if (m && m.neteaseId && !httpsRetrying) {
 if (retryWithHttpsUrl(m)) return;
@@ -18192,8 +18573,8 @@ armAutoResume();
 } else { armAutoResume(); }
 }
 };
-audio.onplay = function () { playRejected = false; clearStallGuard(); disarmAutoResume(); syncPlayIcons(true); };
-audio.onpause = function () { syncPlayIcons(false); };
+audio.onplay = function () { playRejected = false; clearStallGuard(); disarmAutoResume(); syncPlayIcons(true); try { if (navigator.mediaSession) navigator.mediaSession.playbackState = 'playing'; } catch (e) {} try { window.__musicPlaying = true; } catch (e) {} };
+audio.onpause = function () { syncPlayIcons(false); try { if (navigator.mediaSession) navigator.mediaSession.playbackState = 'paused'; } catch (e) {} try { window.__musicPlaying = false; } catch (e) {} };
 }
 function playTrack(id) {
 const m = findTrack(id);
@@ -18258,7 +18639,9 @@ startPlayback(m);
 function startProgress() {
 if (progressTimer) clearInterval(progressTimer);
 progressTimer = setInterval(() => {
-if (!audio || !audio.duration) return;
+if (!audio) return;
+checkAutoEnd();
+if (!audio.duration) return;
 if (audio.currentTime > 0) clearStallGuard();
 const cur = document.getElementById('sm-pb-cur');
 if (cur) cur.textContent = fmtDur(audio.currentTime);
@@ -18971,6 +19354,7 @@ saveSettings();
 renderFloat();
 });
 }
+function bootMusic() {
 loadAll();
 {
 const known = { 2613048732: { name: 'Moonlit Dream', artist: 'DLSS · shell（月光梦）', cover: 'https://p2.music.126.net/cXuoNwFzgFoQF7bGvC2mIQ==/109951169832660411.jpg' }, 27538343: { name: 'Baby', artist: 'EXO-K', cover: '' } };
@@ -19003,9 +19387,18 @@ renderPage();
 }
 });
 }
+renderPage();
+}
 setupFloatDrag();
 bindWidget();
-renderPage();
+if (window.__mochiDataReady) {
+bootMusic();
+} else {
+document.addEventListener('mochi-restore-done', function h() {
+document.removeEventListener('mochi-restore-done', h);
+bootMusic();
+});
+}
 document.addEventListener('contact-switched', function () {
 try {
 if (audio) { try { audio.pause(); } catch (e) {} audio = null; }
@@ -22454,6 +22847,21 @@ let keepAudio = null;
 let keepInterval = null;
 let keepEnabled = false;
 let wakeSentinel = null; // v3.5.131：模块级，供 stopKeepAlive 释放
+function setKeepMediaSession() {
+try {
+if (!('mediaSession' in navigator) || !navigator.mediaSession || !window.MediaMetadata) return;
+if (window.__musicPlaying) return; // 音乐在播，保留音乐的媒体条
+navigator.mediaSession.metadata = new window.MediaMetadata({
+title: 'Mochi 后台保活',
+artist: 'mochi',
+album: '后台消息提醒运行中'
+});
+try {
+navigator.mediaSession.setActionHandler('play', function () {});
+navigator.mediaSession.setActionHandler('pause', function () {});
+} catch (e) {}
+} catch (e) {}
+}
 function startKeepAlive(showToast) {
 if (keepAudio) return;
 try {
@@ -22467,19 +22875,7 @@ osc.frequency.value = 1;      // 1Hz，人耳基本听不见
 gain.gain.value = 0.0001;     // 近零音量
 osc.start();
 keepAudio = { ctx: ctx, osc: osc, gain: gain };
-try {
-if ('mediaSession' in navigator && navigator.mediaSession && window.MediaMetadata) {
-navigator.mediaSession.metadata = new window.MediaMetadata({
-title: 'Mochi 后台保活',
-artist: 'mochi',
-album: '后台消息提醒运行中'
-});
-try {
-navigator.mediaSession.setActionHandler('play', function () {});
-navigator.mediaSession.setActionHandler('pause', function () {});
-} catch (e) {}
-}
-} catch (e) {}
+setKeepMediaSession();
 if (ctx.state === 'suspended') {
 const resumeOnInteraction = function () {
 if (keepAudio && keepAudio.ctx && keepAudio.ctx.state === 'suspended') {
@@ -22525,6 +22921,7 @@ toast(ok
 }
 function stopKeepAlive(showToast) {
 try { if (keepAudio) { keepAudio.osc.stop(); keepAudio.ctx.close(); } } catch (e) {}
+if (!window.__musicPlaying) {
 try {
 if ('mediaSession' in navigator && navigator.mediaSession) {
 navigator.mediaSession.metadata = null;
@@ -22532,6 +22929,7 @@ try { navigator.mediaSession.setActionHandler('play', null); } catch (e) {}
 try { navigator.mediaSession.setActionHandler('pause', null); } catch (e) {}
 }
 } catch (e) {}
+}
 try { if (wakeSentinel) { wakeSentinel.release(); } } catch (e) {}
 wakeSentinel = null;
 clearInterval(keepInterval);
@@ -22564,6 +22962,9 @@ wakeSentinel = sentinel;
 }
 } catch (e) {}
 }
+document.addEventListener('music-media-release', function () {
+if (keepEnabled) setKeepMediaSession();
+});
 const kaBtn = document.getElementById('bg-keepalive');
 function syncKeepUI() { if (kaBtn) kaBtn.checked = keepEnabled; }
 if (kaBtn) {
@@ -22816,15 +23217,11 @@ const body = String(text || '收到一条新消息')
 .replace(/data:[a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[附件]')
 .replace(/\|\|\|.*$/, '');
 const opts = { body: (t ? t + '  ' : '') + (body && body.length > 40 ? body.slice(0, 40) + '…' : body) };
-let bigIcon = '';   // 右侧大图标：头像或消息图
-let previewImg = ''; // 展开大图：仅消息图片
-if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) {
-bigIcon = extra.img; // 消息带图 → 右侧显示消息图
-} else {
+let bigIcon = '';   // 右侧大图标：始终联系人头像
+let previewImg = ''; // 展开大图：消息图片
 const avatar = store.get('avatar-partner') || '';
 if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) bigIcon = avatar;
-}
-if (extra.img && extra.img !== bigIcon) previewImg = extra.img;
+if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) previewImg = extra.img;
 const toBlob = function (dataUrl, cb) {
 try {
 fetch(dataUrl).then(function (r) { return r.blob(); }).then(function (b) {
@@ -22837,10 +23234,17 @@ if (iconUrl) opts.icon = iconUrl;
 if (imgUrl) opts.image = imgUrl;
 showSysNotification(name, opts);
 };
-if (bigIcon && bigIcon.indexOf('data:') === 0) {
-toBlob(bigIcon, function (u) { sendNotify(u, ''); });
+const doSend = function (iconUrl) {
+if (previewImg && previewImg.indexOf('data:') === 0) {
+toBlob(previewImg, function (u) { sendNotify(iconUrl, u || ''); });
 } else {
-sendNotify(bigIcon, '');
+sendNotify(iconUrl, previewImg);
+}
+};
+if (bigIcon && bigIcon.indexOf('data:') === 0) {
+toBlob(bigIcon, function (u) { doSend(u || ''); });
+} else {
+doSend(bigIcon);
 }
 };
 function compressNotifyImg(dataUrl, cb) {
@@ -23140,6 +23544,14 @@ applyCallBg();
 }
 } catch (e) {}
 applyCallBg();
+const CALL_MINI_KEY = 'call-mini-enabled';
+function callMiniEnabled() {
+try { return store.get(CALL_MINI_KEY) !== '0'; } catch (e) { return true; }
+}
+window.getCallMiniEnabled = function () { return callMiniEnabled(); };
+window.setCallMiniEnabled = function (v) {
+try { store.set(CALL_MINI_KEY, v ? '1' : '0'); } catch (e) {}
+};
 let currentCall = null; // { direction, status, startTime, connectedTime, timer }
 let durationTimer = null;
 const mask = document.getElementById('call-mask');
@@ -23214,9 +23626,13 @@ if (!currentCall) return;
 if (mask) mask.hidden = true;
 if (cdEl) cdEl.hidden = true;
 if (mini) {
+if (callMiniEnabled()) {
 if (miniName) miniName.textContent = currentCall.name || partnerName();
 fillAv(miniAv, currentCall.av || partnerAv());
 mini.hidden = false;
+} else {
+mini.hidden = true;
+}
 }
 }
 function stopTimers() {
@@ -23353,11 +23769,13 @@ if (window.chatAddSystem) window.chatAddSystem('<svg class="st-ico" viewBox="0 0
 startCallDuration();
 setTimeout(() => {
 if (currentCall && currentCall.status === 'connected') {
+if (callMiniEnabled()) {
 if (mask) mask.hidden = true;
 if (mini) {
 if (miniName) miniName.textContent = currentCall.name || partnerName();
 fillAv(miniAv, currentCall.av || partnerAv());
 mini.hidden = false;
+}
 }
 }
 }, 2000);
@@ -23401,8 +23819,10 @@ if (statusEl) statusEl.textContent = '正在通话...';
 startCallDuration();
 setTimeout(() => {
 if (currentCall === callRef && callRef.status === 'connected') {
+if (callMiniEnabled()) {
 if (mask) mask.hidden = true;
 if (mini) { if (miniName) miniName.textContent = callRef.name || partnerName(); fillAv(miniAv, callRef.av || partnerAv()); mini.hidden = false; }
+}
 }
 }, 2000);
 } else {
@@ -23475,6 +23895,17 @@ incomingCall();
 } catch (e) {}
 }
 window.callMaybeTrigger = maybeIncoming;
+window.getCallState = function () {
+if (!currentCall) return null;
+const start = currentCall.connectedTime || currentCall.startTime;
+return {
+status: currentCall.status,           // ringing(来电) | calling(呼出中) | connected(通话中)
+direction: currentCall.direction,     // in | out
+name: currentCall.name || partnerName(),
+durationSec: Math.max(0, Math.floor((Date.now() - start) / 1000))
+};
+};
+window.hangupCall = function () { userHangup(); };
 setTimeout(() => {
 setInterval(maybeIncoming, 60000);
 maybeIncoming();
@@ -28035,7 +28466,7 @@ if (_kbActive && !isTextEl(document.activeElement)) restoreKb();
 });
 } catch (e) {}
 }
-const FLOAT_SELECTORS = ['#tc-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#chat-rps-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions'];
+const FLOAT_SELECTORS = ['#tc-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#chat-rps-panel', '#chat-call-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions'];
 let locked = false;
 function applyLock() {
 const anyOpen = FLOAT_SELECTORS.some(function (sel) {

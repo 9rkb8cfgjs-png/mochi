@@ -25,6 +25,24 @@
   let keepEnabled = false;
   let wakeSentinel = null; // v3.5.131：模块级，供 stopKeepAlive 释放
 
+  // v3.9.x：设置"后台保活"媒体会话条。音乐播放时（__musicPlaying）让位给 music-player
+  // 的歌曲 metadata + 控制 handler，避免通知栏按钮空响应无法控制音乐。
+  function setKeepMediaSession() {
+    try {
+      if (!('mediaSession' in navigator) || !navigator.mediaSession || !window.MediaMetadata) return;
+      if (window.__musicPlaying) return; // 音乐在播，保留音乐的媒体条
+      navigator.mediaSession.metadata = new window.MediaMetadata({
+        title: 'Mochi 后台保活',
+        artist: 'mochi',
+        album: '后台消息提醒运行中'
+      });
+      try {
+        navigator.mediaSession.setActionHandler('play', function () {});
+        navigator.mediaSession.setActionHandler('pause', function () {});
+      } catch (e) {}
+    } catch (e) {}
+  }
+
   function startKeepAlive(showToast) {
     if (keepAudio) return;
     try {
@@ -44,20 +62,9 @@
       // 保活开启后在通知栏显示一个媒体条「mochi 后台保活」，既让用户看到保活在跑，
       // 又大幅提升后台定时器存活率 → 后台消息/通知到达率。比纯静音音频 + wakeLock
       // 强很多；停用保活时清除（stopKeepAlive）
-      try {
-        if ('mediaSession' in navigator && navigator.mediaSession && window.MediaMetadata) {
-          navigator.mediaSession.metadata = new window.MediaMetadata({
-            title: 'Mochi 后台保活',
-            artist: 'mochi',
-            album: '后台消息提醒运行中'
-          });
-          // 控制条按钮做空响应，避免点按报错
-          try {
-            navigator.mediaSession.setActionHandler('play', function () {});
-            navigator.mediaSession.setActionHandler('pause', function () {});
-          } catch (e) {}
-        }
-      } catch (e) {}
+      // v3.9.x：音乐播放时让位——music-player 已设置歌曲 metadata + 控制 handler，
+      // 这里不覆盖（否则通知栏变成"后台保活"且按钮空响应，无法控制音乐）
+      setKeepMediaSession();
 
       // 用户首次交互时恢复 AudioContext（浏览器自动播放策略要求）
       if (ctx.state === 'suspended') {
@@ -117,13 +124,16 @@
   function stopKeepAlive(showToast) {
     try { if (keepAudio) { keepAudio.osc.stop(); keepAudio.ctx.close(); } } catch (e) {}
     // v3.5.155：清除媒体会话标记（通知栏媒体条消失）
-    try {
-      if ('mediaSession' in navigator && navigator.mediaSession) {
-        navigator.mediaSession.metadata = null;
-        try { navigator.mediaSession.setActionHandler('play', null); } catch (e) {}
-        try { navigator.mediaSession.setActionHandler('pause', null); } catch (e) {}
-      }
-    } catch (e) {}
+    // v3.9.x：音乐播放时不清除——music-player 正在用 MediaSession 控制音乐
+    if (!window.__musicPlaying) {
+      try {
+        if ('mediaSession' in navigator && navigator.mediaSession) {
+          navigator.mediaSession.metadata = null;
+          try { navigator.mediaSession.setActionHandler('play', null); } catch (e) {}
+          try { navigator.mediaSession.setActionHandler('pause', null); } catch (e) {}
+        }
+      } catch (e) {}
+    }
     // v3.5.131：释放屏幕常亮（原实现从不 release——关闭保活后屏幕持续不熄）
     try { if (wakeSentinel) { wakeSentinel.release(); } } catch (e) {}
     wakeSentinel = null;
@@ -158,6 +168,11 @@
       }
     } catch (e) {}
   }
+  // v3.9.x：音乐停止后（music-media-release）恢复"后台保活"媒体条——
+  // music-player 播放时覆盖了保活 metadata，停止后这里重新设回，保活后台存活率不降
+  document.addEventListener('music-media-release', function () {
+    if (keepEnabled) setKeepMediaSession();
+  });
   const kaBtn = document.getElementById('bg-keepalive');
   function syncKeepUI() { if (kaBtn) kaBtn.checked = keepEnabled; }
   if (kaBtn) {
@@ -472,18 +487,16 @@
     // v3.5.156：修正安卓通知字段语义（此前 icon/badge/image 用反，导致
     // 「左侧浏览器图标、右侧 mochi、无头像」）：
     //   - badge（左侧小图标，单色）= mochi 字母图标（showSysNotification 兜底设）
-    //   - icon（右侧大图标）= 联系人头像（消息没带图时；带图则消息图优先放 icon）
+    //   - icon（右侧大图标）= 联系人头像（v3.5.158：始终用头像，不被消息图顶替）
     //   - image（展开大图）= 消息图片（可选，有才设）
     // 头像/图片 dataURL → blob URL，安卓 Chrome 可靠渲染
-    let bigIcon = '';   // 右侧大图标：头像或消息图
-    let previewImg = ''; // 展开大图：仅消息图片
-    if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) {
-      bigIcon = extra.img; // 消息带图 → 右侧显示消息图
-    } else {
-      const avatar = store.get('avatar-partner') || '';
-      if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) bigIcon = avatar;
-    }
-    if (extra.img && extra.img !== bigIcon) previewImg = extra.img;
+    let bigIcon = '';   // 右侧大图标：始终联系人头像
+    let previewImg = ''; // 展开大图：消息图片
+    // v3.5.158：右侧固定显示联系人头像——即使消息带表情包/图片，右侧仍是 TA 的头像，
+    // 消息图只放 image（展开大图），不顶替头像位置
+    const avatar = store.get('avatar-partner') || '';
+    if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) bigIcon = avatar;
+    if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) previewImg = extra.img;
     const toBlob = function (dataUrl, cb) {
       try {
         fetch(dataUrl).then(function (r) { return r.blob(); }).then(function (b) {
@@ -496,11 +509,18 @@
       if (imgUrl) opts.image = imgUrl;
       showSysNotification(name, opts);
     };
-    // 右侧大图标（icon）转 blob URL 后发送；失败则不带图，文字通知不丢
+    // v3.5.158：右侧头像 + 展开大图（消息图）——头像 blob 转换后发送，消息图一并带上
+    const doSend = function (iconUrl) {
+      if (previewImg && previewImg.indexOf('data:') === 0) {
+        toBlob(previewImg, function (u) { sendNotify(iconUrl, u || ''); });
+      } else {
+        sendNotify(iconUrl, previewImg);
+      }
+    };
     if (bigIcon && bigIcon.indexOf('data:') === 0) {
-      toBlob(bigIcon, function (u) { sendNotify(u, ''); });
+      toBlob(bigIcon, function (u) { doSend(u || ''); });
     } else {
-      sendNotify(bigIcon, '');
+      doSend(bigIcon);
     }
   };
   // v3.5.147：通知缩略图压缩——canvas 把图片 dataURL 压到最长边 96px JPEG。
