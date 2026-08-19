@@ -10,6 +10,9 @@
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
 
+### 2026-08-19
+- [本会话] 完成（用户需求「音乐歌单新增上传歌单图片；播放歌单时可切换桌面音乐小组件显示歌单图片还是歌曲图片」——**已构建 verify 10/10，未提交**）：`src/js/music-player.js` + `src/css/chat-pages.css`（均 AI-A 域）。①**歌单封面**：`playlists[i].cover`（dataURL，复用 `compressCover` 压缩 512px JPEG）；歌单列表项 `.sm-pl-ico` 有封面时显示背景图（`has-cov`）；新增编辑按钮（铅笔图标）→ `openPlaylistEditor`：上传/更换/清除封面 + 重命名 + 删除歌单（默认歌单无删除项）。②**小组件封面来源切换**：`settings.widgetCoverMode`（`'song'` 默认 / `'playlist'`）；`setWidgetCover` 按模式决定——playlist 模式优先显示当前歌曲所在歌单的封面，无歌单封面时回退歌曲封面；入口在「音乐设置」弹窗新增「桌面小组件封面」select，切换即保存并实时刷新小组件；编辑歌单封面后若当前正播此歌单且模式为 playlist 也同步刷新。`node --check` 通过，verify 10/10。**未提交**，等待统一提交/部署。
+
 ### 2026-08-18
 - [本会话] 完成（用户反馈「设置里『自定义手机桌面图标』应该放在『卡片大小』下面」——**已构建 verify 10/10，已提交未 push**）：`src/template.html`——把 `row-custom-icon` 从独立 set-group 移到「美化」分组内 `row-desk-card-scale`（卡片大小）之后，删除原独立分组。仅位置调整，无逻辑改动。本次构建同时带上 AI-A 未提交批次（chat.js/chatcard.js/idb.js/bg-keep.js/chat-main.css/chat-pages.css，语法通过），一并提交。
 - [本会话] 完成（用户反馈「红米 K80 Pro Chrome 打开部署的 GitHub Pages 安装到桌面一直显示『正在安装』」——**已构建 verify 10/10，已提交 82ebbee，待 push**）：`src/pwa/sw.js`（AI-B 域）+ 产物。根因：SW 的 `install` 预缓存（`caches.addAll`）与 `fetch` 均无超时，GitHub Pages 在国内网络经常慢/卡，SW 一旦卡在 `installing` 状态，Chrome 安卓「安装到桌面」的 WebAPK 安装流程要经 SW 拉 start_url/图标，会一直显示「正在安装」永不完成。修复：①`fetchWithTimeout` 带 8 秒超时；②install 预缓存改为逐文件超时 + `Promise.allSettled`，单文件失败不影响整体，SW 最迟约 10 秒内必激活；③fetch 网络优先带 8 秒超时，超时/失败回退缓存（导航回退 index.html、资源回退自身缓存，无缓存 `Response.error()` 快速失败）；④只接管同源请求（跨域不再拦截）。`npm run verify` 10/10。已提交待推送。

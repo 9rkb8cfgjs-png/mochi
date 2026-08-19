@@ -1432,6 +1432,13 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
   display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0;
 }
 .sm-pl-del svg { width:15px; height:15px; }
+.sm-pl-edit {
+  width:26px; height:26px; border:none; background:transparent; color:#999;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0;
+}
+.sm-pl-edit svg { width:15px; height:15px; }
+.sm-pl-ico.has-cov { background-size:cover; background-position:center; }
+.sm-pl-ico.has-cov svg { display:none; }
 /* 星音记录 */
 .sm-his {
   display:flex; align-items:center; gap:10px; padding:10px 8px;

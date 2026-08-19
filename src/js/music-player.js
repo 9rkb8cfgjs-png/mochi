@@ -25,7 +25,7 @@
   let library = [];          // {id,name,artist,url,source,duration,playlistId,addedAt}
   let playlists = [];        // {id,name,createdAt}
   let history = [];          // {id,trackId,trackName,triggerType,ts}
-  let settings = { floatEn: true, reqProb: 5, cooldownMs: 600000 };
+  let settings = { floatEn: true, reqProb: 5, cooldownMs: 600000, widgetCoverMode: 'song' };
   let currentId = null;
   let mode = 'list';         // list / shuffle / single
   let audio = null;
@@ -99,7 +99,7 @@
     library = loadArr('music-library');
     playlists = loadArr('music-playlists');
     history = loadArr('music-history');
-    try { settings = Object.assign({ floatEn: true, reqProb: 5, cooldownMs: 600000 }, JSON.parse(store.get('music-global') || '{}')); } catch(e) {}
+    try { settings = Object.assign({ floatEn: true, reqProb: 5, cooldownMs: 600000, widgetCoverMode: 'song' }, JSON.parse(store.get('music-global') || '{}')); } catch(e) {}
     // 旧字段兼容：url 歌曲标记 source
     library.forEach(m => { if (!m.source) m.source = m.url ? 'url' : 'local'; });
     // 首次运行：内置默认歌单
@@ -653,15 +653,19 @@
     const pls = playlists.slice();
     el.innerHTML = pls.map(p => {
       const count = library.filter(m => m.playlistId === p.id).length;
+      const icoCls = p.cover ? 'sm-pl-ico has-cov' : 'sm-pl-ico';
+      const icoStyle = p.cover ? ' style="background-image:url(\'' + esc(p.cover) + '\')"' : '';
+      const icoInner = p.cover ? '' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
       return '<div class="sm-pl" data-pid="' + p.id + '">' +
-        '<span class="sm-pl-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>' +
+        '<span class="' + icoCls + '"' + icoStyle + '>' + icoInner + '</span>' +
         '<div class="sm-pl-info"><div class="sm-pl-name">' + esc(p.name) + '</div><div class="sm-pl-sub">' + count + ' 首</div></div>' +
+        '<button class="sm-pl-edit" data-pid="' + p.id + '" title="编辑歌单"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
         '<button class="sm-pl-del" data-pid="' + p.id + '" title="删除歌单"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2"/></svg></button>' +
         '</div>';
     }).join('');
     el.querySelectorAll('.sm-pl').forEach(row => {
       row.addEventListener('click', (e) => {
-        if (e.target.closest('.sm-pl-del')) return;
+        if (e.target.closest('.sm-pl-del') || e.target.closest('.sm-pl-edit')) return;
         const pid = row.dataset.pid;
         const pl = playlists.find(p => p.id === pid);
         const songs = library.filter(m => m.playlistId === pid);
@@ -692,6 +696,78 @@
           }, { noInput: true });
         }
       });
+    });
+    el.querySelectorAll('.sm-pl-edit').forEach(b => {
+      b.addEventListener('click', (e) => { e.stopPropagation(); openPlaylistEditor(b.dataset.pid); });
+    });
+  }
+  // ================= 歌单编辑（封面/重命名/删除） =================
+  function openPlaylistEditor(pid) {
+    const pl = playlists.find(p => p.id === pid);
+    if (!pl || !window.openTCPanel) return;
+    const isDefault = pl.id === 'spl_default';
+    window.openTCPanel('编辑歌单', '' +
+      '<div class="sm-fld"><label>歌单名称</label><input class="tc-input" id="sm-pe-name" value="' + String(pl.name || '').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"></div>' +
+      '<div class="sm-fld"><label>歌单封面</label>' +
+      '<div class="sm-cov-row">' +
+      '<div class="sm-cov-prev' + (pl.cover ? ' has-cov' : '') + '" id="sm-pe-cov-prev"' + (pl.cover ? ' style="background-image:url(\'' + esc(pl.cover) + '\')"' : '') + ' title="点击上传封面"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg></div>' +
+      '<div class="sm-cov-actions"><button class="cc-tool sm-cov-btn" id="sm-pe-cov-up">上传封面</button><button class="cc-tool sm-cov-btn" id="sm-pe-cov-clear"' + (pl.cover ? '' : ' hidden') + '>清除封面</button></div>' +
+      '</div></div>' +
+      '<div class="sm-set-hint">设置封面后，可在「音乐设置」切换桌面小组件显示歌单封面或歌曲封面</div>' +
+      '<div class="mail-actions">' + (isDefault ? '' : '<button class="cc-tool" id="sm-pe-del">删除歌单</button>') + '<button class="cc-tool" id="sm-pe-cancel">取消</button><button class="cc-tool" id="sm-pe-ok">保存</button></div>');
+    const covPrev = document.getElementById('sm-pe-cov-prev');
+    const covUp = document.getElementById('sm-pe-cov-up');
+    const covClear = document.getElementById('sm-pe-cov-clear');
+    const covInput = document.createElement('input');
+    covInput.type = 'file'; covInput.accept = 'image/*'; covInput.style.display = 'none';
+    document.body.appendChild(covInput);
+    covInput.onchange = function () {
+      const f = covInput.files && covInput.files[0];
+      covInput.value = '';
+      if (!f) return;
+      compressCover(f, function (dv) {
+        if (!dv) { toast('封面读取失败，请换一张图片'); return; }
+        pl.cover = dv;
+        savePlaylists(); renderPage();
+        covPrev.classList.add('has-cov');
+        covPrev.style.backgroundImage = 'url(\'' + dv + '\')';
+        covClear.hidden = false;
+        const cur = findTrack(currentId);
+        if (cur && cur.playlistId === pid && settings.widgetCoverMode === 'playlist') setWidgetCover(cur);
+        toast('歌单封面已设置');
+      });
+    };
+    const pickCover = () => { try { covInput.click(); } catch (e) {} };
+    if (covUp) covUp.addEventListener('click', pickCover);
+    if (covPrev) covPrev.addEventListener('click', pickCover);
+    if (covClear) covClear.addEventListener('click', () => {
+      pl.cover = '';
+      savePlaylists(); renderPage();
+      covPrev.classList.remove('has-cov');
+      covPrev.style.backgroundImage = '';
+      covClear.hidden = true;
+      const cur = findTrack(currentId);
+      if (cur && cur.playlistId === pid && settings.widgetCoverMode === 'playlist') setWidgetCover(cur);
+      toast('已清除歌单封面');
+    });
+    document.getElementById('sm-pe-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
+    document.getElementById('sm-pe-ok').addEventListener('click', () => {
+      const name = (document.getElementById('sm-pe-name').value || '').trim();
+      if (name) pl.name = name;
+      savePlaylists();
+      document.getElementById('tc-mask').hidden = true;
+      renderPage();
+      toast('已保存');
+    });
+    const delBtn = document.getElementById('sm-pe-del');
+    if (delBtn) delBtn.addEventListener('click', () => {
+      if (!window.openModal) return;
+      window.openModal('删除歌单「' + pl.name + '」？歌单里的歌曲不会删除', '', () => {
+        library.forEach(m => { if (m.playlistId === pid) m.playlistId = 'default'; });
+        playlists = playlists.filter(p => p.id !== pid);
+        saveLibrary(); savePlaylists(); renderPage();
+        document.getElementById('tc-mask').hidden = true;
+      }, { noInput: true });
     });
   }
   const plCreate = document.getElementById('music-pl-create');
@@ -1438,8 +1514,19 @@
   function setWidgetCover(m) {
     const cover = document.getElementById('mw-cover');
     if (!cover) return;
-    if (m && m.cover) {
-      cover.style.backgroundImage = 'url("' + m.cover + '")';
+    // 决定显示哪张封面：模式为 playlist 时优先显示当前歌曲所在歌单的封面，无则回退歌曲封面
+    let coverUrl = '';
+    if (m) {
+      if (settings.widgetCoverMode === 'playlist') {
+        const pl = playlists.find(p => p.id === m.playlistId);
+        if (pl && pl.cover) coverUrl = pl.cover;
+        else if (m.cover) coverUrl = m.cover;
+      } else if (m.cover) {
+        coverUrl = m.cover;
+      }
+    }
+    if (coverUrl) {
+      cover.style.backgroundImage = 'url("' + coverUrl + '")';
       cover.style.backgroundSize = 'cover';
       cover.style.backgroundPosition = 'center';
       cover.classList.add('has-cover');
@@ -1449,7 +1536,7 @@
       cover.style.backgroundPosition = '';
       cover.classList.remove('has-cover');
     }
-    // 没有封面时异步拉取（仅网易云链接歌曲）
+    // 没有歌曲封面时异步拉取（仅网易云链接歌曲）；拉到后刷新（若模式为 playlist 且歌单有封面，刷新后仍显示歌单封面）
     if (m && m.neteaseId && !m.cover) {
       fetchNeteaseInfo(String(m.neteaseId), (info) => {
         const mm = findTrack(m.id);
@@ -1875,6 +1962,7 @@
       '<div class="sm-set-row"><span>悬浮播放小框</span><label class="toggle"><input type="checkbox" id="sm-set-float"' + (settings.floatEn ? ' checked' : '') + '><span class="tk"></span></label></div>' +
       '<div class="gs-row"><span>音乐请求触发概率</span><div class="stepper" id="sm-set-prob" data-min="0" data-max="30" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="sm-set-prob-val" readonly><button class="stp-max">+</button></div></div>' +
       '<div class="gs-row"><span>请求冷却时间</span><select class="tc-input" id="sm-set-cool" style="width:110px">' + cooldownOpts + '</select></div>' +
+      '<div class="gs-row"><span>桌面小组件封面</span><select class="tc-input" id="sm-set-wcov" style="width:120px"><option value="song"' + (settings.widgetCoverMode !== 'playlist' ? ' selected' : '') + '>歌曲封面</option><option value="playlist"' + (settings.widgetCoverMode === 'playlist' ? ' selected' : '') + '>歌单封面</option></select></div>' +
       '<div class="sm-set-hint">聊天过程中 TA 会按概率请求和你一起听歌；播放时右上角出现可拖动的悬浮小框</div>' +
       '<div class="sm-set-row"><span>本地音频缓存</span><span id="sm-storage-use" style="color:var(--muted);font-size:12px">计算中…</span></div>' +
       '<div class="mail-actions"><button class="cc-tool" id="sm-clear-cache">清理本地音频缓存</button><button class="cc-tool" id="sm-set-close">关闭</button></div>');
@@ -1901,6 +1989,13 @@
     if (cool) cool.addEventListener('change', () => { settings.cooldownMs = Number(cool.value); saveSettings(); });
     const floatCb = document.getElementById('sm-set-float');
     if (floatCb) floatCb.addEventListener('change', () => { settings.floatEn = floatCb.checked; saveSettings(); syncFloatToggle(); renderFloat(); });
+    const wcov = document.getElementById('sm-set-wcov');
+    if (wcov) wcov.addEventListener('change', () => {
+      settings.widgetCoverMode = wcov.value;
+      saveSettings();
+      const m = findTrack(currentId);
+      if (m) setWidgetCover(m);
+    });
   }
 
   // ================= 桌面小部件联动 =================
