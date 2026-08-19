@@ -3581,7 +3581,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.112 · 部署于 2026-08-19 13:22</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.113 · 部署于 2026-08-19 13:27</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4323,7 +4323,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.112</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.113</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -8890,7 +8890,6 @@ box.appendChild(close);
 lib.appendChild(box);
 document.body.appendChild(lib);
 }
-window.__openDeskLib = openDeskLib; // 临时测试
 function loadDeskImagesMeta() {
 try { const v = JSON.parse(store.get('desk-images') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
 }
@@ -20999,6 +20998,19 @@ osc.frequency.value = 1;      // 1Hz，人耳基本听不见
 gain.gain.value = 0.0001;     // 近零音量
 osc.start();
 keepAudio = { ctx: ctx, osc: osc, gain: gain };
+try {
+if ('mediaSession' in navigator && navigator.mediaSession && window.MediaMetadata) {
+navigator.mediaSession.metadata = new window.MediaMetadata({
+title: 'Mochi 后台保活',
+artist: 'mochi',
+album: '后台消息提醒运行中'
+});
+try {
+navigator.mediaSession.setActionHandler('play', function () {});
+navigator.mediaSession.setActionHandler('pause', function () {});
+} catch (e) {}
+}
+} catch (e) {}
 if (ctx.state === 'suspended') {
 const resumeOnInteraction = function () {
 if (keepAudio && keepAudio.ctx && keepAudio.ctx.state === 'suspended') {
@@ -21044,6 +21056,13 @@ toast(ok
 }
 function stopKeepAlive(showToast) {
 try { if (keepAudio) { keepAudio.osc.stop(); keepAudio.ctx.close(); } } catch (e) {}
+try {
+if ('mediaSession' in navigator && navigator.mediaSession) {
+navigator.mediaSession.metadata = null;
+try { navigator.mediaSession.setActionHandler('play', null); } catch (e) {}
+try { navigator.mediaSession.setActionHandler('pause', null); } catch (e) {}
+}
+} catch (e) {}
 try { if (wakeSentinel) { wakeSentinel.release(); } } catch (e) {}
 wakeSentinel = null;
 clearInterval(keepInterval);
@@ -21300,12 +21319,19 @@ try {
 const chatPage = document.getElementById('page-chat');
 const inChat = chatPage && !chatPage.hidden;
 const unread = parseInt(store.get('chat-unread'), 10) || 0;
-if (!inChat && unread > 0 && window.showDeskPopup) {
 const name = store.get('lbl-partner') || 'TA';
+if (!inChat && unread > 0 && window.showDeskPopup) {
 window.showDeskPopup({ name: name, text: '你不在的时候收到 ' + unread + ' 条新消息' });
+const now = Date.now();
+if (saved === '1' && 'Notification' in window && Notification.permission === 'granted' &&
+(!lastResumeNotifyAt || now - lastResumeNotifyAt > 30000)) {
+lastResumeNotifyAt = now;
+showSysNotification(name, { body: '你不在的时候收到 ' + unread + ' 条新消息' });
+}
 }
 } catch (e) {}
 });
+let lastResumeNotifyAt = 0; // v3.5.154：回前台汇总通知去重
 window.bgNotifyCheck = function (text, ts, extra) {
 if (!notifyEnabled) return;
 if (document.visibilityState === 'visible') return;

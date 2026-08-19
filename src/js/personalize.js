@@ -1852,6 +1852,9 @@
     // 布局外的组件 → 隐藏池
     const pool = ensureWidgetPool();
     WIDGET_IDS.forEach(wid => {
+      // v3.7.x：apps/p2apps 老兼容——之前 app-grid 没 data-desk-widget，老 layout 不含它们；
+      // 加 data-desk-widget 后若按常规移池会把老用户的功能图标藏掉，故跳过池逻辑保持原位
+      if (wid === 'apps' || wid === 'p2apps') return;
       const node = document.querySelector('[data-desk-widget="' + wid + '"]');
       const inLay = lay.some(page => (page || []).indexOf(wid) >= 0);
       if (node && !inLay && node.parentNode !== pool) pool.appendChild(node);
@@ -1946,6 +1949,7 @@
     lib.appendChild(box);
     document.body.appendChild(lib);
   }
+
 
 
   // ===== v3.6.x：桌面图片组件（可多个，每页可放多张不同图片） =====

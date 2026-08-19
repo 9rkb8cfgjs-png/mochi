@@ -39,6 +39,26 @@
       osc.start();
       keepAudio = { ctx: ctx, osc: osc, gain: gain };
 
+      // v3.5.155：媒体会话标记——Chrome 安卓把「有活跃媒体会话 + 音频输出」的页面
+      // 视为"正在播放媒体"，后台几乎不冻结（Youtube 网页版后台持续播放即此原理）。
+      // 保活开启后在通知栏显示一个媒体条「mochi 后台保活」，既让用户看到保活在跑，
+      // 又大幅提升后台定时器存活率 → 后台消息/通知到达率。比纯静音音频 + wakeLock
+      // 强很多；停用保活时清除（stopKeepAlive）
+      try {
+        if ('mediaSession' in navigator && navigator.mediaSession && window.MediaMetadata) {
+          navigator.mediaSession.metadata = new window.MediaMetadata({
+            title: 'Mochi 后台保活',
+            artist: 'mochi',
+            album: '后台消息提醒运行中'
+          });
+          // 控制条按钮做空响应，避免点按报错
+          try {
+            navigator.mediaSession.setActionHandler('play', function () {});
+            navigator.mediaSession.setActionHandler('pause', function () {});
+          } catch (e) {}
+        }
+      } catch (e) {}
+
       // 用户首次交互时恢复 AudioContext（浏览器自动播放策略要求）
       if (ctx.state === 'suspended') {
         const resumeOnInteraction = function () {
@@ -96,6 +116,14 @@
   }
   function stopKeepAlive(showToast) {
     try { if (keepAudio) { keepAudio.osc.stop(); keepAudio.ctx.close(); } } catch (e) {}
+    // v3.5.155：清除媒体会话标记（通知栏媒体条消失）
+    try {
+      if ('mediaSession' in navigator && navigator.mediaSession) {
+        navigator.mediaSession.metadata = null;
+        try { navigator.mediaSession.setActionHandler('play', null); } catch (e) {}
+        try { navigator.mediaSession.setActionHandler('pause', null); } catch (e) {}
+      }
+    } catch (e) {}
     // v3.5.131：释放屏幕常亮（原实现从不 release——关闭保活后屏幕持续不熄）
     try { if (wakeSentinel) { wakeSentinel.release(); } } catch (e) {}
     wakeSentinel = null;
@@ -394,18 +422,27 @@
         toast('提醒：后台保活已关闭，后台消息到不了，通知不会弹（设置里开启）');
       }
     }
-    // 补弹应用内横幅：有未读新消息且不在聊天页（不依赖后台通知开关——应用内
-    // 横幅是页面内展示，只要消息进来了就该提示，像微信返回时显示未读）
+    // 补弹应用内横幅 + 汇总系统通知：有未读新消息且不在聊天页。
+    // v3.5.154：回前台瞬间发一条汇总系统通知「你不在的时候收到 N 条新消息」——
+    // 后台冻结导致消息/通知没能实时到达，回前台时一次告知，避免堆积消息陆续补发的混乱。
+    // 30 秒内不重复发（防止反复切出切入刷屏）
     try {
       const chatPage = document.getElementById('page-chat');
       const inChat = chatPage && !chatPage.hidden;
       const unread = parseInt(store.get('chat-unread'), 10) || 0;
+      const name = store.get('lbl-partner') || 'TA';
       if (!inChat && unread > 0 && window.showDeskPopup) {
-        const name = store.get('lbl-partner') || 'TA';
         window.showDeskPopup({ name: name, text: '你不在的时候收到 ' + unread + ' 条新消息' });
+        const now = Date.now();
+        if (saved === '1' && 'Notification' in window && Notification.permission === 'granted' &&
+            (!lastResumeNotifyAt || now - lastResumeNotifyAt > 30000)) {
+          lastResumeNotifyAt = now;
+          showSysNotification(name, { body: '你不在的时候收到 ' + unread + ' 条新消息' });
+        }
       }
     } catch (e) {}
   });
+  let lastResumeNotifyAt = 0; // v3.5.154：回前台汇总通知去重
 
   // 供 chat.js（showDeskPopup 联动）/ 信箱 / 朋友圈调用：TA 相关新事件且页面不在
   // 前台时弹系统通知。第三参 extra：name 通知标题（信箱/朋友圈/机制名，默认 TA 昵称）、
