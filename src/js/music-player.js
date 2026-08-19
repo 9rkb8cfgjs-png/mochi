@@ -602,6 +602,9 @@
     }
     try {
       tmp = new Audio();
+      // v3.9.x：与播放同设 no-referrer——网易云 CDN 防盗链带 Referer 返回 403，
+      // 探测不设则 onerror → duration 永远补不上（歌单导入后全显示 00:00）
+      try { tmp.referrerPolicy = 'no-referrer'; } catch (e) {}
       tmp.preload = 'metadata';
       tmp.onloadedmetadata = function () { finish(tmp.duration || 0); };
       tmp.onerror = function () { finish(0); };
@@ -2577,6 +2580,9 @@
       });
     }
     renderPage();
+    // v3.9.x：对缺时长的网易云歌补探测——已导入的旧歌单 duration=0 已存库，
+    // 仅修 referrerPolicy 不重新导入不会补；启动时后台探测，修后能成功并刷新 UI
+    probeAllMissingDurations();
   }
   setupFloatDrag();
   bindWidget();
