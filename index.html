@@ -3853,7 +3853,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.128 · 部署于 2026-08-19 18:14</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.129 · 部署于 2026-08-19 18:22</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4596,7 +4596,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.128</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.129</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -9346,7 +9346,9 @@ const slide = slides[pi];
 if (!slide) return;
 (pageWidgets || []).forEach(wid => {
 const node = document.querySelector('[data-desk-widget="' + wid + '"]');
-if (node && node.parentNode !== slide) {
+if (!node) return;
+if (wid.indexOf('app-') === 0 && node.closest('.app-grid')) return;
+if (node.parentNode !== slide) {
 const addBtn = slide.querySelector('.desk-page-add');
 if (addBtn) slide.insertBefore(node, addBtn);
 else slide.appendChild(node);
@@ -23914,7 +23916,7 @@ durationSec: Math.max(0, Math.floor((Date.now() - start) / 1000))
 };
 window.hangupCall = function () { userHangup(); };
 setTimeout(() => {
-setInterval(maybeIncoming, 60000);
+setInterval(maybeIncoming, 30000);
 maybeIncoming();
 }, (45 + Math.random() * 75) * 1000);
 })();

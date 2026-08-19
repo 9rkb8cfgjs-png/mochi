@@ -3,6 +3,7 @@
 // 去电：拨打 → 忙线/拒绝/接通/未接 概率
 // 接通：显示通话时长，2 秒后最小化为通话小框（底部悬浮，可挂断）
 // 概率（与星言一致）：来电 15% / 接通 70% / 忙线 15% / 拒绝 15% / 对方挂断 2%（接通满 3 分钟后每 60 秒检查）
+// 来电触发：TA 回复消息/主动发消息后按概率掷一次 + 独立定时器每 30 秒兜底检查（5 分钟冷却）
 (function () {
   const uid = window.activePrefix();
   const store = window.activeStore();
@@ -506,7 +507,7 @@
   // ================= 联系人主动来电（星言机制：每 5 分钟冷却 + 来电概率） =================
   window.triggerIncomingCall = incomingCall;
   // 上次来电时间戳：首次约 1-2 分钟检查（原 2-5 分钟太久，用户会以为 TA 从不来电），
-  // 之后每 60 秒检查一次（来电概率 + 冷却至少 5 分钟）
+  // 之后每 30 秒检查一次（来电概率 + 冷却至少 5 分钟；与对方挂断机制同为周期检查）
   function callLast() { const v = parseInt(store.get('records-call-last'), 10); return isNaN(v) ? 0 : v; }
   function maybeIncoming() {
     try {
@@ -537,7 +538,7 @@
   };
   window.hangupCall = function () { userHangup(); };
   setTimeout(() => {
-    setInterval(maybeIncoming, 60000);
+    setInterval(maybeIncoming, 30000);
     maybeIncoming();
   }, (45 + Math.random() * 75) * 1000);
 })();

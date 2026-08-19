@@ -1987,7 +1987,12 @@
       if (!slide) return;
       (pageWidgets || []).forEach(wid => {
         const node = document.querySelector('[data-desk-widget="' + wid + '"]');
-        if (node && node.parentNode !== slide) {
+        if (!node) return;
+        // v3.7.x：单个功能图标仍在 app-grid 内（未被移出作独立组件）时跳过——
+        // 它由 app-grid 容器管理（grid 4 列横排），移到 slide 会脱离 grid 布局
+        // 变成竖向排列（刷新后图标从横变竖）。与下方池逻辑的保护一致。
+        if (wid.indexOf('app-') === 0 && node.closest('.app-grid')) return;
+        if (node.parentNode !== slide) {
           // 插入到「+ 添加卡片」按钮之前
           const addBtn = slide.querySelector('.desk-page-add');
           if (addBtn) slide.insertBefore(node, addBtn);
