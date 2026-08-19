@@ -1833,6 +1833,7 @@ display:flex; align-items:center; justify-content:center;
 .chat-item .ci { flex:1; min-width:0; }
 .chat-item .ci .n { font-size:15px; font-weight:600; }
 .chat-item .ci .m { font-size:12px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chat-item .ci .note { font-size:10px; color:var(--muted); opacity:.8; margin-top:2px; }
 .chat-item .t { font-size:11px; color:var(--muted); flex-shrink:0; }
 .card-tabs {
 display:flex; gap:8px; overflow-x:auto; padding:2px 2px 12px;
@@ -3853,7 +3854,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.130 · 部署于 2026-08-19 18:24</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.131 · 部署于 2026-08-19 19:25</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4122,22 +4123,22 @@ color: var(--muted);
 </div>
 <div class="chat-item glass" id="li-ta-ask">
   <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-  <div class="ci"><div class="n">TA的询问</div><div class="m">开放式提问 · 按题库向你提问</div></div>
+  <div class="ci"><div class="n">TA的询问</div><div class="m">开放式提问 · 按题库向你提问</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
   <div class="t">3</div>
 </div>
 <div class="chat-item glass" id="li-ta-choose">
   <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
-  <div class="ci"><div class="n">TA的小问题</div><div class="m">选择题轻互动 · 选完 TA 再回应</div></div>
+  <div class="ci"><div class="n">TA的小问题</div><div class="m">选择题轻互动 · 选完 TA 再回应</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
   <div class="t">18</div>
 </div>
 <div class="chat-item glass" id="li-ta-curious">
   <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18"/><circle cx="12" cy="12" r="2"/></svg></div>
-  <div class="ci"><div class="n">TA的好奇</div><div class="m">开放式提问 · 回答后 TA 记住你</div></div>
+  <div class="ci"><div class="n">TA的好奇</div><div class="m">开放式提问 · 回答后 TA 记住你</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
   <div class="t">26</div>
 </div>
 <div class="chat-item glass" id="li-ta-roast">
   <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.4 5.7.3-4.4 3.6 1.5 5.5-4.6-3.3-4.6 3.3 1.5-5.5-4.4-3.6 5.7-.3z"/></svg></div>
-  <div class="ci"><div class="n">TA的吐槽</div><div class="m">突然吐槽你一句 · 情侣式调侃</div></div>
+  <div class="ci"><div class="n">TA的吐槽</div><div class="m">突然吐槽你一句 · 情侣式调侃</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
   <div class="t">46</div>
 </div>
 </div>
@@ -4596,7 +4597,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.130</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.131</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -11264,9 +11265,7 @@ wallet.myBalance += Math.round((rpRec.rpAmount || 0) * 100);
 rpWalletSet(wallet);
 saveMsgsNow();
 toast('已领取 ¥' + Number(rpRec.rpAmount || 0).toFixed(2));
-rpCard.classList.add('opened');
-const statusEl = rpCard.querySelector('.msg-rp-status');
-if (statusEl) statusEl.textContent = '已领取';
+renderWindow(true, true);
 return;
 }
 if (e.target.closest('.msg-inplace')) return;
@@ -13032,10 +13031,11 @@ wallet.systemBalance -= amtFen;
 }
 rpWalletSet(wallet);
 const cover = rpCoverGet();
-const msg = addRec({ side: rpSide, special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now(), rpCover: cover ? 1 : 0 });
+const rec = { side: rpSide, special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now(), rpCover: cover ? 1 : 0 };
+addRec(rec);
 if (window.logFish) window.logFish();
 if (rpSide === 'out') {
-setTimeout(() => handleSendResponse(msg), randInt(3000, 8000));
+setTimeout(() => handleSendResponse(rec), randInt(3000, 8000));
 }
 closeRpPanel();
 }

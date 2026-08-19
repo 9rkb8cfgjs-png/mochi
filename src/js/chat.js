@@ -775,9 +775,7 @@
         rpWalletSet(wallet);
         saveMsgsNow();
         toast('已领取 ¥' + Number(rpRec.rpAmount || 0).toFixed(2));
-        rpCard.classList.add('opened');
-        const statusEl = rpCard.querySelector('.msg-rp-status');
-        if (statusEl) statusEl.textContent = '已领取';
+        renderWindow(true, true);
         return;
       }
       // 就地作答区内部（选项按钮/发送/输入框）的点击不触发卡片委托
@@ -2876,11 +2874,12 @@ function partialRetractMsg(msgEl, side) {
     }
     rpWalletSet(wallet);
     const cover = rpCoverGet();
-    const msg = addRec({ side: rpSide, special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now(), rpCover: cover ? 1 : 0 });
+    const rec = { side: rpSide, special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now(), rpCover: cover ? 1 : 0 };
+    addRec(rec);
     if (window.logFish) window.logFish();
     // 我发的红包 → 系统延迟响应（退回/领取/pending）
     if (rpSide === 'out') {
-      setTimeout(() => handleSendResponse(msg), randInt(3000, 8000));
+      setTimeout(() => handleSendResponse(rec), randInt(3000, 8000));
     }
     closeRpPanel();
   }
