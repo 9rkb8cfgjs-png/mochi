@@ -1767,26 +1767,32 @@ cursor:pointer; font-family:inherit; margin-top:4px;
 .msg-rp { align-self:center; width:100%; display:flex; justify-content:center; padding:2px 0; }
 .msg-rp-card {
 max-width:78%; min-width:220px; text-align:center;
-background:linear-gradient(135deg, #ee3d34, #c92a2a);
-border:none; border-radius:16px; padding:16px 18px;
-box-shadow:0 4px 14px rgba(238,61,52,.28);
+background:#fff; border:1px solid rgba(0,0,0,.1);
+border-radius:16px; padding:14px 18px;
+box-shadow:0 2px 8px rgba(0,0,0,.05);
 cursor:pointer; position:relative; overflow:hidden;
 }
-.msg-rp-card.has-cover { background-size:cover; background-position:center; }
-.msg-rp-top { display:flex; align-items:center; justify-content:center; gap:6px; color:rgba(255,255,255,.88); }
+.msg-rp-cover {
+width:calc(100% + 36px); height:72px; margin:-14px -18px 10px;
+background-size:cover; background-position:center;
+border-radius:16px 16px 0 0;
+}
+.msg-rp-top { display:flex; align-items:center; justify-content:center; gap:6px; color:var(--muted); }
 .msg-rp-ico { display:inline-flex; }
-.msg-rp-ico svg { width:18px; height:18px; color:#fff; }
-.msg-rp-label { font-size:12px; font-weight:600; color:rgba(255,255,255,.88); }
-.msg-rp-amt { font-size:26px; font-weight:800; color:#fff; margin:8px 0 4px; font-variant-numeric:tabular-nums; }
-.msg-rp-wish { font-size:13px; color:rgba(255,255,255,.92); margin-bottom:10px; }
+.msg-rp-ico svg { width:18px; height:18px; color:#888; }
+.msg-rp-label { font-size:12px; font-weight:600; color:#888; }
+.msg-rp-amt { font-size:24px; font-weight:800; color:var(--ink); margin:8px 0 4px; font-variant-numeric:tabular-nums; }
+.msg-rp-wish { font-size:13px; color:var(--ink); margin-bottom:10px; }
 .msg-rp-foot {
 display:flex; justify-content:space-between; align-items:center;
-font-size:11px; color:rgba(255,255,255,.72);
-padding-top:8px; border-top:1px solid rgba(255,255,255,.18);
+font-size:11px; color:var(--muted);
+padding-top:8px; border-top:1px dashed rgba(0,0,0,.1);
 }
 .msg-rp-status { font-weight:600; }
-.msg-rp-card.opened { filter:saturate(.65) brightness(.82); }
-.msg-rp-card.expired { filter:grayscale(.55) brightness(.78); }
+.msg-rp-card.opened .msg-rp-status { color:var(--ink); }
+.msg-rp-card.opened { border-color:rgba(0,0,0,.18); }
+.msg-rp-card.expired { opacity:.6; }
+.msg-rp-card.expired .msg-rp-status { color:var(--muted); }
 .rp-balance {
 font-size:11px; color:var(--muted); text-align:center;
 padding:4px 0 8px; border-bottom:1px solid rgba(0,0,0,.06); margin-bottom:10px;
@@ -1794,12 +1800,12 @@ padding:4px 0 8px; border-bottom:1px solid rgba(0,0,0,.06); margin-bottom:10px;
 .rp-cover-row { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
 .rp-cover-preview {
 width:72px; height:48px; border-radius:8px; flex-shrink:0;
-background:linear-gradient(135deg, #ee3d34, #c92a2a);
+background:#f0f0f0;
 background-size:cover; background-position:center;
 display:flex; align-items:center; justify-content:center;
 overflow:hidden; border:1px solid rgba(0,0,0,.1);
 }
-.rp-cover-preview span { font-size:9px; color:rgba(255,255,255,.9); text-align:center; padding:0 4px; }
+.rp-cover-preview span { font-size:9px; color:var(--muted); text-align:center; padding:0 4px; }
 .rp-cover-actions { display:flex; flex-direction:column; gap:6px; }
 .rp-cover-btn {
 padding:6px 12px; font-size:12px; font-weight:600;
@@ -1809,15 +1815,6 @@ background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
 }
 .rp-cover-btn:active { background:rgba(0,0,0,.05); }
 .rp-cover-btn[hidden] { display:none; }
-.rp-rate-row { display:flex; gap:8px; }
-.rp-rate {
-flex:1; padding:8px 0; font-size:12px; font-weight:600;
-border:1px solid rgba(0,0,0,.12); border-radius:10px;
-background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
--webkit-tap-highlight-color:transparent;
-}
-.rp-rate.sel { background:#111; color:#fff; border-color:#111; }
-.rp-rate:active { transform:translateY(1px); }
 #page-chatcard { scrollbar-width:none; -ms-overflow-style:none; }
 #page-chatcard::-webkit-scrollbar { display:none; }
 .chat-title { font-size:22px; font-weight:700; padding:4px 2px 8px; letter-spacing:1px; }
@@ -3851,7 +3848,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.124 · 部署于 2026-08-19 17:33</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.125 · 部署于 2026-08-19 17:56</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4594,7 +4591,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.124</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.125</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -6082,16 +6079,9 @@ color: var(--muted);
             <div class="rp-rand-val" id="rp-rand-val"></div>
           </div>
           <div class="rp-section">
-            <div class="rp-section-title">TA 领取概率</div>
-            <div class="rp-rate-row">
-              <button class="rp-rate" data-rprate="low" type="button">低·50%</button>
-              <button class="rp-rate" data-rprate="mid" type="button">中·70%</button>
-              <button class="rp-rate" data-rprate="high" type="button">高·85%</button>
-            </div>
-          </div>
-          <div class="rp-section">
+
             <div class="rp-section-title">自定义金额</div>
-            <input class="rp-input" id="rp-custom" type="number" min="0.01" step="0.01" placeholder="输入金额，如 88.88">
+            <input class="rp-input" id="rp-custom" type="number" min="0" step="0.01" placeholder="输入金额，0 元是心意红包">
           </div>
           <div class="rp-section">
             <div class="rp-section-title">留言</div>
@@ -11451,8 +11441,10 @@ const cover = rpCoverGet();
 if (cover) {
 const card = m.querySelector('.msg-rp-card');
 if (card) {
-card.classList.add('has-cover');
-card.style.backgroundImage = 'linear-gradient(rgba(180,30,30,.45),rgba(140,20,20,.6)), url("' + cover + '")';
+const banner = document.createElement('div');
+banner.className = 'msg-rp-cover';
+banner.style.backgroundImage = 'url("' + cover + '")';
+card.insertBefore(banner, card.firstChild);
 }
 }
 }
@@ -12735,8 +12727,6 @@ if (rpWishInput) rpWishInput.value = '';
 if (rpRandVal) rpRandVal.textContent = '';
 rpPanel.querySelectorAll('.rp-side').forEach(b => b.classList.toggle('sel', b.dataset.rpside === 'out'));
 rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
-const curRate = store.get('rp-rate-mode') || 'mid';
-rpPanel.querySelectorAll('.rp-rate').forEach(b => b.classList.toggle('sel', b.dataset.rprate === curRate));
 closeIme();
 rpRenderBalance();
 rpRenderCover();
@@ -12777,13 +12767,6 @@ rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
 if (rpRandVal) rpRandVal.textContent = '';
 });
 }
-rpPanel.querySelectorAll('.rp-rate').forEach(btn => {
-btn.addEventListener('click', (e) => {
-e.stopPropagation();
-store.set('rp-rate-mode', btn.dataset.rprate || 'mid');
-rpPanel.querySelectorAll('.rp-rate').forEach(b => b.classList.toggle('sel', b === btn));
-});
-});
 }
 const RP_WALLET_KEY = 'rp-wallet';
 const RP_DAILY_PREFIX = 'ml2_rp_daily_';
@@ -12847,12 +12830,6 @@ addIn('', { special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pendin
 if (window.logFish) window.logFish();
 }, randInt(800, 2000));
 }
-function rpRateCfg() {
-const m = store.get('rp-rate-mode') || 'mid';
-if (m === 'low') return { ret: 0.3, collect: 0.8 };
-if (m === 'high') return { ret: 0.1, collect: 0.95 };
-return { ret: 0.2, collect: 0.9 };
-}
 function rpThanksMsg() {
 return pick(['谢谢亲爱的～', '收到啦❤', '嘿嘿谢谢宝宝', '爱你哟', '🥰 谢谢', '开心！谢谢～', '么么哒']);
 }
@@ -12876,17 +12853,16 @@ if (idx < 0) return;
 const rec = msgs[idx];
 if (!rec || rec.rpStatus !== 'pending') return;
 const r = Math.random();
-const cfg = rpRateCfg();
 const wallet = rpWalletGet();
 const amtFen = Math.round((rec.rpAmount || 0) * 100);
-if (r < cfg.ret) {
+if (r < 0.2) {
 rec.rpStatus = 'returned';
 wallet.myBalance += amtFen;
 rpWalletSet(wallet);
 saveMsgsNow();
 renderWindow(false, true);
 setTimeout(() => addIn('红包 24 小时未被领取，已退回', { special: 'poke' }), randInt(500, 1200));
-} else if (r < cfg.collect) {
+} else if (r < 0.9) {
 rec.rpStatus = 'received';
 rec.rpOpenedAt = Date.now();
 wallet.systemBalance += amtFen;
@@ -13022,9 +12998,9 @@ function sendRedpacket() {
 let amt = rpPickedAmt;
 if (rpCustomInput && rpCustomInput.value) {
 const cv = parseFloat(rpCustomInput.value);
-if (!isNaN(cv) && cv > 0) amt = Math.round(cv * 100) / 100;
+if (!isNaN(cv) && cv >= 0) amt = Math.round(cv * 100) / 100;
 }
-if (!amt || amt <= 0 || isNaN(amt)) { toast('先选择或输入红包金额'); return; }
+if (amt == null || isNaN(amt) || amt < 0) { toast('先选择或输入红包金额'); return; }
 const wish = (rpWishInput && rpWishInput.value || '').trim() || (isQixiToday() ? '七夕快乐' : '心意');
 const amtFen = Math.round(amt * 100);
 const wallet = rpWalletGet();
@@ -20650,36 +20626,10 @@ clearTimeout(t._timer);
 t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
 }
 function escG(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
-function interactPoolBlockHtml(poolName, title) {
+function interactPoolInlineHtml(poolName) {
 const arr = window.getInteractPool ? window.getInteractPool(poolName, []) : [];
 if (!arr.length) return '';
-let h = '<div class="cal-card glass"><div class="cal-card-title">' + escG(title) + ' <span style="font-size:11px;color:var(--muted);font-weight:400">(' + arr.length + ')</span></div>';
-arr.forEach((c, i) => {
-const off = window.isDefaultCardOff ? window.isDefaultCardOff('interact', c) : false;
-h += '<div class="ta-row' + (off ? ' off' : '') + '">' +
-'<label class="toggle"><input type="checkbox"' + (off ? '' : ' checked') + ' data-ipool="' + escG(poolName) + '" data-ipidx="' + i + '"><span class="tk"></span></label>' +
-'<span class="ta-txt">' + escG(c) + ' <span class="tc-known">系统</span></span>' +
-'</div>';
-});
-h += '</div>';
-return h;
-}
-function bindInteractPoolToggle(container) {
-if (!container) return;
-container.querySelectorAll('input[data-ipool]').forEach(cb => {
-cb.addEventListener('change', () => {
-const poolName = cb.dataset.ipool;
-const idx = Number(cb.dataset.ipidx);
-const arr = window.getInteractPool ? window.getInteractPool(poolName, []) : [];
-const c = arr[idx];
-if (c == null) return;
-const off = !cb.checked;
-store.set('dc-off-interact:' + c, off ? '1' : '0');
-const row = cb.closest('.ta-row');
-if (row) row.classList.toggle('off', off);
-grpToast((off ? '已关闭：' : '已开启：') + (c.length > 18 ? c.slice(0, 18) + '…' : c));
-});
-});
+return '<div class="tc-qopts">TA 回应：<span class="tc-known">系统</span> ' + arr.map(escG).join(' / ') + '</div>';
 }
 window.cardGroups = {
 genId: function () { return 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); },
@@ -21100,10 +21050,10 @@ html += '<div class="ta-row' + (preset && !useDefault ? ' off' : '') + '">' +
 '<span class="ta-txt">' + q.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + (q.type === 'single' ? ' <span class="tc-known">单选·' + (q.options ? q.options.length : 0) + '选项</span>' : '') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</span>' +
 delBtn +
 '</div>';
+if (presetOnly) html += interactPoolInlineHtml('询问·回应');
 });
 html += '</div>';
 });
-if (presetOnly) html += interactPoolBlockHtml('询问·回应', 'TA 回应话术池');
 if (!html) html = '<div class="ta-empty" style="padding:14px">' + (presetOnly ? '暂无系统预设问题' : '暂未添加自定义问题，可在上方批量导入或下方逐条添加') + '</div>';
 container.innerHTML = html;
 container.querySelectorAll('input[data-idx]').forEach(cb => {
@@ -21124,7 +21074,6 @@ taAskSave(d2);
 renderAskCatsInto(container, false);
 });
 });
-bindInteractPoolToggle(container);
 }
 function askItemHtml(q, idx) {
 return '<div class="ta-row">' +
@@ -21647,12 +21596,11 @@ const delBtn = preset ? '' : '<button class="ta-del" data-idx="' + idx + '">✕<
 html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) ? ' off' : '') + '">' +
 '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
 '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
-'<div class="tc-qopts">选项：' + q.options.map(o => o.t).join(' / ') + '</div></div>' +
+'<div class="tc-qopts">选项：' + q.options.map(o => escT(o.t) + (o.reply ? ' <span class="tc-opt-reply">→ ' + escT(o.reply) + '</span>' : '')).join(' / ') + '</div></div>' +
 delBtn +
 '</div>';
 });
 });
-if (presetOnly) html += interactPoolBlockHtml('小问题·回应', 'TA 回应话术池');
 if (!html) html = '<div class="ta-empty">' + (presetOnly ? '暂无系统预设问题' : '暂未添加自定义问题，可在上方添加') + '</div>';
 container.innerHTML = html;
 container.querySelectorAll('input[data-idx]').forEach(cb => {
@@ -21673,7 +21621,6 @@ tcSave(d2);
 renderTCCatsInto(container, false);
 });
 });
-bindInteractPoolToggle(container);
 }
 function renderMineGroupsInto(container, opt) {
 if (!container) return;
@@ -22205,10 +22152,10 @@ html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) 
 '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
 '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + (known ? ' <span class="tc-known">✓已了解</span>' : '') + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
 (q.quick && q.quick.length ? '<div class="tc-qopts">快捷：' + q.quick.join(' / ') + '</div>' : '') +
+(q.replies && q.replies.length ? '<div class="tc-qopts">TA 回应：' + q.replies.map(escT).join(' / ') + '</div>' : '') +
 '</div>' + delBtn + '</div>';
 });
 });
-if (presetOnly) html += interactPoolBlockHtml('好奇·回应', 'TA 回应话术池');
 if (!html) html = '<div class="ta-empty">' + (presetOnly ? '暂无系统预设问题' : '暂未添加自定义问题，可在上方添加') + '</div>';
 container.innerHTML = html;
 container.querySelectorAll('input[data-idx]').forEach(cb => {
@@ -22229,7 +22176,6 @@ tcuSave(d2);
 renderTCUCatsInto(container, false);
 });
 });
-bindInteractPoolToggle(container);
 }
 const tcuMineOpt = {
 load: tcuLoad, save: tcuSave, order: TCU_CAT_ORDER, label: TCU_CAT_LABEL,
@@ -22597,10 +22543,10 @@ html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) 
 '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
 '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
 (q.match && q.match.length ? '<div class="tc-qopts">触发：' + q.match.join(' / ') + '</div>' : '') +
+(presetOnly ? interactPoolInlineHtml('吐槽·回应') : '') +
 '</div>' + delBtn + '</div>';
 });
 });
-if (presetOnly) html += interactPoolBlockHtml('吐槽·回应', 'TA 回应话术池');
 if (!html) html = '<div class="ta-empty">' + (presetOnly ? '暂无系统预设字卡' : '暂未添加自定义字卡，可在上方添加') + '</div>';
 container.innerHTML = html;
 container.querySelectorAll('input[data-idx]').forEach(cb => {
@@ -22621,7 +22567,6 @@ trSave(d2);
 renderTRCatsInto(container, false);
 });
 });
-bindInteractPoolToggle(container);
 }
 const trMineOpt = {
 load: trLoad, save: trSave, order: TR_CAT_ORDER, label: TR_CAT_LABEL,
@@ -26362,15 +26307,15 @@ const ck = genCheckin();
 store.set('checkin-current', JSON.stringify(ck));
 renderCheckinUI(ck);
 const name = store.get('lbl-partner') || 'TA';
+if (window.chatAddSystem) {
+window.chatAddSystem(name + ' 更新了一条日常');
+}
 if (window.chatAddIn) {
 const line = [ck.place, ck.action, ck.msg].filter(Boolean).join(' · ');
 if (line) window.chatAddIn(line);
 }
-if (window.chatAddSystem) {
-window.chatAddSystem(name + ' 更新了一条日常');
 if (Math.random() * 100 < 30) {
 window.chatAddIn(name + ' 提醒你快来查岗');
-}
 }
 recordCheckin(ck);
 store.set('checkin-last', String(Date.now()));

@@ -984,8 +984,10 @@
         if (cover) {
           const card = m.querySelector('.msg-rp-card');
           if (card) {
-            card.classList.add('has-cover');
-            card.style.backgroundImage = 'linear-gradient(rgba(180,30,30,.45),rgba(140,20,20,.6)), url("' + cover + '")';
+            const banner = document.createElement('div');
+            banner.className = 'msg-rp-cover';
+            banner.style.backgroundImage = 'url("' + cover + '")';
+            card.insertBefore(banner, card.firstChild);
           }
         }
       }
@@ -2560,8 +2562,7 @@ function partialRetractMsg(msgEl, side) {
     if (rpRandVal) rpRandVal.textContent = '';
     rpPanel.querySelectorAll('.rp-side').forEach(b => b.classList.toggle('sel', b.dataset.rpside === 'out'));
     rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
-    const curRate = store.get('rp-rate-mode') || 'mid';
-    rpPanel.querySelectorAll('.rp-rate').forEach(b => b.classList.toggle('sel', b.dataset.rprate === curRate));
+
     closeIme();
     rpRenderBalance();
     rpRenderCover();
@@ -2602,14 +2603,7 @@ function partialRetractMsg(msgEl, side) {
         if (rpRandVal) rpRandVal.textContent = '';
       });
     }
-    // 领取概率档位
-    rpPanel.querySelectorAll('.rp-rate').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        store.set('rp-rate-mode', btn.dataset.rprate || 'mid');
-        rpPanel.querySelectorAll('.rp-rate').forEach(b => b.classList.toggle('sel', b === btn));
-      });
-    });
+
   }
   // ---- 红包模拟器：双钱包账本 + 概率分支（系统自动发 / 退回 / 领取 / 过期）----
   // 钱包单位：分（整数计算精确）；展示用元。默认各 99999999 分（约 100 万元）
@@ -2677,14 +2671,7 @@ function partialRetractMsg(msgEl, side) {
       if (window.logFish) window.logFish();
     }, randInt(800, 2000));
   }
-  // 我发红包后系统响应：20% 退回 / 70% 立即领取 / 10% pending
-  // 领取概率档位：low 退回30%/领取50%/待领20% · mid 20%/70%/10% · high 10%/85%/5%
-  function rpRateCfg() {
-    const m = store.get('rp-rate-mode') || 'mid';
-    if (m === 'low') return { ret: 0.3, collect: 0.8 };
-    if (m === 'high') return { ret: 0.1, collect: 0.95 };
-    return { ret: 0.2, collect: 0.9 };
-  }
+  // 我发红包后系统响应：20% 退回 / 70% 立即领取 / 10% pending（固定概率，不可调）
   function rpThanksMsg() {
     return pick(['谢谢亲爱的～', '收到啦❤', '嘿嘿谢谢宝宝', '爱你哟', '🥰 谢谢', '开心！谢谢～', '么么哒']);
   }
@@ -2709,17 +2696,16 @@ function partialRetractMsg(msgEl, side) {
     const rec = msgs[idx];
     if (!rec || rec.rpStatus !== 'pending') return;
     const r = Math.random();
-    const cfg = rpRateCfg();
     const wallet = rpWalletGet();
     const amtFen = Math.round((rec.rpAmount || 0) * 100);
-    if (r < cfg.ret) {
+    if (r < 0.2) {
       rec.rpStatus = 'returned';
       wallet.myBalance += amtFen;
       rpWalletSet(wallet);
       saveMsgsNow();
       renderWindow(false, true);
       setTimeout(() => addIn('红包 24 小时未被领取，已退回', { special: 'poke' }), randInt(500, 1200));
-    } else if (r < cfg.collect) {
+    } else if (r < 0.9) {
       rec.rpStatus = 'received';
       rec.rpOpenedAt = Date.now();
       wallet.systemBalance += amtFen;
@@ -2862,9 +2848,9 @@ function partialRetractMsg(msgEl, side) {
     let amt = rpPickedAmt;
     if (rpCustomInput && rpCustomInput.value) {
       const cv = parseFloat(rpCustomInput.value);
-      if (!isNaN(cv) && cv > 0) amt = Math.round(cv * 100) / 100;
+      if (!isNaN(cv) && cv >= 0) amt = Math.round(cv * 100) / 100;
     }
-    if (!amt || amt <= 0 || isNaN(amt)) { toast('先选择或输入红包金额'); return; }
+    if (amt == null || isNaN(amt) || amt < 0) { toast('先选择或输入红包金额'); return; }
     const wish = (rpWishInput && rpWishInput.value || '').trim() || (isQixiToday() ? '七夕快乐' : '心意');
     const amtFen = Math.round(amt * 100);
     const wallet = rpWalletGet();

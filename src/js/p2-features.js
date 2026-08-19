@@ -393,18 +393,20 @@ function renderCheckinHistory() {
     store.set('checkin-current', JSON.stringify(ck));
     renderCheckinUI(ck);
     const name = store.get('lbl-partner') || 'TA';
-    // 日常更新显示在聊天消息里（普通气泡消息，持久化）
+    // 更新提示系统消息：先发「联系人 更新了一条日常」（v3.7.x 调整顺序——
+    // 原先是字卡文字消息先发、系统提示后发，与用户预期相反）
+    if (window.chatAddSystem) {
+      window.chatAddSystem(name + ' 更新了一条日常');
+    }
+    // 再发日常更新内容消息（普通气泡消息，持久化）
     // v3.6.x：只拼接存在的字段，避免 "在咖啡店 · undefined" 写进聊天记录
     if (window.chatAddIn) {
       const line = [ck.place, ck.action, ck.msg].filter(Boolean).join(' · ');
       if (line) window.chatAddIn(line);
     }
-    // 更新提示系统消息 + 概率触发「提醒你来查岗」
-    if (window.chatAddSystem) {
-      window.chatAddSystem(name + ' 更新了一条日常');
-      if (Math.random() * 100 < 30) {
-        window.chatAddIn(name + ' 提醒你快来查岗');
-      }
+    // 概率触发「提醒你来查岗」
+    if (Math.random() * 100 < 30) {
+      window.chatAddIn(name + ' 提醒你快来查岗');
     }
     recordCheckin(ck);
     store.set('checkin-last', String(Date.now()));
