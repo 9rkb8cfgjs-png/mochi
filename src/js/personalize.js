@@ -1925,7 +1925,7 @@
     const imgPrev = document.createElement('div');
     imgPrev.className = 'dl-prev';
     imgPrev.style.cssText = PREV_BOX;
-    imgPrev.innerHTML = '<span style="width:40px;height:30px;border-radius:6px;background:linear-gradient(135deg,#cde4ff,#ffdce8);display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.06)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.8"/><path d="M5.5 17l4-4 3 3 2.5-2.5L19 17"/></svg></span>';
+    imgPrev.innerHTML = '<span style="width:40px;height:30px;border-radius:6px;background:#f4f4f4;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.06)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.8"/><path d="M5.5 17l4-4 3 3 2.5-2.5L19 17"/></svg></span>';
     const imgMeta = document.createElement('div');
     imgMeta.className = 'dl-meta';
     const imgName = document.createElement('div');

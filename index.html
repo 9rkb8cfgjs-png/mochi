@@ -3581,7 +3581,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.113 · 部署于 2026-08-19 13:27</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.114 · 部署于 2026-08-19 13:41</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4323,7 +4323,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.113</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.114</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -8866,7 +8866,7 @@ imgItem.className = 'desk-lib-item';
 const imgPrev = document.createElement('div');
 imgPrev.className = 'dl-prev';
 imgPrev.style.cssText = PREV_BOX;
-imgPrev.innerHTML = '<span style="width:40px;height:30px;border-radius:6px;background:linear-gradient(135deg,#cde4ff,#ffdce8);display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.06)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.8"/><path d="M5.5 17l4-4 3 3 2.5-2.5L19 17"/></svg></span>';
+imgPrev.innerHTML = '<span style="width:40px;height:30px;border-radius:6px;background:#f4f4f4;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.06)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.8"/><path d="M5.5 17l4-4 3 3 2.5-2.5L19 17"/></svg></span>';
 const imgMeta = document.createElement('div');
 imgMeta.className = 'dl-meta';
 const imgName = document.createElement('div');
@@ -18990,10 +18990,17 @@ window.pickAskCardReply = function (presetPool) {
 try {
 const cards = (window.getCustomCards && window.getCustomCards()) || [];
 const words = cards.filter(s => typeof s === 'string' && s.indexOf('data:') !== 0 && s.indexOf('|||') < 0 && s.trim());
-const pool = [];
-if (Array.isArray(presetPool) && presetPool.length) pool.push.apply(pool, presetPool);
-pool.push.apply(pool, words);
-if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
+const hasPreset = Array.isArray(presetPool) && presetPool.length > 0;
+if (hasPreset && words.length) {
+if (Math.random() < 0.9) return presetPool[Math.floor(Math.random() * presetPool.length)];
+const n = 1 + Math.floor(Math.random() * Math.min(5, words.length));
+const copy = words.slice();
+const out = [];
+while (out.length < n) out.push(copy.splice(Math.floor(Math.random() * copy.length), 1)[0]);
+return out.join(' ');
+}
+if (hasPreset) return presetPool[Math.floor(Math.random() * presetPool.length)];
+if (words.length) return words[Math.floor(Math.random() * words.length)];
 } catch (e) {}
 const defs = ['收到你的回答。', '好呀，我知道了。', '嗯嗯，我也是这么想的。', '你这么说，我记住了。', '好的，我记在心里了。'];
 return defs[Math.floor(Math.random() * defs.length)];
