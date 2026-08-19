@@ -9,6 +9,13 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-19（用户三次反馈「正在输入行是整行图形、滑动遮挡」——真实根因是版本更新机制失效，用户从未加载到修复版）
+- [本会话·完成]（**已构建 verify 10/10 + CDP 端到端验证，已随 a49d263 提交推送**）：用户三次反馈同一问题，前两轮只改 `.chat-typing` CSS（fit-content→align-self:flex-start）并验证线上已部署，但用户始终看不到修复。**深挖发现真正根因不是 typing 样式，而是版本更新机制从未生效**：
+  ① **`template.html` 结构性 bug（核心）**：`ver-update-bar`/`backup-remind-bar` 位于 `<script>`（`/*__SCRIPTS__*/`）**之后**，而 pwa.js 启动即 `getElementById('ver-update-bar')` → null → `if(!bar) return` 直接退出 → **版本检测/备份提醒整块逻辑从未执行**（desk-image-viewer 曾有同类坑，注释明确要求必须在 script 前，两个 bar 漏了）。用户永远收不到「检测到新版本」提示，一直停留在旧缓存（悬浮式/全宽式 typing 行）。
+  ② **pwa.js 基线 bug**：基线取「首次 fetch 的 version.json」——旧缓存页面 + version.json 拿到最新时间戳时基线被污染成最新版 → `ts > baseTs` 永远 false → 永不提示。
+  ③ **sw.js 拦截 version.json**：网络优先 8s 超时 + 带 `?v=` 唯一参数缓存永不命中 → 慢网络下版本检测 fetch 静默失败。
+  修复：①ver-update-bar/backup-remind-bar 移到 `<script>` 前；②build.mjs 注入 `__BUILD_TS__` → template `splash-ver data-build-ts`，pwa.js 加载时直接取页面自身构建时间戳当基线（首次 fetch 即可比较，不依赖 30s 轮询）；③sw.js 放行 version.json/notice.json 不走 SW；④sw.js 导航回退兜底找任意旧缓存 index.html。无头验证：注入旧基线 + 服务器返回新 version.json → 更新条 barHidden=false 正确触发（修复前从未触发）。涉及 `src/template.html`、`src/js/pwa.js`、`src/pwa/sw.js`、`build.mjs`（全 AI-B 域）。
+
 ### 2026-08-19（本会话，用户需求「猜拳手势矢量图重设计，旧版太丑」）
 - [本会话·完成]（**已构建 verify 10/10，已提交**）：猜拳全套手势图标换为 Phosphor Icons（MIT）三件套——石头=hand-fist 拳头 / 剪刀=hand-peace V 手势 / 布=hand-palm 张开手掌（viewBox 0 0 256 256，path 带 fill="currentColor"，颜色仍走各处 CSS color，深浅色自动适配）。替换 4 处：①`src/template.html` more-rps 更多面板入口图标——旧版是四指抬手，与「拍一拍」入口几乎一模一样（用户觉得丑/混淆的主因），改用拳头（「猜拳」字面即拳头，区分度明显）；②③④半框三个出拳按钮（template.html rps-choices）+ `src/js/chat.js` renderMsg 消息卡片 rpsIco 映射——旧版为手绘直线拼凑路径（石头=带竖线方块、剪刀=两根悬空竖线，辨识度差）。选型过程：Iconify API 拉取 Phosphor 常规与 FA6 实心两套候选 → 无头 Chrome 截图对比页 + 视觉评估（Phosphor 手势一眼可辨、线宽与邻居图标协调，胜出）；构建产物里拳头 3 处（入口+按钮+消息卡）/剪刀布各 2 处嵌入计数验证，浅色卡片/深色卡片/出拳按钮三场景渲染确认正常。`.shot-tmp/` 临时预览已清理。
 - 本次提交同时包含对方 20:25-20:34 保存的完整批次（feed.js IndexedDB 就绪门槛 feedDbReady+feedPending 防 Edge 丢动态 / mail.js / music-player.js / ta-ask.js 相关完善），均已进过 20:35 产物、内容完整自洽，按惯例随本次产物统一提交。
@@ -515,3 +522,5 @@
   - 涉及：src/js/feed.js、src/js/chat.js、src/js/bg-keep.js。
   - 本次构建同时带上 AI-A 已保存的 ta-ask.js 两轮新增（吐槽17条+94条新预设/回应池接线）、chat.js、default-cards-data.js 改动（上一轮留话「请构建者再执行一次 build」已执行）。
   - 遗留：`.verify-fixes-tmp.mjs`、`.shot-tmp/`（历史遗留未跟踪调试残留，非本次创建，待确认清理）。
+### 2026-08-19
+- [AI-A] 开工（用户追问「还有能增加的问题吗」，再追加第四批，**本条尚未构建**）：src/js/ta-ask.js 四数组末尾各加一批，共 +73 条：询问 +14（11 开放 q_d18-d20/q_c14-c15/q_i18-i19/q_w19-w22 + 3 单选 q_s9-s11）；小问题 +18（cd16-19/cl11-12/cf11-12/cr12-13/ch11-12/cs9/cw14-16）；好奇 +19（cy14-15/cm12-13/cd14-16/cp12-13/cl13-14/ct12-13/cu12-13/cw15-18，4 题带 followup）；吐槽 +22（rl26-31/rf20-24/rs23-28/rm10-12/rsg6-7/rw16-21，5 条带 match）。题材换角度：时间感/感官/未来/字卡本身/两个世界深化/情绪细微/日常碎片。校验：node --check 通过，四数组 ID 唯一性通过（87/93/115/127）。涉及 src/js/ta-ask.js。**未构建未提交**，连同前几批待构建部分，请构建者执行一次 node build.mjs 一并带上。
