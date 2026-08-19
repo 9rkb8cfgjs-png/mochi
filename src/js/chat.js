@@ -2167,6 +2167,8 @@ function partialRetractMsg(msgEl, side) {
     // v3.6.x：来电挂钩——TA 主动发完消息后按「通话设置-来电概率」掷一次来电
     // （等整批发完再加几秒缓冲，避免来电弹窗盖住刚发出去的消息）
     setTimeout(() => { if (window.callMaybeTrigger) window.callMaybeTrigger(); }, count * 2600 + 3500);
+    // 红包模拟器：TA 主动发完后也触发系统红包 + pending 收取
+    setTimeout(() => { trySystemAutoSend(); tryCollectPending(); }, count * 2600 + 2500);
     } catch (e) {
       // v3.6.x：异常不杀链——原实现 tryAutoSend 抛错会阻止 scheduleAutoSend() 执行，
       // 一次异常（真机 DOM/媒体差异、字卡数据损坏等）后 TA 永久不再主动发送；
@@ -2466,20 +2468,24 @@ function partialRetractMsg(msgEl, side) {
     return -1;
   }
   function sendRps(mine) {
-    // 联系人出拳纯随机（1/3 均匀），每次独立
-    const ta = ['rock', 'scissors', 'paper'][Math.floor(Math.random() * 3)];
-    const judge = rpsJudge(mine, ta);
-    const s = rpsReadScore();
-    if (judge > 0) s.w++; else if (judge < 0) s.l++; else s.d++;
-    rpsWriteScore(s);
-    rpsRenderScore();
-    addRec({ side: 'in', special: 'rps', rpsMine: mine, rpsTa: ta, rpsResult: judge });
-    if (window.logFish) window.logFish();
-    if (rpsHintEl) {
-      rpsHintEl.textContent =
-        judge > 0 ? '你赢了！再来一局？' :
-        judge < 0 ? '你输了，再来一局？' : '平局，再来一局？';
-    }
+    // 出拳后关闭半框，让用户看到聊天里的过程
+    closeRpsPanel();
+    // 先插入"我出了 X"的提示卡片，给用户即时反馈
+    const mineName = { rock: '石头', scissors: '剪刀', paper: '布' }[mine] || '';
+    addRec({ side: 'in', special: 'poke', text: '我出了 ' + mineName + '，等 TA 出拳…' });
+    // TA 正在出拳：typing 动画 + 随机延迟，增加真实感
+    showTyping();
+    setTimeout(() => {
+      hideTyping();
+      // 联系人出拳纯随机（1/3 均匀），每次独立
+      const ta = ['rock', 'scissors', 'paper'][Math.floor(Math.random() * 3)];
+      const judge = rpsJudge(mine, ta);
+      const s = rpsReadScore();
+      if (judge > 0) s.w++; else if (judge < 0) s.l++; else s.d++;
+      rpsWriteScore(s);
+      addRec({ side: 'in', special: 'rps', rpsMine: mine, rpsTa: ta, rpsResult: judge });
+      if (window.logFish) window.logFish();
+    }, randInt(900, 1600));
   }
   const moreRps = document.getElementById('more-rps');
   if (moreRps) {
@@ -2546,6 +2552,7 @@ function partialRetractMsg(msgEl, side) {
     rpPanel.querySelectorAll('.rp-side').forEach(b => b.classList.toggle('sel', b.dataset.rpside === 'out'));
     rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
     closeIme();
+    rpRenderBalance();
     rpPanel.hidden = false;
   }
   function closeRpPanel() { if (rpPanel) rpPanel.hidden = true; }
@@ -4486,6 +4493,9 @@ function partialRetractMsg(msgEl, side) {
   // v3.5.128：启动即加载聊天记录到内存——统计页/TA问答等模块通过 getChatMsgs
   // 读取时不再拿到空数组（原先只有进聊天页才 loadMsgs）
   loadMsgs();
+  // 红包过期检查：启动后 2s（待数据就绪）+ 每小时定时
+  setTimeout(rpExpireCheck, 2000);
+  setInterval(rpExpireCheck, 60 * 60 * 1000);
   // 对外发送消息接口（占卜结果发送给 TA 等复用）
   window.chatSendMsg = (text) => { if (typeof text === 'string' && text.trim()) addMsg(text.trim()); };
   // v3.5.94：收藏消息含图片，可能只存在 IndexedDB → 启动补读（收藏页打开时才渲染，届时读到）

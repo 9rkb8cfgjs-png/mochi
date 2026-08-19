@@ -294,13 +294,15 @@ html { margin:0; padding:0; }
    iPad 竖屏（768-834px CSS 视口）原命中上方 max-width:900px 手机全屏布局——
    内容被整屏拉宽（桌面图标间距巨大、聊天气泡过宽）；iPad 横屏（≥1024px）
    走桌面模拟器外壳（390px 小框 + 两侧灰底）。两者都不适合平板。
-   平板统一为「大屏手机」布局：全高 + 内容限宽 560px 居中 + 无模拟器外壳，
-   竖屏/横屏观感一致。.tablet 类由 mobile-adapt.js 检测 iPad 加在 <html> 上
-   （含 iPadOS 13+ Macintosh 伪装 UA），本区块选择器以 html.tablet 前缀提权，
-   优先于手机媒体查询与桌面外壳样式。 */
+   平板统一为「大屏手机」布局：全高 + 内容限宽居中 + 无模拟器外壳。
+   v3.7.x：竖横屏分开限宽——竖屏 640px（原 560px 偏窄，768px 视口两侧留白
+   仅 64px 显挤）、横屏 820px（原 560px 两侧留白 232-403px 浪费严重）。
+   .tablet 类由 mobile-adapt.js 检测 iPad 加在 <html> 上（含 iPadOS 13+
+   Macintosh 伪装 UA），本区块选择器以 html.tablet 前缀提权，优先于手机媒体
+   查询与桌面外壳样式。 */
 html.tablet body { padding:0; }
 html.tablet .phone {
-  width:min(560px, 100vw); max-width:none; flex-shrink:0;
+  width:min(640px, 100vw); max-width:none; flex-shrink:0;
   height:100vh; height:100svh; height:100dvh;
   border-radius:0; box-shadow:none;
   padding:0 18px 18px;
@@ -347,6 +349,19 @@ html.tablet .phone [contenteditable="true"] { font-size:16px; }
 /* 平板手势：禁止双击缩放（iPad Safari 双击放大整页是常见误触），长按不弹系统菜单 */
 html.tablet, html.tablet * { touch-action:manipulation; }
 html.tablet body, html.tablet .phone, html.tablet img { -webkit-touch-callout:none; }
+
+/* v3.7.x：iPad 横屏（≥1024px CSS 视口）——内容区放宽到 820px，
+   更好利用横屏空间（原 560px 两侧留白 232-403px 浪费严重）。
+   竖屏保持 640px（上方默认规则）。iPad mini/普通 iPad 横屏 1024-1080px
+   命中，两侧留白 102-130px，观感与原生 iPad 应用限宽居中一致。
+   iPad Air/Pro 横屏 1180-1366px 同命中，两侧留白 180-273px，不过窄。 */
+@media (orientation: landscape) and (min-width: 1024px) {
+  html.tablet .phone { width:min(820px, 100vw); }
+  /* 消息气泡封顶 460px：820px 下 70%=574px 过宽难读，封顶后接近手机阅读宽度 */
+  html.tablet .msg:not(.msg-ask):not(.msg-center) { max-width:min(70%, 460px); }
+  /* 弹窗稍宽（横屏空间充裕，360px 比 320px 更舒展） */
+  html.tablet .modal { width:min(360px, 82vw); }
+}
 
 /* v3.6.x：输入法弹出适配已改为「最小干预」——mobile-adapt.js 不再锁定 .phone 高度、
    不再写 --ime-h、不再加 ime-open（此前这套机制在部分安卓机引发输入法截断/闪屏）。

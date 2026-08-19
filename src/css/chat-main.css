@@ -434,7 +434,8 @@
 .rps-choice span:last-child { font-size:13px; font-weight:600; }
 
 /* 猜拳结果消息：居中白底灰边卡片，双方手势对比 + 结果文字，简约无彩色 */
-.msg-rps { align-self:center; width:100%; display:flex; justify-content:center; padding:4px 0; }
+.msg-rps { align-self:center; width:100%; display:flex; justify-content:center; padding:4px 0; animation:rpsFadeIn .35s ease both; }
+@keyframes rpsFadeIn { from { opacity:0; transform:translateY(8px) scale(.96); } to { opacity:1; transform:none; } }
 .msg-rps-card {
   max-width:82%; min-width:240px; text-align:center;
   background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
@@ -1038,3 +1039,9 @@
 .msg-rp-status { font-weight:600; }
 .msg-rp-card.opened .msg-rp-status { color:var(--ink); }
 .msg-rp-card.opened { border-color:rgba(0,0,0,.18); }
+.msg-rp-card.expired { opacity:.6; }
+.msg-rp-card.expired .msg-rp-status { color:var(--muted); }
+.rp-balance {
+  font-size:11px; color:var(--muted); text-align:center;
+  padding:4px 0 8px; border-bottom:1px solid rgba(0,0,0,.06); margin-bottom:10px;
+}

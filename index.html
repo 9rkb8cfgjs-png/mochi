@@ -198,7 +198,7 @@ padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
 }
 html.tablet body { padding:0; }
 html.tablet .phone {
-width:min(560px, 100vw); max-width:none; flex-shrink:0;
+width:min(640px, 100vw); max-width:none; flex-shrink:0;
 height:100vh; height:100svh; height:100dvh;
 border-radius:0; box-shadow:none;
 padding:0 18px 18px;
@@ -236,6 +236,11 @@ html.tablet .phone select,
 html.tablet .phone [contenteditable="true"] { font-size:16px; }
 html.tablet, html.tablet * { touch-action:manipulation; }
 html.tablet body, html.tablet .phone, html.tablet img { -webkit-touch-callout:none; }
+@media (orientation: landscape) and (min-width: 1024px) {
+html.tablet .phone { width:min(820px, 100vw); }
+html.tablet .msg:not(.msg-ask):not(.msg-center) { max-width:min(70%, 460px); }
+html.tablet .modal { width:min(360px, 82vw); }
+}
 .cc-import-progress {
 position:fixed; inset:0; z-index:99999;
 background:rgba(0,0,0,.45);
@@ -1223,7 +1228,8 @@ background:rgba(0,0,0,.04); display:flex; align-items:center; justify-content:ce
 }
 .rps-c-ico svg { width:26px; height:26px; color:#444; }
 .rps-choice span:last-child { font-size:13px; font-weight:600; }
-.msg-rps { align-self:center; width:100%; display:flex; justify-content:center; padding:4px 0; }
+.msg-rps { align-self:center; width:100%; display:flex; justify-content:center; padding:4px 0; animation:rpsFadeIn .35s ease both; }
+@keyframes rpsFadeIn { from { opacity:0; transform:translateY(8px) scale(.96); } to { opacity:1; transform:none; } }
 .msg-rps-card {
 max-width:82%; min-width:240px; text-align:center;
 background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
@@ -1755,6 +1761,12 @@ padding-top:8px; border-top:1px dashed rgba(0,0,0,.1);
 .msg-rp-status { font-weight:600; }
 .msg-rp-card.opened .msg-rp-status { color:var(--ink); }
 .msg-rp-card.opened { border-color:rgba(0,0,0,.18); }
+.msg-rp-card.expired { opacity:.6; }
+.msg-rp-card.expired .msg-rp-status { color:var(--muted); }
+.rp-balance {
+font-size:11px; color:var(--muted); text-align:center;
+padding:4px 0 8px; border-bottom:1px solid rgba(0,0,0,.06); margin-bottom:10px;
+}
 #page-chatcard { scrollbar-width:none; -ms-overflow-style:none; }
 #page-chatcard::-webkit-scrollbar { display:none; }
 .chat-title { font-size:22px; font-weight:700; padding:4px 2px 8px; letter-spacing:1px; }
@@ -3785,7 +3797,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.118 · 部署于 2026-08-19 15:05</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.119 · 部署于 2026-08-19 15:24</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4528,7 +4540,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.118</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.119</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5953,6 +5965,7 @@ color: var(--muted);
           <span>红包 · <b id="rp-partner-name">TA</b></span>
           <button class="poke-card-close" id="chat-rp-close">✕</button>
         </div>
+        <div class="rp-balance" id="rp-balance"></div>
         <div class="poke-card-scroll">
           <div class="rp-side-row">
             <button class="rp-side sel" data-rpside="out" type="button">我发红包</button>
@@ -12268,6 +12281,7 @@ if (i < count - 1) showTyping();
 }, i * randInt(900, 2600));
 }
 setTimeout(() => { if (window.callMaybeTrigger) window.callMaybeTrigger(); }, count * 2600 + 3500);
+setTimeout(() => { trySystemAutoSend(); tryCollectPending(); }, count * 2600 + 2500);
 } catch (e) {
 try {
 const errArr = (window.__jsErrors = window.__jsErrors || []);
@@ -12535,19 +12549,20 @@ if ((a === 'rock' && b === 'scissors') ||
 return -1;
 }
 function sendRps(mine) {
+closeRpsPanel();
+const mineName = { rock: '石头', scissors: '剪刀', paper: '布' }[mine] || '';
+addRec({ side: 'in', special: 'poke', text: '我出了 ' + mineName + '，等 TA 出拳…' });
+showTyping();
+setTimeout(() => {
+hideTyping();
 const ta = ['rock', 'scissors', 'paper'][Math.floor(Math.random() * 3)];
 const judge = rpsJudge(mine, ta);
 const s = rpsReadScore();
 if (judge > 0) s.w++; else if (judge < 0) s.l++; else s.d++;
 rpsWriteScore(s);
-rpsRenderScore();
 addRec({ side: 'in', special: 'rps', rpsMine: mine, rpsTa: ta, rpsResult: judge });
 if (window.logFish) window.logFish();
-if (rpsHintEl) {
-rpsHintEl.textContent =
-judge > 0 ? '你赢了！再来一局？' :
-judge < 0 ? '你输了，再来一局？' : '平局，再来一局？';
-}
+}, randInt(900, 1600));
 }
 const moreRps = document.getElementById('more-rps');
 if (moreRps) {
@@ -12611,6 +12626,7 @@ if (rpRandVal) rpRandVal.textContent = '';
 rpPanel.querySelectorAll('.rp-side').forEach(b => b.classList.toggle('sel', b.dataset.rpside === 'out'));
 rpPanel.querySelectorAll('.rp-amt').forEach(b => b.classList.remove('sel'));
 closeIme();
+rpRenderBalance();
 rpPanel.hidden = false;
 }
 function closeRpPanel() { if (rpPanel) rpPanel.hidden = true; }
@@ -14333,6 +14349,8 @@ else setTimeout(bootAutoSend, 500);
 }
 bootAutoSend();
 loadMsgs();
+setTimeout(rpExpireCheck, 2000);
+setInterval(rpExpireCheck, 60 * 60 * 1000);
 window.chatSendMsg = (text) => { if (typeof text === 'string' && text.trim()) addMsg(text.trim()); };
 try {
 if (window.idbGet) {
