@@ -303,9 +303,15 @@ function setCkCardOff(k, x, off) { store.set('ck-off-' + k + ':' + x, off ? '1' 
 function genCheckin() {
   const useDefault = getCkDefault();
   // v3.7.x：字卡可为 {t, grp} 对象——统一用 ckItems 取 .t
-  const places = ckItems('place');
-  const actions = ckItems('action');
-  const msgs = ckItems('msg');
+  let places = ckItems('place');
+  let actions = ckItems('action');
+  let msgs = ckItems('msg');
+  // v3.7.x 修复：ckItems 只读自定义字卡（管理页要显示真实自定义，不 fallback），
+  // 但 genCheckin 抽取时必须有字卡——自定义空时补系统预设（转 {t} 对象格式），
+  // 否则 out.place/action/msg 全 undefined → 查岗页空白/记录不显示/聊天不发消息
+  if (!places.length) places = DEF_PLACES.map(t => ({ t }));
+  if (!actions.length) actions = DEF_ACTIONS.map(t => ({ t }));
+  if (!msgs.length) msgs = DEF_CHECK_MSGS.map(t => ({ t }));
   const out = {};
   // 关闭「使用系统预设」时：只从用户添加的字卡里抽；某分类没有用户自定义则跳过该字段
   // v3.6.x：单卡开关过滤——用户关闭的字卡（ck-off-*）不参与抽取
@@ -846,6 +852,9 @@ if (ckRefresh) {
         const v = store.get('today-mood');
         moodEl2.textContent = v || '';
       }
+      // v3.7.x：关闭查岗半框——否则切换后仍浮在新桌面显示旧桌面日常（数据串桌面）
+      const ckPanel = document.getElementById('ck-panel');
+      if (ckPanel) ckPanel.hidden = true;
     } catch (e) {}
   });
 })();

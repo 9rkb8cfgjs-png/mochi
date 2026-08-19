@@ -3474,6 +3474,35 @@ stroke: var(--ink);
 .chat-ask-input::placeholder, .chat-ask-opts::placeholder {
 color: var(--muted);
 }
+.msg-inplace .ip-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+.msg-ask-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+.msg-choose-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+.call-minimize { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--dark-soft); }
+.call-mini { background:var(--dark-card-92); border-color:var(--dark-border); }
+.msg-poke-seg { background:var(--dark-card); border-color:var(--dark-border-12); }
+.cc-manage-bar { background:var(--dark-card-97); border-color:var(--dark-border); }
+.cc-m-btn { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+.cc-m-btn:active { background:var(--dark-hover); }
+.card-list.cc-managing .cc-item::before { background:var(--dark-card); border-color:#555; }
+.fav-item-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+.fav-item-tag { background:var(--dark-hover); color:var(--dark-soft); }
+.div-switch-knob::after { background:#f0f0f0; }
+.div-drawn-card .ddc-face { background:var(--dark-card); border-color:var(--dark-border); }
+.ta-add input, .ta-add .ce-box { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+.ta-add .ta-opts { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+.tc-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+.tc-qrow { background:var(--dark-card); border-color:var(--dark-border-12); }
+.qa-chip { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+.qa-chip:active { background:var(--dark-hover); }
+.qa-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+.mail-paper { background:var(--dark-card); border-color:var(--dark-border); }
+.sm-batch-chk { background:var(--dark-card); border-color:#555; }
+.feed-comment-ico { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--dark-soft); }
+.feed-comment-ico:active { background:var(--dark-hover); }
+.feed-pick-img { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+.feed-pick-img:active { background:var(--dark-hover); }
+.feed-comment-input { background:var(--dark-input); border-color:var(--dark-border-12); color:var(--ink); }
+.feed-comment-input:focus { background:var(--dark-card); }
 }
 </style>
 </head>
@@ -3507,7 +3536,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.104 · 部署于 2026-08-18 23:06</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.105 · 部署于 2026-08-19 11:20</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4218,7 +4247,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.104</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.105</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -21669,6 +21698,7 @@ window.showDeskPopup({ name: '信箱', text: '给你回了一封信：' + p.cont
 changed = true;
 });
 if (changed) replyPendingSave(rest);
+render();
 updateBadge();
 } catch (e) {}
 }
@@ -22139,14 +22169,33 @@ document.addEventListener('contact-switched', function () {
 try {
 mailDbReady = false;
 mailPending = null;
+let fuseFired = false;
+const fuse = setTimeout(function () {
+if (fuseFired || mailDbReady) return;
+fuseFired = true;
+try {
+const all = load();
+if (all.length) store.set(KEY, JSON.stringify(all));
+} catch (e) {}
+mailDbReady = true;
+render();
+updateBadge();
+}, 15000);
 if (window.idbGet) {
 window.idbGet(window.activePrefix() + ':' + KEY).then(v => {
+if (fuseFired) return; // 保险丝已先就绪，idbGet 迟到则跳过（load 已含暂存）
+clearTimeout(fuse);
 mailMergeFromIdb(v);
 mailDbReady = true;
 render();
 updateBadge();
-}).catch(() => { mailDbReady = true; render(); updateBadge(); });
+}).catch(() => {
+if (fuseFired) return;
+clearTimeout(fuse);
+mailDbReady = true; render(); updateBadge();
+});
 } else {
+clearTimeout(fuse);
 mailDbReady = true;
 render();
 updateBadge();
@@ -23658,9 +23707,12 @@ function isCkCardOff(k, x) { return store.get('ck-off-' + k + ':' + x) === '1'; 
 function setCkCardOff(k, x, off) { store.set('ck-off-' + k + ':' + x, off ? '1' : '0'); }
 function genCheckin() {
 const useDefault = getCkDefault();
-const places = ckItems('place');
-const actions = ckItems('action');
-const msgs = ckItems('msg');
+let places = ckItems('place');
+let actions = ckItems('action');
+let msgs = ckItems('msg');
+if (!places.length) places = DEF_PLACES.map(t => ({ t }));
+if (!actions.length) actions = DEF_ACTIONS.map(t => ({ t }));
+if (!msgs.length) msgs = DEF_CHECK_MSGS.map(t => ({ t }));
 const out = {};
 let place = useDefault ? places.filter(p => !isCkCardOff('place', p.t)) : places.filter(p => DEF_PLACES.indexOf(p.t) < 0 && !isCkCardOff('place', p.t));
 let action = useDefault ? actions.filter(a => !isCkCardOff('action', a.t)) : actions.filter(a => DEF_ACTIONS.indexOf(a.t) < 0 && !isCkCardOff('action', a.t));
@@ -24150,6 +24202,8 @@ if (moodEl2) {
 const v = store.get('today-mood');
 moodEl2.textContent = v || '';
 }
+const ckPanel = document.getElementById('ck-panel');
+if (ckPanel) ckPanel.hidden = true;
 } catch (e) {}
 });
 })();

@@ -332,4 +332,38 @@
   .chat-ask-input::placeholder, .chat-ask-opts::placeholder {
     color: var(--muted);
   }
+
+  /* ---- v3.6.x 补漏：浅色模式硬编码 #fff 但上方未覆盖的元素 ---- */
+  /* chat-main.css */
+  .msg-inplace .ip-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .msg-ask-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .msg-choose-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .call-minimize { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--dark-soft); }
+  .call-mini { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .msg-poke-seg { background:var(--dark-card); border-color:var(--dark-border-12); }
+
+  /* chat-pages.css */
+  .cc-manage-bar { background:var(--dark-card-97); border-color:var(--dark-border); }
+  .cc-m-btn { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .cc-m-btn:active { background:var(--dark-hover); }
+  .card-list.cc-managing .cc-item::before { background:var(--dark-card); border-color:#555; }
+  .fav-item-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+  .fav-item-tag { background:var(--dark-hover); color:var(--dark-soft); }
+  .div-switch-knob::after { background:#f0f0f0; }
+  .div-drawn-card .ddc-face { background:var(--dark-card); border-color:var(--dark-border); }
+  .ta-add input, .ta-add .ce-box { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .ta-add .ta-opts { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .tc-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .tc-qrow { background:var(--dark-card); border-color:var(--dark-border-12); }
+  .qa-chip { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .qa-chip:active { background:var(--dark-hover); }
+  .qa-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .mail-paper { background:var(--dark-card); border-color:var(--dark-border); }
+  .sm-batch-chk { background:var(--dark-card); border-color:#555; }
+  .feed-comment-ico { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--dark-soft); }
+  .feed-comment-ico:active { background:var(--dark-hover); }
+  .feed-pick-img { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+  .feed-pick-img:active { background:var(--dark-hover); }
+  .feed-comment-input { background:var(--dark-input); border-color:var(--dark-border-12); color:var(--ink); }
+  .feed-comment-input:focus { background:var(--dark-card); }
 }

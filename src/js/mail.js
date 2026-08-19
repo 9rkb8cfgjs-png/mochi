@@ -261,6 +261,7 @@
         changed = true;
       });
       if (changed) replyPendingSave(rest);
+      render();
       updateBadge();
     } catch (e) {}
   }
@@ -814,14 +815,37 @@
     try {
       mailDbReady = false;
       mailPending = null;
+      // v3.7.x：补 15s 保险丝（与启动 line 798 同理）——切换联系人后 idbGet 在
+      // 个别手机（华为/edge/OPPO 后台挂起）可能不返回，mailDbReady 永远 false →
+      // 之后 save() 只暂存内存不落盘，新来信刷新即丢。chat.js 切换时调了
+      // armReadyFuse()，mail 缺这步。到期强制就绪并把暂存信件落盘。
+      let fuseFired = false;
+      const fuse = setTimeout(function () {
+        if (fuseFired || mailDbReady) return;
+        fuseFired = true;
+        try {
+          const all = load();
+          if (all.length) store.set(KEY, JSON.stringify(all));
+        } catch (e) {}
+        mailDbReady = true;
+        render();
+        updateBadge();
+      }, 15000);
       if (window.idbGet) {
         window.idbGet(window.activePrefix() + ':' + KEY).then(v => {
+          if (fuseFired) return; // 保险丝已先就绪，idbGet 迟到则跳过（load 已含暂存）
+          clearTimeout(fuse);
           mailMergeFromIdb(v);
           mailDbReady = true;
           render();
           updateBadge();
-        }).catch(() => { mailDbReady = true; render(); updateBadge(); });
+        }).catch(() => {
+          if (fuseFired) return;
+          clearTimeout(fuse);
+          mailDbReady = true; render(); updateBadge();
+        });
       } else {
+        clearTimeout(fuse);
         mailDbReady = true;
         render();
         updateBadge();
