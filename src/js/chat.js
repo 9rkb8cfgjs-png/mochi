@@ -1281,11 +1281,17 @@
   function showDeskPopup(opts) {
     opts = opts || {};
     let t = String(opts.text || '');
+    // v3.5.157：图片占位文案统一按 imgSub 判定——sticker→[表情包]、image→[图片]、
+    // 缺失→[图片]；voice→[语音]。imgSub 由 extractDeskMsg 从 parts.sub 提取
+    const phOf = function () {
+      if (opts.type === 'voice') return '[语音]';
+      if (opts.imgSub === 'sticker' || opts.type === 'sticker') return '[表情包]';
+      return '[图片]';
+    };
     // v3.5.142：图片/表情包消息可能没有文字（纯图片），此时显示占位文案
-    // v3.5.143：占位类型判定——type 明确为 sticker → [表情包]；其余（image/缺失）→ [图片]
-    if (!t && opts.img) t = opts.type === 'sticker' ? '[表情包]' : (opts.type === 'voice' ? '[语音]' : '[图片]');
+    if (!t && opts.img) t = phOf();
     if (!t) return;
-    if (t.indexOf('data:') === 0) t = opts.type === 'sticker' ? '[表情包]' : (opts.type === 'voice' ? '[语音]' : '[图片]');
+    if (t.indexOf('data:') === 0) t = phOf();
     // v3.5.132：正文里混入的 dataURL 片段（写信内容带表情包/图片/语音时，data: 前缀判断失效）
     // v3.6.x：正则从 data:image/ 扩展到任意 data:MIME/（覆盖 data:audio/ data:video/ 等），
     // 避免语音消息「名|||data:audio/...base64」里的音频 base64 漏过显示成乱码
@@ -1298,20 +1304,21 @@
     // v3.5.131：仅对含 svg 的系统消息剥离标签——普通消息里的 `<`（如"1<2"）不再被误删
     else if (t.indexOf('<svg') >= 0) t = t.replace(/<[^>]*>/g, '').trim();
     else if (t.length > 40) t = t.slice(0, 40) + '…';
+    // v3.5.157：文字+图片/表情包组合消息 → 正文补图片占位（消息有图但正文只有文字时，
+    // 用户看不到图片存在）。后台通知与前台横幅统一补：有 img 且正文没占位 → 追加
+    let notifyT = t;
+    if (opts.img && notifyT.indexOf('[图片]') < 0 && notifyT.indexOf('[表情包]') < 0 && notifyT.indexOf('[语音]') < 0 && notifyT.indexOf('[附件]') < 0) {
+      notifyT = notifyT + ' ' + phOf();
+    }
     // v3.5.140：后台弹窗联动——桌面弹窗能触发的消息（聊天/拍一拍/信箱来信回信/朋友圈
     // 通知），页面不在前台时同步发系统通知；放在 desk-msg-en 判断之前，桌面弹窗开关
     // 与后台通知开关互不影响（bgNotifyCheck 内部按 bg-notify 开关/权限/可见性判断）
     // v3.5.142：附上图片 dataURL（通知 image 字段显示缩略图 + 文字）
     if (document.visibilityState === 'hidden' && window.bgNotifyCheck) {
-      window.bgNotifyCheck(t, Date.now(), { name: opts.name, img: opts.img });
+      window.bgNotifyCheck(notifyT, Date.now(), { name: opts.name, img: opts.img });
     }
     if (!deskMsgEl || !deskMsgEnabled()) return;
-    // v3.6.x：前台横幅补图片占位——图片+文字组合消息只显示文字时用户不知含图片，
-    // 有 img 且文字里没 [图片]/[表情包]/[语音] 占位时补「 [图片]」（后台通知有 image
-    // 字段显缩略图，不重复补；表情包/语音不补）
-    let dispT = t;
-    if (opts.img && opts.type !== 'sticker' && opts.type !== 'voice' && dispT && dispT.indexOf('[图片]') < 0 && dispT.indexOf('[表情包]') < 0 && dispT.indexOf('[语音]') < 0 && dispT.indexOf('[附件]') < 0) dispT = dispT + ' [图片]';
-    if (deskMsgText) deskMsgText.textContent = dispT;
+    if (deskMsgText) deskMsgText.textContent = notifyT;
     if (deskMsgName) deskMsgName.textContent = opts.name || store.get('lbl-partner') || 'TA';
     if (deskMsgAv) fillAvatar(deskMsgAv, 'avatar-partner');
     deskMsgAction = (typeof opts.onClick === 'function') ? opts.onClick : null;
@@ -1336,9 +1343,15 @@
     // v3.5.150：恢复 rec.img 作为图片来源（拍一拍/换头像消息的图片照常展示）——
     // 上一版误移除；本次要改的只有通知左侧图标（见 bg-keep.js v3.5.148）
     let img = rec.img || '';
+    // v3.5.157：图片子类型（sticker/image）——决定占位文案 [表情包]/[图片]。
+    // 从 parts 的 sub 字段拿；纯图消息回退用 rec.type
+    let imgSub = '';
     if (rec.parts && rec.parts.length) {
       const ims = rec.parts.filter(p => p.k === 'img');
-      if (ims.length) img = ims[0].v || '';
+      if (ims.length) {
+        img = ims[0].v || '';
+        imgSub = ims[0].sub || '';
+      }
       const tp = rec.parts.filter(p => p.k === 'text').map(p => p.v).join(' ');
       if (tp) text = tp;
     } else if (text.indexOf('data:image/') === 0) {
@@ -1346,6 +1359,7 @@
       // 旧数据 type 缺失时也能提取缩略图
       img = text;
       text = '';
+      imgSub = rec.type === 'sticker' ? 'sticker' : (rec.type === 'image' ? 'image' : '');
     }
     // v3.6.x：语音消息 text 格式「名称|||音频dataURL」——拆分取名称（去 mp3/mp4 等后缀），
     // 避免整段 base64 当文字显示成乱码（旧数据名称仍带后缀，一并去掉；与 renderMsg 一致）
@@ -1353,20 +1367,21 @@
       const vname = String(text || '').split('|||')[0] || '';
       text = vname.replace(/\.[^.]+$/, '').trim() || '语音消息';
     }
-    return { text: text, img: img };
+    return { text: text, img: img, imgSub: imgSub };
   }
   function showDeskMsg(rec) {
     const info = extractDeskMsg(rec);
     const name = store.get('lbl-partner') || 'TA';
     // v3.5.145：页面在后台 → 无论是否在聊天页都发系统通知（聊天页切后台，
     // TA 回复到达也要提醒）；showDeskPopup 内部 hidden 分支发通知
+    // v3.5.157：imgSub 传给 showDeskPopup，后台通知正文据此补 [表情包]/[图片] 占位
     if (document.visibilityState === 'hidden') {
-      showDeskPopup({ name: name, text: info.text, type: rec.type, img: info.img });
+      showDeskPopup({ name: name, text: info.text, type: rec.type, img: info.img, imgSub: info.imgSub });
       return;
     }
     // 前台：非聊天页才弹横幅（点击进聊天）；聊天页内消息已直接渲染，不弹
     if (chatVisible()) return;
-    showDeskPopup({ name: name, text: info.text, type: rec.type, img: info.img, onClick: () => { if (!chatVisible()) enterChat(); } });
+    showDeskPopup({ name: name, text: info.text, type: rec.type, img: info.img, imgSub: info.imgSub, onClick: () => { if (!chatVisible()) enterChat(); } });
   }
   function hideDeskMsg() {
     clearTimeout(deskMsgTimer);
@@ -1578,8 +1593,10 @@
     const preset = (opt && typeof opt.reply === 'string' && opt.reply.trim()) ? opt.reply.trim() : '';
     const liked = !!(opt && (opt.liked === true || opt.liked === 'true'));
     const matched = typeof match === 'string' && match.indexOf('刚好想到在了一起') >= 0;
+    // v3.7.x：用户已在「系统预设字卡 → 互动回应」关闭该话术时，默契命中也不使用
+    const presetOff = preset && !!(window.isDefaultCardOff && window.isDefaultCardOff('interact', preset));
     let reply;
-    if (preset && (matched || liked)) {
+    if (preset && !presetOff && (matched || liked)) {
       reply = preset; // 默契命中：保留选项预设回应
     } else if (preset) {
       reply = (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset); // 预设回应 + 字卡库混合
@@ -2653,6 +2670,10 @@ function partialRetractMsg(msgEl, side) {
       // ce-box 转换后显隐跟随（转换器自身 MutationObserver 已同步，这里兜底双写）
       if (opts.__ceBox) opts.__ceBox.style.display = show ? 'block' : 'none';
       else if (opts.previousElementSibling && opts.previousElementSibling.classList && opts.previousElementSibling.classList.contains('ce-box')) opts.previousElementSibling.style.display = show ? 'block' : 'none';
+      // v3.7.x：与主输入框同款——单选选项框显示期间内联 translateZ(0) 建独立
+      // 合成层，防安卓键盘弹出时 fixed 半框内文字错位；隐藏时清除
+      const obox = opts.__ceBox || (opts.previousElementSibling && opts.previousElementSibling.classList && opts.previousElementSibling.classList.contains('ce-box') ? opts.previousElementSibling : opts);
+      try { obox.style.transform = show ? 'translateZ(0)' : ''; } catch (e) {}
     };
     typeRow.querySelectorAll('.chat-ask-type-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -2694,10 +2715,26 @@ function partialRetractMsg(msgEl, side) {
     if (window.closeAvlib) window.closeAvlib();
     chatAskPanel.hidden = false;
     closeIme(); // v3.5.116：收起输入法，半框完整不被键盘遮挡
-    setTimeout(() => chatAskInput && chatAskInput.focus(), 80);
+    setTimeout(() => {
+      if (!chatAskInput) return;
+      chatAskInput.focus();
+      // v3.7.x：安卓 Chrome 键盘弹出动画把 fixed 半框整体上移时，聚焦的
+      // contenteditable（ce-box）文本层偶发停在旧位置，表现=输入的文字显示在
+      // 输入框外面。面板打开期间给输入框内联 translateZ(0)（独立合成层，逐帧
+      // 按当前布局位置合成，文本不再错位），关闭面板时清除；CSS :focus 同名
+      // 规则兜底（部分 IME/焦点状态下 :focus 不匹配时靠这里的内联样式生效）。
+      const box = chatAskInput.__ceBox || chatAskInput;
+      try { box.style.transform = 'translateZ(0)'; } catch (e) {}
+    }, 80);
   }
   function closeChatAskPanel() {
     if (chatAskPanel) chatAskPanel.hidden = true;
+    // 清除半框输入框的合成层标记（v3.7.x：openChatAskPanel 设置，防安卓键盘弹出时文字错位）
+    [chatAskInput, document.getElementById('chat-ask-opts')].forEach(el => {
+      if (!el) return;
+      const box = el.__ceBox || el;
+      try { box.style.transform = ''; } catch (e) {}
+    });
   }
   function submitChatAsk() {
     if (!chatAskInput) return;
@@ -2729,14 +2766,24 @@ function partialRetractMsg(msgEl, side) {
         if (roll < 0.6) {
           status = '接受';
           answer = name + ' 接受了你的邀请';
+          // v3.7.x：接受话术池与「系统预设字卡 → 互动回应」tab 同源（getInteractPool），
+          // 数据缺失时回退内置话术；pickAskCardReply 内部过滤已关闭的话术
+          const pool = window.getInteractPool
+            ? window.getInteractPool('邀请TA·接受', ['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。'])
+            : ['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。'];
           // v3.7.x：接受话术池 + 字卡库自定义字卡 混合随机
-          reply = (window.pickAskCardReply ? window.pickAskCardReply(['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。']) : ['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。'][Math.floor(Math.random() * 5)]);
+          reply = (window.pickAskCardReply ? window.pickAskCardReply(pool) : pool[Math.floor(Math.random() * pool.length)]);
           setTimeout(() => addIn(reply), 800);
         } else if (roll < 0.85) {
           status = '拒绝';
           answer = name + ' 拒绝了你的邀请';
+          // v3.7.x：拒绝话术池与「系统预设字卡 → 互动回应」tab 同源（getInteractPool），
+          // 数据缺失时回退内置话术；pickAskCardReply 内部过滤已关闭的话术
+          const pool = window.getInteractPool
+            ? window.getInteractPool('邀请TA·拒绝', ['这次不行。', '下次吧。', '抱歉。', '今天不方便。'])
+            : ['这次不行。', '下次吧。', '抱歉。', '今天不方便。'];
           // v3.7.x：拒绝话术池 + 字卡库自定义字卡 混合随机
-          reply = (window.pickAskCardReply ? window.pickAskCardReply(['这次不行。', '下次吧。', '抱歉。', '今天不方便。']) : ['这次不行。', '下次吧。', '抱歉。', '今天不方便。'][Math.floor(Math.random() * 4)]);
+          reply = (window.pickAskCardReply ? window.pickAskCardReply(pool) : pool[Math.floor(Math.random() * pool.length)]);
           setTimeout(() => addIn(reply), 800);
         } else {
           status = '未回应';
@@ -2773,7 +2820,11 @@ function partialRetractMsg(msgEl, side) {
       if (window.logFish) window.logFish();
       const recTs = Date.now();
       setTimeout(() => {
-        const defs = ['嗯嗯', '我想想…', '应该吧', '好呀', '我陪你', '可以的', '那挺好呀', '我觉得可以', '听你的', '当然可以', '我很乐意'];
+        // v3.7.x：文字题话术池与「系统预设字卡 → 互动回应」tab 同源（getInteractPool），
+        // 数据缺失时回退内置话术；pickAskCardReply 内部过滤已关闭的话术
+        const defs = window.getInteractPool
+          ? window.getInteractPool('问问TA·回应', ['嗯嗯', '我想想…', '应该吧', '好呀', '我陪你', '可以的', '那挺好呀', '我觉得可以', '听你的', '当然可以', '我很乐意'])
+          : ['嗯嗯', '我想想…', '应该吧', '好呀', '我陪你', '可以的', '那挺好呀', '我觉得可以', '听你的', '当然可以', '我很乐意'];
         let text;
         if (isSingle && askOpts && askOpts.length) {
           const o = askOpts[Math.floor(Math.random() * askOpts.length)];
@@ -3359,6 +3410,11 @@ function partialRetractMsg(msgEl, side) {
   let mySel = new Set();       // 批量勾选：分组名\u0001索引
   let emojiInsertCb = null;    // v3.6.x：写信/回信「插入模式」回调（点击表情插入信纸）
   function MYE_KEY() { return window.activePrefix() + ':my-emoji-groups'; }
+  // v3.7.x：启动即从 localStorage 加载我的表情包——原实现只靠「IDB 内容更多才覆盖」
+  // 的恢复块，LS 与 IDB 一致时（正常双写后刷新）myGroups 永远是空数组，
+  // 刷新后我的表情包整组消失（与 chatcard.js cc-groups 的 loadGroups 模式对齐；
+  // 下方恢复块仍在 IDB 内容更多时覆盖）
+  myGroups = myEmojiLoad();
 
   // 记住最后打开的表情包分类（localStorage 持久化，刷新后仍在）
   function saveEmojiGroupPref() {
@@ -3455,7 +3511,9 @@ function partialRetractMsg(msgEl, side) {
       cur = myCurGroup;
     }
     if (cur && !list.some(g => g[0] === cur)) cur = '';
-    const chips = list.filter(g => g[1].length).map(g => [g[0], g[0] + g[1].length]);
+    // v3.7.x：我的表情包分组栏显示全部分组（含空的）——新建的空分组立即可见；
+    // TA 的表情包（字卡库 sticker 分类）仍只显示有内容的分组（空分类无意义）
+    const chips = list.filter(g => emojiMode === 'ta' ? g[1].length : true).map(g => [g[0], g[0] + g[1].length]);
     chips.forEach(([val, label]) => {
       const c = document.createElement('span');
       c.className = 'emoji-g-chip' + (cur === val ? ' sel' : '');
@@ -3668,7 +3726,8 @@ function partialRetractMsg(msgEl, side) {
           const name = (v || '').trim();
           if (!name) return;
           if (myGroups.some(g => g[0] === name)) { toast('分组「' + name + '」已存在'); return; }
-          myGroups.push([name, []]);
+          // v3.7.x：新分组插到最前，创建后选中并打开该分组（顶部分组栏立即可见）
+          myGroups.unshift([name, []]);
           myEmojiSave();
           myCurGroup = name;
           saveEmojiGroupPref();
@@ -3692,7 +3751,7 @@ function partialRetractMsg(msgEl, side) {
         let g = null;
         if (myCurGroup) g = myGroups.find(x => x[0] === myCurGroup) || null;
         if (!g && myGroups.length) g = myGroups[0];
-        if (!g) { g = ['默认', []]; myGroups.push(g); }
+        if (!g) { g = ['默认', []]; myGroups.unshift(g); }
         let done = 0, okCount = 0;
         files.forEach(f => {
           const reader = new FileReader();
@@ -3797,9 +3856,13 @@ function partialRetractMsg(msgEl, side) {
             const name = (v || '').trim();
             if (!name) return;
             if (myGroups.some(g => g[0] === name)) { toast('分组「' + name + '」已存在'); return; }
-            myGroups.push([name, []]);
+            // v3.7.x：新分组插到最前（顶部），创建后选中它并自动关掉管理弹层
+            // （与字卡库「管理分组」一致），用户马上能在分组栏顶部看到并添加表情
+            myGroups.unshift([name, []]);
             myEmojiSave();
-            renderMyMgList();
+            myCurGroup = name;
+            saveEmojiGroupPref();
+            myMgMask.hidden = true;
             renderEmojiPanel();
           });
         }

@@ -529,8 +529,8 @@
       '<div class="sm-form">' +
       '<div class="sm-fld"><label>歌曲名称</label><input class="tc-input" id="sm-url-name" placeholder="可留空，识别后自动补全"></div>' +
       '<div class="sm-fld"><label>歌手</label><input class="tc-input" id="sm-url-artist" placeholder="可留空"></div>' +
-      '<div class="sm-fld"><label>网易云歌曲ID 或 音乐直链</label><input class="tc-input" id="sm-url-link" placeholder="如 2064961530"></div>' +
-      '<div class="sm-fld-hint">直接填网易云歌曲数字 ID（如 2064961530）即自动导入；也可粘贴完整链接或 mp3 直链</div>' +
+      '<div class="sm-fld"><label>网易云歌曲ID 或 音乐直链</label><textarea class="tc-input" id="sm-url-link" rows="3" placeholder="如 2064961530&#10;每行一个，支持批量"></textarea></div>' +
+      '<div class="sm-fld-hint">直接填网易云歌曲数字 ID（如 2064961530）即自动导入；也可粘贴完整链接或 mp3 直链。支持批量：每行一个 ID 或链接；批量时歌曲名/歌手自动识别，可不填</div>' +
       '</div>' +
       '<div class="mail-actions"><button class="cc-tool" id="sm-url-cancel">取消</button><button class="cc-tool" id="sm-url-ok">确认添加</button></div>');
     document.getElementById('sm-url-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
@@ -541,40 +541,51 @@
       const artist = readCeInput('sm-url-artist');
       const raw = readCeInput('sm-url-link');
       if (!raw) { toast('请输入网易云ID或音乐链接'); return; }
-      let neteaseId = '';
-      if (/^\d+$/.test(raw)) neteaseId = raw;
-      else {
-        const idMatch = raw.match(/[?&]id=(\d+)/);
-        if (idMatch) neteaseId = idMatch[1];
+      // v3.8.x：支持批量——一次粘贴多行，每行一个网易云 ID / 音乐链接，逐条导入；
+      // 多行时忽略「歌曲名称/歌手」输入（每首自动识别歌名/歌手）
+      const lines = raw.split(/\r?\n+/).map(s => s.trim()).filter(Boolean);
+      if (!lines.length) { toast('请输入网易云ID或音乐链接'); return; }
+      const isBatch = lines.length > 1;
+      let added = 0;
+      lines.forEach((ln, li) => {
+        let neteaseId = '';
+        if (/^\d+$/.test(ln)) neteaseId = ln;
         else {
-          const pathMatch = raw.match(/\/(\d+)(?:\.mp3)?$/);
-          if (pathMatch) neteaseId = pathMatch[1];
+          const idMatch = ln.match(/[?&]id=(\d+)/);
+          if (idMatch) neteaseId = idMatch[1];
+          else {
+            const pathMatch = ln.match(/\/(\d+)(?:\.mp3)?$/);
+            if (pathMatch) neteaseId = pathMatch[1];
+          }
         }
-      }
-      let url = raw;
-      if (neteaseId) {
-        url = neteaseMetingUrl(neteaseId);
-        if (!name) name = '网易云音乐-' + neteaseId;
-      }
-      if (!/^(https?:\/\/|file:\/\/|data:|\/)/i.test(url)) { toast('请输入有效的ID或链接'); return; }
-      const id = 'sm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-      library.push({ id: id, neteaseId: neteaseId || '', name: name, artist: artist, url: url, source: 'url', duration: 0, playlistId: 'default', addedAt: Date.now() });
+        let url = ln;
+        let nm = isBatch ? '' : name;
+        if (neteaseId) {
+          url = neteaseMetingUrl(neteaseId);
+          if (!nm) nm = '网易云音乐-' + neteaseId;
+        }
+        if (!/^(https?:\/\/|file:\/\/|data:|\/)/i.test(url)) return;
+        const id = 'sm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '_' + li;
+        library.push({ id: id, neteaseId: neteaseId || '', name: nm, artist: isBatch ? '' : artist, url: url, source: 'url', duration: 0, playlistId: 'default', addedAt: Date.now() });
+        added++;
+        if (neteaseId) {
+          fetchNeteaseInfo(neteaseId, info => {
+            const m = findTrack(id);
+            if (m && info && info.name) {
+              m.name = info.name;
+              if (info.artist) m.artist = info.artist;
+              saveLibrary();
+              renderPage();
+              if (!isBatch) toast('已识别：' + info.name + (info.artist ? ' - ' + info.artist : ''));
+            }
+          });
+        }
+      });
+      if (!added) { toast('没有识别到有效的ID或链接'); return; }
       saveLibrary();
       document.getElementById('tc-mask').hidden = true;
       renderPage();
-      toast('链接音乐已添加');
-      if (neteaseId) {
-        fetchNeteaseInfo(neteaseId, info => {
-          const m = findTrack(id);
-          if (m && info && info.name) {
-            m.name = info.name;
-            if (info.artist) m.artist = info.artist;
-            saveLibrary();
-            renderPage();
-            toast('已识别：' + info.name + (info.artist ? ' - ' + info.artist : ''));
-          }
-        });
-      }
+      toast(isBatch ? '已批量添加 ' + added + ' 首链接音乐' : '链接音乐已添加');
     });
   }
 
@@ -583,27 +594,40 @@
   function openBatch() {
     if (!window.openTCPanel) return;
     window.openTCPanel('批量导入音乐', '' +
-      '<div class="sm-fld-hint" style="margin-bottom:8px">按格式粘贴，每首歌空一行分隔。<br>「音乐直链URL」直接填网易云歌曲数字 ID 就行（如 2064961530），会自动导入：<br>歌曲名称：xxx<br>歌手：xxx<br>音乐直链URL：2064961530</div>' +
+      '<div class="sm-fld-hint" style="margin-bottom:8px">按格式粘贴，每首歌空一行分隔。<br>「音乐直链URL」直接填网易云歌曲数字 ID 就行（如 2064961530），会自动导入：<br>歌曲名称：xxx<br>歌手：xxx<br>音乐直链URL：2064961530<br><br>也可以不写格式：直接每行一个网易云 ID 或音乐链接，同样自动导入并识别歌名。</div>' +
       '<textarea id="sm-batch-input" class="tc-input" rows="8" placeholder="歌曲名称：Baby&#10;歌手：EXO-K&#10;音乐直链URL：27538343&#10;&#10;歌曲名称：歌名2&#10;歌手：歌手2&#10;音乐直链URL：https://example.com/music2.mp3"></textarea>' +
       '<div class="mail-actions"><button class="cc-tool" id="sm-batch-cancel">取消</button><button class="cc-tool" id="sm-batch-ok">开始导入</button></div>');
     document.getElementById('sm-batch-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
     document.getElementById('sm-batch-ok').addEventListener('click', () => {
       const raw = readCeInput('sm-batch-input');
       if (!raw) { toast('请输入内容'); return; }
-      const blocks = raw.split(/\n\s*\n/);
+      // v3.8.x：无标签纯链接模式——整段没有「名称：xxx」式标签时，按每行一个
+      // 网易云 ID / 音乐链接导入（标签行以 歌曲名称：/name: 开头，链接含 :// 不算标签）
+      const rawLines = raw.split(/\r?\n+/).map(s => s.trim()).filter(Boolean);
+      const isLabelLine = (l) => {
+        if (/^https?:\/\//i.test(l) || /^\/\//.test(l)) return false;
+        return /^[^:=：＝/]+?[:：＝=]\s*\S+/.test(l);
+      };
+      const hasLabels = rawLines.some(isLabelLine);
+      const units = hasLabels
+        ? raw.split(/\n\s*\n/).map(b => ({ lines: b.split('\n').map(s => s.trim()).filter(Boolean), plain: false }))
+        : rawLines.map(l => ({ lines: [l], plain: true }));
       let added = 0;
-      blocks.forEach(block => {
-        const lines = block.split('\n').map(s => s.trim()).filter(Boolean);
+      units.forEach((unit, ui) => {
         let name = '', artist = '', url = '';
-        lines.forEach(line => {
-          const sepMatch = line.match(/^([^:=]+?)(?:[:：＝=])\s*(.+)$/);
-          if (!sepMatch) return;
-          const key = sepMatch[1].replace(/\s+/g, '').toLowerCase();
-          const val = sepMatch[2].trim();
-          if (/^(歌曲名称|歌名|名称|name|歌曲)$/.test(key)) name = val;
-          else if (/^(歌手|艺术家|艺人|artist|演唱)$/.test(key)) artist = val;
-          else if (/^(音乐直链url|音乐直链|音乐链接|链接|直链|url|音乐url|link)$/.test(key)) url = val;
-        });
+        if (unit.plain) {
+          url = unit.lines[0];
+        } else {
+          unit.lines.forEach(line => {
+            const sepMatch = line.match(/^([^:=]+?)(?:[:：＝=])\s*(.+)$/);
+            if (!sepMatch) return;
+            const key = sepMatch[1].replace(/\s+/g, '').toLowerCase();
+            const val = sepMatch[2].trim();
+            if (/^(歌曲名称|歌名|名称|name|歌曲)$/.test(key)) name = val;
+            else if (/^(歌手|艺术家|艺人|artist|演唱)$/.test(key)) artist = val;
+            else if (/^(音乐直链url|音乐直链|音乐链接|链接|直链|url|音乐url|link)$/.test(key)) url = val;
+          });
+        }
         if (!url) return;
         // v3.6.x：URL 栏支持纯数字网易云 ID / 完整网易云链接 / 任意 mp3 直链——
         // 统一提取数字 ID 并规范化成网易云直链（与「链接添加」一致）
@@ -620,9 +644,13 @@
           url = neteaseMetingUrl(neteaseId);
           if (!name) name = '网易云音乐-' + neteaseId; // 只填数字时自动补默认名
         }
-        if (!name) return;
+        if (!name) {
+          // 纯链接模式且非网易云 ID：取链接文件名当歌名，取不到给默认名
+          const fn = (url.match(/\/([^/?#]+?)(?:\.[^/.?#]+)?$/) || [])[1];
+          name = fn || '链接音乐';
+        }
         if (!/^(https?:\/\/|file:\/\/|data:|\/)/i.test(url)) return;
-        const nid = 'sm_batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        const nid = 'sm_batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '_' + ui;
         library.push({ id: nid, neteaseId: neteaseId || '', name: name, artist: artist, url: url, source: 'url', duration: 0, playlistId: 'default', addedAt: Date.now() });
         added++;
         // v3.6.x：数字 ID 自动识别歌曲名（与「链接添加」一致，识别到后覆盖默认名）

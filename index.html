@@ -933,6 +933,7 @@ opacity:.5;
 }
 .chat-typing {
 flex-shrink:0;
+align-self:flex-start;
 width:fit-content;
 padding:2px 18px 4px;
 font-size:12px;
@@ -1007,7 +1008,10 @@ border:1px solid rgba(0,0,0,.12); border-radius:12px; padding:11px 14px;
 font-size:14px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
 width:100%; box-sizing:border-box;
 }
-.chat-ask-input:focus { border-color:var(--ink); }
+.chat-ask-input:focus {
+border-color:var(--ink);
+transform:translateZ(0);
+}
 .chat-ask-type { display:flex; gap:8px; }
 .chat-ask-type[hidden] { display:none; }
 .chat-ask-type-btn {
@@ -1021,7 +1025,10 @@ width:100%; box-sizing:border-box; border:1px solid rgba(0,0,0,.12); border-radi
 padding:11px 14px; font-size:14px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
 resize:none; line-height:1.5;
 }
-.chat-ask-opts:focus { border-color:var(--ink); }
+.chat-ask-opts:focus {
+border-color:var(--ink);
+transform:translateZ(0);
+}
 .chat-ask-actions { display:flex; gap:8px; }
 .chat-ask-actions .cc-tool { flex:1; }
 #chat-divine-body .div-modes-wrap,
@@ -2395,7 +2402,7 @@ display:flex; align-items:center; justify-content:center; cursor:pointer;
 .avlib-del:active { background:rgba(224,85,85,.8); }
 #avlib-upload { margin-bottom:10px; }
 .mg-mask {
-position:fixed; inset:0; z-index:60;
+position:fixed; inset:0; z-index:85;
 background:rgba(0,0,0,.35);
 display:flex; align-items:center; justify-content:center;
 }
@@ -3610,7 +3617,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.115 · 部署于 2026-08-19 14:01</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.116 · 部署于 2026-08-19 14:24</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4353,7 +4360,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.115</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.116</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -12452,6 +12459,8 @@ const show = chatAskType === 'single';
 opts.hidden = !show;
 if (opts.__ceBox) opts.__ceBox.style.display = show ? 'block' : 'none';
 else if (opts.previousElementSibling && opts.previousElementSibling.classList && opts.previousElementSibling.classList.contains('ce-box')) opts.previousElementSibling.style.display = show ? 'block' : 'none';
+const obox = opts.__ceBox || (opts.previousElementSibling && opts.previousElementSibling.classList && opts.previousElementSibling.classList.contains('ce-box') ? opts.previousElementSibling : opts);
+try { obox.style.transform = show ? 'translateZ(0)' : ''; } catch (e) {}
 };
 typeRow.querySelectorAll('.chat-ask-type-btn').forEach(btn => {
 btn.addEventListener('click', () => {
@@ -12492,10 +12501,20 @@ if (ep) ep.hidden = true;
 if (window.closeAvlib) window.closeAvlib();
 chatAskPanel.hidden = false;
 closeIme(); // v3.5.116：收起输入法，半框完整不被键盘遮挡
-setTimeout(() => chatAskInput && chatAskInput.focus(), 80);
+setTimeout(() => {
+if (!chatAskInput) return;
+chatAskInput.focus();
+const box = chatAskInput.__ceBox || chatAskInput;
+try { box.style.transform = 'translateZ(0)'; } catch (e) {}
+}, 80);
 }
 function closeChatAskPanel() {
 if (chatAskPanel) chatAskPanel.hidden = true;
+[chatAskInput, document.getElementById('chat-ask-opts')].forEach(el => {
+if (!el) return;
+const box = el.__ceBox || el;
+try { box.style.transform = ''; } catch (e) {}
+});
 }
 function submitChatAsk() {
 if (!chatAskInput) return;
@@ -13165,7 +13184,7 @@ list = myGroups;
 cur = myCurGroup;
 }
 if (cur && !list.some(g => g[0] === cur)) cur = '';
-const chips = list.filter(g => g[1].length).map(g => [g[0], g[0] + g[1].length]);
+const chips = list.filter(g => emojiMode === 'ta' ? g[1].length : true).map(g => [g[0], g[0] + g[1].length]);
 chips.forEach(([val, label]) => {
 const c = document.createElement('span');
 c.className = 'emoji-g-chip' + (cur === val ? ' sel' : '');
@@ -13348,7 +13367,7 @@ window.openModal('新建表情包分组', '', (v) => {
 const name = (v || '').trim();
 if (!name) return;
 if (myGroups.some(g => g[0] === name)) { toast('分组「' + name + '」已存在'); return; }
-myGroups.push([name, []]);
+myGroups.unshift([name, []]);
 myEmojiSave();
 myCurGroup = name;
 saveEmojiGroupPref();
@@ -13369,7 +13388,7 @@ if (!files.length) return;
 let g = null;
 if (myCurGroup) g = myGroups.find(x => x[0] === myCurGroup) || null;
 if (!g && myGroups.length) g = myGroups[0];
-if (!g) { g = ['默认', []]; myGroups.push(g); }
+if (!g) { g = ['默认', []]; myGroups.unshift(g); }
 let done = 0, okCount = 0;
 files.forEach(f => {
 const reader = new FileReader();
@@ -13469,9 +13488,11 @@ window.openModal('新建表情包分组', '', (v) => {
 const name = (v || '').trim();
 if (!name) return;
 if (myGroups.some(g => g[0] === name)) { toast('分组「' + name + '」已存在'); return; }
-myGroups.push([name, []]);
+myGroups.unshift([name, []]);
 myEmojiSave();
-renderMyMgList();
+myCurGroup = name;
+saveEmojiGroupPref();
+myMgMask.hidden = true;
 renderEmojiPanel();
 });
 }
@@ -16494,8 +16515,8 @@ window.openTCPanel('添加链接音乐', '' +
 '<div class="sm-form">' +
 '<div class="sm-fld"><label>歌曲名称</label><input class="tc-input" id="sm-url-name" placeholder="可留空，识别后自动补全"></div>' +
 '<div class="sm-fld"><label>歌手</label><input class="tc-input" id="sm-url-artist" placeholder="可留空"></div>' +
-'<div class="sm-fld"><label>网易云歌曲ID 或 音乐直链</label><input class="tc-input" id="sm-url-link" placeholder="如 2064961530"></div>' +
-'<div class="sm-fld-hint">直接填网易云歌曲数字 ID（如 2064961530）即自动导入；也可粘贴完整链接或 mp3 直链</div>' +
+'<div class="sm-fld"><label>网易云歌曲ID 或 音乐直链</label><textarea class="tc-input" id="sm-url-link" rows="3" placeholder="如 2064961530&#10;每行一个，支持批量"></textarea></div>' +
+'<div class="sm-fld-hint">直接填网易云歌曲数字 ID（如 2064961530）即自动导入；也可粘贴完整链接或 mp3 直链。支持批量：每行一个 ID 或链接；批量时歌曲名/歌手自动识别，可不填</div>' +
 '</div>' +
 '<div class="mail-actions"><button class="cc-tool" id="sm-url-cancel">取消</button><button class="cc-tool" id="sm-url-ok">确认添加</button></div>');
 document.getElementById('sm-url-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
@@ -16504,28 +16525,31 @@ let name = readCeInput('sm-url-name');
 const artist = readCeInput('sm-url-artist');
 const raw = readCeInput('sm-url-link');
 if (!raw) { toast('请输入网易云ID或音乐链接'); return; }
+const lines = raw.split(/\r?\n+/).map(s => s.trim()).filter(Boolean);
+if (!lines.length) { toast('请输入网易云ID或音乐链接'); return; }
+const isBatch = lines.length > 1;
+let added = 0;
+lines.forEach((ln, li) => {
 let neteaseId = '';
-if (/^\d+$/.test(raw)) neteaseId = raw;
+if (/^\d+$/.test(ln)) neteaseId = ln;
 else {
-const idMatch = raw.match(/[?&]id=(\d+)/);
+const idMatch = ln.match(/[?&]id=(\d+)/);
 if (idMatch) neteaseId = idMatch[1];
 else {
-const pathMatch = raw.match(/\/(\d+)(?:\.mp3)?$/);
+const pathMatch = ln.match(/\/(\d+)(?:\.mp3)?$/);
 if (pathMatch) neteaseId = pathMatch[1];
 }
 }
-let url = raw;
+let url = ln;
+let nm = isBatch ? '' : name;
 if (neteaseId) {
 url = neteaseMetingUrl(neteaseId);
-if (!name) name = '网易云音乐-' + neteaseId;
+if (!nm) nm = '网易云音乐-' + neteaseId;
 }
-if (!/^(https?:\/\/|file:\/\/|data:|\/)/i.test(url)) { toast('请输入有效的ID或链接'); return; }
-const id = 'sm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-library.push({ id: id, neteaseId: neteaseId || '', name: name, artist: artist, url: url, source: 'url', duration: 0, playlistId: 'default', addedAt: Date.now() });
-saveLibrary();
-document.getElementById('tc-mask').hidden = true;
-renderPage();
-toast('链接音乐已添加');
+if (!/^(https?:\/\/|file:\/\/|data:|\/)/i.test(url)) return;
+const id = 'sm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '_' + li;
+library.push({ id: id, neteaseId: neteaseId || '', name: nm, artist: isBatch ? '' : artist, url: url, source: 'url', duration: 0, playlistId: 'default', addedAt: Date.now() });
+added++;
 if (neteaseId) {
 fetchNeteaseInfo(neteaseId, info => {
 const m = findTrack(id);
@@ -16534,28 +16558,44 @@ m.name = info.name;
 if (info.artist) m.artist = info.artist;
 saveLibrary();
 renderPage();
-toast('已识别：' + info.name + (info.artist ? ' - ' + info.artist : ''));
+if (!isBatch) toast('已识别：' + info.name + (info.artist ? ' - ' + info.artist : ''));
 }
 });
 }
+});
+if (!added) { toast('没有识别到有效的ID或链接'); return; }
+saveLibrary();
+document.getElementById('tc-mask').hidden = true;
+renderPage();
+toast(isBatch ? '已批量添加 ' + added + ' 首链接音乐' : '链接音乐已添加');
 });
 }
 function openBatch() {
 if (!window.openTCPanel) return;
 window.openTCPanel('批量导入音乐', '' +
-'<div class="sm-fld-hint" style="margin-bottom:8px">按格式粘贴，每首歌空一行分隔。<br>「音乐直链URL」直接填网易云歌曲数字 ID 就行（如 2064961530），会自动导入：<br>歌曲名称：xxx<br>歌手：xxx<br>音乐直链URL：2064961530</div>' +
+'<div class="sm-fld-hint" style="margin-bottom:8px">按格式粘贴，每首歌空一行分隔。<br>「音乐直链URL」直接填网易云歌曲数字 ID 就行（如 2064961530），会自动导入：<br>歌曲名称：xxx<br>歌手：xxx<br>音乐直链URL：2064961530<br><br>也可以不写格式：直接每行一个网易云 ID 或音乐链接，同样自动导入并识别歌名。</div>' +
 '<textarea id="sm-batch-input" class="tc-input" rows="8" placeholder="歌曲名称：Baby&#10;歌手：EXO-K&#10;音乐直链URL：27538343&#10;&#10;歌曲名称：歌名2&#10;歌手：歌手2&#10;音乐直链URL：https://example.com/music2.mp3"></textarea>' +
 '<div class="mail-actions"><button class="cc-tool" id="sm-batch-cancel">取消</button><button class="cc-tool" id="sm-batch-ok">开始导入</button></div>');
 document.getElementById('sm-batch-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
 document.getElementById('sm-batch-ok').addEventListener('click', () => {
 const raw = readCeInput('sm-batch-input');
 if (!raw) { toast('请输入内容'); return; }
-const blocks = raw.split(/\n\s*\n/);
+const rawLines = raw.split(/\r?\n+/).map(s => s.trim()).filter(Boolean);
+const isLabelLine = (l) => {
+if (/^https?:\/\//i.test(l) || /^\/\//.test(l)) return false;
+return /^[^:=：＝/]+?[:：＝=]\s*\S+/.test(l);
+};
+const hasLabels = rawLines.some(isLabelLine);
+const units = hasLabels
+? raw.split(/\n\s*\n/).map(b => ({ lines: b.split('\n').map(s => s.trim()).filter(Boolean), plain: false }))
+: rawLines.map(l => ({ lines: [l], plain: true }));
 let added = 0;
-blocks.forEach(block => {
-const lines = block.split('\n').map(s => s.trim()).filter(Boolean);
+units.forEach((unit, ui) => {
 let name = '', artist = '', url = '';
-lines.forEach(line => {
+if (unit.plain) {
+url = unit.lines[0];
+} else {
+unit.lines.forEach(line => {
 const sepMatch = line.match(/^([^:=]+?)(?:[:：＝=])\s*(.+)$/);
 if (!sepMatch) return;
 const key = sepMatch[1].replace(/\s+/g, '').toLowerCase();
@@ -16564,6 +16604,7 @@ if (/^(歌曲名称|歌名|名称|name|歌曲)$/.test(key)) name = val;
 else if (/^(歌手|艺术家|艺人|artist|演唱)$/.test(key)) artist = val;
 else if (/^(音乐直链url|音乐直链|音乐链接|链接|直链|url|音乐url|link)$/.test(key)) url = val;
 });
+}
 if (!url) return;
 let neteaseId = '';
 if (/^\d+$/.test(url)) {
@@ -16578,9 +16619,12 @@ if (neteaseId) {
 url = neteaseMetingUrl(neteaseId);
 if (!name) name = '网易云音乐-' + neteaseId; // 只填数字时自动补默认名
 }
-if (!name) return;
+if (!name) {
+const fn = (url.match(/\/([^/?#]+?)(?:\.[^/.?#]+)?$/) || [])[1];
+name = fn || '链接音乐';
+}
 if (!/^(https?:\/\/|file:\/\/|data:|\/)/i.test(url)) return;
-const nid = 'sm_batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+const nid = 'sm_batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '_' + ui;
 library.push({ id: nid, neteaseId: neteaseId || '', name: name, artist: artist, url: url, source: 'url', duration: 0, playlistId: 'default', addedAt: Date.now() });
 added++;
 if (neteaseId) {

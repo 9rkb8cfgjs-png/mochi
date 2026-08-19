@@ -262,18 +262,32 @@
     return qs[Math.floor(Math.random() * qs.length)];
   }
 
-  // v3.7.x：TA 回应挑选——把「硬编码/系统预设回应池」与「字卡库自定义文字字卡」合并成
-  // 一个随机池抽 1 条（两池都参与随机，自定义字卡多时自然偏向字卡库）。
+  // v3.7.x：TA 回应挑选——「硬编码/系统预设回应池」与「字卡库自定义文字字卡」两池混合：
+  // 预设池 90% 概率抽取，字卡库 10% 概率抽取；抽字卡库时最多连用 5 张字卡、
+  // 每张之间空一格（v3.7.1 由合并大池改两池等概率，v3.7.2 调为 90/10 + 多张连用）。
   // presetPool：可选，该卡片类型自带的预设回应池（好奇的题预设 replies / 吐槽固定句 /
-  // 选项预设回应等）；无字卡库也无 presetPool 时兜底默认甜话。
+  // 选项预设回应等）；两池都空时兜底默认甜话。
+  // v3.7.x：预设回应池与「系统预设字卡 → 互动回应」tab 同源展示，逐张开关
+  // （dc-off-interact-*）后此处过滤已关闭的话术，不再参与抽取。
   window.pickAskCardReply = function (presetPool) {
     try {
       const cards = (window.getCustomCards && window.getCustomCards()) || [];
       const words = cards.filter(s => typeof s === 'string' && s.indexOf('data:') !== 0 && s.indexOf('|||') < 0 && s.trim());
-      const pool = [];
-      if (Array.isArray(presetPool) && presetPool.length) pool.push.apply(pool, presetPool);
-      pool.push.apply(pool, words);
-      if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
+      const preset = (Array.isArray(presetPool) ? presetPool : [])
+        .filter(c => !(window.isDefaultCardOff && window.isDefaultCardOff('interact', c)));
+      const hasPreset = preset.length > 0;
+      if (hasPreset && words.length) {
+        // 预设池 90% / 字卡库 10%
+        if (Math.random() < 0.9) return preset[Math.floor(Math.random() * preset.length)];
+        // 字卡库：随机 1~5 张（不超过字卡池大小），不重复抽取，空格连接
+        const n = 1 + Math.floor(Math.random() * Math.min(5, words.length));
+        const copy = words.slice();
+        const out = [];
+        while (out.length < n) out.push(copy.splice(Math.floor(Math.random() * copy.length), 1)[0]);
+        return out.join(' ');
+      }
+      if (hasPreset) return preset[Math.floor(Math.random() * preset.length)];
+      if (words.length) return words[Math.floor(Math.random() * words.length)];
     } catch (e) {}
     const defs = ['收到你的回答。', '好呀，我知道了。', '嗯嗯，我也是这么想的。', '你这么说，我记住了。', '好的，我记在心里了。'];
     return defs[Math.floor(Math.random() * defs.length)];
@@ -2046,7 +2060,11 @@ window.openTCPanel = openTCPanel;
       rec = getCardAt(msgIdx);
     }
     if (!rec || rec.special !== 'ask-roast' || rec.roastStatus === 'answered') return;
-    const defs = ['你觉得我会信？', '少骗我。', '哼。', '好吧好吧。', '就这一次？', '行吧，放过你。', '嗯，这还差不多。'];
+    // v3.7.x：吐槽话术池与「系统预设字卡 → 互动回应」tab 同源（getInteractPool），
+    // 数据缺失时回退内置固定句；pickAskCardReply 内部会过滤用户已关闭的话术
+    const defs = window.getInteractPool
+      ? window.getInteractPool('吐槽·回应', ['你觉得我会信？', '少骗我。', '哼。', '好吧好吧。', '就这一次？', '行吧，放过你。', '嗯，这还差不多。'])
+      : ['你觉得我会信？', '少骗我。', '哼。', '好吧好吧。', '就这一次？', '行吧，放过你。', '嗯，这还差不多。'];
     // v3.7.x：回应 = 吐槽固定句池 + 字卡库自定义字卡 混合随机
     const reply = window.pickAskCardReply ? window.pickAskCardReply(defs) : defs[Math.floor(Math.random() * defs.length)];
     // v3.5.128：不再预写 rec 字段——getChatMsgs 是 chat.js 内存对象引用，

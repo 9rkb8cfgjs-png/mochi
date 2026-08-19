@@ -199,8 +199,10 @@
           // 下拉通知栏；配合系统「横幅通知」权限即为微信式顶部弹窗
           const swOpts = Object.assign({}, opts);
           if (!swOpts.urgency) swOpts.urgency = 'high';
-          // v3.5.139：调用方未指定图标时默认用 mochi 图标（避免黑色圆圈占位）
-          if (!swOpts.icon && NOTIFY_ICON) swOpts.icon = NOTIFY_ICON;
+          // v3.5.156：mochi 图标设到 badge（左侧小图标）——安卓通知里 badge 才是
+          // 左侧小图标位；icon 是右侧大图标位（由调用方传联系人头像/消息图）。
+          // 此前把 mochi 设进 icon → 显示在右侧，左侧 badge 未设 → 浏览器默认图标
+          if (!swOpts.badge && NOTIFY_ICON) swOpts.badge = NOTIFY_ICON;
           navigator.serviceWorker.ready.then(function (reg) {
             reg.showNotification(title, swOpts).then(function () { resolve(true); }, function () {
               // v3.5.142：逐级降级重发——带 image（图片缩略图）失败 → 去 image 重发；
@@ -467,40 +469,38 @@
       .replace(/data:[a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[附件]')
       .replace(/\|\|\|.*$/, '');
     const opts = { body: (t ? t + '  ' : '') + (body && body.length > 40 ? body.slice(0, 40) + '…' : body) };
-    // v3.5.148：通知左侧图标固定用 mochi 应用图标（NOTIFY_ICON = icon-192.png，
-    // showSysNotification 内部兜底）。之前把联系人头像（dataURL）塞进 icon——
-    // 安卓 Chrome 对 dataURL 图标支持不稳定，失败降级后通知左侧会回退成浏览器
-    // 默认图标（Chrome 图标）；头像改为不带（通知缩略图 image 字段保留）
-    // v3.5.150：右侧大图（image）——消息自带图片优先（聊天图片/表情包），
-    // 消息没带图时用联系人头像（代表"TA 发来的"，通知右侧始终有内容）；
-    // 左侧图标仍为 mochi（icon=NOTIFY_ICON，v3.5.148），两者不冲突
-    // v3.5.151：头像（256px 压缩图，dataURL 通常 <50KB）不做压缩直接设 image，
-    // 压缩是异步的，之前头像也走压缩路径时可能因时序没显示成右侧头像
-    let rightImg = '';
-    if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) rightImg = extra.img;
-    else {
+    // v3.5.156：修正安卓通知字段语义（此前 icon/badge/image 用反，导致
+    // 「左侧浏览器图标、右侧 mochi、无头像」）：
+    //   - badge（左侧小图标，单色）= mochi 字母图标（showSysNotification 兜底设）
+    //   - icon（右侧大图标）= 联系人头像（消息没带图时；带图则消息图优先放 icon）
+    //   - image（展开大图）= 消息图片（可选，有才设）
+    // 头像/图片 dataURL → blob URL，安卓 Chrome 可靠渲染
+    let bigIcon = '';   // 右侧大图标：头像或消息图
+    let previewImg = ''; // 展开大图：仅消息图片
+    if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) {
+      bigIcon = extra.img; // 消息带图 → 右侧显示消息图
+    } else {
       const avatar = store.get('avatar-partner') || '';
-      if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) rightImg = avatar;
+      if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) bigIcon = avatar;
     }
-    // v3.5.152：dataURL → blob URL 再设 image——安卓 Chrome 对通知 image 字段的
-    // dataURL 支持不稳定（经常不渲染），blob URL 是 http(s) 形式，Chrome 可靠渲染。
-    // 右侧头像/消息图片都走这条路径；失败则不带图发送，文字通知不丢
-    const sendNotify = function (img) {
-      if (img) opts.image = img;
+    if (extra.img && extra.img !== bigIcon) previewImg = extra.img;
+    const toBlob = function (dataUrl, cb) {
+      try {
+        fetch(dataUrl).then(function (r) { return r.blob(); }).then(function (b) {
+          try { cb(URL.createObjectURL(b)); } catch (e) { cb(''); }
+        }).catch(function () { cb(''); });
+      } catch (e) { cb(''); }
+    };
+    const sendNotify = function (iconUrl, imgUrl) {
+      if (iconUrl) opts.icon = iconUrl;
+      if (imgUrl) opts.image = imgUrl;
       showSysNotification(name, opts);
     };
-    if (rightImg) {
-      if (rightImg.indexOf('data:') === 0) {
-        try {
-          fetch(rightImg).then(function (r) { return r.blob(); }).then(function (b) {
-            try { sendNotify(URL.createObjectURL(b)); } catch (e) { sendNotify(''); }
-          }).catch(function () { sendNotify(''); });
-        } catch (e) { sendNotify(''); }
-      } else {
-        sendNotify(rightImg);
-      }
+    // 右侧大图标（icon）转 blob URL 后发送；失败则不带图，文字通知不丢
+    if (bigIcon && bigIcon.indexOf('data:') === 0) {
+      toBlob(bigIcon, function (u) { sendNotify(u, ''); });
     } else {
-      sendNotify('');
+      sendNotify(bigIcon, '');
     }
   };
   // v3.5.147：通知缩略图压缩——canvas 把图片 dataURL 压到最长边 96px JPEG。

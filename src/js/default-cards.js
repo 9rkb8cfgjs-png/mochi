@@ -118,6 +118,18 @@
     });
   }
 
+  // v3.7.x：互动回应 tab（JS 注入，避免改 template.html）——展示互动卡片预设话术池
+  // （邀请TA 接受/拒绝、问问TA 回应、小问题/好奇/吐槽/询问 的预设回应，数据在
+  // DEFAULT_CARD_DATA.interact）；逐张开关（dc-off-interact-*）与互动回复抽取联动，
+  // ta-ask.js pickAskCardReply / chat.js chatChooseReply 会读取该开关过滤已关闭话术
+  if (!tabsWrap.querySelector('[data-type="interact"]')) {
+    const b = document.createElement('button');
+    b.className = 'cc-tab';
+    b.dataset.type = 'interact';
+    b.textContent = '互动回应';
+    tabsWrap.appendChild(b);
+  }
+
   tabsWrap.querySelectorAll('.cc-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       tabsWrap.querySelectorAll('.cc-tab').forEach(t => t.classList.remove('sel'));
@@ -205,5 +217,13 @@
   // 默认字卡分组（供页面按分组查看）
   window.getDefaultCardGroups = function (cat) {
     return (DATA[cat] || []).slice();
+  };
+  // v3.7.x：互动回应预设池读取（供互动卡片回复侧使用）——name 分组名（邀请TA·接受/
+  // 邀请TA·拒绝/问问TA·回应/小问题·回应/好奇·回应/吐槽·回应/询问·回应），
+  // 与「互动回应」tab 展示同源（DEFAULT_CARD_DATA.interact）；数据缺失时回退 fallback
+  window.getInteractPool = function (name, fallback) {
+    const g = (DATA.interact || []).find(x => x[0] === name);
+    const arr = g && Array.isArray(g[1]) && g[1].length ? g[1] : (Array.isArray(fallback) ? fallback : []);
+    return arr.slice();
   };
 })();

@@ -123,13 +123,16 @@
    v3.5.49 曾改为悬浮式（absolute 相对输入栏 + z-index:5），消息滚动时会从
    这行灰色小字下方穿过、被盖住（用户反馈"灰色一行遮挡聊天消息"）——
    改回 v3.5.27/44 的内嵌方案，chat.js showTyping/hideTyping 已有占位滚动处理。
-   v3.6.x 回归修复：必须加 width:fit-content（v3.5.47 曾有，改内嵌时漏掉）——
-   本行是 #page-chat（flex column）的直接子项，align-items 默认 stretch 会把
-   它拉成整行全宽透明块；设置了聊天壁纸（cs-bg 铺满 #page-chat）时整行透出
-   壁纸图案，看起来"不是只有文字、这一整行是一个图形"（用户反馈）。fit-content
-   让行只占文字宽度，不透出整行壁纸、不形成色块/矩形 */
+   v3.7.x 回归修复：必须 align-self:flex-start + width:fit-content（v3.5.47 曾有，
+   改内嵌时漏掉）——本行是 #page-chat（flex column）的直接子项，align-items 默认
+   stretch 会把它拉成整行全宽透明块；设置了聊天壁纸（cs-bg 铺满 #page-chat）时
+   整行透出壁纸图案，看起来"不是只有文字、这一整行是一个图形"（用户反馈）。
+   align-self:flex-start 让 flex 交叉轴不拉伸（宽度收缩到内容，flex 基础属性，
+   任何支持 flex 的内核都生效，不依赖 fit-content 关键字的支持度），
+   fit-content 双保险，行只占文字宽度，不透出整行壁纸、不形成色块/矩形 */
 .chat-typing {
   flex-shrink:0;
+  align-self:flex-start;
   width:fit-content;
   padding:2px 18px 4px;
   font-size:12px;
@@ -218,7 +221,13 @@
   font-size:14px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
   width:100%; box-sizing:border-box;
 }
-.chat-ask-input:focus { border-color:var(--ink); }
+.chat-ask-input:focus {
+  border-color:var(--ink);
+  /* v3.7.x：安卓 Chrome 键盘弹出动画把 fixed 半框上移时，聚焦的 contenteditable
+     （ce-box）文本层偶发停在旧位置，表现=文字显示在输入框外面。translateZ(0)
+     让输入框在聚焦期间自带独立合成层，逐帧按当前布局位置合成，文本不再错位 */
+  transform:translateZ(0);
+}
 /* 问问TA 回复类型选择（文字回复/单选题，v3.6.x） */
 .chat-ask-type { display:flex; gap:8px; }
 .chat-ask-type[hidden] { display:none; }
@@ -233,7 +242,11 @@
   padding:11px 14px; font-size:14px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
   resize:none; line-height:1.5;
 }
-.chat-ask-opts:focus { border-color:var(--ink); }
+.chat-ask-opts:focus {
+  border-color:var(--ink);
+  /* 同上：单选选项输入框同样在 fixed 半框内，聚焦期间建独立合成层防文本错位 */
+  transform:translateZ(0);
+}
 .chat-ask-actions { display:flex; gap:8px; }
 .chat-ask-actions .cc-tool { flex:1; }
 

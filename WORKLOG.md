@@ -9,6 +9,17 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-19（用户反馈「聊天页正在输入行又变成一整行图形、滑动遮挡消息」，二次反馈未解决）
+- [本会话·完成]（**已构建 verify 10/10 + CDP 双场景验证，随本次提交**）：`src/css/chat-main.css` `.chat-typing`（AI-A 域文件，用户直接反馈故越界修复）。**真实根因**：聊天页设置壁纸（cs-bg 铺满 #page-chat）时，`.chat-typing` 是 `#page-chat`（flex column）直接子项，`align-items` 默认 stretch 把它拉成**整行全宽透明块**（实测 354px），整行透出壁纸图案 = 用户看到"这一整行是一个图形"；v3.5.47 曾用 `width:fit-content` 解决，v3.6.x 改内嵌时漏掉，仅加 fit-content 在部分内核不可靠。修复：`.chat-typing` 加 **`align-self:flex-start`**（flex 交叉轴不拉伸，宽度收缩到内容，flex 基础属性所有内核必支持，不依赖 fit-content 关键字）+ 保留 `width:fit-content` 双保险。CDP 验证两场景（fit-content 正常 / 用 `width:auto!important` 模拟 fit-content 失效）：typing 行宽度均 121px 窄条、alignSelf=flex-start、滚动后无消息在行下（msgsUnderTyping=0）、elementFromPoint 命中 page-chat 而非消息。涉及 `src/css/chat-main.css` + 产物。本次构建同时包含 AI-A 已保存改动（chat.js 问问TA半框文字错位修复/音乐批量链接/互动回应池等 7 文件，node --check 全过），统一提交。
+
+### 2026-08-19（本会话，用户反馈「问问TA 半框输入文字显示在输入框外面」（安卓 Chrome/Edge））
+- [本会话·完成]（**未构建未提交**，请构建者统一执行）：`src/js/chat.js` + `src/css/chat-main.css`（均 AI-A 域）。排查：半框输入框是安卓转换的 contenteditable（ce-box），位于 `position:fixed` 的 `.poke-card` 面板内；新版安卓 Chrome 键盘只缩放视觉视口（chromium issue 40251217），键盘弹出动画把 fixed 半框整体上移时，聚焦 contenteditable 的文本合成层偶发停在旧位置 = 文字显示在框外（聊天主输入栏在文档流内，不受影响）。修复：①chat-main.css `.chat-ask-input:focus`/`.chat-ask-opts:focus` 加 `transform:translateZ(0)`（聚焦期间独立合成层，逐帧按当前布局位置合成）；②chat.js `openChatAskPanel` 聚焦后给输入框内联 `translateZ(0)`（无头验证 `:focus` 在部分焦点态不匹配，内联样式兜底），`closeChatAskPanel` 与单选选项框显隐（syncOptsHidden）时清除/设置同款。已 temp 隔离构建 + CDP 复测：聚焦态 transform=matrix、键盘弹出动画后输入文字仍在框内（textInBox=true）、单选选项框同款、无 JS 错误。**未构建未提交**，等待统一提交/部署。提示 AI-B：如需通用化，可在 mobile-adapt.js 对 fixed 面板内（`#chat-search-input`/帮我决定/占卜问题框等）ce-box 聚焦时同样加内联 translateZ(0)——当前仅修了问问TA 半框。
+
+### 2026-08-19（本会话，AI-A：音乐支持批量上传数字链接）
+- [本会话·完成]（**未构建未提交**，请构建者统一执行）：用户需求「音乐里上传数字链接，可以批量上传」。`src/js/music-player.js`（AI-A 域，未动 template.html）：
+  ①**「链接添加」支持批量**：输入框改为多行 textarea，一次粘贴多个网易云数字 ID / 音乐直链，每行一个，逐条导入（多行时歌曲名/歌手自动识别，单行行为不变）；toast 区分「已批量添加 N 首」/「链接音乐已添加」。
+  ②**「批量导入」兼容纯链接粘贴**：整段无「歌曲名称：xxx」式标签时自动按每行一个 ID/链接导入（无需格式标签），歌名取链接文件名或默认名，网易云 ID 自动识别歌名；原格式模式不受影响。`node --check` 通过，解析正则已单测。**未构建未提交**，等待统一提交/部署。
+
 ### 2026-08-19（本会话，AI-B：桌面美化自由度+便捷增强）
 - [本会话·完成]（**已构建 verify 10/10，未提交**）：用户需求「增加桌面美化自由度和便捷」。新增 5 项功能（全在 AI-B 域）：
   ①**背景模糊/遮罩**（`src/template.html`加`.phone-bg-mask`层 + `src/css/home.css` backdrop-filter + `src/js/personalize.js` slider 0-20px / 0-80%）——不破坏现有背景逻辑，backdrop-filter 模糊 .phone 背景图，白色遮罩调透明度；

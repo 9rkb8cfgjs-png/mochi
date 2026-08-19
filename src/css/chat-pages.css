@@ -915,7 +915,9 @@
 
 /* 管理分组面板 */
 .mg-mask {
-  position:fixed; inset:0; z-index:60;
+  position:fixed; inset:0; z-index:85;
+  /* z-index 85：需盖过聊天表情半框 .poke-card(70)/消息气泡菜单 .msg-actions(80)，
+     又低于 openModal 弹窗 .modal-mask(90)（重命名/删除确认要盖在管理面板之上） */
   background:rgba(0,0,0,.35);
   display:flex; align-items:center; justify-content:center;
 }
