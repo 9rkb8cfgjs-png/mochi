@@ -8,6 +8,9 @@
 - 每行写清：AI、时间、任务、涉及文件、是否已构建。
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
+
+### 2026-08-19
+- [本会话] 完成（用户反馈「聊天更多→拍一拍：顶部已有分组切换，下方字卡列表不应再显示分组标题」——**已构建 verify 10/10，已提交 e7b9a93，未 push**）：`src/js/chat.js`（AI-A 域，用户直接反馈故越界修复）——`renderPokeCard()` 移除 `.cc-group-header` 分组标题渲染，字卡直接平铺（顶部 `pokeGroupsBar` 切换栏已承担分组标识）。本次构建同时带上 AI-A 累积批次（ta-ask 两池混合/chatcard/feed/avatar-lib/bg-keep/chat-main.css 等），一并提交。
 - 构建/部署只由约定的构建者执行（见 AGENTS.md）。
 
 ### 2026-08-19
