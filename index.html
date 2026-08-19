@@ -2587,6 +2587,10 @@ background:transparent; color:#fff; font-size:12px; font-weight:600;
 cursor:pointer; font-family:inherit; white-space:nowrap;
 }
 .decor-add:active { background:rgba(255,255,255,.15); }
+@media (max-width: 480px) {
+.decor-bar { flex-wrap:wrap; gap:6px 8px; }
+.decor-bar > span:first-child { flex:1 1 100%; }
+}
 .avlib-toggle {
 display:flex; align-items:center; justify-content:space-between; gap:10px;
 }
@@ -3847,7 +3851,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.122 · 部署于 2026-08-19 17:16</div>
+      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 v3.6.124 · 部署于 2026-08-19 17:33</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4590,7 +4594,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.122</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.124</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -28507,7 +28511,7 @@ if (_kbActive && !isTextEl(document.activeElement)) restoreKb();
 });
 } catch (e) {}
 }
-const FLOAT_SELECTORS = ['#tc-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#chat-rps-panel', '#chat-call-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions'];
+const FLOAT_SELECTORS = ['#tc-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#chat-rps-panel', '#chat-call-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions', '#desk-image-viewer', '.desk-lib'];
 let locked = false;
 function applyLock() {
 const anyOpen = FLOAT_SELECTORS.some(function (sel) {

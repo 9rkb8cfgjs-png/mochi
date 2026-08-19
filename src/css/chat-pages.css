@@ -877,6 +877,13 @@
   cursor:pointer; font-family:inherit; white-space:nowrap;
 }
 .decor-add:active { background:rgba(255,255,255,.15); }
+/* v3.7.x：手机端装修条溢出修复——提示文字 + 3 按钮总宽约 454px > 360px 屏宽，
+   原 flex 无 wrap 导致"完成"/"恢复图标"被裁剪不可点（无法退出装修/恢复图标）。
+   窄屏让提示文字独占一行，3 个按钮换到第二行，按钮总宽约 212px 完全够放 */
+@media (max-width: 480px) {
+  .decor-bar { flex-wrap:wrap; gap:6px 8px; }
+  .decor-bar > span:first-child { flex:1 1 100%; }
+}
 
 /* 头像库页 */
 .avlib-toggle {
