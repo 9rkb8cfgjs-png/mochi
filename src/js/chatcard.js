@@ -1209,6 +1209,10 @@
               };
               if (cur === 'voice') process(reader.result);
               else {
+                // v3.7.x：GIF 动图跳过 canvas 压缩——canvas 只能画出第一帧，
+                // 重绘成 PNG/JPEG 会把动图压成静态图，这里直存原图保留动画
+                const isGif = /image\/gif/i.test(f.type || '') || /\.gif$/i.test(f.name || '');
+                if (isGif) { process(reader.result); return; }
                 // v3.7.x：原 260px 在 3x 高清屏被放大 2~3 倍导致模糊。
                 //   图片分类当大图显示，压到 720px JPEG 0.85；表情包多小图且需透明背景，用 PNG 480px
                 const isImg = cur === 'image';

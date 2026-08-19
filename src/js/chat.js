@@ -750,6 +750,37 @@
   // v3.6.x：互动卡片事件委托——由 chat-body 统一监听点击（renderMsg 不再逐卡绑定），
   // 兼容重渲染/懒加载；就地展开失败（数据异常等）时回退到对应弹窗，保证点卡片必有反应
   if (body) {
+    // 红包长按退回：长按 TA 的 pending 红包卡片 500ms 弹退回确认
+    let rpPressTimer = null;
+    let rpPressSuppressClick = false;
+    body.addEventListener('pointerdown', (e) => {
+      const rpCard = e.target.closest('.msg-rp-card');
+      if (!rpCard) return;
+      const rpItem = rpCard.closest('.msg-rp');
+      if (!rpItem || rpItem.dataset.idx === undefined) return;
+      const rpRec = msgs[Number(rpItem.dataset.idx)];
+      if (!rpRec || rpRec.special !== 'redpacket' || rpRec.rpStatus !== 'pending' || rpRec.side !== 'in') return;
+      rpPressTimer = setTimeout(() => {
+        rpPressTimer = null;
+        rpPressSuppressClick = true;
+        if (window.openModal) {
+          window.openModal('退回这个红包？', '', () => {
+            rpRec.rpStatus = 'returned';
+            const w = rpWalletGet();
+            w.systemBalance += Math.round((rpRec.rpAmount || 0) * 100);
+            rpWalletSet(w);
+            saveMsgsNow();
+            renderWindow(true, true);
+            const amtTxt = '¥' + Number(rpRec.rpAmount || 0).toFixed(2);
+            setTimeout(() => addIn('你退回了红包 ' + amtTxt, { special: 'poke' }), randInt(300, 800));
+          }, { okText: '退回', cancelText: '取消' });
+        }
+      }, 500);
+    });
+    const rpClearPress = () => { if (rpPressTimer) { clearTimeout(rpPressTimer); rpPressTimer = null; } };
+    body.addEventListener('pointerup', rpClearPress);
+    body.addEventListener('pointerleave', rpClearPress);
+    body.addEventListener('pointercancel', rpClearPress);
     body.addEventListener('click', (e) => {
       // v3.6.77：点击卡片外区域 → 所有互动卡片的收藏按钮收起
       if (!e.target.closest('.msg-ask-card, .msg-choose-card, .msg-fav-heart, .msg-inplace')) {
@@ -766,6 +797,7 @@
       // 红包卡片：点击领取（只有 TA 发的红包我能领取，入账 myBalance）
       const rpCard = e.target.closest('.msg-rp-card');
       if (rpCard) {
+        if (rpPressSuppressClick) { rpPressSuppressClick = false; return; }
         e.stopPropagation();
         const rpItem = rpCard.closest('.msg-rp');
         if (!rpItem || rpItem.dataset.idx === undefined) return;
@@ -780,8 +812,10 @@
         wallet.myBalance += Math.round((rpRec.rpAmount || 0) * 100);
         rpWalletSet(wallet);
         saveMsgsNow();
-        toast('已领取 ¥' + Number(rpRec.rpAmount || 0).toFixed(2));
+        const amtTxt = '¥' + Number(rpRec.rpAmount || 0).toFixed(2);
+        toast('已领取 ' + amtTxt);
         renderWindow(true, true);
+        setTimeout(() => addIn('你领取了红包 ' + amtTxt, { special: 'poke' }), randInt(400, 1000));
         return;
       }
       // 就地作答区内部（选项按钮/发送/输入框）的点击不触发卡片委托
@@ -2736,7 +2770,7 @@ function partialRetractMsg(msgEl, side) {
       rpWalletSet(wallet);
       saveMsgsNow();
       renderWindow(false, true);
-      setTimeout(() => addIn('红包 24 小时未被领取，已退回', { special: 'poke' }), randInt(500, 1200));
+      setTimeout(() => addIn('TA 退回了你的红包 ¥' + Number(rec.rpAmount || 0).toFixed(2), { special: 'poke' }), randInt(500, 1200));
     } else if (r < 0.9) {
       rec.rpStatus = 'received';
       rec.rpOpenedAt = Date.now();
@@ -2744,6 +2778,8 @@ function partialRetractMsg(msgEl, side) {
       rpWalletSet(wallet);
       saveMsgsNow();
       renderWindow(false, true);
+      const amtTxt = '¥' + Number(rec.rpAmount || 0).toFixed(2);
+      setTimeout(() => addIn('TA 领取了你的红包 ' + amtTxt, { special: 'poke' }), randInt(400, 1000));
       // TA 领取后发感谢表情/消息
       rpCollectFeedback();
     }
@@ -2761,6 +2797,8 @@ function partialRetractMsg(msgEl, side) {
     rpWalletSet(wallet);
     saveMsgsNow();
     renderWindow(false, true);
+    const amtTxt = '¥' + Number(rec.rpAmount || 0).toFixed(2);
+    setTimeout(() => addIn('TA 领取了你的红包 ' + amtTxt, { special: 'poke' }), randInt(400, 1000));
     // TA 收取后发感谢
     rpCollectFeedback();
   }
@@ -4447,6 +4485,27 @@ function partialRetractMsg(msgEl, side) {
         files.forEach(f => {
           const reader = new FileReader();
           reader.onload = () => {
+            // v3.7.x：GIF 动图直存原图——canvas 压缩只能画第一帧，会把动图压成静态图；
+            // 但超大 GIF 的 base64 会撑爆存储，超过 8MB 跳过（与 compressMyEmoji 拦截口径一致）
+            const isGif = /image\/gif/i.test(f.type || '') || /\.gif$/i.test(f.name || '');
+            if (isGif) {
+              if (reader.result.length > 8 * 1024 * 1024) {
+                done++;
+                if (done === files.length) { myEmojiSave(); renderEmojiPanel(); toast('动图过大，已跳过（请用 10MB 以内的 GIF）'); }
+                return;
+              }
+              g[1].push(reader.result);
+              okCount++;
+              done++;
+              if (done === files.length) {
+                const ok = myEmojiSave();
+                myCurGroup = g[0];
+                renderEmojiPanel();
+                if (!ok) toast('存储空间不足：表情已用备用存储，刷新后恢复。请清理不用的表情');
+                else toast('已添加 ' + okCount + ' 个表情');
+              }
+              return;
+            }
             compressMyEmoji(reader.result, 260).then(data => {
               // v3.6.x：压缩失败/图片过大返回 null——不存原图（防 iOS 解码崩溃），提示换图
               if (!data) {

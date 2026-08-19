@@ -9,6 +9,28 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-19（GIF 动图上传变静态图修复——用户反馈字卡库表情包/我的表情包动图不动）
+- [本会话·完成]（**已构建 index.html；本次提交一并带上 AI-A 已保存的红包长按退回 + ta-ask 第四批等改动**）：
+  根因：字卡库【表情包】【图片】批量导入走 `compressImage` canvas 重绘（sticker→PNG 480 / image→JPEG 720），
+  「我的表情包」添加走 `compressMyEmoji` canvas 重绘（PNG 260）——canvas 只能画出 GIF 第一帧，动图全被压成静态图。
+  修复：两处上传识别 GIF（`f.type` 或文件名 `.gif`）时跳过 canvas 压缩、直存原始 dataURL（保留全部动画帧）；非 GIF 仍走原压缩；我的表情包动图 >8MB base64 跳过并提示。
+  涉及：`src/js/chatcard.js`（批量导入）、`src/js/chat.js`（我的表情包添加）。
+  验证：node --check 全通过；verify 10/10；无头 Chrome 端到端（劫持 file input click 注入真实 GIF 走完整上传链路）3/3：
+  两条路径存储均为 `data:image/gif`（修复前为 `data:image/png`），PNG 仍走压缩回归正常。
+  遗留：已上传的旧动图已被压成静态 PNG，无法自动恢复，需用户重新上传。
+
+### 2026-08-19（桌面美化缺陷修复——已随 a49d263 统一构建提交入库，产物已含全部修复）
+- [本会话·完成]（**已随 a49d263 构建提交推送**）：对「桌面美化」做缺陷审计（先静态分析 + node 模拟，再对真实构建产物无头 Chrome 18/18 证实），随后修复 7 项（全 AI-B 域 `src/js/personalize.js` `src/css/home.css` `src/css/dark.css` `src/template.html`）：
+  ① **文字/倒计时组件编辑+删除彻底失效**：原 setTimeout 里 `querySelectorAll('.modal-pill')` 选择器不存在（pills 实际类名 `.pill`、容器 `#modal-pills`），字号+/字号-/换颜色/删除从未绑定；且保存用 `saveDeskTextsMeta(loadDeskTextsMeta())` 读旧数据存回、编辑丢失。修复：一次 load 持有 meta 引用、pill 动作走 openModal 确定回调（与全站一致）。
+  ② **美化方案导出键名不匹配**：BEAUTY_KEYS 写成 `widget-color/widget-border/widget-btn/widget-btn-text/widget-heart`，与真实存储键 `widget-bg-color/widget-border-color/widget-btn-color/widget-btn-text-color/widget-heart-color` 全部对不上，导出静默漏掉 5 项颜色。已改键名。
+  ③ **美化方案导出漏图片本体/自定义图标**：`desk-image-src-<id>`（IDB）、`app-icon-*`、`app-icon-order-*` 不在方案里，导入后图片组件空壳、图标自定义搬不走。新增 collectBeauty 动态收集（按 data-app 枚举）+ 导入同步写入。
+  ④ **导出 fallback 空弹窗**：clipboard 不可用时原 `noInput:true` 隐藏输入框、JSON 不可见。改用 textarea 展示 JSON 供手动复制。
+  ⑤ **删页后 desk-layout 残留**：buildDeskPages 删页不移组件回池但不收缩布局，之后新增页刷新把旧页组件插回新页（"复活"）。修复：删页时已有自定义布局则 saveDeskLayout() 收缩。
+  ⑥ **背景模糊常驻 backdrop-filter**（iOS 红线）：blur(0px) 也保持 filter 激活、全屏每帧栅格化。改为 `.phone-bg-mask` 仅 `blur-on` 类（px>0）启用 backdrop-filter，默认移除。顺带深色模式遮罩改黑（dark.css 补 `.phone-bg-mask` 覆盖）。
+  ⑦ **组件圆角漏新组件 + 默认值不一致**：`.desk-text-widget/.desk-countdown-widget` 漏写圆角（恒直角）、`.desk-image-widget` 用图标圆角；已全部改 `--desk-card-radius`，:root 默认 16px→20px 对齐 JS。
+  另：设置页「桌面字号/卡片大小」补「仅桌面/大屏生效 · 手机端为 iOS 性能保持默认」副标题（手机端 zoom 强制 1 的现状提示）。
+  验证：隔离构建 + 无头 Chrome 17+4 项全过（编辑保存/字号+/删除/倒计时编辑删除/导出 5 键/fallback textarea/删页收缩/圆角 12px/blur 10px 开启+dark/0px 关闭 none）。临时脚本已删。
+
 ### 2026-08-19（用户三次反馈「正在输入行是整行图形、滑动遮挡」——真实根因是版本更新机制失效，用户从未加载到修复版）
 - [本会话·完成]（**已构建 verify 10/10 + CDP 端到端验证，已随 a49d263 提交推送**）：用户三次反馈同一问题，前两轮只改 `.chat-typing` CSS（fit-content→align-self:flex-start）并验证线上已部署，但用户始终看不到修复。**深挖发现真正根因不是 typing 样式，而是版本更新机制从未生效**：
   ① **`template.html` 结构性 bug（核心）**：`ver-update-bar`/`backup-remind-bar` 位于 `<script>`（`/*__SCRIPTS__*/`）**之后**，而 pwa.js 启动即 `getElementById('ver-update-bar')` → null → `if(!bar) return` 直接退出 → **版本检测/备份提醒整块逻辑从未执行**（desk-image-viewer 曾有同类坑，注释明确要求必须在 script 前，两个 bar 漏了）。用户永远收不到「检测到新版本」提示，一直停留在旧缓存（悬浮式/全宽式 typing 行）。

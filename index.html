@@ -3858,7 +3858,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787147481439">Mochi 字卡传讯 v3.6.137 · 部署于 2026-08-19 21:51</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787149849313">Mochi 字卡传讯 v3.6.136 · 部署于 2026-08-19 22:30</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4601,7 +4601,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.137</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.136</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -11289,6 +11289,36 @@ if (fi) setTimeout(() => { try { fi.focus(); } catch (e) {} }, 60);
 return true;
 }
 if (body) {
+let rpPressTimer = null;
+let rpPressSuppressClick = false;
+body.addEventListener('pointerdown', (e) => {
+const rpCard = e.target.closest('.msg-rp-card');
+if (!rpCard) return;
+const rpItem = rpCard.closest('.msg-rp');
+if (!rpItem || rpItem.dataset.idx === undefined) return;
+const rpRec = msgs[Number(rpItem.dataset.idx)];
+if (!rpRec || rpRec.special !== 'redpacket' || rpRec.rpStatus !== 'pending' || rpRec.side !== 'in') return;
+rpPressTimer = setTimeout(() => {
+rpPressTimer = null;
+rpPressSuppressClick = true;
+if (window.openModal) {
+window.openModal('退回这个红包？', '', () => {
+rpRec.rpStatus = 'returned';
+const w = rpWalletGet();
+w.systemBalance += Math.round((rpRec.rpAmount || 0) * 100);
+rpWalletSet(w);
+saveMsgsNow();
+renderWindow(true, true);
+const amtTxt = '¥' + Number(rpRec.rpAmount || 0).toFixed(2);
+setTimeout(() => addIn('你退回了红包 ' + amtTxt, { special: 'poke' }), randInt(300, 800));
+}, { okText: '退回', cancelText: '取消' });
+}
+}, 500);
+});
+const rpClearPress = () => { if (rpPressTimer) { clearTimeout(rpPressTimer); rpPressTimer = null; } };
+body.addEventListener('pointerup', rpClearPress);
+body.addEventListener('pointerleave', rpClearPress);
+body.addEventListener('pointercancel', rpClearPress);
 body.addEventListener('click', (e) => {
 if (!e.target.closest('.msg-ask-card, .msg-choose-card, .msg-fav-heart, .msg-inplace')) {
 body.querySelectorAll('.msg-ask-card.show-fav, .msg-choose-card.show-fav').forEach(c => c.classList.remove('show-fav'));
@@ -11302,6 +11332,7 @@ return;
 }
 const rpCard = e.target.closest('.msg-rp-card');
 if (rpCard) {
+if (rpPressSuppressClick) { rpPressSuppressClick = false; return; }
 e.stopPropagation();
 const rpItem = rpCard.closest('.msg-rp');
 if (!rpItem || rpItem.dataset.idx === undefined) return;
@@ -11316,8 +11347,10 @@ const wallet = rpWalletGet();
 wallet.myBalance += Math.round((rpRec.rpAmount || 0) * 100);
 rpWalletSet(wallet);
 saveMsgsNow();
-toast('已领取 ¥' + Number(rpRec.rpAmount || 0).toFixed(2));
+const amtTxt = '¥' + Number(rpRec.rpAmount || 0).toFixed(2);
+toast('已领取 ' + amtTxt);
 renderWindow(true, true);
+setTimeout(() => addIn('你领取了红包 ' + amtTxt, { special: 'poke' }), randInt(400, 1000));
 return;
 }
 if (e.target.closest('.msg-inplace')) return;
@@ -12941,7 +12974,7 @@ wallet.myBalance += amtFen;
 rpWalletSet(wallet);
 saveMsgsNow();
 renderWindow(false, true);
-setTimeout(() => addIn('红包 24 小时未被领取，已退回', { special: 'poke' }), randInt(500, 1200));
+setTimeout(() => addIn('TA 退回了你的红包 ¥' + Number(rec.rpAmount || 0).toFixed(2), { special: 'poke' }), randInt(500, 1200));
 } else if (r < 0.9) {
 rec.rpStatus = 'received';
 rec.rpOpenedAt = Date.now();
@@ -12949,6 +12982,8 @@ wallet.systemBalance += amtFen;
 rpWalletSet(wallet);
 saveMsgsNow();
 renderWindow(false, true);
+const amtTxt = '¥' + Number(rec.rpAmount || 0).toFixed(2);
+setTimeout(() => addIn('TA 领取了你的红包 ' + amtTxt, { special: 'poke' }), randInt(400, 1000));
 rpCollectFeedback();
 }
 }
@@ -12964,6 +12999,8 @@ wallet.systemBalance += Math.round((rec.rpAmount || 0) * 100);
 rpWalletSet(wallet);
 saveMsgsNow();
 renderWindow(false, true);
+const amtTxt = '¥' + Number(rec.rpAmount || 0).toFixed(2);
+setTimeout(() => addIn('TA 领取了你的红包 ' + amtTxt, { special: 'poke' }), randInt(400, 1000));
 rpCollectFeedback();
 }
 function rpExpireCheck() {
@@ -14454,6 +14491,25 @@ let done = 0, okCount = 0;
 files.forEach(f => {
 const reader = new FileReader();
 reader.onload = () => {
+const isGif = /image\/gif/i.test(f.type || '') || /\.gif$/i.test(f.name || '');
+if (isGif) {
+if (reader.result.length > 8 * 1024 * 1024) {
+done++;
+if (done === files.length) { myEmojiSave(); renderEmojiPanel(); toast('动图过大，已跳过（请用 10MB 以内的 GIF）'); }
+return;
+}
+g[1].push(reader.result);
+okCount++;
+done++;
+if (done === files.length) {
+const ok = myEmojiSave();
+myCurGroup = g[0];
+renderEmojiPanel();
+if (!ok) toast('存储空间不足：表情已用备用存储，刷新后恢复。请清理不用的表情');
+else toast('已添加 ' + okCount + ' 个表情');
+}
+return;
+}
 compressMyEmoji(reader.result, 260).then(data => {
 if (!data) {
 done++;
@@ -15754,6 +15810,8 @@ if (done === files.length) finishUpload(done - skipped, skipped);
 };
 if (cur === 'voice') process(reader.result);
 else {
+const isGif = /image\/gif/i.test(f.type || '') || /\.gif$/i.test(f.name || '');
+if (isGif) { process(reader.result); return; }
 const isImg = cur === 'image';
 compressImage(reader.result, isImg ? 720 : 480, isImg ? 'image/jpeg' : 'image/png', isImg ? 0.85 : undefined).then((data) => {
 if (!data) { skipped++; done++; if (done === files.length) finishUpload(done - skipped, skipped); return; }
