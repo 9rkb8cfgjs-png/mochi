@@ -718,12 +718,18 @@
           const fw = (rec.curiousFollowup && Math.random() < 0.3) ? rec.curiousFollowup : null;
           window.chatCuriousReply(idx, v, reply, fw);
         } else if (type === 'roast' && window.chatRoastReply) {
+          // v3.7.x：吐槽话术池与「互动回应」tab 同源（getInteractPool），就地作答与弹窗两条路径一致
           const defs = ['你觉得我会信？', '少骗我。', '哼。', '好吧好吧。', '就这一次？', '行吧，放过你。', '嗯，这还差不多。'];
+          const pool = window.getInteractPool ? window.getInteractPool('吐槽·回应', defs) : defs;
           // v3.7.x：吐槽固定句池 + 字卡库自定义字卡 混合随机
-          const reply = (window.pickAskCardReply ? window.pickAskCardReply(defs) : defs[Math.floor(Math.random() * defs.length)]);
+          const reply = (window.pickAskCardReply ? window.pickAskCardReply(pool) : pool[Math.floor(Math.random() * pool.length)]);
           window.chatRoastReply(idx, v, reply);
         } else if (type === 'ask' && window.chatAskReply) {
-          window.chatAskReply(idx, v);
+          // v3.7.x：文字题回应接「询问·回应」预设池（与弹窗路径一致）：池里随机一条作预设，
+          // chatAskReply 内部 90%预设/10%字卡库 混合
+          const defs = ['收到你的回答。', '好呀，我知道了。', '你这么说，我记住了。'];
+          const pool = window.getInteractPool ? window.getInteractPool('询问·回应', defs) : defs;
+          window.chatAskReply(idx, v, pool[Math.floor(Math.random() * pool.length)]);
         }
         if (window.logFish) window.logFish();
       };
@@ -1390,12 +1396,26 @@
     // 与后台通知开关互不影响（bgNotifyCheck 内部按 bg-notify 开关/权限/可见性判断）
     // v3.5.142：附上图片 dataURL（通知 image 字段显示缩略图 + 文字）
     if (document.visibilityState === 'hidden' && window.bgNotifyCheck) {
-      window.bgNotifyCheck(notifyT, Date.now(), { name: opts.name, img: opts.img });
+      // v3.7.x：跨桌面——av 字段透传发布者头像（朋友圈通知来自其它联系人桌面时，
+      // 系统通知右侧大图标用发布者头像而非当前桌面 TA 头像）
+      window.bgNotifyCheck(notifyT, Date.now(), { name: opts.name, img: opts.img, av: opts.av });
     }
     if (!deskMsgEl || !deskMsgEnabled()) return;
     if (deskMsgText) deskMsgText.textContent = notifyT;
     if (deskMsgName) deskMsgName.textContent = opts.name || store.get('lbl-partner') || 'TA';
-    if (deskMsgAv) fillAvatar(deskMsgAv, 'avatar-partner');
+    if (deskMsgAv) {
+      // v3.7.x：跨桌面通知（朋友圈等）弹窗头像用发布者头像（opts.av），
+      // 普通聊天消息仍用当前桌面 TA 头像
+      if (opts.av && typeof opts.av === 'string' && opts.av.indexOf('data:') === 0) {
+        const img = document.createElement('img');
+        img.src = opts.av;
+        img.alt = '';
+        deskMsgAv.innerHTML = '';
+        deskMsgAv.appendChild(img);
+      } else {
+        fillAvatar(deskMsgAv, 'avatar-partner');
+      }
+    }
     deskMsgAction = (typeof opts.onClick === 'function') ? opts.onClick : null;
     // v3.5.136：清除上次关闭/回弹动画残留，避免新横幅带上 transform/transition
     if (deskMsgCloseAnimTimer) { clearTimeout(deskMsgCloseAnimTimer); deskMsgCloseAnimTimer = null; }

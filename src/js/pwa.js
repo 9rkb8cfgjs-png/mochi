@@ -31,9 +31,18 @@
     const bar = document.getElementById('ver-update-bar');
     if (!bar) return;
     const act = document.getElementById('ver-update-refresh');
-    let baseTs = null;      // 当前页面的版本时间戳（首次读取即基线）
+    let baseTs = null;      // 当前页面的版本时间戳（基线）
     let baseGot = false;
     let noticed = false;
+    // v3.7.x：基线在页面加载时直接从 splash-ver data-build-ts 确定（构建时注入），
+    // 不依赖「首次 fetch 的 version.json」——旧逻辑首次 fetch 只设基线就 return，
+    // 必须等 30 秒后第二次轮询才会比较；且旧缓存页面 + 网络拿到最新 version.json
+    // 时基线被污染成最新版 → 永不提示更新。注入基线后第一次 fetch 即可比较
+    (function () {
+      const sv = document.getElementById('splash-ver');
+      const t = sv && Number(sv.getAttribute('data-build-ts'));
+      if (t > 0) { baseTs = t; baseGot = true; }
+    })();
     // 防抖：检查到新版本后只提示一次，避免每次轮询都闪
     let lastCheck = 0;
     function showBar() {
@@ -56,7 +65,8 @@
         .then(function (d) {
           const ts = Number(d && d.ts);
           if (!ts || isNaN(ts)) return;
-          if (!baseGot) { baseTs = ts; baseGot = true; return; } // 基线 = 当前页面版本
+          // 老版本页面无 data-build-ts 注入时回退旧逻辑（首次 fetch 当基线）
+          if (!baseGot) { baseTs = ts; baseGot = true; return; }
           if (ts > baseTs) showBar();
         })
         .catch(function () {});

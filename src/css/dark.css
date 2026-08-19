@@ -14,6 +14,8 @@
   --dark-hover: rgba(255,255,255,.06);
 
   /* ---- home.css ---- */
+  /* v3.7.x：背景遮罩深色覆盖——浅色模式是白色蒙层，深色模式改黑（此前 dark.css 无覆盖） */
+  .phone-bg-mask { background:rgba(0,0,0,var(--desk-bg-mask-op,0)); }
   .deco-avatar .ring { background:#2a2a2a; border-color:var(--dark-border); }
   .deco-avatar .lbl { color:#aaa; background:var(--dark-card); border-color:var(--dark-border-12); }
   .deco-avatar .lbl:hover { background:var(--dark-hover); }

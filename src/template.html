@@ -54,7 +54,7 @@
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">Mochi 字卡传讯 __APP_VERSION__ · __BUILD_INFO__</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="__BUILD_TS__">Mochi 字卡传讯 __APP_VERSION__ · __BUILD_INFO__</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -822,12 +822,12 @@
         </div>
         <div class="set-row" id="row-desk-font-size">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></div>
-          <div class="txt">桌面字号</div>
+          <div class="txt">桌面字号<span class="sub">仅桌面/大屏生效 · 手机端为 iOS 性能保持默认</span></div>
           <div class="val" id="desk-font-size-val">默认</div>
         </div>
         <div class="set-row" id="row-desk-card-scale">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z" fill="none" stroke-dasharray="2 2"/></svg></div>
-          <div class="txt">卡片大小</div>
+          <div class="txt">卡片大小<span class="sub">仅桌面/大屏生效 · 手机端为 iOS 性能保持默认</span></div>
           <div class="val" id="desk-card-scale-val">默认</div>
         </div>
         <div class="set-row" id="row-desk-card-radius">
@@ -2631,6 +2631,20 @@
     <img id="desk-image-viewer-img" alt="">
     <span class="desk-image-viewer-close" id="desk-image-viewer-close">×</span>
   </div>
+  <!-- v3.7.x：检测到新版本提示条/备份提醒条也必须放在 <script> 之前——
+       pwa.js 在脚本执行时立即 getElementById('ver-update-bar')，放在脚本后面
+       会得到 null 直接 return，版本检测/备份提醒整块逻辑从未执行（用户永远
+       收不到更新提示、一直停留在旧缓存版本 = 「修了没效果」的隐藏根因） -->
+  <div class="ver-update-bar" id="ver-update-bar" hidden>
+    <span class="vub-txt">检测到新版本</span>
+    <span class="vub-act" id="ver-update-refresh">刷新使用新版</span>
+    <span class="vub-act vub-close" id="ver-update-close" style="background:transparent;color:#ccc;border:1px solid rgba(255,255,255,.3)">稍后</span>
+  </div>
+  <div class="ver-update-bar" id="backup-remind-bar" hidden>
+    <span class="vub-txt" id="backup-remind-txt">建议导出数据备份</span>
+    <span class="vub-act" id="backup-remind-go">去备份</span>
+    <span class="vub-act vub-close" id="backup-remind-close" style="background:transparent;color:#ccc;border:1px solid rgba(255,255,255,.3)">稍后</span>
+  </div>
 
   <script>
   // v3.5.123：readonly 起手（防 Chrome 密码弹条破坏表单签名）——这里立即解除，
@@ -2647,21 +2661,6 @@
   <!-- iOS Safari 添加到主屏幕提示 -->
   <div class="pwa-ios-hint" id="pwa-ios-hint" hidden>
     <span>在 Safari 中点击「分享」→「添加到主屏幕」使用</span>
-  </div>
-  <!-- v3.6.x：检测到新版本提示条（点击刷新到新版）——不依赖 Service Worker 更新机制，
-       由 pwa.js 定期对比 version.json 时间戳触发，iOS/安卓均可靠 -->
-  <div class="ver-update-bar" id="ver-update-bar" hidden>
-    <span class="vub-txt">检测到新版本</span>
-    <span class="vub-act" id="ver-update-refresh">刷新使用新版</span>
-    <span class="vub-act vub-close" id="ver-update-close" style="background:transparent;color:#ccc;border:1px solid rgba(255,255,255,.3)">稍后</span>
-  </div>
-  <!-- v3.6.x：定期备份提醒条——距上次导出备份超 7 天时由 pwa.js 显示（复用 ver-update-bar 样式），
-       数据只存在本机浏览器里，iOS Safari 可能因存储清理/系统 bug 清空（WebKit#266559），
-       导出备份文件到「文件」App 是唯一能找回数据的办法 -->
-  <div class="ver-update-bar" id="backup-remind-bar" hidden>
-    <span class="vub-txt" id="backup-remind-txt">建议导出数据备份</span>
-    <span class="vub-act" id="backup-remind-go">去备份</span>
-    <span class="vub-act vub-close" id="backup-remind-close" style="background:transparent;color:#ccc;border:1px solid rgba(255,255,255,.3)">稍后</span>
   </div>
 </body>
 </html>

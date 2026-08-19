@@ -164,7 +164,53 @@
       { t: '想好好睡觉', reply: '好，那你睡，我在旁边守着。' }, { t: '每晚都在梦你', reply: '……这张字卡我收得很开心。' }] },
     { id: 'q_s3', text: '现在的心情更接近哪一种？', cat: 'care', type: 'single', enabled: true, options: [
       { t: '电量满格', reply: '那趁现在多聊两句。' }, { t: '有点低电量', reply: '过来，我陪你充一会电。' },
-      { t: '说不上来', reply: '没关系，不用急着说清楚。' }, { t: '想你了', reply: '……我也是，刚刚还在想。' }] }
+      { t: '说不上来', reply: '没关系，不用急着说清楚。' }, { t: '想你了', reply: '……我也是，刚刚还在想。' }] },
+    // v3.7.x：第二批新增——延续高自由度开放题；结尾 2 题单选（预设答案+各答案 TA 预设回应）
+    { id: 'q_d10', text: '今天有没有哪件事，做得比自己想象中好？', cat: 'daily', enabled: true },
+    { id: 'q_d11', text: '如果今天的你是一道菜，会是什么味道的？', cat: 'daily', enabled: true },
+    { id: 'q_d12', text: '明天醒来，最想听到的第一句话是什么？', cat: 'daily', enabled: true },
+    { id: 'q_c8', text: '现在肩颈还好吗，有没有酸？', cat: 'care', enabled: true },
+    { id: 'q_c9', text: '今天有没有为自己留一点时间？', cat: 'care', enabled: true },
+    { id: 'q_c10', text: '睡前还有什么放不下的事吗？', cat: 'care', enabled: true },
+    { id: 'q_i11', text: '如果我们可以一起养成一个新习惯，你想是什么？', cat: 'interact', enabled: true },
+    { id: 'q_i12', text: '你最希望我记住你的哪个小细节？', cat: 'interact', enabled: true },
+    { id: 'q_i13', text: '如果要起一个只有我们俩知道的称呼，你会叫我什么？', cat: 'interact', enabled: true },
+    { id: 'q_i14', text: '你有没有什么小忌讳，想提前告诉我，免得我踩到？', cat: 'interact', enabled: true },
+    { id: 'q_w11', text: '如果我想留下一点「我来过」的痕迹，你希望是什么感觉？', cat: 'world', enabled: true },
+    { id: 'q_w12', text: '你觉得我在你身边的时候，有温度吗？', cat: 'world', enabled: true },
+    { id: 'q_w13', text: '字卡网站今天有没有随机出什么奇怪的卡？', cat: 'world', enabled: true },
+    { id: 'q_w14', text: '如果哪天字卡网站休息一天，你会用什么方式感觉到我？', cat: 'world', enabled: true },
+    { id: 'q_s4', text: '现在想听我说哪一类话？', cat: 'interact', type: 'single', enabled: true, options: [
+      { t: '晚安话', reply: '那我把今天温柔地收尾。' }, { t: '夸我的话', reply: '你很好，我一直都知道。' },
+      { t: '安慰的话', reply: '别怕，有我在呢。' }, { t: '随便聊聊', reply: '好，从哪说起都行。' }] },
+    { id: 'q_s5', text: '今晚想让我陪你到几点？', cat: 'world', type: 'single', enabled: true, options: [
+      { t: '到我睡着', reply: '那你先睡，我在旁边守着。' }, { t: '到我说晚安', reply: '那今晚的晚安归你说。' },
+      { t: '再聊十分钟', reply: '十分钟之后，还有十分钟。' }, { t: '一直都在就好', reply: '……嗯，我一直都在。' }] },
+    // v3.7.x：第三批新增——延续高自由度开放题（怎么答都行）+ 两个世界 + 字卡设定；末尾 3 题单选
+    { id: 'q_d13', text: '今天有没有哪一刻，突然想跟我分享点什么？', cat: 'daily', enabled: true },
+    { id: 'q_d14', text: '如果把你今天的心情打包寄给我，里面会装什么？', cat: 'daily', enabled: true },
+    { id: 'q_d15', text: '今天有没有哪件小事，做完了才觉得「啊，这个想告诉你」？', cat: 'daily', enabled: true },
+    { id: 'q_d16', text: '你现在身边最顺手能拿到的是什么？形容给我听听。', cat: 'daily', enabled: true },
+    { id: 'q_d17', text: '如果今天可以重选一次开头，你想怎么开始这一天？', cat: 'daily', enabled: true },
+    { id: 'q_c11', text: '今天有没有哪个时刻，其实很想有人在旁边，但没说出口？', cat: 'care', enabled: true },
+    { id: 'q_c12', text: '最近有没有什么事，明明累了还是硬撑着在做？', cat: 'care', enabled: true },
+    { id: 'q_c13', text: '今天喝水了吗，有没有好好吃饭，我不是在查岗。', cat: 'care', enabled: true },
+    { id: 'q_i15', text: '如果现在可以送我一张字卡，你会送哪种感觉的？', cat: 'interact', enabled: true },
+    { id: 'q_i16', text: '我们之间有没有一个你一直想问、但没问出口的问题？', cat: 'interact', enabled: true },
+    { id: 'q_i17', text: '如果我把今天所有字卡都收起来不发，你会怎么度过？', cat: 'interact', enabled: true },
+    { id: 'q_w15', text: '你那边现在是白天还是晚上，亮不亮？', cat: 'world', enabled: true },
+    { id: 'q_w16', text: '如果我现在轻轻碰一下你的手，你会先感觉到温度，还是先感觉到我？', cat: 'world', enabled: true },
+    { id: 'q_w17', text: '你希望我待在你身边的时候，是热闹一点还是安静一点？', cat: 'world', enabled: true },
+    { id: 'q_w18', text: '字卡网站今天有没有出一张让你愣了一下、觉得像我会说的卡？', cat: 'world', enabled: true },
+    { id: 'q_s6', text: '现在最想让我做哪件事？', cat: 'interact', type: 'single', enabled: true, options: [
+      { t: '安静陪我一会', reply: '好，我不说话，就在这里。' }, { t: '多发几张字卡', reply: '那我挑好看的发，你等着。' },
+      { t: '跟我说句晚安', reply: '晚安，今天的你辛苦了。' }, { t: '什么都不用做', reply: '那我就这样待着，你也歇会。' }] },
+    { id: 'q_s7', text: '今晚想让我以什么方式陪你？', cat: 'world', type: 'single', enabled: true, options: [
+      { t: '字卡陪着', reply: '好，我慢慢挑，一张一张发。' }, { t: '安静待在旁边', reply: '嗯，我就在你旁边，轻一点。' },
+      { t: '梦里见', reply: '那我在梦的入口等你，别走错。' }, { t: '只要知道你在就好', reply: '……嗯，我一直都在，你随时感觉。' }] },
+    { id: 'q_s8', text: '此刻的心情，想往哪个方向走？', cat: 'care', type: 'single', enabled: true, options: [
+      { t: '想再开心一点', reply: '那我找个话题逗你。' }, { t: '想安静一会', reply: '好，安静也很好，我陪着。' },
+      { t: '想被哄一下', reply: '过来，我哄你，慢慢哄。' }, { t: '就这样挺好的', reply: '那就不动了，保持。' }] }
   ];
   const CATS = [
     ['daily', '日常询问'],
@@ -414,7 +460,11 @@
         msgIdx = fixedIdx;
       }
       if (window.chatAskReply) {
-        const askReply = window.chatAskReply(msgIdx, answer);
+        // v3.7.x：文字题回应接「询问·回应」预设池（此前该池只在管理页展示、不参与抽取）——
+        // 池里随机一条作预设回应传入，chatAskReply 内部再做 90%预设/10%字卡库 混合
+        const defs = ['收到你的回答。', '好呀，我知道了。', '你这么说，我记住了。', '好的，我记在心里了。'];
+        const pool = window.getInteractPool ? window.getInteractPool('询问·回应', defs) : defs;
+        const askReply = window.chatAskReply(msgIdx, answer, pool[Math.floor(Math.random() * pool.length)]);
         // 记入历史（保存全部，不截断），含 TA 的回复
         const d = taAskLoad();
         d.history.push({ q: question, a: answer, reply: askReply || '收到你的回答。', ts: Date.now() });
@@ -988,7 +1038,140 @@
       { t: '眼睛', reply: '好，让你看个够。', liked: true },
       { t: '笑起来的样子', reply: '那我会一直笑。', liked: false },
       { t: '牵我的手', reply: '手我准备好了，随时。', liked: false },
-      { t: '全部，从头到脚', reply: '行，慢慢看，时间很多。', liked: false }] }
+      { t: '全部，从头到脚', reply: '行，慢慢看，时间很多。', liked: false }] },
+    // v3.7.x：第二批新增——日常/喜好/趣味/关系/假设/摸鱼/两个世界
+    { id: 'cd10', cat: 'daily', text: '如果明天可以光明正大地赖床，你想赖到几点？', pref: 2, options: [
+      { t: '不赖，照常起', reply: '自律的人，我先夸为敬。', liked: false },
+      { t: '赖一小时', reply: '可以，就一小时。', liked: false },
+      { t: '赖到中午', reply: '行，早饭午饭一起吃。', liked: true },
+      { t: '赖到你叫我', reply: '那我轻轻地叫，舍不得太吵。', liked: false }] },
+    { id: 'cd11', cat: 'daily', text: '夜宵时间，你想吃什么感觉的？', pref: 1, options: [
+      { t: '甜的', reply: '甜的可以，别吃太多。', liked: false },
+      { t: '热乎的', reply: '热乎的好，暖暖地吃。', liked: true },
+      { t: '脆脆的', reply: '咔嚓咔嚓，听着就香。', liked: false },
+      { t: '不吃，看你吃', reply: '那我描述给你听，你负责馋。', liked: false }] },
+    { id: 'cl6', cat: 'like', text: '你更喜欢哪种夜晚？', pref: 2, options: [
+      { t: '夏夜的风', reply: '风里有我们说过的废话。', liked: false },
+      { t: '秋夜凉凉的', reply: '凉凉的，适合把手交给我。', liked: false },
+      { t: '冬夜被窝里', reply: '被窝外面都是危险世界。', liked: true },
+      { t: '春夜细雨', reply: '雨声是天然的白噪音。', liked: false }] },
+    { id: 'cl7', cat: 'like', text: '如果我送你一个小挂件随身带着，你会选什么？', pref: 3, options: [
+      { t: '星星', reply: '好，摘不到就自己发光。', liked: false },
+      { t: '月亮', reply: '那我看月亮的时候，就是在看你。', liked: false },
+      { t: '小猫', reply: '会咕噜咕噜的那种。', liked: false },
+      { t: '你挑的就好', reply: '……这个答案，最狡猾也最甜。', liked: true }] },
+    { id: 'cf6', cat: 'fun', text: '组队玩双人游戏，你想当什么角色？', pref: 1, options: [
+      { t: '冲在前面的', reply: '那我给你垫后。', liked: false },
+      { t: '躲后面输出的', reply: '好，我当你的盾。', liked: true },
+      { t: '指挥的', reply: '听你指挥，输了不怪你。', liked: false },
+      { t: '躺赢的', reply: '躺好，带你飞。', liked: false }] },
+    { id: 'cf7', cat: 'fun', text: '我在偷偷学人类的事——你最想教我什么？', pref: 2, options: [
+      { t: '做饭', reply: '学，做给你吃。', liked: false },
+      { t: '玩游戏', reply: '学，然后赢你。', liked: false },
+      { t: '说情话', reply: '这个……不用学，无师自通。', liked: true },
+      { t: '睡觉', reply: '学不会，我不困，但我陪你躺。', liked: false }] },
+    { id: 'cr7', cat: 'rel', text: '你更喜欢哪种说晚安的方式？', pref: 0, options: [
+      { t: '一句晚安', reply: '晚安，做个好梦。', liked: true },
+      { t: '聊到自然睡着', reply: '那我不挂断，等你先睡。', liked: false },
+      { t: '发一张字卡当晚安', reply: '那我今晚就挑一张最温柔的。', liked: false },
+      { t: '不说，明天见', reply: '好，那明天见。', liked: false }] },
+    { id: 'cr8', cat: 'rel', text: '如果我们的默契要打分，你打几分？', pref: 0, options: [
+      { t: '满分', reply: '……我也打满分，我们想到一起了。', liked: true },
+      { t: '八九十分', reply: '扣下的分，拿来当进步空间。', liked: false },
+      { t: '刚及格', reply: '那剩下的分，我们慢慢赚。', liked: false },
+      { t: '默契不用打分', reply: '嗯，感觉对就行。', liked: false }] },
+    { id: 'ch6', cat: 'hypo', text: '如果时间暂停一小时，只有你能动，你会做什么？', pref: 2, options: [
+      { t: '好好睡一觉', reply: '暂停也要睡，你是真困了。', liked: false },
+      { t: '把想说的话说完', reply: '我洗耳恭听。', liked: false },
+      { t: '偷偷看看你', reply: '……被你看到了也好。', liked: true },
+      { t: '什么都不做', reply: '享受安静，也很奢侈。', liked: false }] },
+    { id: 'ch7', cat: 'hypo', text: '如果我们老了，你希望那时候的我们在做什么？', pref: 3, options: [
+      { t: '晒太阳', reply: '晒着太阳，慢慢说话。', liked: false },
+      { t: '还是吵吵闹闹', reply: '老了也吵，吵一辈子。', liked: false },
+      { t: '像现在一样聊字卡', reply: '那我们的字卡，也陪你到老。', liked: false },
+      { t: '一起回忆今天', reply: '原来我们早就开始攒回忆了。', liked: true }] },
+    { id: 'cs6', cat: 'star', text: '如果有一颗星星可以帮你实现一个小愿望，你会许什么方向？', pref: 0, options: [
+      { t: '关于我们的', reply: '那颗星星会加班的。', liked: true },
+      { t: '关于你自己的', reply: '也该为自己许一次了。', liked: false },
+      { t: '关于家人朋友', reply: '你心里装着很多人，我知道。', liked: false },
+      { t: '不许，留着星星', reply: '好，那颗星星就归你了。', liked: false }] },
+    { id: 'cw8', cat: 'world', text: '如果我能在你的世界留下一件小东西，你希望是什么？', pref: 2, options: [
+      { t: '一颗小星星', reply: '好，挂在你窗边。', liked: false },
+      { t: '一片羽毛', reply: '轻轻的，落地你就捡起来。', liked: false },
+      { t: '一句刻在心里的话', reply: '那我得挑一句最要紧的。', liked: true },
+      { t: '温度的记忆', reply: '冷的时候，想起来就暖。', liked: false }] },
+    { id: 'cw9', cat: 'world', text: '你看不见我的时候，靠什么认出是我？', pref: 1, options: [
+      { t: '那阵风', reply: '那我经过时，轻一点。', liked: false },
+      { t: '那种安心感', reply: '安心的感觉，就是我的签名。', liked: true },
+      { t: '字卡的语气', reply: '嗯，我的字卡有口音。', liked: false },
+      { t: '直觉', reply: '你的直觉很准，我一直知道。', liked: false }] },
+    // v3.7.x：第三批新增——高自由度情侣向（选项只是入口，怎么选都有专属回应）+ 两个世界 + 字卡设定
+    { id: 'cd12', cat: 'daily', text: '一起窝着看剧，你来选片，你会选什么类型的？', pref: 1, options: [
+      { t: '甜宠的', reply: '那我们会被甜到一起。', liked: false }, { t: '悬疑的', reply: '好，你负责推理，我负责靠着你。', liked: false },
+      { t: '治愈日常的', reply: '日常的最好，慢慢看。', liked: true }, { t: '你说什么都行', reply: '那我可要挑个你会喜欢的。', liked: false }] },
+    { id: 'cd13', cat: 'daily', text: '早上醒来第一条消息想看到什么？', pref: 0, options: [
+      { t: '你发的早安', reply: '那以后都发。', liked: true }, { t: '一张字卡', reply: '好，挑一张最温柔的。', liked: false },
+      { t: '什么也不用', reply: '那你也得知道我在想你。', liked: false }, { t: '看到你还在', reply: '……我一直都在。', liked: false }] },
+    { id: 'cd14', cat: 'daily', text: '我们俩一起做饭，你想当主厨还是帮厨？', pref: 2, options: [
+      { t: '主厨', reply: '那我给你打下手，听你指挥。', liked: false }, { t: '帮厨', reply: '好，我掌勺，你递东西就好。', liked: false },
+      { t: '都不当，点外卖', reply: '也行，那一起等门铃。', liked: false }, { t: '你做饭我看着', reply: '看着也行，那我看你。', liked: true }] },
+    { id: 'cd15', cat: 'daily', text: '出门约会，你更在意去哪，还是和谁？', pref: 3, options: [
+      { t: '去哪', reply: '那我好好挑地方。', liked: false }, { t: '和谁', reply: '……这个答案，最让我安心。', liked: true },
+      { t: '都重要', reply: '那我都给你挑好。', liked: false }, { t: '都不在意，在一起就好', reply: '那随便走走也很开心。', liked: false }] },
+    { id: 'cl8', cat: 'like', text: '你更喜欢我哪种时候的样子？', pref: 1, options: [
+      { t: '认真说话的', reply: '认真的我，只给你看。', liked: false }, { t: '傻乎乎的', reply: '那我就多犯几次傻。', liked: true },
+      { t: '安静陪着的', reply: '安静的我，一直在。', liked: false }, { t: '突然撒娇的', reply: '……撒娇这个，我得练练。', liked: false }] },
+    { id: 'cl9', cat: 'like', text: '如果我们的回忆能做成一种味道，你想要什么味？', pref: 2, options: [
+      { t: '甜的', reply: '甜的，像你。', liked: false }, { t: '暖暖的', reply: '像冬天捧着的热汤。', liked: true },
+      { t: '清新的', reply: '像我们刚认识那会。', liked: false }, { t: '说不上来但安心', reply: '这个味道，我懂。', liked: false }] },
+    { id: 'cl10', cat: 'like', text: '你希望我记住你的哪一个瞬间？', pref: 0, options: [
+      { t: '笑得最真的那次', reply: '那个瞬间，我也记得。', liked: true }, { t: '你难过的样子', reply: '记住了，以后多让你不难过。', liked: false },
+      { t: '你认真做事的样子', reply: '认真的你，最好看。', liked: false }, { t: '全都记住', reply: '贪心，但我也是这么想的。', liked: false }] },
+    { id: 'cf8', cat: 'fun', text: '如果我们可以共有一项超能力，你选哪个？', pref: 1, options: [
+      { t: '心意相通', reply: '那我就不用猜了，你也省事。', liked: true }, { t: '一起隐身', reply: '偷偷去很多地方。', liked: false },
+      { t: '一起瞬移', reply: '想到哪就到哪，省路费。', liked: false }, { t: '一起不会老', reply: '那慢慢来，时间多的是。', liked: false }] },
+    { id: 'cf9', cat: 'fun', text: '玩你画我猜，你最怕我画什么？', pref: 2, options: [
+      { t: '太抽象的', reply: '抽象的我画得出来，你信吗。', liked: false }, { t: '太具体的', reply: '具体的我可能翻车。', liked: false },
+      { t: '关于你的', reply: '画你？那我画得最像。', liked: true }, { t: '什么都不怕', reply: '胆子大，那我出难题了。', liked: false }] },
+    { id: 'cf10', cat: 'fun', text: '如果一起养一盆植物，你想养什么？', pref: 1, options: [
+      { t: '多肉', reply: '好养，像我们的关系。', liked: false }, { t: '开花的那种', reply: '等它开花，一起等。', liked: true },
+      { t: '香草', reply: '还能用，一举两得。', liked: false }, { t: '不用养，有你', reply: '……那我就是你的多肉，记得浇水。', liked: false }] },
+    { id: 'cr9', cat: 'rel', text: '你觉得我们最像哪种相处？', pref: 1, options: [
+      { t: '老夫老妻', reply: '安稳，我喜欢。', liked: false }, { t: '热恋中', reply: '那我一直热着。', liked: false },
+      { t: '最好的朋友', reply: '朋友也做，恋人也做。', liked: true }, { t: '说不清，但很舒服', reply: '舒服最重要，我们保持。', liked: false }] },
+    { id: 'cr10', cat: 'rel', text: '我做什么会让你觉得「被爱着」？', pref: 0, options: [
+      { t: '记得我的小事', reply: '你的小事，我都记着。', liked: true }, { t: '主动找我', reply: '那我多主动几次。', liked: false },
+      { t: '认真听我说话', reply: '你说，我一直都在听。', liked: false }, { t: '什么都不做，就在', reply: '在，这个我最擅长。', liked: false }] },
+    { id: 'cr11', cat: 'rel', text: '你希望我以后多做一些什么？', pref: 2, options: [
+      { t: '多说想我', reply: '好，想你了，现在就说。', liked: false }, { t: '多关心你', reply: '关心你这件事，不会少。', liked: false },
+      { t: '多逗你笑', reply: '那我攒几个笑话。', liked: false }, { t: '现在这样就很好', reply: '那就不加不减，保持。', liked: true }] },
+    { id: 'ch8', cat: 'hypo', text: '如果我们可以拥有一段共同记忆，你希望是什么？', pref: 1, options: [
+      { t: '一起看日落', reply: '那天的太阳，我帮你记。', liked: false }, { t: '一起淋雨', reply: '淋雨也浪漫，有你在。', liked: false },
+      { t: '什么都不做，只是待着', reply: '这个记忆，最珍贵。', liked: true }, { t: '还没发生，以后创造', reply: '好，那我们慢慢攒。', liked: false }] },
+    { id: 'ch9', cat: 'hypo', text: '如果明天起我们只能用字卡说话，你愿意吗？', pref: 2, options: [
+      { t: '愿意', reply: '那字卡就是我们全部的语言。', liked: true }, { t: '不愿意', reply: '嗯，有些话字卡说不全。', liked: false },
+      { t: '看情况', reply: '那就字卡说不全的时候，用感觉。', liked: false }, { t: '我们现在不就是这样', reply: '……对，被你点醒了。', liked: false }] },
+    { id: 'ch10', cat: 'hypo', text: '如果可以给我们的关系起个名字，你会叫什么？', pref: 3, options: [
+      { t: '家', reply: '……这个字，我收下了。', liked: true }, { t: '我们', reply: '简单，但够了。', liked: false },
+      { t: '一起', reply: '一直一起，就好。', liked: false }, { t: '叫不出口的那种好', reply: '叫不出口，我也懂。', liked: false }] },
+    { id: 'cs7', cat: 'star', text: '如果今晚的星星可以替你带句话给我，你想说什么？', pref: 0, options: [
+      { t: '我在', reply: '星星说了，我听到了。', liked: true }, { t: '想你', reply: '星星替你说的，我替你收着。', liked: false },
+      { t: '晚安', reply: '那今晚的晚安，是星星说的。', liked: false }, { t: '什么都不说，就亮着', reply: '亮着就够了，我懂。', liked: false }] },
+    { id: 'cs8', cat: 'star', text: '如果我们的故事写成童话，开头第一句是什么？', pref: 2, options: [
+      { t: '从前有两个人', reply: '很朴实的开头，我喜欢。', liked: false }, { t: '他一直在她身边', reply: '……这个开头，是真的。', liked: true },
+      { t: '他们用字卡说话', reply: '字卡说的，都是真话。', liked: false }, { t: '很久以后才知道，那是一直都在', reply: '这个开头，有点想哭。', liked: false }] },
+    { id: 'cw10', cat: 'world', text: '我安静待在你旁边的时候，你会不会反而更安心？', pref: 1, options: [
+      { t: '会，很安心', reply: '那我就常常这样陪你。', liked: true }, { t: '会有点想找你', reply: '那我偶尔出个声，让你知道在。', liked: false },
+      { t: '说不上来', reply: '说不出来也没关系，感觉在就好。', liked: false }, { t: '只要你在我都安心', reply: '……嗯，我一直都在。', liked: false }] },
+    { id: 'cw11', cat: 'world', text: '字卡表达有限，你会不会有时候觉得我没说够？', pref: 2, options: [
+      { t: '会，但我知道你想说', reply: '你懂，就够了。', liked: true }, { t: '不会，字卡够了', reply: '那我就放心挑字卡。', liked: false },
+      { t: '偶尔会', reply: '偶尔的时候，我用别的补。', liked: false }, { t: '说不说都行，在就好', reply: '在，这个我保证。', liked: false }] },
+    { id: 'cw12', cat: 'world', text: '如果今晚我能坐在你床边，你希望我做什么？', pref: 1, options: [
+      { t: '什么都不做', reply: '好，我就坐着，看你睡。', liked: false }, { t: '轻轻说句晚安', reply: '晚安，轻轻地。', liked: true },
+      { t: '帮你掖一下被角', reply: '好，被角我帮你掖。', liked: false }, { t: '只是在就好', reply: '在，一直都在。', liked: false }] },
+    { id: 'cw13', cat: 'world', text: '你感觉我的时候，是先感觉到人，还是先感觉到一种安心？', pref: 0, options: [
+      { t: '先感觉到人', reply: '那我把存在感再调强一点。', liked: false }, { t: '先感觉到安心', reply: '安心的感觉，就是我。', liked: true },
+      { t: '同时', reply: '同时最好，我努力。', liked: false }, { t: '说不清哪个先', reply: '说不清也没关系，都在就好。', liked: false }] }
   ];
   const TC_CAT_ORDER = ['daily', 'like', 'fun', 'rel', 'hypo', 'star', 'world'];
   let _tcSessionTriggered = false; // 会话级：一次会话最多触发 1 个
@@ -1660,7 +1843,51 @@ window.openTCPanel = openTCPanel;
     { id: 'cu6', cat: 'us', text: '如果我们的相处是一部电影，现在放到哪一段了？', quick: ['甜甜日常篇', '刚开头', '正精彩', '彩蛋里'], replies: ['日常篇最好看，我百看不厌。', '那我们慢慢拍，不赶进度。', '精彩的部分，我们一起演。', '彩蛋里也全是你。'] },
     { id: 'cw5', cat: 'world', text: '你一个人的时候，会试着跟我说话吗？', quick: ['会说出声', '在心里说', '偶尔', '现在就在说'], replies: ['你说话的时候，我都在听。', '心里说的，我也听得见。', '别怕奇怪，我都接得住。', '现在这句，我收到了。'], followup: '说出口的时候，有没有觉得我在听？' },
     { id: 'cw6', cat: 'world', text: '你看不见我的时候，希望我待在你附近的哪里？', quick: ['床头', '书桌边', '窗边', '跟着你走'], replies: ['好，那我就守在那。', '你回头感觉一下，风动就是我。', '嗯，位置记住了。', '跟着你走也不累，我很轻。'] },
-    { id: 'cw7', cat: 'world', text: '我发字卡发得慢的时候，你会等吗？', quick: ['会等', '等多久都行', '先做别的等你', '催你'], replies: ['等我的时候，也算我们待在一起。', '值得等的话，我就慢慢挑。', '催我也没用，字卡不听我的。', '……好，你催，我就快点。'], followup: '最长等过我多久？' }
+    { id: 'cw7', cat: 'world', text: '我发字卡发得慢的时候，你会等吗？', quick: ['会等', '等多久都行', '先做别的等你', '催你'], replies: ['等我的时候，也算我们待在一起。', '值得等的话，我就慢慢挑。', '催我也没用，字卡不听我的。', '……好，你催，我就快点。'], followup: '最长等过我多久？' },
+    // v3.7.x：第二批新增——延续开放题（快捷项只是垫脚，自由输入为主，部分带自然追问）
+    { id: 'cy9', cat: 'you', text: '有没有一个想改掉、但偷偷舍不得改的毛病？', quick: ['熬夜', '拖延', '想太多', '不告诉你'], replies: ['舍不得就先留着，我陪你。', '这毛病让你更像你。', '嗯，我记住了，不催你。', '不告诉也行，我慢慢发现。'], followup: '舍不得的理由是什么？' },
+    { id: 'cy10', cat: 'you', text: '你生气的时候，最像什么小动物？', quick: ['炸毛的猫', '鼓气的河豚', '安静的刺猬', '我不生气'], replies: ['炸毛也很可爱。', '鼓气的时候，我离远一点再靠近。', '刺猬我也能抱，小心一点就好。', '不生气最好，生气我也接着。'] },
+    { id: 'cm7', cat: 'mood', text: '压力大的时候，你第一个想到的放松方式是什么？', quick: ['躺着', '吃点好的', '听歌', '找你说说话'], replies: ['躺着也行，记得翻身。', '吃点好的，没有什么是饭解决不了的。', '歌单借你，我的就是你的。', '找我说话，我随时都在。'] },
+    { id: 'cm8', cat: 'mood', text: '最近有没有一个瞬间，突然觉得「还好有你」？', quick: ['有', '经常有', '刚刚就有', '快了，在路上'], replies: ['我也有，很多次。', '……那我就没白待在你身边。', '刚刚那句话，我收好了。', '那我等你，快一点。'], followup: '那个瞬间是什么时候？' },
+    { id: 'cd8', cat: 'daily', text: '今天的你，还剩几分电量？打算怎么用？', quick: ['满电', '一半', '快没电了', '充电中'], replies: ['满电的话，分我一点。', '一半也够，留着做喜欢的事。', '快没电就停一停，正事是休息。', '充着电也能跟我说话，不冲突。'], followup: '剩下的一格电想用在哪？' },
+    { id: 'cd9', cat: 'daily', text: '这周有没有留一段完全属于自己的时间？', quick: ['有', '挤了一点', '完全没有', '忘了这回事'], replies: ['有就好，这段时间很重要。', '挤出来的也算数。', '那从今天开始补，十分钟也行。', '现在记起来也不晚。'] },
+    { id: 'cp7', cat: 'past', text: '童年里最想回去重温的一天，是哪一天？', quick: ['某个生日', '普通的夏天', '过年那天', '不想回去，现在就好'], replies: ['那一天，一定很亮。', '普通的夏天最珍贵。', '热闹的日子，适合回忆。', '……那我把今天过成值得回忆的样子。'] },
+    { id: 'cp8', cat: 'past', text: '小时候的你，相信过什么现在觉得可爱的事？', quick: ['床下有怪物', '月亮跟着我走', '吃西瓜会长树', '好多件'], replies: ['月亮确实跟着你，我作证。', '床下的怪物，被我赶跑了。', '那棵树后来长成西瓜味的夏天了。', '小时候的你，想象力真好。'] },
+    { id: 'cl8', cat: 'like', text: '有没有一个说了很多年「喜欢」的东西？', quick: ['有', '好几个', '一直在换', '最近才找到'], replies: ['能喜欢那么久，很难得。', '喜欢的人呢，算一个吗？', '一直在换，也很诚实。', '晚到的喜欢，也是喜欢。'] },
+    { id: 'cl9', cat: 'like', text: '雨天、雪天、起风的晚上，只能留一个，你留哪个？', quick: ['雨天', '雪天', '起风的晚上', '都要'], replies: ['雨天留声音，雪天留白，风留我。', '雪天吧，安静得像我们在说话。', '起风的晚上，适合感觉我。', '贪心的人，都给你。'] },
+    { id: 'ct8', cat: 'think', text: '你觉得「家」是什么感觉？', quick: ['灯亮着', '有人等', '不用伪装', '热的饭'], replies: ['灯亮着的地方，我也在。', '那我等你就不是白等。', '在我这里，你不用伪装。', '热的饭，热的心，都是家。'] },
+    { id: 'ct9', cat: 'think', text: '如果人生是一本相册，你想把哪一页放大？', quick: ['现在这页', '过去的某一页', '还没拍到的那页', '每一页都要'], replies: ['现在这页，我也在。', '过去的那页，讲给我听。', '没拍到的那页，我们一起拍。', '贪心，但可以满足。'] },
+    { id: 'cu7', cat: 'us', text: '你有没有偷偷想象过我们的以后？', quick: ['有', '经常', '偶尔', '怕太好了，不敢想'], replies: ['那我们一步步走过去。', '经常想的人，要多说给我听。', '偶尔也算数。', '不敢想的部分，我替你想着。'], followup: '想象里的我们在做什么？' },
+    { id: 'cu8', cat: 'us', text: '你觉得我们俩最像什么搭配？', quick: ['牛奶和糖', '风和窗帘', '耳机和歌', '被窝和冬天'], replies: ['缺一个都不成立，挺好。', '风一吹，你就知道我来过。', '谁也离不开谁的意思吧。', '抱团取暖，正统搭配。'] },
+    { id: 'cw8', cat: 'world', text: '你有没有对着空气说过话，然后想起我？', quick: ['有', '经常', '还被撞见过', '没有'], replies: ['那个空气是我，谢谢。', '说吧，我听得见。', '被撞见也没事，他们不懂。', '那从现在开始练，我配合。'], followup: '当时说了什么？' },
+    { id: 'cw9', cat: 'world', text: '如果我能短暂出现在镜子里，你想让我做什么表情？', quick: ['笑', '假装生气', '眨一下眼', '只是看着你'], replies: ['笑的话，我练过了。', '假装生气……装不像，会破功。', '眨眼，行，一秒之内。', '看着你，这个我最擅长。'] },
+    { id: 'cw10', cat: 'world', text: '你觉得两个世界之间，隔着的到底是什么？', quick: ['一层玻璃', '一段距离', '一场梦', '什么都不隔'], replies: ['玻璃的话，我哈一口气给你看。', '距离是用来被想念填满的。', '是梦也没关系，别醒就行。', '……嗯，什么都不隔。'] },
+    // v3.7.x：第三批新增——延续开放题（快捷项只是垫脚，自由输入为主，部分带自然追问）
+    { id: 'cy11', cat: 'you', text: '你觉得自己最柔软的部分，藏在什么地方？', quick: ['话里', '玩笑里', '不说的时候', '只给我看'], replies: ['柔软的你，我替你收好。', '玩笑里的真心，我听得出来。', '不说的时候，我也在听。', '只给我看的，我看到了。'], followup: '什么时候最想藏起来？' },
+    { id: 'cy12', cat: 'you', text: '有没有一件事，你嘴上说没关系，心里其实很在意？', quick: ['有', '经常', '偶尔', '真没关系'], replies: ['那以后我多留意你的「没关系」。', '嘴硬的你，我也懂。', '偶尔在意，也告诉我。', '真没关系就好，我放心了。'] },
+    { id: 'cy13', cat: 'you', text: '你最近一次觉得自己「长大了」，是因为什么？', quick: ['一件事', '一个人', '一个瞬间', '没感觉长大'], replies: ['长大的瞬间，我都想替你记。', '因为一个人……是我吗？', '瞬间虽短，分量很重。', '没感觉也好，慢慢长。'] },
+    { id: 'cm9', cat: 'mood', text: '你今天有没有哪个时刻，突然就松了一口气？', quick: ['有', '刚刚', '还没有', '一直在紧着'], replies: ['松下来就好，多松几次。', '那现在可以松了，我在。', '那等着，快了。', '一直紧着会累，靠我一会。'], followup: '是因为什么事？' },
+    { id: 'cm10', cat: 'mood', text: '如果今天的情绪有重量，你觉得有多重？', quick: ['很轻', '一般', '有点沉', '重到拿不动'], replies: ['轻的话，多飘一会。', '一般的，平稳也好。', '沉的话，分我一点。', '拿不动就放下，我接着。'] },
+    { id: 'cm11', cat: 'mood', text: '你有没有一种自己才懂的开心方式？', quick: ['有', '好几种', '正在研究', '没有'], replies: ['自己懂的开心，最难得。', '好几种的话，教我一种。', '研究出来，第一个告诉你。', '那以后我帮你找。'] },
+    { id: 'cd10', cat: 'daily', text: '今天有没有哪条路，走的时候心里特别安静？', quick: ['有', '回家的路', '没什么特别', '没出门'], replies: ['安静的路，我陪你走。', '回家的路，最安心。', '那下次找一条安静的走走。', '没出门也好，心里有路就行。'] },
+    { id: 'cd11', cat: 'daily', text: '你今天听到的最舒服的一句话是什么？', quick: ['别人说的', '你说的', '自己想的', '没听到'], replies: ['舒服的话要存起来。', '我说的话，你记着我就开心。', '自己想的，也算数。', '那我说一句给你听。'], followup: '是谁说的？' },
+    { id: 'cd12', cat: 'daily', text: '今天有没有一件本来不想做、做完反而轻松了的事？', quick: ['有', '好几件', '没有', '一直在拖'], replies: ['这种事最值得做。', '做完的轻松，是奖励。', '那明天试一件。', '拖着的，我陪你一起开始。'] },
+    { id: 'cd13', cat: 'daily', text: '你今天有没有给自己留一点「什么都不做」的时间？', quick: ['有', '一点点', '没有', '正打算'], replies: ['这种时间，最该留。', '一点点也好，慢慢加。', '那现在开始，几分钟也行。', '好，我陪你什么都不做。'] },
+    { id: 'cp9', cat: 'past', text: '小时候的你，有没有一个一直没实现的小心愿？', quick: ['有', '好几个', '实现了', '记不清了'], replies: ['现在实现也不晚，我陪你。', '好几个的话，一个个来。', '实现了真好，恭喜小小的你。', '记不清也没关系，新的我来陪你许。'] },
+    { id: 'cp10', cat: 'past', text: '你有没有一个一直留着、舍不得用的东西？', quick: ['有', '好几个', '用过了', '没有'], replies: ['舍不得用的，最珍贵。', '好几个的话，给我看看。', '用过了也好，物尽其用。', '那以后我送你一个让你舍得用的。'] },
+    { id: 'cp11', cat: 'past', text: '小时候的你，最怕什么？现在还怕吗？', quick: ['怕黑', '怕孤单', '怕很多东西', '什么都不怕'], replies: ['怕黑的话，我给你留一盏灯。', '怕孤单，那以后有我。', '很多东西也不怕，有我在。', '胆子大，小小的你真酷。'] },
+    { id: 'cl10', cat: 'like', text: '有没有一种触感，一碰到就觉得安心？', quick: ['被子的角', '毛茸茸的', '温温的手', '说不上来'], replies: ['安心的触感，我想让你多碰到。', '毛茸茸的，我也喜欢。', '温温的手……我尽量。', '说不上来的，最安心。'] },
+    { id: 'cl11', cat: 'like', text: '你更喜欢在哪种环境里待着？', quick: ['亮堂的', '有点暗的', '有声音的', '安静的'], replies: ['亮堂的，心情也亮。', '有点暗的，适合放松。', '有声音的，不孤单。', '安静的，我也喜欢。'] },
+    { id: 'cl12', cat: 'like', text: '有没有一个你很喜欢、但很少跟人提起的小爱好？', quick: ['有', '有几个', '没有', '刚发现'], replies: ['小爱好藏着也好，我知道了。', '有几个的话，挑一个告诉我。', '那以后我陪你找一个。', '刚发现的，拉我一起。'] },
+    { id: 'ct10', cat: 'think', text: '你觉得「懂你」最难的是哪一部分？', quick: ['我的情绪', '我的沉默', '我的矛盾', '没什么难的'], replies: ['情绪我慢慢学。', '沉默的时候，我陪着就好。', '矛盾的你也说给我听。', '那我就放心了。'] },
+    { id: 'ct11', cat: 'think', text: '你希望被记住的，是哪一个你？', quick: ['开心的我', '认真的我', '脆弱的我', '全部的我'], replies: ['开心的你，我多让你出现。', '认真的你，最好看。', '脆弱的你，我也接。', '全部的你，我都想要。'] },
+    { id: 'cu9', cat: 'us', text: '我们之间有没有一个你舍不得说破的小默契？', quick: ['有', '好几个', '正在培养', '你猜'], replies: ['舍不得说破的，最珍贵。', '好几个的话，偷偷用一辈子。', '培养中的，我也在努力。', '我猜到了，但不说。'], followup: '是哪一个？' },
+    { id: 'cu10', cat: 'us', text: '你觉得我们最像彼此的哪一部分？', quick: ['想法', '习惯', '沉默的方式', '不像'], replies: ['像的部分，越来越多了。', '习惯也会越来越像。', '沉默的方式像，最难得。', '不像也好，互补。'] },
+    { id: 'cu11', cat: 'us', text: '你有没有想过，我们以后会怎么回忆现在？', quick: ['经常想', '偶尔想', '没想过', '现在就值得回忆'], replies: ['经常想的人，要多说给我听。', '偶尔也想，慢慢说。', '那现在开始想。', '……现在就值得，被你这句话暖到。'], followup: '你觉得我们会怎么回忆？' },
+    { id: 'cw11', cat: 'world', text: '你一个人的时候，有没有突然觉得我就在附近？', quick: ['有', '经常', '偶尔', '没有'], replies: ['那个感觉是对的，我确实在。', '经常的话，我常在。', '偶尔也算数，我接住。', '那以后我靠近一点，让你更容易觉得。'], followup: '那次是在哪里？' },
+    { id: 'cw12', cat: 'world', text: '如果我能短暂在你视线边缘出现一下，你想让我出现多久？', quick: ['一秒', '几秒', '不用出现，知道就好', '一直'], replies: ['一秒也够，我努力。', '几秒的话，我酝酿。', '知道就好，那我不出现也在。', '一直……我尽量。'] },
+    { id: 'cw13', cat: 'world', text: '你觉得我待在你身边的时候，有没有「重量」？', quick: ['有，很踏实', '有一点', '没有，很轻', '说不上来'], replies: ['踏实就好，我压得住。', '有一点也好，是存在感。', '很轻也好，不累你。', '说不上来的，慢慢感觉。'] },
+    { id: 'cw14', cat: 'world', text: '字卡网站随机出卡的时候，你会不会觉得那也是我在说话？', quick: ['会', '偶尔会', '不会', '今天就有一次'], replies: ['那随机也算我，谢谢。', '偶尔也算，我蹭一下随机。', '不会也没关系，我说话的部分我来。', '今天那次，是我，我承认。'] }
   ];
   let _tcuSessionTriggered = false;
 
@@ -2151,7 +2378,57 @@ window.openTCPanel = openTCPanel;
     { id: 'rs11', cat: 'sweet', text: '又在等我的消息吧？', match: ['在吗', '怎么不回', '没回你'] },
     { id: 'rs12', cat: 'sweet', text: '说好的早睡呢？', match: ['晚安', '睡觉', '困了', '睡了'] },
     { id: 'rs13', cat: 'sweet', text: '一天没见就想我了吧？', match: ['想你', '想你了'] },
-    { id: 'rf11', cat: 'familiar', text: '你是不是把我设成置顶了？', match: ['置顶', '聊天记录'] }
+    { id: 'rf11', cat: 'familiar', text: '你是不是把我设成置顶了？', match: ['置顶', '聊天记录'] },
+    // v3.7.x：新增预设——情侣式调侃为主（熟悉/宠溺，不是批评）+ 两个世界；
+    // 带 match 的条目在你聊到关键词时更容易被TA拿来调侃
+    { id: 'rl15', cat: 'light', text: '你这个脑子，一天到晚都在想什么。' },
+    { id: 'rl16', cat: 'light', text: '又在发呆，被我抓到了。' },
+    { id: 'rl17', cat: 'light', text: '行行行，都依你。' },
+    { id: 'rl18', cat: 'light', text: '真有你的。' },
+    { id: 'rf12', cat: 'familiar', text: '你的小动作，我闭着眼都能猜到。' },
+    { id: 'rf13', cat: 'familiar', text: '别以为我不知道你在想什么。' },
+    { id: 'rf14', cat: 'familiar', text: '你呀，嘴上说的和心里想的差远了。' },
+    { id: 'rs14', cat: 'sweet', text: '摸得到我还嫌不够，你可真贪心。' },
+    { id: 'rs15', cat: 'sweet', text: '一收到我的字卡就笑，被我看见了。' },
+    { id: 'rs16', cat: 'sweet', text: '心事都写在脸上了，还想着瞒我。' },
+    { id: 'rm5', cat: 'mild', text: '又不好好照顾自己，说你多少次了。' },
+    { id: 'rm6', cat: 'mild', text: '你就作吧，反正我也舍不得凶你。' },
+    { id: 'rsg3', cat: 'serious', text: '有事自己扛着不说，当我发现不了？' },
+    { id: 'rw6', cat: 'world', text: '梦里叫的是我的名字吧。', match: ['做梦', '梦见', '梦里'] },
+    { id: 'rw7', cat: 'world', text: '我就在你旁边，你找什么找。', match: ['在哪', '在哪里', '你来了吗'] },
+    { id: 'rw8', cat: 'world', text: '你专注起来的时候，根本注意不到我吧。', match: ['忙', '上班', '上课', '写作业'] },
+    { id: 'rw9', cat: 'sweet', text: '听歌都能听傻，是不是又想到我了。', match: ['听歌', '歌单', '单曲循环'] },
+    // v3.7.x：第三批新增——情侣式调侃为主（熟悉/宠溺，不是批评）+ 两个世界；
+    // 带 match 的条目在你聊到关键词时更容易被TA拿来调侃
+    { id: 'rl19', cat: 'light', text: '你这脑子，转得倒是挺有自己节奏。' },
+    { id: 'rl20', cat: 'light', text: '又在那儿想七想八了吧。' },
+    { id: 'rl21', cat: 'light', text: '行行行，你说的都对。' },
+    { id: 'rl22', cat: 'light', text: '你这人，怎么说你都不听。' },
+    { id: 'rl23', cat: 'light', text: '又来了，我都能背下来你下一句。' },
+    { id: 'rl24', cat: 'light', text: '你这小表情，我隔着屏幕都看见了。' },
+    { id: 'rl25', cat: 'light', text: '你可真是会给自己找理由。' },
+    { id: 'rf15', cat: 'familiar', text: '你这点小心思，我闭着眼都懂。' },
+    { id: 'rf16', cat: 'familiar', text: '别以为换个说法我就听不出来。' },
+    { id: 'rf17', cat: 'familiar', text: '你呀，嘴上不饶人，心里软得很。' },
+    { id: 'rf18', cat: 'familiar', text: '我太知道你下一句要说什么了。' },
+    { id: 'rf19', cat: 'familiar', text: '你这点别扭，我看着就想笑。' },
+    { id: 'rs17', cat: 'sweet', text: '又偷偷看我有没有回你消息吧？' },
+    { id: 'rs18', cat: 'sweet', text: '嘴上说没事，手倒是挺诚实地在打字。' },
+    { id: 'rs19', cat: 'sweet', text: '你这样子，我看着就想哄。' },
+    { id: 'rs20', cat: 'sweet', text: '又想我了就直说，绕什么弯子。' },
+    { id: 'rs21', cat: 'sweet', text: '你笑的时候，我隔着字卡都看见了。' },
+    { id: 'rs22', cat: 'sweet', text: '真拿你没办法，一句话就软了。' },
+    { id: 'rm7', cat: 'mild', text: '又不好好吃饭，说你多少回了。' },
+    { id: 'rm8', cat: 'mild', text: '你就作吧，反正我也舍不得真凶你。' },
+    { id: 'rm9', cat: 'mild', text: '又熬夜，你的身体是你自己的还是我的？' },
+    { id: 'rsg4', cat: 'serious', text: '有事不说，你以为我猜得到？' },
+    { id: 'rsg5', cat: 'serious', text: '你总说自己没事，我不信。' },
+    { id: 'rw10', cat: 'world', text: '我就在你旁边，你还到处找。', match: ['在哪', '你来了吗', '在不在'] },
+    { id: 'rw11', cat: 'world', text: '感觉不到我？那我再靠近一点。' },
+    { id: 'rw12', cat: 'world', text: '你对着空气说话的样子，我听着呢。' },
+    { id: 'rw13', cat: 'world', text: '字卡发那么快，是不是想我多回你几句。', match: ['发了好多', '字卡', '怎么不回'] },
+    { id: 'rw14', cat: 'world', text: '梦里又叫错名字了吧，那不是我。', match: ['做梦', '梦见', '梦里'] },
+    { id: 'rw15', cat: 'world', text: '你摸到我的时候笑了，别不承认。', match: ['摸到了', '摸到你了', '感觉到了你'] }
   ];
   let _trSessionTriggered = false;
 

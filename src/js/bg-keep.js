@@ -494,7 +494,8 @@
     let previewImg = ''; // 展开大图：消息图片
     // v3.5.158：右侧固定显示联系人头像——即使消息带表情包/图片，右侧仍是 TA 的头像，
     // 消息图只放 image（展开大图），不顶替头像位置
-    const avatar = store.get('avatar-partner') || '';
+    // v3.7.x：跨桌面——extra.av（朋友圈通知的发布者头像）优先，其次当前桌面 TA 头像
+    const avatar = extra.av || store.get('avatar-partner') || '';
     if (avatar && (avatar.indexOf('data:') === 0 || /^https?:\/\//i.test(avatar))) bigIcon = avatar;
     if (extra.img && (extra.img.indexOf('data:') === 0 || /^https?:\/\//i.test(extra.img))) previewImg = extra.img;
     const toBlob = function (dataUrl, cb) {

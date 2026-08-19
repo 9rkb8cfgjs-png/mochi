@@ -497,3 +497,21 @@
 
 ### 2026-08-19
 - [本会话] 完成（用户反馈「联系人更新日常时，聊天消息顺序反了——应先发系统消息【联系人 更新了一条日常】，再发日常内容字卡消息」——已构建 verify 10/10 + CDP 实测 3/3，提交 7af16d6 未 push）：src/js/p2-features.js `doCheckin()` 原顺序为 先 chatAddIn(日常内容拼接行) 后 chatAddSystem(更新提示)，调换为 先发系统提示、再发内容消息，概率提醒「快来查岗」保持最后。CDP 实测聊天记录尾部顺序 [poke系统提示, 内容消息] 正确。本次构建同时带上 AI-A 已保存改动（chat.js/ta-ask.js/template.html/chat-main.css），全部 src JS node --check 通过。push 仍被环境阻塞（无 GitHub 凭据），提交待推送。
+
+### 2026-08-19
+- [本会话] 完成（用户要求为 TA的询问/小问题/好奇/吐槽 设计更多系统预设问题+预设答案+预设回应，高自由度情侣向+两个世界世界观，**未构建未提交**）：
+  1. src/js/ta-ask.js 四个题库共新增 65 条预设：询问 22→39（14 条开放题 + 3 条单选题 type:'single'，单选选项即预设答案、每选项自带 TA 预设回应）；小问题 27→42（每选项带专属回应 + pref/liked 默契标记）；好奇 38→54（快捷项+每题回应池，8 题带 followup 自然追问）；吐槽 53→70（含 rw6-rw9 按「做梦/在哪/忙/听歌」等关键词 match 触发）。新 ID 与旧库无冲突，增量合并逻辑会自动下发给老用户。
+  2. 顺带修复：文字版询问的 TA 回应此前从未接「询问·回应」池（池子只在管理页展示、实际只从字卡库/兜底句抽取）——ta-ask.js openAskReply（弹窗）与 chat.js expandCardInPlace（就地作答）两条路径均改为 getInteractPool('询问·回应') 随机取一条传入 chatAskReply（内部 90%系统预设/10%字卡库），与吐槽/好奇/小问题行为一致；chat.js 就地吐槽路径的回应池同步改接 getInteractPool('吐槽·回应')（原硬编码 7 句，与 ta-ask.js 弹窗路径不一致）。
+  3. src/js/default-cards-data.js：询问·回应池 5→20、吐槽·回应池 7→18（node 临时脚本改写，紧凑 JSON+行尾分号格式与原文件一致，脚本已删）。
+  4. 校验：node --check 三文件通过；四题库结构校验（选项/quick/replies/pref 范围/match）+ ID 唯一性通过。
+  涉及 src/js/ta-ask.js、src/js/chat.js、src/js/default-cards-data.js（均为 AI-A 名下文件，chat.js 编辑时确认与 HEAD 无差异后进行）。
+  ⚠️ 状态更新：本条目编辑进行中，对方批次提交 0aab135（20:56，猜拳图标+feed IDB门槛）把当时已保存的【询问/小问题/好奇新增 + ta-ask 分类标签栏】一并打包入库并构建；**仍待构建提交**的剩余部分：吐槽 17 条新增、询问·回应池接线（ta-ask.js openAskReply + chat.js 就地两处）、default-cards-data.js 两池扩充、本条 WORKLOG。请构建者再执行一次 node build.mjs 把剩余部分带上。
+### 2026-08-19
+- [AI-A] 开工（用户要求为 TA的询问/小问题/好奇/吐槽 再设计更多系统预设问题+答案+回应，高自由度情侣向+两个世界+字卡设定，**本条尚未构建**）：在 src/js/ta-ask.js 四个 DEFAULT 数组末尾各追加一批，共 +94 条：询问 +18（15 开放题 q_d13-d17/q_c11-c13/q_i15-i17/q_w15-w18 + 3 单选 q_s6-s8，type:'single' 选项即预设答案、每项自带 TA 专属回应）；小问题 +22（cd12-15/cl8-10/cf8-10/cr9-11/ch8-10/cs7-8/cw10-13，每项带专属回应+pref/liked 标记）；好奇 +25（cy11-13/cm9-11/cd10-13/cp9-11/cl10-12/ct10-11/cu9-11/cw11-14，quick 垫脚+replies 回应池，6 题带 followup 自然追问）；吐槽 +29（rl19-25/rf15-19/rs17-22/rm7-9/rsg4-5/rw10-15，其中 rw10/rw13/rw14/rw15 按 match 关键词触发）。新 ID 与旧库无冲突，增量合并逻辑会自动下发到老用户。校验：node --check 通过，四数组 ID 唯一性通过（73/77/96/99）。涉及 src/js/ta-ask.js（AI-A 名下）。**未构建未提交**，连同上一轮待构建部分，请构建者执行一次 node build.mjs 一并带上。
+- [本会话] 完成（用户反馈朋友圈多桌面 2 个 bug：①非当前桌面联系人发朋友圈，后台弹窗显示的联系人身份错误（成了当前桌面 TA）；②在联系人1桌面回复联系人2发布的动态，联系人2无法回复我的评论——**已构建 verify 10/10 + CDP 复现 17/17 + 身份显示 10/10，待提交**）：
+  1. **跨桌面身份显示**（根因 ①）：feed.js 的 partnerName/partnerAv/myName/myAv 读模块顶部缓存的**顶层 store**（xy-home-v2 旧键，迁移后已清空 → 全空/旧值）；跨桌面动态的 TA 头像/昵称 fallback 一律用**当前桌面**。修复：四个函数改读 activeStore（每桌面独立）；新增 `taAvFor(owner)`/`taFeedNameFor(owner)` 按**动态所属桌面**取 TA 头像/昵称；render()/renderFeedAll/taAuthorOf/点赞回赞/通知文本 fallback 全部按 owner 取；`addNotice` 加 owner 参数 → 桌面弹窗（chat.js showDeskPopup 新增 opts.av 支持）、通知列表头像（renderNotices 按通知 owner）、系统通知右侧大图标（bg-keep.js bgNotifyCheck 新增 extra.av 优先）全部显示**发布者**头像。另修 taFeedAv 缺少 activeStore.avatar-partner 回退。
+  2. **全部朋友圈页无法评论/回复**（根因 ②）：openFeedAll 渲染的列表**没有评论/点赞按钮、评论点击无回复绑定**（只绑了删除/图片）→ 用户在该页无法互动。修复：拆出 `renderFeedAll()`，补 `.feed-actions` 赞/评论按钮（与主列表一致），直接复用 `bindEvents`（点赞/评论/回复/删除/图片全可用）；点赞/评论/回复/发布后按可见页面刷新（新增 `renderVisible()`：全部朋友圈页可见时刷 renderFeedAll，否则 render）；回复占位显示被回复评论作者名（'回复 二宝…' 不再一律 '回复 TA…'）。
+  - CDP 验证：主列表/全部朋友圈页评论→TA(二宝)用**二宝桌面字卡库**回应、昵称二宝；回复模式 TA 回应二宝；全部朋友圈页有赞/评论按钮且可回复；主列表 TA 动态头像/通知列表头像/弹窗头像/系统通知 av 均为发布者（二宝）而非当前桌面（大宝）。
+  - 涉及：src/js/feed.js、src/js/chat.js、src/js/bg-keep.js。
+  - 本次构建同时带上 AI-A 已保存的 ta-ask.js 两轮新增（吐槽17条+94条新预设/回应池接线）、chat.js、default-cards-data.js 改动（上一轮留话「请构建者再执行一次 build」已执行）。
+  - 遗留：`.verify-fixes-tmp.mjs`、`.shot-tmp/`（历史遗留未跟踪调试残留，非本次创建，待确认清理）。

@@ -1140,12 +1140,19 @@
     });
   }
 
-  // v3.7.x：背景模糊——slider 0~20px，CSS 变量 --desk-bg-blur
+  // v3.7.x：背景模糊——slider 0~20px，CSS 变量 --desk-bg-blur。
+  // v3.7.x 修复：blur(0px) 也会保持 backdrop-filter 激活（iOS 全屏每帧栅格化卡顿源），
+  // 模糊为 0 时给 .phone-bg-mask 去 .blur-on（filter 属性整个移除），>0 才启用
   const bgBlurRow = document.getElementById('row-bg-blur');
   const bgBlurVal = document.getElementById('bg-blur-val');
   const getBgBlur = () => { const v = store.get('bg-blur'); if (v) { const n = parseInt(v, 10); if (!isNaN(n)) return Math.max(0, Math.min(20, n)); } return 0; };
+  const setBgBlurClass = (px) => {
+    const maskEl = document.querySelector('.phone-bg-mask');
+    if (maskEl) maskEl.classList.toggle('blur-on', px > 0);
+  };
   const applyBgBlur = (px) => {
     document.documentElement.style.setProperty('--desk-bg-blur', px + 'px');
+    setBgBlurClass(px);
     if (bgBlurVal) bgBlurVal.textContent = px === 0 ? '关闭' : px + 'px';
   };
   applyBgBlur(getBgBlur());
@@ -1161,7 +1168,7 @@
       }, {
         noInput: true,
         slider: { min: 0, max: 20, step: 1, value: current, label: '拖动调整背景模糊', unit: 'px',
-          onChange: (val) => { document.documentElement.style.setProperty('--desk-bg-blur', val + 'px'); } },
+          onChange: (val) => { applyBgBlur(val); } },
         pills: [{ label: '关闭', value: '__reset__' }],
       });
     });
@@ -1278,11 +1285,15 @@
   }
 
   // v3.7.x：美化方案导入导出——收集所有美化相关 key 打包 JSON
+  // v3.7.x 修复：小组件五个颜色键此前写成 widget-color/widget-border/... 与
+  // 实际存储键 widget-bg-color/widget-border-color/... 全部对不上，导出静默漏掉；
+  // 自定义图标（app-icon-*）/图标顺序（app-icon-order-*）/图片组件本体
+  //（desk-image-src-*）为动态键，在 collectBeauty/导入处单独收集
   const BEAUTY_KEYS = [
     'phone-bg', 'phone-bg-preset', 'bg-blur', 'bg-mask-op',
     'desk-font-size', 'desk-card-scale', 'desk-card-radius',
     'widget-opacity', 'ico-radius', 'ico-shape',
-    'widget-color', 'widget-border', 'widget-btn', 'widget-btn-text', 'widget-heart',
+    'widget-bg-color', 'widget-border-color', 'widget-btn-color', 'widget-btn-text-color', 'widget-heart-color',
     'desk-layout', 'desk-page-count',
     'desk-images', 'desk-texts', 'desk-countdowns',
   ];
@@ -1290,19 +1301,52 @@
     BEAUTY_KEYS.push('card-bg-' + t, 'card-bg-mask-' + t);
   });
   for (var _i = 0; _i < 5; _i++) BEAUTY_KEYS.push('page-bg-' + _i);
+  const collectBeauty = () => {
+    const data = {};
+    BEAUTY_KEYS.forEach(k => { const v = store.get(k); if (v !== null && v !== undefined) data[k] = v; });
+    // 动态键：自定义图标 + 图标顺序（.app 的 data-app 与 .app-grid 的 data-app 各自成键）
+    try {
+      document.querySelectorAll('.app').forEach(app => {
+        const k = 'app-icon-' + app.dataset.app;
+        const v = store.get(k);
+        if (v) data[k] = v;
+      });
+      document.querySelectorAll('.app-grid').forEach(grid => {
+        const k = 'app-icon-order-' + grid.dataset.app;
+        const v = store.get(k);
+        if (v) data[k] = v;
+      });
+    } catch (e) {}
+    // 动态键：图片组件本体（desk-image-src-<id> 只进 IDB+内存缓存，此前不导出 → 导入后空壳）
+    try {
+      const imgs = JSON.parse(store.get('desk-images') || '[]');
+      if (Array.isArray(imgs)) imgs.forEach(m => {
+        const v = store.get('desk-image-src-' + m.id);
+        if (v) data['desk-image-src-' + m.id] = v;
+      });
+    } catch (e) {}
+    return data;
+  };
+  const showBeautyFallback = (json) => {
+    if (!window.openModal) return;
+    // v3.7.x 修复：原 noInput 隐藏输入框且无 staticText，fallback 是空弹窗——
+    // 改用 textarea 完整展示 JSON 供手动复制
+    window.openModal('美化方案（全选复制）', json, () => {}, {
+      textarea: true,
+      textareaPlaceholder: '长按/全选复制，发给对方粘贴导入',
+    });
+  };
   const beautyExportRow = document.getElementById('row-beauty-export');
   if (beautyExportRow) {
     beautyExportRow.addEventListener('click', () => {
-      const data = {};
-      BEAUTY_KEYS.forEach(k => { const v = store.get(k); if (v !== null && v !== undefined) data[k] = v; });
+      const data = collectBeauty();
       try { const ac = localStorage.getItem('xy-home-v2:accent-color'); if (ac) data['__accent__'] = ac; } catch (e) {}
       try { const tm = localStorage.getItem('xy-home-v2:theme-mode'); if (tm) data['__theme__'] = tm; } catch (e) {}
       const json = JSON.stringify(data);
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(json).then(() => toast('已复制到剪贴板，发给对方粘贴导入')).catch(() => toast('复制失败，请手动复制'));
+        navigator.clipboard.writeText(json).then(() => toast('已复制到剪贴板，发给对方粘贴导入')).catch(() => showBeautyFallback(json));
       } else {
-        if (!window.openModal) return;
-        window.openModal('美化方案（长按全选复制）', json, () => {}, { noInput: true, pills: [{ label: '关闭', value: '__close__' }] });
+        showBeautyFallback(json);
       }
     });
   }
@@ -1316,6 +1360,12 @@
           const data = JSON.parse(v.trim());
           if (typeof data !== 'object' || Array.isArray(data)) { toast('格式错误'); return; }
           BEAUTY_KEYS.forEach(k => { if (data[k] !== undefined) store.set(k, data[k]); });
+          // 动态键导入：自定义图标 / 图标顺序 / 图片组件本体
+          Object.keys(data).forEach(k => {
+            if ((k.indexOf('app-icon-') === 0 || k.indexOf('desk-image-src-') === 0) && data[k] !== undefined) {
+              store.set(k, data[k]);
+            }
+          });
           if (data['__accent__']) { try { localStorage.setItem('xy-home-v2:accent-color', data['__accent__']); } catch (e) {} }
           if (data['__theme__']) { try { localStorage.setItem('xy-home-v2:theme-mode', data['__theme__']); } catch (e) {} }
           toast('已导入，刷新生效');
@@ -1733,6 +1783,10 @@
         removeDeskTextsOnPage(delIdx);
         removeDeskCountdownsOnPage(delIdx);
         s.parentNode.removeChild(s);
+        // v3.7.x 修复：删页后收缩已存布局——此前 desk-layout 仍保留被删页条目，
+        // 之后新增页并刷新会把旧页组件插回新页（组件"复活"）。只在已有自定义布局时
+        // 收缩；默认布局（desk-layout 为空）不写，保持原「保持 DOM 原状」语义。
+        try { if (deskLayout()) saveDeskLayout(); } catch (e) {}
       }
     }
     for (let i = slides.length; i < target; i++) {
@@ -2437,13 +2491,32 @@
       if (!isDecor) return;
       e.stopPropagation();
       if (!window.openModal) return;
-      const m = loadDeskTextsMeta().find(x => x.id === id);
+      // v3.7.x 修复：两处失效——① 原 setTimeout 里 querySelectorAll('.modal-pill')
+      // 选择器不存在（pills 实际类名是 .pill、容器是 #modal-pills），字号+/字号-/
+      // 换颜色/删除从未绑定、点了没反应；② 保存用 saveDeskTextsMeta(loadDeskTextsMeta())
+      // 重新读旧数据存回，编辑的改动全部丢失。改为：一次 load 数组持有引用、
+      // pill 动作走 openModal 确定回调（与全站 pills 弹窗一致：点 pill 记录、确定传回）。
+      const meta = loadDeskTextsMeta();
+      const m = meta.find(x => x.id === id);
       if (!m) return;
       window.openModal('编辑文字', m.text, (v) => {
-        if (!v || !v.trim()) return;
-        m.text = v.trim();
-        saveDeskTextsMeta(loadDeskTextsMeta());
-        renderDeskTexts();
+        if (v === '__sizeup__') {
+          m.size = Math.min(30, (m.size || 15) + 2);
+          saveDeskTextsMeta(meta); renderDeskTexts(); toast('字号 ' + m.size + 'px');
+        } else if (v === '__sizedn__') {
+          m.size = Math.max(10, (m.size || 15) - 2);
+          saveDeskTextsMeta(meta); renderDeskTexts(); toast('字号 ' + m.size + 'px');
+        } else if (v === '__color__') {
+          const colors = ['#333', '#666', '#999', '#e05555', '#3a7bd5', '#4a9d5e', '#d6459d', '#f0a020'];
+          const ci = colors.indexOf(m.color || '#333');
+          m.color = colors[(ci + 1) % colors.length];
+          saveDeskTextsMeta(meta); renderDeskTexts(); toast('已换颜色');
+        } else if (v === '__del__') {
+          removeDeskText(id);
+        } else if (v && v.trim()) {
+          m.text = v.trim();
+          saveDeskTextsMeta(meta); renderDeskTexts();
+        }
       }, {
         placeholder: '输入文字',
         pills: [
@@ -2453,24 +2526,6 @@
           { label: '删除', value: '__del__' },
         ],
       });
-      // pills 走单独监听（openModal 的 cb 只处理输入确认）
-      setTimeout(() => {
-        const pills = document.querySelectorAll('.modal-pill');
-        pills.forEach(pill => {
-          pill.addEventListener('click', () => {
-            const val = pill.dataset.value;
-            if (val === '__sizeup__') { m.size = Math.min(30, (m.size || 15) + 2); saveDeskTextsMeta(loadDeskTextsMeta()); renderDeskTexts(); toast('字号 ' + m.size + 'px'); }
-            else if (val === '__sizedn__') { m.size = Math.max(10, (m.size || 15) - 2); saveDeskTextsMeta(loadDeskTextsMeta()); renderDeskTexts(); toast('字号 ' + m.size + 'px'); }
-            else if (val === '__color__') {
-              const colors = ['#333', '#666', '#999', '#e05555', '#3a7bd5', '#4a9d5e', '#d6459d', '#f0a020'];
-              const ci = colors.indexOf(m.color || '#333');
-              m.color = colors[(ci + 1) % colors.length];
-              saveDeskTextsMeta(loadDeskTextsMeta()); renderDeskTexts(); toast('已换颜色');
-            }
-            else if (val === '__del__') { removeDeskText(id); }
-          });
-        });
-      }, 100);
     });
   }
 
@@ -2539,29 +2594,26 @@
       if (!isDecor) return;
       e.stopPropagation();
       if (!window.openModal) return;
-      const m = loadDeskCountdownsMeta().find(x => x.id === id);
+      // v3.7.x 修复：与文字组件同款——删除 pill 走确定回调、保存持有 meta 引用
+      //（原 saveDeskCountdownsMeta(loadDeskCountdownsMeta()) 读旧数据存回、编辑丢失；
+      //  原 setTimeout 的 .modal-pill 选择器不存在，删除 pill 从未绑定）
+      const meta = loadDeskCountdownsMeta();
+      const m = meta.find(x => x.id === id);
       if (!m) return;
       window.openModal('编辑倒计时', m.title + '|' + m.date, (v) => {
+        if (v === '__del__') { removeDeskCountdown(id); return; }
         if (!v || !v.trim()) return;
         const parts = v.split('|');
         const title = (parts[0] || '').trim();
         const date = (parts[1] || '').trim();
         if (!title || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('格式：标题|日期'); return; }
         m.title = title; m.date = date;
-        saveDeskCountdownsMeta(loadDeskCountdownsMeta());
+        saveDeskCountdownsMeta(meta);
         renderDeskCountdowns();
       }, {
         placeholder: '标题|日期，如 出差|2026-09-16',
         pills: [{ label: '删除', value: '__del__' }],
       });
-      setTimeout(() => {
-        const pills = document.querySelectorAll('.modal-pill');
-        pills.forEach(pill => {
-          pill.addEventListener('click', () => {
-            if (pill.dataset.value === '__del__') removeDeskCountdown(id);
-          });
-        });
-      }, 100);
     });
   }
 

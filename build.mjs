@@ -91,6 +91,11 @@ html = html.replace('/*__STYLES__*/', styles);
 html = html.replace('/*__SCRIPTS__*/', scripts);
 // 注入部署时间（开屏显示）
 html = html.replace('__BUILD_INFO__', buildInfo);
+// 注入当前构建时间戳（页面自身版本基线，v3.7.x）——
+// pwa.js 版本检测用它当基线，不再依赖「首次 fetch 的 version.json 时间戳」：
+// 旧缓存页面 + 网络拿到最新 version.json 时，旧逻辑把最新时间戳当基线 → 永不提示
+// 更新；注入页面自身的部署时间戳后，任何比它新的 version.json 都会触发更新提示
+html = html.split('__BUILD_TS__').join(String(buildTime.getTime()));
 // 版本号两处（开屏 + 设置页底部）都要替换：replace 用字符串只替换第一处，改用 split/join 全局替换
 html = html.split('__APP_VERSION__').join(APP_VERSION);
 
