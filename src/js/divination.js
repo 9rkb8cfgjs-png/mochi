@@ -357,34 +357,52 @@
   // 空数组，直接写会丢历史）。暂存待写，恢复完成后与 IDB 合并去重再写入。
   let histReady = false;
   let histPending = null;
+  // v3.7.x：暂存记录所属联系人——恢复窗口内 A 抽牌后切到 B，flushPendingHist 须写回 A
+  // 而非切换后的 B（原实现用当前 store，A 的牌落到 B + A 丢失）
+  let histPendingCid = null;
   function histLoad() {
     let list = [];
     try { list = JSON.parse(store.get('divine-history') || '[]'); } catch (e) { list = []; }
-    // 旧版本裸键迁移（v3.5.92 前历史存无前缀键，一次性搬入适配层）
-    // v3.6.x：迁移写入走 histSave（带恢复窗口保护），避免迁移期间覆盖 IDB 权威历史
-    if (!Array.isArray(list) || !list.length) {
-      try { list = JSON.parse(localStorage.getItem('divine-history') || '[]'); } catch (e) { list = []; }
-      if (Array.isArray(list) && list.length) histSave(list);
-    }
     return Array.isArray(list) ? list : [];
   }
   function histSave(list) {
     const data = JSON.stringify(list);
     if (!histReady) {
-      try { histPending = Array.isArray(list) ? list.slice() : []; } catch (e) {}
+      try { histPending = Array.isArray(list) ? list.slice() : []; histPendingCid = window.__activeCid || 'default'; } catch (e) {}
       return;
     }
     try { store.set('divine-history', data); } catch (e) {}
   }
-  // 恢复完成后：合并恢复窗口内暂存的抽牌记录（按 ts 去重），再落盘 + 重绘
+  // v3.5.92 前占卜历史存无前缀裸键 divine-history；恢复完成后一次性迁入 default 命名空间并清裸键。
+  // v3.7.x：原在 histLoad 里迁移——非 default 联系人也会迁（串桌面）+ 迁移调 histSave 污染
+  //   histPending（恢复窗口内抽牌记录被覆盖丢失）。改为恢复完成后仅 default 迁移，不走 histSave。
+  function migrateLegacyHist() {
+    if ((window.__activeCid || 'default') !== 'default') return;
+    try {
+      if (window.storeFor('default').get('divine-history')) return;
+      const raw = localStorage.getItem('divine-history');
+      if (!raw) return;
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr) && arr.length) {
+        window.storeFor('default').set('divine-history', JSON.stringify(arr));
+        try { localStorage.removeItem('divine-history'); } catch (e) {}
+        try { renderHistory(); } catch (e) {}
+      }
+    } catch (e) {}
+  }
+  // 恢复完成后：合并恢复窗口内暂存的抽牌记录（按 ts 去重），落盘到暂存所属联系人 + 重绘
   function flushPendingHist() {
     if (!histPending) return;
     const pending = histPending;
+    const pendingCid = histPendingCid || (window.__activeCid || 'default');
     histPending = null;
+    histPendingCid = null;
     if (!pending.length) return;
+    const targetStore = window.storeFor(pendingCid);
+    const targetPrefix = 'xy-home-v2:' + pendingCid;
     const finish = (base) => {
-      try { store.set('divine-history', JSON.stringify(base)); } catch (e) {}
-      try { renderHistory(); } catch (e) {}
+      try { targetStore.set('divine-history', JSON.stringify(base)); } catch (e) {}
+      try { if ((window.__activeCid || 'default') === pendingCid) renderHistory(); } catch (e) {}
     };
     const merge = (base) => {
       const have = {};
@@ -393,18 +411,19 @@
       finish(base);
     };
     if (window.idbGet) {
-      window.idbGet('xy-home-v2:divine-history').then(v => {
+      window.idbGet(targetPrefix + ':divine-history').then(v => {
         let base = [];
         try { const p = typeof v === 'string' ? JSON.parse(v) : v; if (Array.isArray(p)) base = p; } catch (e) {}
         merge(base);
-      }).catch(() => merge(histLoad()));
+      }).catch(() => merge([]));
     } else {
-      merge(histLoad());
+      merge([]);
     }
   }
   try {
     document.addEventListener('mochi-restore-done', function () {
       histReady = true;
+      migrateLegacyHist();
       flushPendingHist();
     });
   } catch (e) {}

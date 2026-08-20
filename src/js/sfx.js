@@ -30,10 +30,11 @@
     piano: '钢琴', tick: '轻叩', 'ring-warm': '温馨铃', 'ring-classic': '经典铃'
   };
   // 每类可选的预设顺序（UI 胶囊显示顺序；'none'=静音由渲染逻辑统一加在最前）
+  // v3.7.x：in/out 同为聊天消息音效，可用内置音效列表完全一致（收发同款可切换）
   const PRESET_ORDER = {
     ring: ['ring-warm', 'ring-classic'],
     in: ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick'],
-    out: ['bubble', 'tick', 'piano', 'drop']
+    out: ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick']
   };
   // 用户未选择任何音效时的默认内置
   // v3.7.x：联系人消息与我方消息默认同一种内置音效（in/out 都是 bubble），

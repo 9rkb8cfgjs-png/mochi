@@ -4104,7 +4104,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787213878382">Mochi 字卡传讯 v3.6.154 · 部署于 2026-08-20 16:17</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787214567272">Mochi 字卡传讯 v3.6.155 · 部署于 2026-08-20 16:29</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4867,7 +4867,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.154</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.155</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5427,7 +5427,7 @@ color: var(--muted);
         <div class="gs-title">聊天音效</div>
         <div class="set-group glass">
           <div class="set-row" id="sfx-in-row">
-            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.5h9.5A2.5 2.5 0 0119 7v4.9a2.5 2.5 0 01-2.5 2.5h-6.1l-3.2 3.5v-3.5H7.5A2.5 2.5 0 015 11.9V7a2.5 2.5 0 012.5-2.5z"/><path d="M10 8.4a1.8 1.8 0 000 3.2"/><path d="M7.8 7a4 4 0 000 6"/></svg></div>
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.5h9.5A2.5 2.5 0 0119 7v4.9a2.5 2.5 0 01-2.5 2.5h-6.1l-3.2 3.5v-3.5H7.5A2.5 2.5 0 015 11.9V7a2.5 2.5 0 012.5-2.5z"/><path d="M8.8 8.6v3"/><path d="M10.6 7.4v5.6"/><path d="M12.4 8.2v4"/></svg></div>
             <div class="txt">联系人发送和回复消息</div>
             <div class="val" id="sfx-in-val"></div>
           </div>
@@ -5438,7 +5438,7 @@ color: var(--muted);
           </div>
           <div class="sfx-presets" id="sfx-in-presets"></div>
           <div class="set-row" id="sfx-out-row">
-            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5H16.5A2.5 2.5 0 0119 7v4.9a2.5 2.5 0 01-2.5 2.5h-2.9l3.2 3.5v-3.5H7.5A2.5 2.5 0 015 11.9V7a2.5 2.5 0 012.5-2.5z"/><path d="M13.5 8.4a1.8 1.8 0 010 3.2"/><path d="M16 7a4 4 0 010 6"/></svg></div>
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5H16.5A2.5 2.5 0 0119 7v4.9a2.5 2.5 0 01-2.5 2.5h-2.9l3.2 3.5v-3.5H7.5A2.5 2.5 0 015 11.9V7a2.5 2.5 0 012.5-2.5z"/><path d="M11.6 8.6v3"/><path d="M13.4 7.4v5.6"/><path d="M15.2 8.2v4"/></svg></div>
             <div class="txt">我发送和回复的消息</div>
             <div class="val" id="sfx-out-val"></div>
           </div>
@@ -21199,31 +21199,46 @@ return line;
 }
 let histReady = false;
 let histPending = null;
+let histPendingCid = null;
 function histLoad() {
 let list = [];
 try { list = JSON.parse(store.get('divine-history') || '[]'); } catch (e) { list = []; }
-if (!Array.isArray(list) || !list.length) {
-try { list = JSON.parse(localStorage.getItem('divine-history') || '[]'); } catch (e) { list = []; }
-if (Array.isArray(list) && list.length) histSave(list);
-}
 return Array.isArray(list) ? list : [];
 }
 function histSave(list) {
 const data = JSON.stringify(list);
 if (!histReady) {
-try { histPending = Array.isArray(list) ? list.slice() : []; } catch (e) {}
+try { histPending = Array.isArray(list) ? list.slice() : []; histPendingCid = window.__activeCid || 'default'; } catch (e) {}
 return;
 }
 try { store.set('divine-history', data); } catch (e) {}
 }
+function migrateLegacyHist() {
+if ((window.__activeCid || 'default') !== 'default') return;
+try {
+if (window.storeFor('default').get('divine-history')) return;
+const raw = localStorage.getItem('divine-history');
+if (!raw) return;
+const arr = JSON.parse(raw);
+if (Array.isArray(arr) && arr.length) {
+window.storeFor('default').set('divine-history', JSON.stringify(arr));
+try { localStorage.removeItem('divine-history'); } catch (e) {}
+try { renderHistory(); } catch (e) {}
+}
+} catch (e) {}
+}
 function flushPendingHist() {
 if (!histPending) return;
 const pending = histPending;
+const pendingCid = histPendingCid || (window.__activeCid || 'default');
 histPending = null;
+histPendingCid = null;
 if (!pending.length) return;
+const targetStore = window.storeFor(pendingCid);
+const targetPrefix = 'xy-home-v2:' + pendingCid;
 const finish = (base) => {
-try { store.set('divine-history', JSON.stringify(base)); } catch (e) {}
-try { renderHistory(); } catch (e) {}
+try { targetStore.set('divine-history', JSON.stringify(base)); } catch (e) {}
+try { if ((window.__activeCid || 'default') === pendingCid) renderHistory(); } catch (e) {}
 };
 const merge = (base) => {
 const have = {};
@@ -21232,18 +21247,19 @@ pending.forEach(x => { if (x && x.ts !== undefined && !have[x.ts]) { base.push(x
 finish(base);
 };
 if (window.idbGet) {
-window.idbGet('xy-home-v2:divine-history').then(v => {
+window.idbGet(targetPrefix + ':divine-history').then(v => {
 let base = [];
 try { const p = typeof v === 'string' ? JSON.parse(v) : v; if (Array.isArray(p)) base = p; } catch (e) {}
 merge(base);
-}).catch(() => merge(histLoad()));
+}).catch(() => merge([]));
 } else {
-merge(histLoad());
+merge([]);
 }
 }
 try {
 document.addEventListener('mochi-restore-done', function () {
 histReady = true;
+migrateLegacyHist();
 flushPendingHist();
 });
 } catch (e) {}
@@ -30445,7 +30461,7 @@ piano: '钢琴', tick: '轻叩', 'ring-warm': '温馨铃', 'ring-classic': '经�
 const PRESET_ORDER = {
 ring: ['ring-warm', 'ring-classic'],
 in: ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick'],
-out: ['bubble', 'tick', 'piano', 'drop']
+out: ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick']
 };
 const DEFAULT_BUILTIN = { ring: 'ring-warm', in: 'bubble', out: 'bubble' };
 const PRESET_CONTAINERS = { ring: 'sfx-ring-presets', in: 'sfx-in-presets', out: 'sfx-out-presets' };

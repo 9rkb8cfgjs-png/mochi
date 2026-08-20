@@ -114,7 +114,10 @@ check('音效设置页已打开', await evalJs("(function(){var p=document.getEl
 const c1 = JSON.parse(await evalJs("(function(){function cnt(id){var el=document.getElementById(id);return el?el.querySelectorAll('.sfx-preset').length:-1;}return JSON.stringify({ring:cnt('sfx-ring-presets'),in:cnt('sfx-in-presets'),out:cnt('sfx-out-presets')});})()") || '{}');
 check('来电铃声预设胶囊 3 个（静音+温馨铃+经典铃）', c1.ring === 3, 'ring=' + c1.ring);
 check('联系人消息预设胶囊 7 个（静音+6 内置）', c1.in === 7, 'in=' + c1.in);
-check('我发消息预设胶囊 5 个（静音+4 内置）', c1.out === 5, 'out=' + c1.out);
+check('我发消息预设胶囊 7 个（静音+6 内置，与联系人同款）', c1.out === 7, 'out=' + c1.out);
+// in/out 两行的内置音效选项必须完全一致（同款可切换）
+const c1b = JSON.parse(await evalJs("(function(){function names(id){var el=document.getElementById(id);return Array.from(el.querySelectorAll('.sfx-preset')).map(function(x){return x.textContent;}).join(',');}return JSON.stringify({in:names('sfx-in-presets'),out:names('sfx-out-presets')});})()") || '{}');
+check('联系人消息与我所发消息的内置音效列表一致', c1b.in === c1b.out, 'in=' + c1b.in + ' out=' + c1b.out);
 
 // —— 用例 2：默认内置生效 + 默认胶囊高亮 + 状态显示 ——
 const c2 = JSON.parse(await evalJs("(function(){var val=function(id){var el=document.getElementById(id);return el?el.textContent:'';};function on(id,label){var el=document.getElementById(id);var b=el?Array.from(el.querySelectorAll('.sfx-preset')).find(function(x){return x.textContent===label;}):null;return b?b.classList.contains('on'):false;}return JSON.stringify({ring:val('sfx-ring-val'),in:val('sfx-in-val'),out:val('sfx-out-val'),ringOn:on('sfx-ring-presets','温馨铃'),inOn:on('sfx-in-presets','气泡'),outOn:on('sfx-out-presets','气泡'),noneOn:on('sfx-in-presets','静音')});})()") || '{}');
