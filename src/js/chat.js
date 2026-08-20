@@ -1328,10 +1328,14 @@
     }
     const name = store.get('lbl-partner') || 'TA';
     const myName = store.get('lbl-user') || '我';
-    // 显示：联系人昵称 + 字卡 + 我的昵称
+    // 显示：联系人昵称 + 字卡
+    // 字卡分三类：含"你"（如"戳了戳你的脸蛋"→换我的称呼）、含"我"（如"弹了一下我的额头"，
+    //   原文已以"我"为对象，直接拼接即可）、两者都不含（如"戳一戳"→末尾补我的称呼）
     let text;
     if (action.indexOf('你') >= 0) {
       text = name + ' ' + action.replace(/你/g, myName);
+    } else if (action.indexOf('我') >= 0) {
+      text = name + ' ' + action;
     } else {
       text = name + ' ' + action + ' ' + myName;
     }
@@ -2443,10 +2447,13 @@ function partialRetractMsg(msgEl, side) {
     const name = store.get('lbl-partner') || 'TA';
     let text;
     if (action.indexOf('你') >= 0) {
-      // 字卡含"你"：替换成联系人昵称，如"戳了戳你的脸蛋"→"戳了戳TA的脸蛋"
+      // 字卡含"你"：替换成联系人昵称，如"戳了戳你的脸蛋"→"我 戳了戳TA的脸蛋"
       text = '我 ' + action.replace(/你/g, name);
+    } else if (action.indexOf('我') >= 0) {
+      // 字卡含"我"（如"弹了一下我的额头"）："我"指被拍对象，替换成联系人昵称，如"我 弹了一下TA的额头"
+      text = '我 ' + action.replace(/我/g, name);
     } else {
-      // 字卡不含"你"：在末尾补联系人昵称，如"戳一戳"→"戳一戳 TA"
+      // 字卡不含"你/我"：在末尾补联系人昵称，如"戳一戳"→"我 戳一戳 TA"
       text = '我 ' + action + ' ' + name;
     }
     addRec({ side: 'in', text: text, special: 'poke' });

@@ -9,6 +9,13 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（聊天搜索记录新增按日期查询）
+- [本会话·完成]（**已构建 verify 10/10 + 日期搜索专项 CDP 18/18，已随对方提交 492be69 入库**——提交信息未列本功能但内容已含）：用户要求聊天更多→搜索聊天记录支持按日期查询。
+  - 实现：搜索半框关键词栏下新增「开始日期 至 结束日期 + 清除」行（`<input type="date">`，安卓端 native picker 不受 ce-box 转换影响）；`runChatSearch()` 支持 仅关键词 / 仅开始日期 / 日期范围 / 单日 / 日期+关键词组合 五种查询；结束日期含当天 24 点（本地时区解析，避免 `new Date('YYYY-MM-DD')` UTC 偏移）；结果时间改 `fmtSearchTime`（MM-DD HH:MM，跨天搜索可分辨）；日期 change 自动搜索、清除按钮重置；无关键词无日期时提示「输入关键词，或选择日期范围搜索聊天记录」；空结果按条件给不同提示。
+  - 涉及：`src/js/chat.js`（openChatSearch 重置日期 / searchDateToTs / fmtSearchTime / runChatSearch / 事件绑定）、`src/template.html`（chat-search-date 行）、`src/css/chat-main.css`（.chat-search-date 样式）。
+  - 验证：`tools/smoke-search-date.mjs` 新增专项 18/18（含注入跨日期种子消息、IDB+LS 双写、五类查询断言、跳转/清除/无异常）。
+  - ⚠️ 当前工作区剩余未提交：chat.js（对方拍一拍字卡「含我」处理）、index.html/sw.js/version.json（对方已 build 产物）、WORKLOG——均非本会话改动，勿动。
+
 ### 2026-08-20（用户反馈「聊天里点引用后，发送前输入栏上方无法显示引用了什么、无法删除引用」）
 - [本会话·完成]（**已构建 verify 10/10 + 引用预览冒烟 12/12，本次提交**）：`src/js/chat.js`（AI-A 域）、`src/css/chat-main.css`（AI-A 域）、`src/template.html`（AI-B 域代改一行）、`tools/smoke-quote-preview.mjs`（新增专项测试）。
   - 根因：点气泡操作「引用」只写内存 `lastQuote` + toast，输入栏上方没有任何引用预览 UI，也没有删除入口。
@@ -18,6 +25,12 @@
 
 ### 2026-08-20（用户反馈「iOS 默认浏览器依旧无法点击、无法使用、页面完全卡住」· 本会话诊断修复）
 - [本会话·完成]（**已改 src，未构建未提交**，请构建者执行 `node build.mjs`）：根因——v3.7.x 开屏报修确认层在小屏 iPhone（375×667 iPhone 6/7/8/SE2、360×640、320×568 SE1）上，**确认按钮在屏幕可视区下方**：`.splash-confirm-card` 整卡 `overflow-y:auto`，按钮随长文本被推到卡片底部、被 iOS Safari 底部工具栏遮挡或完全看不见，整层盖住全屏看起来就是「页面卡死、什么也点不了」；390×844 以上现代机型不滚动可见，所以无头 Chrome 默认尺寸一直没复现。CDP 实测（修复前）：375×667 按钮底边 667=视口底、320×568 按钮底边 705 完全出屏。修复（`src/css/base.css`，AI-B 名下，本会话代改）：`.splash-confirm-card` 改 `display:flex; flex-direction:column; height:min(560px,100%)`（按钮不再被文本推走），`.splash-confirm-text` 改 `flex:1; min-height:0; overflow-y:auto`（仅正文滚动），按钮 `flex-shrink:0` 常驻卡片底部。CDP 验证（注入修复后线上 index.html）：320×568 / 360×640 / 375×667 / 390×844 四尺寸按钮全部完整可见（btnBot 527/583/597/685 < 视口高），完整流程 6/6：进入按钮→确认层弹出→按钮可见→点 OK 开屏移除（DOM 删除）→主页可开。⚠️ 工作区另有对方未提交的 chat-pages.css/music-player.js + 已构建产物，本次改动未含在内，需构建者统一再 build 一次。
+- [本会话·补充]（**已构建 verify 10/10 + smoke 16/16 + iOS 全尺寸 CDP 30+ 项全过**）：用户追问「稳妥检查 iOS 总是用不了」——已执行 `node build.mjs`（14:31 产物，含上述 base.css 修复 + 对方已保存的 chat-pages.css/music-player.js 改动）并全面验证：
+  1. **确认层按钮四尺寸全过**：320×568（SE1）/ 375×667（6/7/8/SE2）/ 390×844 / 430×932 均完整可见，真实触摸坐标点确认按钮→开屏移除→主页可开。
+  2. **聊天全流程四尺寸全过**：进聊天页→输入栏可见（320 下 top 512<568）→contenteditable 输入（textContent 写入）→点发送→消息上屏→输入框清空，12/12。此前 4 项 FAIL 系测试脚本误用 `input.value`（chat-input 是 contenteditable div，AGENTS.md 已注明），改用 textContent 后全过，非产品 bug。
+  3. **splash 点击路径确认**：点「点击进入」按钮与点 splash 任意处均弹确认层（`splash.addEventListener('click', enter)`），点确认层内文字不误关（stopPropagation）；`splash-logo` 无 id（class 选择器），无 JS 报错。
+  4. **通用弹窗（openModal）按钮**四尺寸均可见、可达。
+  5. verify 10/10、smoke-splash-confirm 16/16、页面零 JS 异常。⚠️ 仍待提交：工作区含对方 music-player/chat-pages 改动 + 本会话 base.css 修复 + 构建产物，一次 commit 带上（v3.7.x: iOS 开屏确认层按钮小屏不可见修复 + 对方已保存改动）。
 
 ### 2026-08-20（用户需求「查岗日常字卡：单个字卡添加后可修改/移动，增加分组修改及移动功能」）
 - [AI-A·完成]（**已构建 verify 10/10 + 查岗冒烟 9/9，未提交**）：`src/js/p2-features.js`（AI-A 域）、`src/css/chat-pages.css`（AI-A 域）。
@@ -641,3 +654,6 @@
   - **问题3 TA 引用消息异常**（`src/js/chat.js`）：根因①「要么不引用」——`lastMineText` 从未在加载历史后初始化，首次回复时为空（quote-prob 命中也只显示占位省略号）；修复——`loadMsgs` 三处出口（LS 快照载入/IDB 合并完成/IDB 无数据分支）调用 `syncLastMineText()`。根因②「连续引用同一条发很多条」——`scheduleReply` 里 quote 在循环外掷一次骰、N 条回复全复用同一个引用；修复——改为每条回复独立掷骰 + 独立取值。CDP 验证：历史注入后 TA 回复带引用块；quote-prob=50 连发 2 条跑 8 轮出现 3 次「恰好 1 条带引用」（旧逻辑该情况不可能出现）。
   - **问题2 全屏退出提醒不消失 + 顶部黑边**（`src/js/fullscreen.js` + `src/pwa/manifest.json`）：根因①黑边——manifest `display_override:["fullscreen","standalone"]` 让快捷方式直启系统级全屏，挖孔屏顶部 cutout 被涂黑；修复——`display_override` 改为 `["standalone"]`（standalone 仍可隐藏浏览器栏，去系统级全屏黑边；用户可在设置里手动开全屏）。根因②退出提醒不消失——浏览器标签模式下 `FS_KEY` 保持 '1'，用户用系统 UI 退出全屏后 `reenterFs`（切后台回来/重新聚焦）强制重入 → 退出提示条反复弹出；修复——新增 `fsInPwa()` 判定：浏览器标签模式退出全屏（`handleFsExit`）清持久化标记、启动/`doRetry`/`reenterFs` 不再自动重入（`reenterFs` 仅在全屏中切后台时保留标记）；PWA 安装态行为不变照常自动恢复。CDP 验证：standalone 布局正常、浏览器模式启动清标记不再自动进全屏。
   - 验证：`node tools/verify.mjs` 10/10；临时探测脚本（probe-fs/probe-fix/probe-fs2）已删。
+
+### 2026-08-20
+- [本会话] 完成（用户反馈「拍一拍人称有问题：用自定义拍一拍字卡【弹了一下我的额头】会显示成【联系人昵称弹了一下我的额头 我】」）：`src/js/chat.js` performPoke + sendPoke。根因：拍一拍字卡分三类（含"你"如"戳了戳你的脸蛋"、含"我"如"弹了一下我的额头"、都不含如"戳一戳"），原代码只分「含你」/「不含你」两支——performPoke 不含"你"时一律末尾追加我的称呼 →「联系人昵称 弹了一下我的额头 我」多出个"我"；sendPoke 不含"你"时一律 `'我 '+字卡+' '+联系人昵称` →「我 弹了一下我的额头 TA」读成自己拍自己。修复：中间加「含我」分支——performPoke 直接「联系人昵称 + 字卡原文」（不再追加"我"）；sendPoke 把字卡里的"我"替换成联系人昵称（"弹了一下我的额头"→"我 弹了一下TA的额头"）。默认字卡（拍了拍你/戳了戳你的脸蛋/戳一戳）输出不变。node --check 通过 + 逻辑单测 6 字卡×2 方向全部正确。**已构建待提交**（构建时工作区干净、无对方在途改动）。
