@@ -1076,7 +1076,6 @@ flex-shrink:0; border:1px solid rgba(0,0,0,.08);
 flex:1; min-width:0; font-size:12.5px; line-height:1.35; color:inherit;
 white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.chat-draft-quote-x { position:static; background:rgba(0,0,0,.35); }
 .chat-draft-items { display:flex; gap:8px; overflow-x:auto; flex:1; scrollbar-width:none; }
 .chat-draft-items::-webkit-scrollbar { display:none; }
 .chat-draft-item {
@@ -1088,6 +1087,11 @@ border:1px solid rgba(0,0,0,.08);
 position:absolute; top:0; right:0; width:16px; height:16px;
 background:rgba(0,0,0,.55); color:#fff; border:none; font-size:10px;
 display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.chat-draft-quote-x {
+position:static; width:18px; height:18px; flex-shrink:0;
+border-radius:50%; background:rgba(127,127,127,.45);
+font-size:11px; line-height:1;
 }
 .msg-parts-imgs { display:flex; gap:4px; margin-bottom:6px; }
 .msg-img { max-width:90px; max-height:90px; border-radius:8px; display:block; }
@@ -4099,7 +4103,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787218952823">Mochi 字卡传讯 v3.6.159 · 部署于 2026-08-20 17:42</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787221978292">Mochi 字卡传讯 v3.6.160 · 部署于 2026-08-20 18:32</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4868,7 +4872,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.159</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.160</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -14103,7 +14107,10 @@ const inviteIdx = msgs.length - 1;
 if (window.logFish) window.logFish();
 const histKey = 'invite-ask-history';
 const recTs = Date.now();
+const myCid = window.__activeCid || 'default';
+const sameCid = () => (window.__activeCid || 'default') === myCid;
 setTimeout(() => {
+if (!sameCid()) return;
 const roll = Math.random();
 const name = store.get('lbl-partner') || 'TA';
 let status, answer, reply = null;
@@ -14114,7 +14121,7 @@ const pool = window.getInteractPool
 ? window.getInteractPool('邀请TA·接受', ['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。'])
 : ['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。'];
 reply = (window.pickAskCardReply ? window.pickAskCardReply(pool) : pool[Math.floor(Math.random() * pool.length)]);
-setTimeout(() => addIn(reply), 800);
+setTimeout(() => { if (!sameCid()) return; addIn(reply); }, 800);
 } else if (roll < 0.85) {
 status = '拒绝';
 answer = name + ' 拒绝了你的邀请';
@@ -14122,7 +14129,7 @@ const pool = window.getInteractPool
 ? window.getInteractPool('邀请TA·拒绝', ['这次不行。', '下次吧。', '抱歉。', '今天不方便。'])
 : ['这次不行。', '下次吧。', '抱歉。', '今天不方便。'];
 reply = (window.pickAskCardReply ? window.pickAskCardReply(pool) : pool[Math.floor(Math.random() * pool.length)]);
-setTimeout(() => addIn(reply), 800);
+setTimeout(() => { if (!sameCid()) return; addIn(reply); }, 800);
 } else {
 status = '未回应';
 answer = name + ' 暂时没有回应';
@@ -14145,7 +14152,7 @@ if (list.length > 200) list.length = 200;
 store.set(histKey, JSON.stringify(list));
 } catch (err) {}
 if (window.renderAskRecords) window.renderAskRecords();
-setTimeout(maybeFollowupAskCard, 1200);
+setTimeout(() => { if (!sameCid()) return; maybeFollowupAskCard(); }, 1200);
 }, 1500 + Math.random() * 2500);
 } else {
 const isSingle = !!askOpts;
@@ -14153,7 +14160,10 @@ addRec({ side: 'out', text: '问：' + content, special: 'ask', askQuestion: con
 const askIdx = msgs.length - 1;
 if (window.logFish) window.logFish();
 const recTs = Date.now();
+const myCid = window.__activeCid || 'default';
+const sameCid = () => (window.__activeCid || 'default') === myCid;
 setTimeout(() => {
+if (!sameCid()) return;
 const defs = window.getInteractPool
 ? window.getInteractPool('问问TA·回应', ['嗯嗯', '我想想…', '应该吧', '好呀', '我陪你', '可以的', '那挺好呀', '我觉得可以', '听你的', '当然可以', '我很乐意'])
 : ['嗯嗯', '我想想…', '应该吧', '好呀', '我陪你', '可以的', '那挺好呀', '我觉得可以', '听你的', '当然可以', '我很乐意'];
@@ -14182,7 +14192,7 @@ if (list.length > 200) list.length = 200;
 store.set('invite-ask-history', JSON.stringify(list));
 } catch (err) {}
 if (window.renderAskRecords) window.renderAskRecords();
-setTimeout(maybeFollowupAskCard, 1200);
+setTimeout(() => { if (!sameCid()) return; maybeFollowupAskCard(); }, 1200);
 }, 1500 + Math.random() * 2500);
 }
 }
@@ -14606,7 +14616,14 @@ const rec = (idx >= 0 && msgs[idx]) ? msgs[idx] : null;
 if (act === 'quote') {
 if (rec) {
 const qimgs = (rec.parts || []).filter(p => p.k === 'img').map(p => p.v).slice(0, 3);
-const qtext = rec.type === 'voice' ? '[语音] ' + String(rec.text || '').split('|||')[0] : rec.text;
+let qtext = rec.text;
+if (rec.type === 'voice') {
+qtext = '[语音] ' + String(rec.text || '').split('|||')[0];
+} else if (rec.type === 'sticker') {
+qtext = '表情包';
+} else if (qimgs.length && String(qtext || '').indexOf('data:') === 0) {
+qtext = '图片';
+}
 lastQuote = { side: rec.side, text: qtext, type: rec.type, imgs: qimgs };
 renderDraft();
 }
@@ -15365,7 +15382,10 @@ bar.appendChild(img);
 }
 const t = document.createElement('span');
 t.className = 'chat-draft-quote-text';
-t.textContent = lastQuote.text || '图片';
+const raw = lastQuote.text || '';
+t.textContent = (raw.indexOf('data:') === 0 && raw.length > 64)
+? (lastQuote.type === 'sticker' ? '表情包' : '图片')
+: (raw || '图片');
 bar.appendChild(t);
 const xBtn = document.createElement('button');
 xBtn.className = 'chat-draft-x chat-draft-quote-x';
@@ -15485,7 +15505,9 @@ setTimeout(rpExpireCheck, 2000);
 setInterval(rpExpireCheck, 60 * 60 * 1000);
 try {
 if (window.idbGet) {
-window.idbGet(window.activePrefix() + ':' + RP_COVER_KEY).then(v => {
+const myPrefix = window.activePrefix();
+window.idbGet(myPrefix + ':' + RP_COVER_KEY).then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v && typeof v === 'string' && v.length > 2) store.set(RP_COVER_KEY, v);
 });
 }
@@ -15493,7 +15515,9 @@ if (v && typeof v === 'string' && v.length > 2) store.set(RP_COVER_KEY, v);
 window.chatSendMsg = (text) => { if (typeof text === 'string' && text.trim()) addMsg(text.trim()); };
 try {
 if (window.idbGet) {
-window.idbGet(window.activePrefix() + ':fav-msgs').then(v => {
+const myPrefix = window.activePrefix();
+window.idbGet(myPrefix + ':fav-msgs').then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v && typeof v === 'string' && v.length > 2) store.set('fav-msgs', v);
 });
 }
@@ -15571,7 +15595,9 @@ return { text: [], kaomoji: [], emoji: [], sticker: [], image: [], poke: [], voi
 }
 (function () {
 if (window.idbGet) {
-window.idbGet(window.activePrefix() + ':cc-groups').then(v => {
+const myPrefix = window.activePrefix();
+window.idbGet(myPrefix + ':cc-groups').then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v === undefined || v === null) return;
 try {
 const data = typeof v === 'string' ? JSON.parse(v) : v;
@@ -17399,13 +17425,16 @@ toast('聊天记录已清空');
 }
 try {
 if (window.idbGet) {
-window.idbGet(window.activePrefix() + ':cs-bg').then(v => {
+const myPrefix = window.activePrefix();
+window.idbGet(myPrefix + ':cs-bg').then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v && typeof v === 'string' && v.length > 2 && !store.get('cs-bg')) {
 store.set('cs-bg', v);
 applySettings();
 }
 });
-window.idbGet(window.activePrefix() + ':' + FONT_KEY).then(v => {
+window.idbGet(myPrefix + ':' + FONT_KEY).then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v && typeof v === 'string' && v.length > 2 && !store.get(FONT_KEY)) {
 store.set(FONT_KEY, v);
 applyFont();
@@ -21390,7 +21419,8 @@ list.unshift({ ts: Date.now(), mode: snapMode, count: snapCount, question: quest
 histSave(list);
 renderHistory();
 if (autoSendGet()) {
-setTimeout(() => { sendToChat(snapMode, cards, summary, question); }, 500);
+const myCid = window.__activeCid || 'default';
+setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; sendToChat(snapMode, cards, summary, question); }, 500);
 }
 }
 });
@@ -25330,7 +25360,9 @@ if (phone) phone.hidden = false;
 render();
 try {
 if (window.idbGet) {
-window.idbGet(window.activePrefix() + ':records-avatar').then(v => {
+const myPrefix = window.activePrefix();
+window.idbGet(myPrefix + ':records-avatar').then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v && typeof v === 'string' && v.length > 2) store.set('records-avatar', v);
 });
 }
@@ -25426,7 +25458,9 @@ toast('已恢复默认通话背景');
 }
 try {
 if (window.idbGet) {
-window.idbGet(window.activePrefix() + ':' + CALL_BG_KEY).then(v => {
+const myPrefix = window.activePrefix();
+window.idbGet(myPrefix + ':' + CALL_BG_KEY).then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v && typeof v === 'string' && v.length > 2 && !store.get(CALL_BG_KEY)) {
 store.set(CALL_BG_KEY, v);
 applyCallBg();
@@ -26560,7 +26594,9 @@ if (merged.length) { store.set(KEY, JSON.stringify(merged)); writeSnap(merged); 
 }
 try {
 if (window.idbGet) {
-window.idbGet(window.activePrefix() + ':' + KEY).then(v => {
+const myPrefix = window.activePrefix();
+window.idbGet(myPrefix + ':' + KEY).then(v => {
+if (window.activePrefix() !== myPrefix) return;
 mailMergeFromIdb(v);
 mailDbReady = true;
 render();
@@ -28036,7 +28072,9 @@ try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + key, JSON.s
 function restoreHist(key) {
 try {
 if (window.idbGet && !store.get(key)) {
-window.idbGet(window.activePrefix() + ':' + key).then(v => {
+const myPrefix = window.activePrefix();
+window.idbGet(myPrefix + ':' + key).then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (!v) return;
 try { store.set(key, typeof v === 'string' ? v : JSON.stringify(v)); } catch (e) {}
 });
@@ -28334,7 +28372,9 @@ return '<div class="ck-location"><div class="ck-value" style="font-size:13px">' 
 }
 (function () {
 if (window.idbGet) {
-window.idbGet(window.activePrefix() + ':checkin-history').then(v => {
+const myPrefix = window.activePrefix();
+window.idbGet(myPrefix + ':checkin-history').then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (!v) return;
 try {
 const data = typeof v === 'string' ? JSON.parse(v) : v;
@@ -29047,6 +29087,8 @@ flushPendingHist();
 } catch (e) {}
 document.addEventListener('contact-switched', function () {
 try { histReady = true; histPending = null; } catch (e) {}
+try { if (decideTimer) { clearTimeout(decideTimer); decideTimer = null; } } catch (e) {}
+try { if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; } } catch (e) {}
 });
 function loadSettings() {
 const d = { replyToChat: true, thinkA: 3, thinkB: 3, maxB: 1 };
@@ -29183,8 +29225,10 @@ countdownTimer = setInterval(() => {
 count--;
 if (count > 0) resultEl.textContent = '对方正在思考中… ' + count + ' 秒';
 }, 1000);
+const myCid = window.__activeCid || 'default';
 decideTimer = setTimeout(() => {
 decideTimer = null;
+if ((window.__activeCid || 'default') !== myCid) return;
 if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
 let result;
 if (type === 'typea') {
@@ -30767,8 +30811,10 @@ bindPlay('out', 'sfx-out-play');
 bindClear('out', 'sfx-out-clear');
 try {
 if (window.idbGet) {
+const myPrefix = window.activePrefix();
 ['sfx-ring', 'sfx-in', 'sfx-out', 'sfx-ring-b', 'sfx-in-b', 'sfx-out-b'].forEach(key => {
-window.idbGet(window.activePrefix() + ':' + key).then(v => {
+window.idbGet(myPrefix + ':' + key).then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v && typeof v === 'string' && v.length > 2 && !store.get(key)) {
 store.set(key, v);
 }

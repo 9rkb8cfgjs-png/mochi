@@ -90,7 +90,9 @@
   // （不采用"不一致即覆盖"：若 idbSet 偶尔失败而 localStorage 已写入最新，覆盖会反向丢数据）
   (function () {
     if (window.idbGet) {
-      window.idbGet(window.activePrefix() + ':cc-groups').then(v => {
+      const myPrefix = window.activePrefix();
+      window.idbGet(myPrefix + ':cc-groups').then(v => {
+        if (window.activePrefix() !== myPrefix) return;
         if (v === undefined || v === null) return;
         try {
           const data = typeof v === 'string' ? JSON.parse(v) : v;

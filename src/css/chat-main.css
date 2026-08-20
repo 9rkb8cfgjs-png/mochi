@@ -173,7 +173,6 @@
   flex:1; min-width:0; font-size:12.5px; line-height:1.35; color:inherit;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.chat-draft-quote-x { position:static; background:rgba(0,0,0,.35); }
 .chat-draft-items { display:flex; gap:8px; overflow-x:auto; flex:1; scrollbar-width:none; }
 .chat-draft-items::-webkit-scrollbar { display:none; }
 .chat-draft-item {
@@ -185,6 +184,13 @@
   position:absolute; top:0; right:0; width:16px; height:16px;
   background:rgba(0,0,0,.55); color:#fff; border:none; font-size:10px;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+/* 引用预览条的 ✕ 删除按钮：必须写在本条（.chat-draft-x position:absolute）之后——
+   同优先级 (0,1,0) 后定义者生效，否则被 absolute 覆盖跑出预览条外（用户看不到删除按钮） */
+.chat-draft-quote-x {
+  position:static; width:18px; height:18px; flex-shrink:0;
+  border-radius:50%; background:rgba(127,127,127,.45);
+  font-size:11px; line-height:1;
 }
 
 /* 组合消息：同一条气泡内 图片网格 + 文字 */

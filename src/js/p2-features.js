@@ -19,7 +19,9 @@
   function restoreHist(key) {
     try {
       if (window.idbGet && !store.get(key)) {
-        window.idbGet(window.activePrefix() + ':' + key).then(v => {
+        const myPrefix = window.activePrefix();
+        window.idbGet(myPrefix + ':' + key).then(v => {
+          if (window.activePrefix() !== myPrefix) return;
           if (!v) return;
           try { store.set(key, typeof v === 'string' ? v : JSON.stringify(v)); } catch (e) {}
         });
@@ -350,7 +352,9 @@ function renderCheckinHistory() {
   // 初始化：从 IndexedDB 恢复全部查岗记录
   (function () {
     if (window.idbGet) {
-      window.idbGet(window.activePrefix() + ':checkin-history').then(v => {
+      const myPrefix = window.activePrefix();
+      window.idbGet(myPrefix + ':checkin-history').then(v => {
+        if (window.activePrefix() !== myPrefix) return;
         if (!v) return;
         try {
           const data = typeof v === 'string' ? JSON.parse(v) : v;

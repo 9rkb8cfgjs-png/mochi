@@ -92,7 +92,9 @@
   //   页面加载时从不运行，导致导入数据后通话背景无法从 IndexedDB 恢复；移回模块顶层随加载执行
   try {
     if (window.idbGet) {
-      window.idbGet(window.activePrefix() + ':' + CALL_BG_KEY).then(v => {
+      const myPrefix = window.activePrefix();
+      window.idbGet(myPrefix + ':' + CALL_BG_KEY).then(v => {
+        if (window.activePrefix() !== myPrefix) return;
         if (v && typeof v === 'string' && v.length > 2 && !store.get(CALL_BG_KEY)) {
           store.set(CALL_BG_KEY, v);
           applyCallBg();

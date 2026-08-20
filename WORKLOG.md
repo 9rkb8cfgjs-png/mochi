@@ -9,6 +9,13 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（用户反馈「引用后没有取消按钮；引用含表情包/图片的消息时缩略图区域乱码挡住文字」）
+- [本会话·完成]（**已构建 verify 10/10 + 引用预览冒烟 18/18，本次提交**）：`src/css/chat-main.css`（AI-A 域）、`src/js/chat.js`（AI-A 域）、`tools/smoke-quote-preview.mjs`（冒烟增强）。
+  - 根因 1（取消按钮不可见）：`.chat-draft-quote-x { position:static }` 写在 `.chat-draft-x { position:absolute }` **之前**——同优先级 (0,1,0) 后定义者生效，按钮被覆盖成 absolute 定位跑出预览条外（CDP 实测按钮 right=390 超出条 right=376，用户根本看不到删除按钮）。修复：按钮覆盖规则移到 `.chat-draft-x` 之后，顺带 18px 圆形更明显。
+  - 根因 2（乱码）：表情包/纯图片消息的 `rec.text` 本身就是整段 base64 dataURL，引用时 qtext 直接用 → 预览条和发送后气泡引用块都显示 base64 乱码挤占文字。修复：引用时 `type==='sticker'` → 占位「表情包」、text 以 data: 开头且带图 → 占位「图片」；`renderQuoteBar` 再加 dataURL 保险（>64 字符的 data: 文本显示占位）。
+  - 验证：冒烟 18/18（文字引用流程 + ✕ 按钮位置/定位断言 xInBar/xStatic + 注入伪造表情包消息重进聊天页 → 引用显示「表情包」占位无乱码 + 发送后引用块正常 + 无 JS 异常）。
+  - ⚠️ 本次构建统一包含对方未提交改动：chat.js（邀请/问问TA异步回调联系人守卫、红包/收藏 idb 补读守卫）、sfx.js、call.js、chatcard.js、p2-features.js、records.js、divination.js、decision.js、chat-settings.js 等已保存改动。
+
 ### 2026-08-20（用户要求「可自定义字卡/系统预设字卡 两大分类做成字卡库顶部栏，可点击切换」）
 - [本会话·完成]（**已构建 verify 10/10 + CDP 切换专项 11/11，已提交**）：
   - `src/template.html`：字卡库页（page-chatcard）顶部 `chat-title` 下新增切换栏 `.cc-top-tabs`（复用 .card-tabs/.cc-tab 样式）——两个 tab【可自定义字卡】【系统预设字卡】；7 个自定义入口包进 `#cc-sect-custom`、3 个预设入口包进 `#cc-sect-preset`（默认 hidden），删除原静态 .cc-sect 标题。

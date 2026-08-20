@@ -71,6 +71,9 @@
   // v3.6.x：多桌面——切换联系人后重置历史权威状态（防止旧桌面的 histPending 串入新桌面）
   document.addEventListener('contact-switched', function () {
     try { histReady = true; histPending = null; } catch (e) {}
+    // v3.7.x：清掉挂起的决定定时器——否则切到 B 后回调执行，A 的决定历史/聊天结果写到 B
+    try { if (decideTimer) { clearTimeout(decideTimer); decideTimer = null; } } catch (e) {}
+    try { if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; } } catch (e) {}
   });
   // v3.6.x：思考时间 / 最多选几个 也持久化——之前每次打开面板都重置回默认值
   // （关掉面板再打开，「帮我决定时间」又得重新设置）
@@ -227,8 +230,10 @@
       if (count > 0) resultEl.textContent = '对方正在思考中… ' + count + ' 秒';
     }, 1000);
     // v3.6.x：结果定时器存入 decideTimer（倒计时结束自动清；重复点击先取消旧轮）
+    const myCid = window.__activeCid || 'default';
     decideTimer = setTimeout(() => {
       decideTimer = null;
+      if ((window.__activeCid || 'default') !== myCid) return;
       if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
       let result;
       if (type === 'typea') {

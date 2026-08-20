@@ -880,7 +880,9 @@
   }
   try {
     if (window.idbGet) {
-      window.idbGet(window.activePrefix() + ':' + KEY).then(v => {
+      const myPrefix = window.activePrefix();
+      window.idbGet(myPrefix + ':' + KEY).then(v => {
+        if (window.activePrefix() !== myPrefix) return;
         mailMergeFromIdb(v);
         mailDbReady = true;
         render();

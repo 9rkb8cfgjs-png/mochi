@@ -3590,7 +3590,11 @@ function partialRetractMsg(msgEl, side) {
       if (window.logFish) window.logFish();
       const histKey = 'invite-ask-history';
       const recTs = Date.now();
+      // v3.7.x：捕获提交时联系人，回调执行时若已切换则放弃——否则 A 的邀请回应/历史串到 B
+      const myCid = window.__activeCid || 'default';
+      const sameCid = () => (window.__activeCid || 'default') === myCid;
       setTimeout(() => {
+        if (!sameCid()) return;
         const roll = Math.random();
         const name = store.get('lbl-partner') || 'TA';
         let status, answer, reply = null;
@@ -3604,7 +3608,7 @@ function partialRetractMsg(msgEl, side) {
             : ['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。'];
           // v3.7.x：接受话术池 + 字卡库自定义字卡 混合随机
           reply = (window.pickAskCardReply ? window.pickAskCardReply(pool) : pool[Math.floor(Math.random() * pool.length)]);
-          setTimeout(() => addIn(reply), 800);
+          setTimeout(() => { if (!sameCid()) return; addIn(reply); }, 800);
         } else if (roll < 0.85) {
           status = '拒绝';
           answer = name + ' 拒绝了你的邀请';
@@ -3615,7 +3619,7 @@ function partialRetractMsg(msgEl, side) {
             : ['这次不行。', '下次吧。', '抱歉。', '今天不方便。'];
           // v3.7.x：拒绝话术池 + 字卡库自定义字卡 混合随机
           reply = (window.pickAskCardReply ? window.pickAskCardReply(pool) : pool[Math.floor(Math.random() * pool.length)]);
-          setTimeout(() => addIn(reply), 800);
+          setTimeout(() => { if (!sameCid()) return; addIn(reply); }, 800);
         } else {
           status = '未回应';
           answer = name + ' 暂时没有回应';
@@ -3638,7 +3642,7 @@ function partialRetractMsg(msgEl, side) {
           store.set(histKey, JSON.stringify(list));
         } catch (err) {}
         if (window.renderAskRecords) window.renderAskRecords();
-        setTimeout(maybeFollowupAskCard, 1200);
+        setTimeout(() => { if (!sameCid()) return; maybeFollowupAskCard(); }, 1200);
       }, 1500 + Math.random() * 2500);
     } else {
       // 问问TA
@@ -3650,7 +3654,10 @@ function partialRetractMsg(msgEl, side) {
       const askIdx = msgs.length - 1;
       if (window.logFish) window.logFish();
       const recTs = Date.now();
+      const myCid = window.__activeCid || 'default';
+      const sameCid = () => (window.__activeCid || 'default') === myCid;
       setTimeout(() => {
+        if (!sameCid()) return;
         // v3.7.x：文字题话术池与「系统预设字卡 → 互动回应」tab 同源（getInteractPool），
         // 数据缺失时回退内置话术；pickAskCardReply 内部过滤已关闭的话术
         const defs = window.getInteractPool
@@ -3684,7 +3691,7 @@ function partialRetractMsg(msgEl, side) {
           store.set('invite-ask-history', JSON.stringify(list));
         } catch (err) {}
         if (window.renderAskRecords) window.renderAskRecords();
-        setTimeout(maybeFollowupAskCard, 1200);
+        setTimeout(() => { if (!sameCid()) return; maybeFollowupAskCard(); }, 1200);
       }, 1500 + Math.random() * 2500);
     }
   }
@@ -4164,7 +4171,16 @@ function partialRetractMsg(msgEl, side) {
           const qimgs = (rec.parts || []).filter(p => p.k === 'img').map(p => p.v).slice(0, 3);
           // v3.5.131：语音消息引用存占位文案（rec.text 是「文件名|||base64」，
           // 直接引用会在气泡里显示整段 base64 乱码）
-          const qtext = rec.type === 'voice' ? '[语音] ' + String(rec.text || '').split('|||')[0] : rec.text;
+          // v3.7.x：表情包/纯图片消息的 rec.text 本身就是整段 base64 dataURL——
+          // 直接引用会在预览条和气泡引用块里显示乱码，统一换成占位文案
+          let qtext = rec.text;
+          if (rec.type === 'voice') {
+            qtext = '[语音] ' + String(rec.text || '').split('|||')[0];
+          } else if (rec.type === 'sticker') {
+            qtext = '表情包';
+          } else if (qimgs.length && String(qtext || '').indexOf('data:') === 0) {
+            qtext = '图片';
+          }
           lastQuote = { side: rec.side, text: qtext, type: rec.type, imgs: qimgs };
           renderDraft();
         }
@@ -5029,7 +5045,11 @@ function partialRetractMsg(msgEl, side) {
     }
     const t = document.createElement('span');
     t.className = 'chat-draft-quote-text';
-    t.textContent = lastQuote.text || '图片';
+    // v3.7.x：保险——text 若是 base64 dataURL（长乱码）换成占位，防其他路径传入
+    const raw = lastQuote.text || '';
+    t.textContent = (raw.indexOf('data:') === 0 && raw.length > 64)
+      ? (lastQuote.type === 'sticker' ? '表情包' : '图片')
+      : (raw || '图片');
     bar.appendChild(t);
     const xBtn = document.createElement('button');
     xBtn.className = 'chat-draft-x chat-draft-quote-x';
@@ -5165,7 +5185,9 @@ function partialRetractMsg(msgEl, side) {
   // 红包封面：从 idb 补读到 ls（大键可能只存 idb）
   try {
     if (window.idbGet) {
-      window.idbGet(window.activePrefix() + ':' + RP_COVER_KEY).then(v => {
+      const myPrefix = window.activePrefix();
+      window.idbGet(myPrefix + ':' + RP_COVER_KEY).then(v => {
+        if (window.activePrefix() !== myPrefix) return;
         if (v && typeof v === 'string' && v.length > 2) store.set(RP_COVER_KEY, v);
       });
     }
@@ -5175,7 +5197,9 @@ function partialRetractMsg(msgEl, side) {
   // v3.5.94：收藏消息含图片，可能只存在 IndexedDB → 启动补读（收藏页打开时才渲染，届时读到）
   try {
     if (window.idbGet) {
-      window.idbGet(window.activePrefix() + ':fav-msgs').then(v => {
+      const myPrefix = window.activePrefix();
+      window.idbGet(myPrefix + ':fav-msgs').then(v => {
+        if (window.activePrefix() !== myPrefix) return;
         if (v && typeof v === 'string' && v.length > 2) store.set('fav-msgs', v);
       });
     }

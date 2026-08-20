@@ -1563,7 +1563,10 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
         render();
       });
       // v3.5.94：TA 朋友圈封面也可能 >200KB → 同样补读（主列表 + 全部朋友圈封面都刷新）
-      window.idbGet(window.activePrefix() + ':feed-ta-cover').then(v => {
+      // 多桌面：补读回调里 activeStore() 是动态的，切换联系人后会写到新桌面 → 捕获 prefix 校验
+      const myPrefix = window.activePrefix();
+      window.idbGet(myPrefix + ':feed-ta-cover').then(v => {
+        if (window.activePrefix() !== myPrefix) return;
         if (v && typeof v === 'string' && v.length > 2 && !window.activeStore().get('feed-ta-cover')) {
           window.activeStore().set('feed-ta-cover', v);
           renderCover();
@@ -1571,20 +1574,23 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
         }
       });
       // v3.5.94：朋友圈背景图同样补读
-      window.idbGet(window.activePrefix() + ':feed-cover-bg').then(v => {
+      window.idbGet(myPrefix + ':feed-cover-bg').then(v => {
+        if (window.activePrefix() !== myPrefix) return;
         if (v && typeof v === 'string' && v.length > 2 && !window.activeStore().get('feed-cover-bg')) {
           window.activeStore().set('feed-cover-bg', v);
           renderCover();
         }
       });
       // v3.5.95：我的头像/TA 朋友圈头像补读（压缩失败兜底可能存原始大图）
-      window.idbGet(window.activePrefix() + ':avatar-user').then(v => {
+      window.idbGet(myPrefix + ':avatar-user').then(v => {
+        if (window.activePrefix() !== myPrefix) return;
         if (v && typeof v === 'string' && v.length > 2 && !window.activeStore().get('avatar-user')) {
           window.activeStore().set('avatar-user', v);
           renderCover();
         }
       });
-      window.idbGet(window.activePrefix() + ':feed-ta-avatar').then(v => {
+      window.idbGet(myPrefix + ':feed-ta-avatar').then(v => {
+        if (window.activePrefix() !== myPrefix) return;
         if (v && typeof v === 'string' && v.length > 2 && !window.activeStore().get('feed-ta-avatar')) {
           window.activeStore().set('feed-ta-avatar', v);
           renderCover();

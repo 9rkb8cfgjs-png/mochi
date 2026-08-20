@@ -377,8 +377,10 @@
   // v3.7.x：补读扩展到内置音效选择键（sfx-*-b），并统一兜底刷新界面
   try {
     if (window.idbGet) {
+      const myPrefix = window.activePrefix();
       ['sfx-ring', 'sfx-in', 'sfx-out', 'sfx-ring-b', 'sfx-in-b', 'sfx-out-b'].forEach(key => {
-        window.idbGet(window.activePrefix() + ':' + key).then(v => {
+        window.idbGet(myPrefix + ':' + key).then(v => {
+          if (window.activePrefix() !== myPrefix) return;
           if (v && typeof v === 'string' && v.length > 2 && !store.get(key)) {
             store.set(key, v);
           }

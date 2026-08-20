@@ -502,13 +502,16 @@
   // 启动时从 IDB 补读后重新应用
   try {
     if (window.idbGet) {
-      window.idbGet(window.activePrefix() + ':cs-bg').then(v => {
+      const myPrefix = window.activePrefix();
+      window.idbGet(myPrefix + ':cs-bg').then(v => {
+        if (window.activePrefix() !== myPrefix) return;
         if (v && typeof v === 'string' && v.length > 2 && !store.get('cs-bg')) {
           store.set('cs-bg', v);
           applySettings();
         }
       });
-      window.idbGet(window.activePrefix() + ':' + FONT_KEY).then(v => {
+      window.idbGet(myPrefix + ':' + FONT_KEY).then(v => {
+        if (window.activePrefix() !== myPrefix) return;
         if (v && typeof v === 'string' && v.length > 2 && !store.get(FONT_KEY)) {
           store.set(FONT_KEY, v);
           applyFont();

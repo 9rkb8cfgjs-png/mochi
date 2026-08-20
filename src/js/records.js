@@ -191,7 +191,9 @@
   // v3.5.94：换头像记录含图片，可能只存在 IndexedDB → 启动补读（主页打开时才渲染，届时读到）
   try {
     if (window.idbGet) {
-      window.idbGet(window.activePrefix() + ':records-avatar').then(v => {
+      const myPrefix = window.activePrefix();
+      window.idbGet(myPrefix + ':records-avatar').then(v => {
+        if (window.activePrefix() !== myPrefix) return;
         if (v && typeof v === 'string' && v.length > 2) store.set('records-avatar', v);
       });
     }

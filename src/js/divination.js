@@ -549,7 +549,8 @@
           renderHistory();
           // v3.7.x：自动发送开关——开启后抽牌完成自动把结果发到聊天
           if (autoSendGet()) {
-            setTimeout(() => { sendToChat(snapMode, cards, summary, question); }, 500);
+            const myCid = window.__activeCid || 'default';
+            setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; sendToChat(snapMode, cards, summary, question); }, 500);
           }
         }
       });
