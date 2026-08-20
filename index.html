@@ -136,9 +136,11 @@ margin-bottom:12px; letter-spacing:.5px;
 .splash-confirm-text p { margin:0 0 8px; }
 .splash-confirm-text p:last-child { margin-bottom:0; }
 .splash-confirm-btn {
-display:block; margin:16px auto 0; padding:10px 36px; width:fit-content;
+display:block; margin:16px auto 0; padding:10px 16px; width:fit-content; max-width:100%;
+box-sizing:border-box;
 background:var(--btn-bg); color:var(--btn-ink); font-size:13px; font-weight:700;
-border-radius:99px; letter-spacing:1px; cursor:pointer;
+border-radius:99px; letter-spacing:.5px; text-align:center; line-height:1.5;
+white-space:normal; word-break:break-word; cursor:pointer;
 -webkit-tap-highlight-color:transparent; user-select:none;
 }
 .splash-confirm-btn:active { opacity:.75; }
@@ -4006,13 +4008,13 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787203200439">Mochi 字卡传讯 v3.6.141 · 部署于 2026-08-20 13:20</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787203617884">Mochi 字卡传讯 v3.6.142 · 部署于 2026-08-20 13:26</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
       <div class="splash-enter" id="splash-enter" hidden>点击进入</div>
     </div>
-    <!-- v3.7.x：点「点击进入」后先弹「关于 bug 报修」确认层，点【我已知晓】才关闭进入——
+    <!-- v3.7.x：点「点击进入」后先弹「关于 bug 报修」确认层，点【确认我已知晓】才关闭进入——
          开屏 z-index(999) 高于全局弹窗 modal-mask(90)，所以在开屏内做独立确认层，
          内容为内测 bug 报修须知（写死兜底，报修要求是固定文案，不随公告远程化） -->
     <div class="splash-confirm" id="splash-confirm" hidden>
@@ -4023,7 +4025,7 @@ color: var(--muted);
           <p>报修时请说清楚：① 手机型号（如小米13、iPhone 14）；② 浏览器（手机自带浏览器 / Chrome / 微信等）；③ 具体是什么情况。</p>
           <p>光说「用不了」「点不动」是不够的。不同手机和浏览器表现本来就不一样，有的问题是特定设备才触发，不是我开发造成的。说清楚我才能复现、才能修。</p>
         </div>
-        <div class="splash-confirm-btn" id="splash-confirm-ok">我已知晓</div>
+        <div class="splash-confirm-btn" id="splash-confirm-ok">确认我已知晓，我已知道如何报修设备bug</div>
       </div>
     </div>
   </div>
@@ -4763,7 +4765,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.141</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.142</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 

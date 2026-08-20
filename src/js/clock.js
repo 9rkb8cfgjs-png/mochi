@@ -45,7 +45,7 @@
   const ready = () => !!(window.__mochiDataReady);
   const enterEl = document.getElementById('splash-enter');
   const loadingEl = document.getElementById('splash-loading');
-  // v3.7.x：点「点击进入」后先弹「关于 bug 报修」确认层，点【我已知晓】才关闭进入。
+  // v3.7.x：点「点击进入」后先弹「关于 bug 报修」确认层，点【确认我已知晓】才关闭进入。
   //   只在公告可见时弹（notice.json 隐藏公告 → 直接进入，不弹确认层）。
   //   开屏 z-index(999) 高于全局 openModal(90)，故确认层做在开屏内部。
   const confirmEl = document.getElementById('splash-confirm');
