@@ -2629,7 +2629,8 @@ function partialRetractMsg(msgEl, side) {
       if (rpQixiSection) { rpQixiSection.hidden = false; rpQixiSection.classList.add('qixi-today'); }
       if (rpWishInput) rpWishInput.placeholder = '七夕快乐';
     } else {
-      if (rpQixiSection) { rpQixiSection.hidden = true; rpQixiSection.classList.remove('qixi-today'); }
+      if (rpQixiTag) rpQixiTag.hidden = true;
+      if (rpQixiSection) { rpQixiSection.hidden = false; rpQixiSection.classList.remove('qixi-today'); }
       if (rpWishInput) rpWishInput.placeholder = '心意';
     }
     rpSide = 'out';

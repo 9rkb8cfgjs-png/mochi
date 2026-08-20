@@ -3938,7 +3938,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787154610787">Mochi 字卡传讯 v3.6.137 · 部署于 2026-08-19 23:50</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787201432716">Mochi 字卡传讯 v3.6.138 · 部署于 2026-08-20 12:50</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4681,7 +4681,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.137</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.138</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -13001,7 +13001,8 @@ if (rpQixiTag) rpQixiTag.hidden = false;
 if (rpQixiSection) { rpQixiSection.hidden = false; rpQixiSection.classList.add('qixi-today'); }
 if (rpWishInput) rpWishInput.placeholder = '七夕快乐';
 } else {
-if (rpQixiSection) { rpQixiSection.hidden = true; rpQixiSection.classList.remove('qixi-today'); }
+if (rpQixiTag) rpQixiTag.hidden = true;
+if (rpQixiSection) { rpQixiSection.hidden = false; rpQixiSection.classList.remove('qixi-today'); }
 if (rpWishInput) rpWishInput.placeholder = '心意';
 }
 rpSide = 'out';
@@ -16673,6 +16674,9 @@ applyFont();
 });
 }
 } catch (e) {}
+document.addEventListener('mochi-restore-done', function () {
+try { applyFont(); } catch (e) {}
+});
 document.addEventListener('contact-switched', function () {
 try { applySettings(); } catch (e) {}
 });
@@ -24676,6 +24680,19 @@ el.appendChild(img);
 el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
 }
 }
+let shownAv = null;
+function syncCallAv() {
+if (!currentCall) return;
+let av = '';
+try {
+const s = (window.storeFor && window.storeFor(currentCall.cid)) || store;
+av = s.get('avatar-partner') || '';
+} catch (e) { av = currentCall.av || partnerAv(); }
+if (av === shownAv) return;
+shownAv = av;
+fillAv(avEl, av);
+fillAv(miniAv, av);
+}
 function fmtDur(sec) {
 if (isNaN(sec) || sec < 0) return '00:00';
 const m = Math.floor(sec / 60), s = sec % 60;
@@ -24694,7 +24711,7 @@ if (cdEl) cdEl.hidden = true;
 if (mini) {
 if (callMiniEnabled()) {
 if (miniName) miniName.textContent = currentCall.name || partnerName();
-fillAv(miniAv, currentCall.av || partnerAv());
+syncCallAv();
 mini.hidden = false;
 } else {
 mini.hidden = true;
@@ -24716,6 +24733,7 @@ currentCall.connectedTime = Date.now();
 let checkCount = 0;
 durationTimer = setInterval(() => {
 updateDur();
+syncCallAv();
 if (currentCall && currentCall.status === 'connected') {
 if (Date.now() - currentCall.connectedTime >= 180000) {
 checkCount++;
@@ -24780,6 +24798,7 @@ resText += durTxt;
 notifyCallEnd(currentCall.cid || 'default', '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>' + (dir === 'in' ? name + ' 来电' : '我拨打 ' + name) + ' · ' + resText, dir, text + (dur ? '（' + fmtDur(dur) + '）' : ''));
 }
 currentCall = null;
+shownAv = null;
 }
 document.addEventListener('visibilitychange', () => {
 if (document.visibilityState === 'hidden' && currentCall && currentCall.status === 'ringing') {
@@ -24800,8 +24819,8 @@ if (window.musicHoldForCall) window.musicHoldForCall(true);
 try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {}
 const name = partnerName();
 currentCall = bindCall({ direction: 'in', status: 'ringing', startTime: Date.now(), durationSec: 0 });
-fillAv(avEl, partnerAv());
-fillAv(miniAv, partnerAv());
+shownAv = null;
+syncCallAv();
 if (nameEl) nameEl.textContent = name;
 if (statusEl) statusEl.textContent = '对方来电...';
 if (durEl) durEl.textContent = '00:00';
@@ -24812,6 +24831,7 @@ let count = 30;
 if (cdEl) { cdEl.hidden = false; cdEl.textContent = count + ' 秒后未接听'; }
 const t = setInterval(() => {
 if (!currentCall || currentCall.status !== 'ringing') { clearInterval(t); return; }
+syncCallAv();
 count--;
 if (count <= 0) {
 clearInterval(t);
@@ -24839,7 +24859,7 @@ if (callMiniEnabled()) {
 if (mask) mask.hidden = true;
 if (mini) {
 if (miniName) miniName.textContent = currentCall.name || partnerName();
-fillAv(miniAv, currentCall.av || partnerAv());
+syncCallAv();
 mini.hidden = false;
 }
 }
@@ -24864,7 +24884,8 @@ const name = partnerName();
 currentCall = bindCall({ direction: 'out', status: 'calling', startTime: Date.now(), durationSec: 0 });
 const callRef = currentCall;
 closeImageOverlay();
-fillAv(avEl, partnerAv());
+shownAv = null;
+syncCallAv();
 if (nameEl) nameEl.textContent = name;
 if (statusEl) statusEl.textContent = '正在呼叫...';
 if (durEl) durEl.textContent = '00:00';
@@ -24887,7 +24908,7 @@ setTimeout(() => {
 if (currentCall === callRef && callRef.status === 'connected') {
 if (callMiniEnabled()) {
 if (mask) mask.hidden = true;
-if (mini) { if (miniName) miniName.textContent = callRef.name || partnerName(); fillAv(miniAv, callRef.av || partnerAv()); mini.hidden = false; }
+if (mini) { if (miniName) miniName.textContent = callRef.name || partnerName(); syncCallAv(); mini.hidden = false; }
 }
 }
 }, 2000);

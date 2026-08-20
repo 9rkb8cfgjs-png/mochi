@@ -182,6 +182,21 @@
       el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
     }
   }
+  // v3.7.x：通话中头像实时跟随——联系人换头像（头像库手动/自动/设置页）后，
+  // 通话大面板与小框同步刷新；按归属桌面读 avatar-partner（跨桌面通话仍显示正确的 TA）
+  let shownAv = null;
+  function syncCallAv() {
+    if (!currentCall) return;
+    let av = '';
+    try {
+      const s = (window.storeFor && window.storeFor(currentCall.cid)) || store;
+      av = s.get('avatar-partner') || '';
+    } catch (e) { av = currentCall.av || partnerAv(); }
+    if (av === shownAv) return;
+    shownAv = av;
+    fillAv(avEl, av);
+    fillAv(miniAv, av);
+  }
   function fmtDur(sec) {
     if (isNaN(sec) || sec < 0) return '00:00';
     const m = Math.floor(sec / 60), s = sec % 60;
@@ -203,7 +218,7 @@
     if (mini) {
       if (callMiniEnabled()) {
         if (miniName) miniName.textContent = currentCall.name || partnerName();
-        fillAv(miniAv, currentCall.av || partnerAv());
+        syncCallAv();
         mini.hidden = false;
       } else {
         mini.hidden = true;
@@ -226,6 +241,7 @@
     let checkCount = 0;
     durationTimer = setInterval(() => {
       updateDur();
+      syncCallAv();
       // 对方挂断概率：接通 3 分钟保护期后，每 60 秒检查一次
       // v3.6.x：放宽——原实现 10 秒保护后每 30 秒掷一次，默认 5% 实际效果远超设置字面值
       //（约 3 分钟累计 ~23% 被挂断、10 分钟内累计 ~62%），用户反馈「3 分钟左右自动挂断、
@@ -308,6 +324,7 @@
       notifyCallEnd(currentCall.cid || 'default', '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>' + (dir === 'in' ? name + ' 来电' : '我拨打 ' + name) + ' · ' + resText, dir, text + (dur ? '（' + fmtDur(dur) + '）' : ''));
     }
     currentCall = null;
+    shownAv = null;
   }
   // v3.5.129：响铃中切后台（锁屏/切走）→ 停铃声并结束来电——
   // 后台无法接听，30 秒干响没有意义（安卓后台音频还会常驻媒体通知）
@@ -336,8 +353,8 @@
     try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {}
     const name = partnerName();
     currentCall = bindCall({ direction: 'in', status: 'ringing', startTime: Date.now(), durationSec: 0 });
-    fillAv(avEl, partnerAv());
-    fillAv(miniAv, partnerAv());
+    shownAv = null;
+    syncCallAv();
     if (nameEl) nameEl.textContent = name;
     if (statusEl) statusEl.textContent = '对方来电...';
     if (durEl) durEl.textContent = '00:00';
@@ -349,6 +366,7 @@
     if (cdEl) { cdEl.hidden = false; cdEl.textContent = count + ' 秒后未接听'; }
     const t = setInterval(() => {
       if (!currentCall || currentCall.status !== 'ringing') { clearInterval(t); return; }
+      syncCallAv();
       count--;
       if (count <= 0) {
         clearInterval(t);
@@ -379,7 +397,7 @@
           if (mask) mask.hidden = true;
           if (mini) {
             if (miniName) miniName.textContent = currentCall.name || partnerName();
-            fillAv(miniAv, currentCall.av || partnerAv());
+            syncCallAv();
             mini.hidden = false;
           }
         }
@@ -410,7 +428,8 @@
     // 否则「挂断后 3 秒内重拨」会让上一次的随机结果套到新通话上
     const callRef = currentCall;
     closeImageOverlay();
-    fillAv(avEl, partnerAv());
+    shownAv = null;
+    syncCallAv();
     if (nameEl) nameEl.textContent = name;
     if (statusEl) statusEl.textContent = '正在呼叫...';
     if (durEl) durEl.textContent = '00:00';
@@ -435,7 +454,7 @@
           if (currentCall === callRef && callRef.status === 'connected') {
             if (callMiniEnabled()) {
               if (mask) mask.hidden = true;
-              if (mini) { if (miniName) miniName.textContent = callRef.name || partnerName(); fillAv(miniAv, callRef.av || partnerAv()); mini.hidden = false; }
+              if (mini) { if (miniName) miniName.textContent = callRef.name || partnerName(); syncCallAv(); mini.hidden = false; }
             }
           }
         }, 2000);

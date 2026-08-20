@@ -516,6 +516,13 @@
       });
     }
   } catch (e) {}
+  // v3.7.x 修复：上传字体 dataURL 属大键（>200KB）只进 IDB+memoryCache、localStorage 被删，
+  //   刷新后 memoryCache 清空。本文件初始化时同步调用的 applyFont() 已跑过（当时无数据），
+  //   上方 idbGet 补读又被 !store.get() 条件跳过（idbRestore 先回填 memoryCache 时）→
+  //   字体刷新后不应用。数据就绪后兜底再应用一次（applyFont 幂等，重复调用安全）
+  document.addEventListener('mochi-restore-done', function () {
+    try { applyFont(); } catch (e) {}
+  });
   // v3.6.x：多桌面——切换联系人后重新应用聊天美化（壁纸/气泡颜色/字号/形状按新桌面）
   document.addEventListener('contact-switched', function () {
     try { applySettings(); } catch (e) {}
