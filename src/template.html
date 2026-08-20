@@ -2135,6 +2135,8 @@
            内嵌占位后随消息区滚动、不遮挡，chat.js 在占位时保持最后消息可见） -->
       <div class="chat-typing" id="chat-typing" hidden>对方正在输入…</div>
       <div class="chat-draft" id="chat-draft" hidden>
+        <!-- 引用预览条（v3.7.x：点消息操作「引用」后显示在输入栏上方，含引用内容 + ✕ 删除） -->
+        <div class="chat-draft-quote" id="chat-draft-quote" hidden></div>
         <div class="chat-draft-items" id="chat-draft-items"></div>
       </div>
       <div class="chat-input-row">
@@ -2164,6 +2166,12 @@
         <div class="chat-search-bar">
           <input class="chat-search-input" id="chat-search-input" placeholder="输入关键词搜索聊天记录…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
           <button class="chat-search-go" id="chat-search-go">搜索</button>
+        </div>
+        <div class="chat-search-date">
+          <input type="date" class="chat-search-date-input" id="chat-search-date-from" title="开始日期">
+          <span class="chat-search-date-sep">至</span>
+          <input type="date" class="chat-search-date-input" id="chat-search-date-to" title="结束日期">
+          <button class="chat-search-date-clear" id="chat-search-date-clear" title="清除日期">清除</button>
         </div>
         <div class="poke-card-scroll chat-search-results" id="chat-search-results"></div>
       </div>

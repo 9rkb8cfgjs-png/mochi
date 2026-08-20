@@ -3515,48 +3515,83 @@ function partialRetractMsg(msgEl, side) {
   const chatSearchGo = document.getElementById('chat-search-go');
   const chatSearchResults = document.getElementById('chat-search-results');
   const chatSearchNew = document.getElementById('chat-search-new');
+  const chatSearchDateFrom = document.getElementById('chat-search-date-from');
+  const chatSearchDateTo = document.getElementById('chat-search-date-to');
+  const chatSearchDateClear = document.getElementById('chat-search-date-clear');
   function openChatSearch() {
     if (!chatSearchEl) return;
     loadMsgs();
     chatSearchEl.hidden = false;
     chatSearchInput.value = '';
-    chatSearchResults.innerHTML = '<div class="chat-search-empty">输入关键词搜索聊天记录</div>';
+    if (chatSearchDateFrom) chatSearchDateFrom.value = '';
+    if (chatSearchDateTo) chatSearchDateTo.value = '';
+    chatSearchResults.innerHTML = '<div class="chat-search-empty">输入关键词，或选择日期范围搜索聊天记录</div>';
     setTimeout(() => chatSearchInput.focus(), 60);
   }
   function closeChatSearch() {
     if (chatSearchEl) chatSearchEl.hidden = true;
   }
+  // v3.7.x：日期条件转时间戳（本地时区，结束日期含当天 24 点）
+  function searchDateToTs(ds, inclusiveEnd) {
+    if (!ds) return null;
+    const parts = String(ds).split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return null;
+    const d = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+    if (isNaN(d.getTime())) return null;
+    return d.getTime() + (inclusiveEnd ? 86400000 : 0);
+  }
+  // v3.7.x：搜索结果时间带日期（MM-DD HH:MM，跨天搜索能看出是哪天）
+  function fmtSearchTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const p = (n) => (n < 10 ? '0' + n : '' + n);
+    return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
   function runChatSearch() {
     if (!chatSearchResults) return;
     const q = (chatSearchInput.value || '').trim();
-    if (!q) { chatSearchResults.innerHTML = '<div class="chat-search-empty">输入关键词搜索聊天记录</div>'; return; }
+    const fromTs = searchDateToTs(chatSearchDateFrom ? chatSearchDateFrom.value : '', false);
+    const toTs = searchDateToTs(chatSearchDateTo ? chatSearchDateTo.value : '', true);
+    const dateLabel = fromTs != null && toTs != null ? (chatSearchDateFrom.value + ' 至 ' + chatSearchDateTo.value) :
+                      fromTs != null ? (chatSearchDateFrom.value + ' 起') :
+                      toTs != null ? ('截至 ' + chatSearchDateTo.value) : '';
+    if (!q && fromTs == null && toTs == null) {
+      chatSearchResults.innerHTML = '<div class="chat-search-empty">输入关键词，或选择日期范围搜索聊天记录</div>';
+      return;
+    }
     loadMsgs();
     const partnerName = store.get('lbl-partner') || 'TA';
     const myName = store.get('lbl-user') || '我';
     const results = [];
     msgs.forEach((m, i) => {
       if (!m || m.special) return;
+      if (fromTs != null && (!m.ts || m.ts < fromTs)) return;
+      if (toTs != null && (!m.ts || m.ts >= toTs)) return;
       let txt = typeof m.text === 'string' ? m.text : '';
       if (m.askQuestion) txt += ' ' + m.askQuestion;
       if (m.choiceQuestion) txt += ' ' + m.choiceQuestion;
       if (m.curiousQuestion) txt += ' ' + m.curiousQuestion;
       if (m.roastText) txt += ' ' + m.roastText;
-      if (txt.indexOf(q) >= 0) results.push({ i: i, m: m, txt: txt });
+      if (q && txt.indexOf(q) < 0) return;
+      results.push({ i: i, m: m, txt: txt });
     });
-    if (!results.length) {
-      chatSearchResults.innerHTML = '<div class="chat-search-empty">没有找到包含「' + q + '」的消息</div>';
-      return;
-    }
     // v3.6.x：完整转义（原只转 </>，搜索词/昵称含 `&lt;…&gt;` 可绕过）
     const esc = (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    if (!results.length) {
+      const emptyMsg = q ? ('没有找到包含「' + esc(q) + '」' + (dateLabel ? '（' + dateLabel + '）' : '') + '的消息') : (dateLabel ? dateLabel + ' 没有聊天记录' : '输入关键词，或选择日期范围搜索聊天记录');
+      chatSearchResults.innerHTML = '<div class="chat-search-empty">' + emptyMsg + '</div>';
+      return;
+    }
     const hl = (x) => esc(x).split(q).join('<span class="chat-search-hl">' + esc(q) + '</span>');
-    let html = '<div style="font-size:11px;color:var(--muted);margin:6px 2px 10px">共 ' + results.length + ' 条 · 点击结果跳转到对应消息</div>';
+    let head = '共 ' + results.length + ' 条 · 点击结果跳转到对应消息';
+    if (dateLabel) head = dateLabel + ' · 共 ' + results.length + ' 条 · 点击结果跳转';
+    let html = '<div style="font-size:11px;color:var(--muted);margin:6px 2px 10px">' + esc(head) + '</div>';
     results.slice(0, 80).forEach(r => {
       const isImg = r.txt.indexOf('data:') === 0;
       const label = isImg ? '[图片]' : (r.txt.length > 60 ? r.txt.slice(0, 60) + '…' : r.txt);
       const who = r.m.side === 'out' ? myName : partnerName;
-      const time = r.m.ts ? fmtTime(r.m.ts) : '';
-      html += '<div class="tc-listitem" data-sidx="' + r.i + '"><div class="tc-li-top"><span class="tc-li-q">' + who + '：' + (isImg ? '[图片]' : hl(label)) + '</span><span class="tc-li-time">' + time + '</span></div></div>';
+      const time = r.m.ts ? fmtSearchTime(r.m.ts) : '';
+      html += '<div class="tc-listitem" data-sidx="' + r.i + '"><div class="tc-li-top"><span class="tc-li-q">' + who + '：' + (isImg ? '[图片]' : (q ? hl(label) : esc(label))) + '</span><span class="tc-li-time">' + time + '</span></div></div>';
     });
     if (results.length > 80) html += '<div class="ta-empty">还有 ' + (results.length - 80) + ' 条…</div>';
     chatSearchResults.innerHTML = html;
@@ -3599,6 +3634,16 @@ function partialRetractMsg(msgEl, side) {
   // ---- 聊天记录 导出 / 导入：已移至右上角三点 → 聊天设置「数据」分组（chat-settings.js） ----
   if (chatSearchGo) chatSearchGo.addEventListener('click', (e) => { e.stopPropagation(); runChatSearch(); });
   if (chatSearchInput) chatSearchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.stopPropagation(); runChatSearch(); } });
+  // v3.7.x：按日期查询——日期变化自动搜索（关键词可留空）
+  if (chatSearchDateFrom) chatSearchDateFrom.addEventListener('change', (e) => { e.stopPropagation(); runChatSearch(); });
+  if (chatSearchDateTo) chatSearchDateTo.addEventListener('change', (e) => { e.stopPropagation(); runChatSearch(); });
+  if (chatSearchDateClear) chatSearchDateClear.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (chatSearchDateFrom) chatSearchDateFrom.value = '';
+    if (chatSearchDateTo) chatSearchDateTo.value = '';
+    chatSearchResults.innerHTML = '<div class="chat-search-empty">输入关键词，或选择日期范围搜索聊天记录</div>';
+    chatSearchInput.focus();
+  });
   const chatSearchClose = document.getElementById('chat-search-close');
   if (chatSearchClose) chatSearchClose.addEventListener('click', (e) => { e.stopPropagation(); closeChatSearch(); });
   if (chatSearchNew) chatSearchNew.addEventListener('click', (e) => {
@@ -3910,13 +3955,14 @@ function partialRetractMsg(msgEl, side) {
       const rec = (idx >= 0 && msgs[idx]) ? msgs[idx] : null;
       if (act === 'quote') {
         // 引用：记录待引用内容，下次发送带引用块（组合消息同时带图片缩略图）
+        // v3.7.x：设置后立即刷新引用预览条（输入栏上方显示引用了什么，可 ✕ 删除）
         if (rec) {
           const qimgs = (rec.parts || []).filter(p => p.k === 'img').map(p => p.v).slice(0, 3);
           // v3.5.131：语音消息引用存占位文案（rec.text 是「文件名|||base64」，
           // 直接引用会在气泡里显示整段 base64 乱码）
           const qtext = rec.type === 'voice' ? '[语音] ' + String(rec.text || '').split('|||')[0] : rec.text;
           lastQuote = { side: rec.side, text: qtext, type: rec.type, imgs: qimgs };
-          toast('已选择引用，发送消息时带上');
+          renderDraft();
         }
         closeMsgActions();
       } else if (act === 'fav') {
@@ -4283,7 +4329,8 @@ function partialRetractMsg(msgEl, side) {
     const inputEl = document.getElementById('chat-input');
     const text = (inputEl ? (inputEl.textContent || '') : '').trim();
     const quote = lastQuote ? { q: quoteValue(lastQuote), s: lastQuote.side } : null;
-    if (quote) lastQuote = null;
+    // v3.7.x：发送后清引用并刷新预览条（无文字分支也要清，否则引用条残留）
+    if (quote) { lastQuote = null; renderDraft(); }
     if (text) {
       lastMineText = text;
       const rec = { side: 'out', text: text, parts: [{ k: 'text', v: text }, { k: 'img', v: src, sub: 'sticker' }] };
@@ -4755,10 +4802,45 @@ function partialRetractMsg(msgEl, side) {
   const send = document.getElementById('chat-send');
   const draftEl = document.getElementById('chat-draft');
   const draftItems = document.getElementById('chat-draft-items');
+  const quoteEl = document.getElementById('chat-draft-quote');
   let draftImgs = []; // 待发送图片（表情包/图片 dataURL）
+  // v3.7.x：引用预览条——点消息操作「引用」后在输入栏上方显示引用了什么，
+  // 支持点 ✕ 删除（lastQuote 置空）。与图片草稿共用 #chat-draft 容器，
+  // 引用条在上、图片缩略图在下，任一存在整条草稿区就可见。
+  function renderQuoteBar() {
+    if (!quoteEl) return;
+    quoteEl.innerHTML = '';
+    if (!lastQuote) { quoteEl.hidden = true; return; }
+    quoteEl.hidden = false;
+    const bar = document.createElement('div');
+    bar.className = 'chat-draft-quote-bar';
+    const thumb = (lastQuote.imgs && lastQuote.imgs.length) ? lastQuote.imgs[0] : null;
+    if (thumb) {
+      // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
+      const img = document.createElement('img');
+      img.className = 'chat-draft-quote-img';
+      img.src = thumb;
+      img.alt = '';
+      bar.appendChild(img);
+    }
+    const t = document.createElement('span');
+    t.className = 'chat-draft-quote-text';
+    t.textContent = lastQuote.text || '图片';
+    bar.appendChild(t);
+    const xBtn = document.createElement('button');
+    xBtn.className = 'chat-draft-x chat-draft-quote-x';
+    xBtn.textContent = '✕';
+    xBtn.addEventListener('click', () => {
+      lastQuote = null;
+      renderDraft();
+    });
+    bar.appendChild(xBtn);
+    quoteEl.appendChild(bar);
+  }
   function renderDraft() {
     if (!draftEl || !draftItems) return;
-    draftEl.hidden = !draftImgs.length;
+    renderQuoteBar();
+    draftEl.hidden = !draftImgs.length && !lastQuote;
     draftItems.innerHTML = '';
     draftImgs.forEach((src, i) => {
       const it = document.createElement('div');

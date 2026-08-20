@@ -9,6 +9,16 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（用户反馈「聊天里点引用后，发送前输入栏上方无法显示引用了什么、无法删除引用」）
+- [本会话·完成]（**已构建 verify 10/10 + 引用预览冒烟 12/12，本次提交**）：`src/js/chat.js`（AI-A 域）、`src/css/chat-main.css`（AI-A 域）、`src/template.html`（AI-B 域代改一行）、`tools/smoke-quote-preview.mjs`（新增专项测试）。
+  - 根因：点气泡操作「引用」只写内存 `lastQuote` + toast，输入栏上方没有任何引用预览 UI，也没有删除入口。
+  - 实现：`#chat-draft` 草稿区（template 锚点）内新增 `#chat-draft-quote` 引用预览条——`renderDraft()` 内新增 `renderQuoteBar()`：显示引用文本（单行省略，组合消息带图片缩略图）+ ✕ 删除按钮（点击清 `lastQuote` 重渲染）；引用操作后 `renderDraft()` 即时刷新（去掉原 toast）；`sendSticker`/`addMsg` 发送后清引用并刷新（无文字分支也清，防残留）；`.chat-draft` 改纵向 flex（引用条在上、图片缩略图在下可共存）。引用条用中性灰底 + 左侧竖条，深浅主题通吃（不依赖 dark.css）。
+  - 验证：CDP 冒烟 12/12（发消息→点气泡→引用→预览条出现含内容+✕→点 ✕ 消失→再引用→发送→新气泡带 `.msg-quote` 引用块且内容正确→预览条消失→无 JS 异常）。
+  - ⚠️ 本次构建统一包含对方未提交改动：`base.css`（开屏确认层小屏修复）、`chat-pages.css`、`music-player.js`，一次 build 全部打进。
+
+### 2026-08-20（用户反馈「iOS 默认浏览器依旧无法点击、无法使用、页面完全卡住」· 本会话诊断修复）
+- [本会话·完成]（**已改 src，未构建未提交**，请构建者执行 `node build.mjs`）：根因——v3.7.x 开屏报修确认层在小屏 iPhone（375×667 iPhone 6/7/8/SE2、360×640、320×568 SE1）上，**确认按钮在屏幕可视区下方**：`.splash-confirm-card` 整卡 `overflow-y:auto`，按钮随长文本被推到卡片底部、被 iOS Safari 底部工具栏遮挡或完全看不见，整层盖住全屏看起来就是「页面卡死、什么也点不了」；390×844 以上现代机型不滚动可见，所以无头 Chrome 默认尺寸一直没复现。CDP 实测（修复前）：375×667 按钮底边 667=视口底、320×568 按钮底边 705 完全出屏。修复（`src/css/base.css`，AI-B 名下，本会话代改）：`.splash-confirm-card` 改 `display:flex; flex-direction:column; height:min(560px,100%)`（按钮不再被文本推走），`.splash-confirm-text` 改 `flex:1; min-height:0; overflow-y:auto`（仅正文滚动），按钮 `flex-shrink:0` 常驻卡片底部。CDP 验证（注入修复后线上 index.html）：320×568 / 360×640 / 375×667 / 390×844 四尺寸按钮全部完整可见（btnBot 527/583/597/685 < 视口高），完整流程 6/6：进入按钮→确认层弹出→按钮可见→点 OK 开屏移除（DOM 删除）→主页可开。⚠️ 工作区另有对方未提交的 chat-pages.css/music-player.js + 已构建产物，本次改动未含在内，需构建者统一再 build 一次。
+
 ### 2026-08-20（用户需求「查岗日常字卡：单个字卡添加后可修改/移动，增加分组修改及移动功能」）
 - [AI-A·完成]（**已构建 verify 10/10 + 查岗冒烟 9/9，未提交**）：`src/js/p2-features.js`（AI-A 域）、`src/css/chat-pages.css`（AI-A 域）。
   - **字卡编辑**：`ckMineItemHtml` 字卡内容加 `data-edit`，点击打开 `openModal` 编辑内容（校验同分类去重），保存后 `ckSaveItems` + 重渲染。
@@ -624,3 +634,10 @@
   - **修复**：删除固定 uid，新增 `snapKey() { return window.activePrefix() + ':' + SNAP_KEY; }`，loadSnap/writeSnap（3 处）全部走动态键 → 每桌面各写各的快照，非 default 桌面不再读到 default 的信。排查确认：chat.js `writeLsSnapshot` 已是动态 `activePrefix()` ✓；feed.js 快照固定 default 是**故意**（feed-posts 全局共享数据）✓。
   - **CDP 验证**：修复前——联系人2桌面信箱显示 default 桌面的信（内容相同+「来自 二宝」）；修复后——隔离正确（cid2 主键空时信箱空）、两桌面各自来信独立、default 显示「来自 大宝」/cid2 显示「来自 二宝」互不串。verify 10/10。
   - 涉及 `src/js/mail.js`（AI-A 名下，本会话代改；build 产物含并行会话已保存的 chat.js/decision.js 改动，一并提交）。
+
+### 2026-08-20（用户反馈三连：备忘心情不刷新 / 全屏退出提醒不消失+黑边 / TA 引用消息异常）
+- [本会话·完成]（**已随对方多次提交构建 verify 10/10 + CDP 专项验证**）：三个用户反馈问题的修复（我的改动已被对方分次提交包含，工作区当前干净）。
+  - **问题1 备忘/心情不每天刷新**（`src/js/p2-features.js`）：根因——备忘/心情存固定键 `memo`/`today-mood`，保存一次永久显示。修复——改为按「天」显示：读当日快照 `memo-YYYY-MM-DD`/`today-mood-YYYY-MM-DD`（对方 AI-A 同日也加了同款快照，合并无冲突），当天没写显示占位、第二天自动重新开始；跨天页面开着时 30s 轮询自动刷新；兼容迁移（`legacyToday`）：老用户当天写过（历史第一条 ts 是今天）则把固定键内容迁移为今日快照，不丢内容；历史记录 `memo-history`/`mood-history` 照常写入，主页「我的今日备忘/心情」可查看。
+  - **问题3 TA 引用消息异常**（`src/js/chat.js`）：根因①「要么不引用」——`lastMineText` 从未在加载历史后初始化，首次回复时为空（quote-prob 命中也只显示占位省略号）；修复——`loadMsgs` 三处出口（LS 快照载入/IDB 合并完成/IDB 无数据分支）调用 `syncLastMineText()`。根因②「连续引用同一条发很多条」——`scheduleReply` 里 quote 在循环外掷一次骰、N 条回复全复用同一个引用；修复——改为每条回复独立掷骰 + 独立取值。CDP 验证：历史注入后 TA 回复带引用块；quote-prob=50 连发 2 条跑 8 轮出现 3 次「恰好 1 条带引用」（旧逻辑该情况不可能出现）。
+  - **问题2 全屏退出提醒不消失 + 顶部黑边**（`src/js/fullscreen.js` + `src/pwa/manifest.json`）：根因①黑边——manifest `display_override:["fullscreen","standalone"]` 让快捷方式直启系统级全屏，挖孔屏顶部 cutout 被涂黑；修复——`display_override` 改为 `["standalone"]`（standalone 仍可隐藏浏览器栏，去系统级全屏黑边；用户可在设置里手动开全屏）。根因②退出提醒不消失——浏览器标签模式下 `FS_KEY` 保持 '1'，用户用系统 UI 退出全屏后 `reenterFs`（切后台回来/重新聚焦）强制重入 → 退出提示条反复弹出；修复——新增 `fsInPwa()` 判定：浏览器标签模式退出全屏（`handleFsExit`）清持久化标记、启动/`doRetry`/`reenterFs` 不再自动重入（`reenterFs` 仅在全屏中切后台时保留标记）；PWA 安装态行为不变照常自动恢复。CDP 验证：standalone 布局正常、浏览器模式启动清标记不再自动进全屏。
+  - 验证：`node tools/verify.mjs` 10/10；临时探测脚本（probe-fs/probe-fix/probe-fs2）已删。

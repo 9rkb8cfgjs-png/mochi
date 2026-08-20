@@ -2242,11 +2242,11 @@
   // 聊天回复完成后由 chat.js 调用（延后 2 秒，仿星言）
   window.maybeMusicRequest = function () {
     try {
-      console.log('[music-req] called', { libLen: library.length, cooldownAt: cooldownAt, cooldownMs: settings.cooldownMs, reqProb: settings.reqProb, prob: settings.reqProb || 5, now: Date.now() });
+      const prob = (typeof settings.reqProb === 'number' ? settings.reqProb : 5);
+      console.log('[music-req] called', { libLen: library.length, cooldownAt: cooldownAt, cooldownMs: settings.cooldownMs, reqProb: settings.reqProb, prob: prob, now: Date.now() });
       if (!library.length) { console.log('[music-req] return: library empty'); return; }
       const now = Date.now();
       if (now - cooldownAt < settings.cooldownMs) { console.log('[music-req] return: cooldown', { remain: settings.cooldownMs - (now - cooldownAt) }); return; }
-      const prob = settings.reqProb || 5;
       if (Math.random() * 100 >= prob) { console.log('[music-req] return: prob miss', { prob: prob }); return; }
       console.log('[music-req] TRIGGER');
       cooldownAt = now;
@@ -2425,7 +2425,7 @@
       const lines = [
         '歌库: ' + library.length + ' 首',
         'maybeMusicRequest: ' + (typeof window.maybeMusicRequest),
-        'reqProb: ' + settings.reqProb + ' → 实际 ' + (settings.reqProb || 5) + '%',
+        'reqProb: ' + settings.reqProb + ' → 实际 ' + (typeof settings.reqProb === 'number' ? settings.reqProb : 5) + '%',
         'cooldownMs: ' + settings.cooldownMs,
         '冷却剩余: ' + Math.ceil(remain / 1000) + ' s',
         'openTCPanel: ' + (typeof window.openTCPanel),

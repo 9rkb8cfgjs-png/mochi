@@ -1058,6 +1058,10 @@
   flex:1; min-width:0; border:1px solid rgba(0,0,0,.1); border-radius:10px;
   padding:9px 12px; font-size:13px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
 }
+/* v3.7.x：安卓 Chrome 键盘弹出/单选题切换 textarea 显隐引发布局重排时，聚焦的
+   ce-box 文本层偶发停在旧位置，表现=输入的文字显示在输入框下面（框向上移动了，
+   文字停在原位）。translateZ(0) 让 ce-box 自带独立合成层，逐帧按当前布局位置合成 */
+.ta-add .ce-box:focus { transform:translateZ(0); }
 .ta-add-btn {
   border:none; border-radius:10px; padding:9px 16px; flex-shrink:0;
   background:var(--ink); color:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;

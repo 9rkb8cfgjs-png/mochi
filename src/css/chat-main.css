@@ -146,14 +146,34 @@
 /* 消息区底部留白，最后一条消息不贴输入栏 */
 .chat-body { padding-bottom:24px; }
 
-/* 待发送草稿条（图片/表情组合）——无边框，不显示白色长方形框 */
+/* 待发送草稿条（图片/表情组合 + 引用预览）——无边框，不显示白色长方形框
+   v3.7.x：改纵向排列——引用预览条在上、图片缩略图在下，可同时存在 */
 .chat-draft {
-  display:flex; align-items:center; gap:8px;
+  display:flex; flex-direction:column; align-items:stretch; gap:8px;
   margin:6px 4px 0; padding:8px 10px;
   background:transparent; border:none;
   border-radius:12px;
 }
 .chat-draft[hidden] { display:none; }
+/* 引用预览条（v3.7.x：点消息操作「引用」后显示引用了什么，✕ 删除）——
+   中性灰底 + 左侧竖条，深浅主题通吃 */
+.chat-draft-quote { display:flex; }
+.chat-draft-quote[hidden] { display:none; }
+.chat-draft-quote-bar {
+  display:flex; align-items:center; gap:8px; flex:1; min-width:0;
+  padding:6px 8px; border-radius:8px;
+  background:rgba(127,127,127,.13);
+  border-left:3px solid rgba(127,127,127,.5);
+}
+.chat-draft-quote-img {
+  width:22px; height:22px; border-radius:5px; object-fit:cover;
+  flex-shrink:0; border:1px solid rgba(0,0,0,.08);
+}
+.chat-draft-quote-text {
+  flex:1; min-width:0; font-size:12.5px; line-height:1.35; color:inherit;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.chat-draft-quote-x { position:static; background:rgba(0,0,0,.35); }
 .chat-draft-items { display:flex; gap:8px; overflow-x:auto; flex:1; scrollbar-width:none; }
 .chat-draft-items::-webkit-scrollbar { display:none; }
 .chat-draft-item {
@@ -204,6 +224,23 @@
   background:var(--ink); color:#fff; font-size:13px; font-weight:700;
   cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
+/* v3.7.x：按日期查询——开始/结束日期 + 清除，与关键词可组合使用 */
+.chat-search-date {
+  display:flex; align-items:center; gap:6px; padding:0 2px 10px; flex-shrink:0;
+}
+.chat-search-date-input {
+  flex:1; min-width:0; border:1px solid rgba(0,0,0,.1); border-radius:10px;
+  padding:6px 8px; font-size:12px; font-family:inherit; outline:none; background:#f6f6f6;
+  color:var(--ink); -webkit-appearance:none; appearance:none;
+}
+.chat-search-date-input:focus { border-color:var(--ink); background:#fff; }
+.chat-search-date-sep { flex-shrink:0; font-size:12px; color:var(--muted); }
+.chat-search-date-clear {
+  flex-shrink:0; border:1px solid rgba(0,0,0,.1); background:#fff; color:var(--ink);
+  font-size:12px; padding:6px 10px; border-radius:99px; cursor:pointer;
+  font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.chat-search-date-clear:active { background:rgba(0,0,0,.05); }
 .chat-search-results {
   flex:1; overflow-y:auto; padding:2px 2px 4px;
   scrollbar-width:none; -ms-overflow-style:none;
