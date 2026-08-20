@@ -4104,7 +4104,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787216810780">Mochi 字卡传讯 v3.6.157 · 部署于 2026-08-20 17:06</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787218340413">Mochi 字卡传讯 v3.6.158 · 部署于 2026-08-20 17:32</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4867,7 +4867,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.157</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.158</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -30643,7 +30643,7 @@ a.play().catch(() => {});
 return;
 }
 const bid = store.get(BKEYS[type]);
-if (bid !== 'none' && bid && SYNTHS[bid]) playBuiltin(bid, loop);
+if (bid !== 'none' && bid && SYNTHS[bid]) playBuiltin(bid, type === 'ring' && loop);
 } catch (e) {}
 };
 window.stopSfx = function (type) {

@@ -82,7 +82,7 @@ await cdpConnect();
 await cdp('Page.enable');
 await cdp('Runtime.enable');
 // 收集页面 JS 异常 + 在 sfx.js 前注入 AudioContext/Audio 计数探针
-await cdp('Page.addScriptToEvaluateOnNewDocument', { source: "(function(){window.__smokeErrs=[];window.addEventListener('error',function(e){try{window.__smokeErrs.push(String(e.message||e.error||'err'));}catch(_){}});try{window.__sfxBufSrc=0;var AC=window.AudioContext||window.webkitAudioContext;if(AC){var o1=AC.prototype.createBufferSource;AC.prototype.createBufferSource=function(){window.__sfxBufSrc++;return o1.apply(this,arguments);};}window.__sfxAudioPlay=0;var A=window.Audio;if(A){var o2=A.prototype.play;A.prototype.play=function(){window.__sfxAudioPlay++;return o2.apply(this,arguments);};}}catch(e){}})()" });
+await cdp('Page.addScriptToEvaluateOnNewDocument', { source: "(function(){window.__smokeErrs=[];window.addEventListener('error',function(e){try{window.__smokeErrs.push(String(e.message||e.error||'err'));}catch(_){}});try{window.__sfxBufSrc=0;window.__lastSrc=null;var AC=window.AudioContext||window.webkitAudioContext;if(AC){var o1=AC.prototype.createBufferSource;AC.prototype.createBufferSource=function(){window.__sfxBufSrc++;var s=o1.apply(this,arguments);window.__lastSrc=s;return s;};}window.__sfxAudioPlay=0;var A=window.Audio;if(A){var o2=A.prototype.play;A.prototype.play=function(){window.__sfxAudioPlay++;return o2.apply(this,arguments);};}}catch(e){}})()" });
 
 const results = [];
 function check(desc, ok, detail) {
@@ -151,6 +151,9 @@ await sleep(200);
 const spyAfterPlay = await evalJs('window.__sfxBufSrc') || 0;
 check('playSfx(in) 内置路径播放', spyAfterPlay === spyAfterDing + 1, 'bufSrc=' + spyAfterPlay);
 
+const loopAfterIn = await evalJs("(function(){var s=window.__lastSrc;return s?!!s.loop:null;})()");
+check('消息音效不循环（loop=false）', loopAfterIn === false, 'loop=' + loopAfterIn);
+
 // —— 用例 6：点「静音」→ 写入 none，静音后 playSfx 不播放 ——
 await evalJs("(function(){var b=Array.from(document.querySelectorAll('#sfx-in-presets .sfx-preset')).find(function(x){return x.textContent==='静音';});if(b)b.click();return true;})()");
 await sleep(200);
@@ -197,6 +200,9 @@ await evalJs("(function(){if(window.playSfx)window.playSfx('ring');if(window.sto
 await sleep(200);
 const spyAfterRing = await evalJs('window.__sfxBufSrc') || 0;
 check('playSfx(ring)+stopSfx 无异常（合成+1）', spyAfterRing === spyAfterClassic + 1, 'bufSrc=' + spyAfterRing);
+const loopAfterRing = await evalJs("(function(){var s=window.__lastSrc;return s?!!s.loop:null;})()");
+check('来电铃声循环（loop=true）', loopAfterRing === true, 'loop=' + loopAfterRing);
+
 
 // —— 用例 11：切桌面（contact-switched）后预设重渲染无异常 ——
 await evalJs("(function(){document.dispatchEvent(new Event('contact-switched'));return true;})()");

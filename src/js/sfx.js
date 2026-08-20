@@ -249,8 +249,11 @@
       // —— 内置音效 ——
       const bid = store.get(BKEYS[type]);
       // v3.7.x：默认关闭——缺省（无键）或显式静音（'none'）都不播放，
-      //   只有用户主动选过内置音效才播
-      if (bid !== 'none' && bid && SYNTHS[bid]) playBuiltin(bid, loop);
+      //   只有用户主动选过内置音效才播。
+      // v3.7.x bugfix：loop 只对来电铃声（ring）生效——chat.js 调 playSfx('in') 不带 opts
+      //   时 loop 为 true，若不拦截会让短音无限循环（自定义路径一直有 type==='ring' 守卫，
+      //   内置路径曾遗漏，联系人发一条消息音效一直响）
+      if (bid !== 'none' && bid && SYNTHS[bid]) playBuiltin(bid, type === 'ring' && loop);
     } catch (e) {}
   };
   // 停止长音（来电铃声）：同时停自定义 Audio 与内置 BufferSource
