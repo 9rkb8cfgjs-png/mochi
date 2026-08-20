@@ -19,7 +19,7 @@
   }
   const KEYS = { ring: 'sfx-ring', in: 'sfx-in', out: 'sfx-out' };
   const BKEYS = { ring: 'sfx-ring-b', in: 'sfx-in-b', out: 'sfx-out-b' };
-  const NAMES = { ring: '联系人来电铃声', in: '联系人发送和回复消息', out: '我发送消息' };
+  const NAMES = { ring: '联系人来电铃声', in: '联系人发送和回复消息', out: '我发送和回复消息' };
 
   // ================= 内置音效库（v3.7.x） =================
   // 全部由 Web Audio API 合成，无外部资源、不占 localStorage。
@@ -33,10 +33,12 @@
   const PRESET_ORDER = {
     ring: ['ring-warm', 'ring-classic'],
     in: ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick'],
-    out: ['tick', 'bubble', 'piano', 'drop']
+    out: ['bubble', 'tick', 'piano', 'drop']
   };
   // 用户未选择任何音效时的默认内置
-  const DEFAULT_BUILTIN = { ring: 'ring-warm', in: 'bubble', out: 'tick' };
+  // v3.7.x：联系人消息与我方消息默认同一种内置音效（in/out 都是 bubble），
+  //   收发默认听感一致；用户仍可各自切换成不同音效
+  const DEFAULT_BUILTIN = { ring: 'ring-warm', in: 'bubble', out: 'bubble' };
   const PRESET_CONTAINERS = { ring: 'sfx-ring-presets', in: 'sfx-in-presets', out: 'sfx-out-presets' };
 
   // AudioContext 单例：首建 + 每次播放前 resume（iOS 自动播放策略要求）

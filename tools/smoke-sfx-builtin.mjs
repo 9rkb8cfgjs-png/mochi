@@ -117,11 +117,11 @@ check('联系人消息预设胶囊 7 个（静音+6 内置）', c1.in === 7, 'in
 check('我发消息预设胶囊 5 个（静音+4 内置）', c1.out === 5, 'out=' + c1.out);
 
 // —— 用例 2：默认内置生效 + 默认胶囊高亮 + 状态显示 ——
-const c2 = JSON.parse(await evalJs("(function(){var val=function(id){var el=document.getElementById(id);return el?el.textContent:'';};function on(id,label){var el=document.getElementById(id);var b=el?Array.from(el.querySelectorAll('.sfx-preset')).find(function(x){return x.textContent===label;}):null;return b?b.classList.contains('on'):false;}return JSON.stringify({ring:val('sfx-ring-val'),in:val('sfx-in-val'),out:val('sfx-out-val'),ringOn:on('sfx-ring-presets','温馨铃'),inOn:on('sfx-in-presets','气泡'),outOn:on('sfx-out-presets','轻叩'),noneOn:on('sfx-in-presets','静音')});})()") || '{}');
+const c2 = JSON.parse(await evalJs("(function(){var val=function(id){var el=document.getElementById(id);return el?el.textContent:'';};function on(id,label){var el=document.getElementById(id);var b=el?Array.from(el.querySelectorAll('.sfx-preset')).find(function(x){return x.textContent===label;}):null;return b?b.classList.contains('on'):false;}return JSON.stringify({ring:val('sfx-ring-val'),in:val('sfx-in-val'),out:val('sfx-out-val'),ringOn:on('sfx-ring-presets','温馨铃'),inOn:on('sfx-in-presets','气泡'),outOn:on('sfx-out-presets','气泡'),noneOn:on('sfx-in-presets','静音')});})()") || '{}');
 check('默认来电铃声=温馨铃', c2.ring === '温馨铃', c2.ring);
 check('默认联系人消息=气泡', c2.in === '气泡', c2.in);
-check('默认我发消息=轻叩', c2.out === '轻叩', c2.out);
-check('默认内置胶囊高亮（温馨铃/气泡/轻叩）', c2.ringOn === true && c2.inOn === true && c2.outOn === true);
+check('默认我发送和回复消息=气泡（与联系人同一种）', c2.out === '气泡', c2.out);
+check('默认内置胶囊高亮（温馨铃/气泡/气泡）', c2.ringOn === true && c2.inOn === true && c2.outOn === true);
 check('默认静音胶囊不高亮', c2.noneOn === false);
 
 // —— 用例 3：记录合成基线（全局探针，其他模块可能已用过 AudioContext，只比较增量）——

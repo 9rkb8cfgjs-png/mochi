@@ -4104,7 +4104,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787213482330">Mochi 字卡传讯 v3.6.153 · 部署于 2026-08-20 16:11</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787213878382">Mochi 字卡传讯 v3.6.154 · 部署于 2026-08-20 16:17</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4867,7 +4867,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.153</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.154</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5439,7 +5439,7 @@ color: var(--muted);
           <div class="sfx-presets" id="sfx-in-presets"></div>
           <div class="set-row" id="sfx-out-row">
             <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5H16.5A2.5 2.5 0 0119 7v4.9a2.5 2.5 0 01-2.5 2.5h-2.9l3.2 3.5v-3.5H7.5A2.5 2.5 0 015 11.9V7a2.5 2.5 0 012.5-2.5z"/><path d="M13.5 8.4a1.8 1.8 0 010 3.2"/><path d="M16 7a4 4 0 010 6"/></svg></div>
-            <div class="txt">我发送消息</div>
+            <div class="txt">我发送和回复的消息</div>
             <div class="val" id="sfx-out-val"></div>
           </div>
           <div class="set-row sub" id="sfx-out-tools">
@@ -30437,7 +30437,7 @@ t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2200);
 }
 const KEYS = { ring: 'sfx-ring', in: 'sfx-in', out: 'sfx-out' };
 const BKEYS = { ring: 'sfx-ring-b', in: 'sfx-in-b', out: 'sfx-out-b' };
-const NAMES = { ring: '联系人来电铃声', in: '联系人发送和回复消息', out: '我发送消息' };
+const NAMES = { ring: '联系人来电铃声', in: '联系人发送和回复消息', out: '我发送和回复消息' };
 const PRESET_NAMES = {
 bubble: '气泡', ding: '叮咚', bird: '小鸟', drop: '水滴',
 piano: '钢琴', tick: '轻叩', 'ring-warm': '温馨铃', 'ring-classic': '经典铃'
@@ -30445,9 +30445,9 @@ piano: '钢琴', tick: '轻叩', 'ring-warm': '温馨铃', 'ring-classic': '经�
 const PRESET_ORDER = {
 ring: ['ring-warm', 'ring-classic'],
 in: ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick'],
-out: ['tick', 'bubble', 'piano', 'drop']
+out: ['bubble', 'tick', 'piano', 'drop']
 };
-const DEFAULT_BUILTIN = { ring: 'ring-warm', in: 'bubble', out: 'tick' };
+const DEFAULT_BUILTIN = { ring: 'ring-warm', in: 'bubble', out: 'bubble' };
 const PRESET_CONTAINERS = { ring: 'sfx-ring-presets', in: 'sfx-in-presets', out: 'sfx-out-presets' };
 let _ctx = null;
 function ensureCtx() {
