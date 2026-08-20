@@ -538,6 +538,11 @@ const comInput = document.getElementById('feed-comment-input');
 const comSend = document.getElementById('feed-comment-send');
 const comSticker = document.getElementById('feed-comment-sticker');
 const comImg = document.getElementById('feed-comment-img');
+// v3.7.x：OPPO Edge 对 ce-box(contenteditable 转换框)聚焦/输入失效——与回复设置
+// stp-val 同源（见 WORKLOG 2026-08 OPPO Edge 修复记录），评论输入框保持原生
+// textarea：预标记 ceDone 让 mobile-adapt.js 转换器跳过（原生仅弹自动填充条，
+// 不影响输入；ce-box 在 OPPO Edge 上无法聚焦/打字，评论直接发不出去）
+if (comInput) comInput.dataset.ceDone = '1';
 let comPid = null;
 let comReplyTarget = null; // v3.5.58：回复模式 { pid, ci }
 let comImgData = []; // 评论携带的图片（dataURL），不塞进输入框文本（避免乱码）
@@ -935,6 +940,9 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     }));
   }
   // 发布框：添加多张图片（每张压缩后存 dataURL，与文字混排进正文，同一张图片即 1 个字卡）
+  // v3.7.x：同评论输入框——预标记 ceDone 跳过 ce-box 转换（OPPO Edge 对 ce-box 聚焦/输入失效）
+  const feedInput = document.getElementById('feed-input');
+  if (feedInput) feedInput.dataset.ceDone = '1';
   const pickBtn = document.getElementById('feed-pick-img');
   const pickFile = document.getElementById('feed-pick-file');
   const preview = document.getElementById('feed-preview');

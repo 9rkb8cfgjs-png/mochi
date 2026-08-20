@@ -444,6 +444,7 @@
         if (typeof c === 'string' && c.indexOf('data:') === 0) { viewImage(c); return; }
         openEditCard(gname, i);
       });
+      attachCardDrag(d, gname, i);
       frag.appendChild(d);
     });
     if (anchor && anchor.parentNode === list) list.insertBefore(frag, anchor);
@@ -456,6 +457,143 @@
   const RENDER_BATCH = 80;
   let renderToken = 0;
   let rendering = false; // 分块渲染进行中（局部删除前判断：渲染中改走全量 render，防旧批次复活已删卡片）
+
+  // v3.7.x：字卡拖动排序——长按 350ms 触发，可在同分组内排序 / 跨分组移动
+  // 仅在主字卡/颜文字/emoji/表情包分类启用；管理模式/搜索/分块渲染中禁用
+  const DRAG_CATS = ['text', 'kaomoji', 'emoji', 'sticker'];
+  function attachCardDrag(el, gname, i) {
+    if (DRAG_CATS.indexOf(cur) < 0) return;
+    let pressTimer = null;
+    let startX = 0, startY = 0;
+    el.addEventListener('pointerdown', (e) => {
+      if (manageMode || q || rendering) return;
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+      startX = e.clientX; startY = e.clientY;
+      pressTimer = setTimeout(() => {
+        pressTimer = null;
+        if (manageMode || q || rendering) return;
+        startCardDrag(e, el, gname, i);
+      }, 350);
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (pressTimer && (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) {
+        clearTimeout(pressTimer); pressTimer = null;
+      }
+    });
+    const cancel = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
+    el.addEventListener('pointerup', cancel);
+    el.addEventListener('pointercancel', cancel);
+  }
+  function startCardDrag(e, el, gname, i) {
+    const rect = el.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top;
+    const clone = el.cloneNode(true);
+    clone.classList.add('cc-drag-clone');
+    clone.style.position = 'fixed';
+    clone.style.left = rect.left + 'px';
+    clone.style.top = rect.top + 'px';
+    clone.style.width = rect.width + 'px';
+    clone.style.zIndex = '1000';
+    clone.style.pointerEvents = 'none';
+    document.body.appendChild(clone);
+    el.classList.add('cc-dragging');
+    if (navigator.vibrate) try { navigator.vibrate(15); } catch (err) {}
+    let dropTarget = null;
+    const onMove = (ev) => {
+      ev.preventDefault();
+      clone.style.top = (ev.clientY - offsetY) + 'px';
+      dropTarget = computeCardDrop(ev.clientY);
+      updateCardDropIndicator(dropTarget);
+    };
+    const onUp = () => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+      clone.remove();
+      el.classList.remove('cc-dragging');
+      clearCardDropIndicator();
+      if (dropTarget) moveCardTo(gname, i, dropTarget);
+    };
+    document.addEventListener('pointermove', onMove, { passive: false });
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+  }
+  function computeCardDrop(clientY) {
+    const items = Array.from(list.querySelectorAll('.cc-item:not(.cc-dragging)'));
+    for (const item of items) {
+      const r = item.getBoundingClientRect();
+      if (clientY < r.top + r.height / 2) {
+        return { gname: item.dataset.g, idx: parseInt(item.dataset.idx, 10), before: true };
+      }
+    }
+    // 落在所有 item 之后：按 header 判断属于哪个分组，追加到该分组末尾（含空分组）
+    const headers = Array.from(list.querySelectorAll('.cc-group-header'));
+    let lastHeader = null;
+    for (const h of headers) {
+      if (clientY >= h.getBoundingClientRect().top) lastHeader = h;
+    }
+    if (lastHeader) {
+      const gname = lastHeader.dataset.g;
+      const grps = groups[cur] || [];
+      if (grps.find(x => x[0] === gname)) {
+        const groupItems = items.filter(it => it.dataset.g === gname);
+        if (groupItems.length) {
+          const last = groupItems[groupItems.length - 1];
+          return { gname, idx: parseInt(last.dataset.idx, 10), before: false };
+        }
+        return { gname, idx: 0, before: true, empty: true };
+      }
+    }
+    if (items.length) {
+      const last = items[items.length - 1];
+      return { gname: last.dataset.g, idx: parseInt(last.dataset.idx, 10), before: false };
+    }
+    return null;
+  }
+  function updateCardDropIndicator(target) {
+    clearCardDropIndicator();
+    if (!target) return;
+    const sel = (window.CSS && CSS.escape) ? CSS.escape(String(target.gname)) : String(target.gname).replace(/["\\]/g, '\\$&');
+    const line = document.createElement('div');
+    line.className = 'cc-drop-line';
+    if (target.empty) {
+      const header = list.querySelector('.cc-group-header[data-g="' + sel + '"]');
+      if (header && header.nextSibling) list.insertBefore(line, header.nextSibling);
+      else if (header) list.appendChild(line);
+      return;
+    }
+    const ref = list.querySelector('.cc-item[data-g="' + sel + '"][data-idx="' + target.idx + '"]');
+    if (!ref) return;
+    if (target.before) list.insertBefore(line, ref);
+    else if (ref.nextSibling) list.insertBefore(line, ref.nextSibling);
+    else list.appendChild(line);
+  }
+  function clearCardDropIndicator() {
+    list.querySelectorAll('.cc-drop-line').forEach(el => el.remove());
+  }
+  function moveCardTo(fromGname, fromIdx, target) {
+    const grps = groups[cur] || [];
+    const fromG = grps.find(g => g[0] === fromGname);
+    if (!fromG) return;
+    const card = fromG[1][fromIdx];
+    if (card === undefined) return;
+    const toG = grps.find(g => g[0] === target.gname);
+    if (!toG) return;
+    let toIdx = target.before ? target.idx : target.idx + 1;
+    if (fromGname === target.gname) {
+      if (fromIdx === toIdx || fromIdx === toIdx - 1) return; // 原地未动
+      fromG[1].splice(fromIdx, 1);
+      if (fromIdx < toIdx) toIdx -= 1;
+      fromG[1].splice(toIdx, 0, card);
+    } else {
+      fromG[1].splice(fromIdx, 1);
+      toG[1].splice(toIdx, 0, card);
+    }
+    saveGroups(groups);
+    renderGroupsBar();
+    render();
+    toast('字卡已移动');
+  }
 
   function render() {
     const token = ++renderToken;
@@ -522,6 +660,7 @@
           }
           openEditCard(it.gname, it.i);
         });
+        attachCardDrag(el, it.gname, it.i);
       }
     };
     const step = () => {
@@ -625,19 +764,119 @@
         }
       });
     }
+    // v3.7.x：管理分组面板——分组拖动排序（左侧 ≡ 手柄触发，document 监听 pointermove/up）
+    function attachGroupRowDrag(row, gi) {
+      const handle = row.querySelector('.mg-handle');
+      if (!handle) return;
+      handle.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0 && e.pointerType === 'mouse') return;
+        const listEl = mask.querySelector('.mg-list');
+        if (!listEl) return;
+        const rect = row.getBoundingClientRect();
+        const offsetY = e.clientY - rect.top;
+        const clone = row.cloneNode(true);
+        clone.classList.add('mg-drag-clone');
+        clone.style.position = 'fixed';
+        clone.style.left = rect.left + 'px';
+        clone.style.top = rect.top + 'px';
+        clone.style.width = rect.width + 'px';
+        clone.style.margin = '0';
+        document.body.appendChild(clone);
+        row.classList.add('mg-dragging');
+        let dropIdx = gi;
+        const onMove = (ev) => {
+          ev.preventDefault();
+          clone.style.top = (ev.clientY - offsetY) + 'px';
+          const rows = Array.from(listEl.querySelectorAll('.mg-row'));
+          dropIdx = rows.length;
+          for (let i = 0; i < rows.length; i++) {
+            if (rows[i] === row) continue;
+            const r = rows[i].getBoundingClientRect();
+            if (ev.clientY < r.top + r.height / 2) { dropIdx = i; break; }
+          }
+          listEl.querySelectorAll('.mg-drop-line').forEach(el => el.remove());
+          const line = document.createElement('div');
+          line.className = 'mg-drop-line';
+          if (dropIdx >= rows.length) listEl.appendChild(line);
+          else listEl.insertBefore(line, rows[dropIdx]);
+        };
+        const onUp = () => {
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', onUp);
+          document.removeEventListener('pointercancel', onUp);
+          clone.remove();
+          row.classList.remove('mg-dragging');
+          listEl.querySelectorAll('.mg-drop-line').forEach(el => el.remove());
+          if (dropIdx === gi || dropIdx === gi + 1) return; // 原地未动
+          const grps = groups[cur] || [];
+          let target = dropIdx < gi ? dropIdx : dropIdx - 1;
+          if (target < 0) target = 0;
+          if (target > grps.length - 1) target = grps.length - 1;
+          if (target === gi) return;
+          const [moved] = grps.splice(gi, 1);
+          grps.splice(target, 0, moved);
+          saveGroups(groups);
+          renderGroupsBar();
+          render();
+          renderMgList();
+          toast('分组已移动');
+        };
+        document.addEventListener('pointermove', onMove, { passive: false });
+        document.addEventListener('pointerup', onUp);
+        document.addEventListener('pointercancel', onUp);
+        e.preventDefault();
+      });
+    }
     function renderMgList() {
       const listEl = mask.querySelector('.mg-list');
       const grps = groups[cur] || [];
       if (!grps.length) { listEl.innerHTML = '<div class="mg-empty">暂无分组，点击下方新建</div>'; return; }
       listEl.innerHTML = '';
-      grps.forEach(([gname, arr]) => {
+      const handleSvg = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
+      const editSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>';
+      grps.forEach(([gname, arr], gi) => {
         const row = document.createElement('div');
         row.className = 'mg-row';
+        row.dataset.gidx = String(gi);
         const builtin = (BUILTIN[cur] || []).some(b => b[0] === gname);
-        row.innerHTML = '<span class="mg-name">' + gname + '</span><span class="mg-count">' + arr.length + ' 张</span>' +
-          (builtin ? '<span class="mg-tag">内置</span>' : '<button class="mg-del">✕</button>');
+        row.innerHTML = '<button class="mg-handle" aria-label="拖动排序">' + handleSvg + '</button>' +
+          '<span class="mg-name">' + esc(gname) + '</span><span class="mg-count">' + arr.length + ' 张</span>' +
+          (builtin ? '<span class="mg-tag">内置</span>' : '<button class="mg-rn" aria-label="重命名">' + editSvg + '</button><button class="mg-del">✕</button>');
+        attachGroupRowDrag(row, gi);
         if (!builtin) {
-          row.querySelector('.mg-del').addEventListener('click', () => {
+          const rnBtn = row.querySelector('.mg-rn');
+          if (rnBtn) rnBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (window.openModal) {
+              window.openModal('重命名分组', gname, (v) => {
+                const name = String(v == null ? '' : v).trim();
+                if (!name) return;
+                if (name === gname) return;
+                if ((groups[cur] || []).some(g => g[0] === name)) { toast('分组「' + name + '」已存在'); return; }
+                const g = groups[cur][gi];
+                if (!g) return;
+                const oldName = g[0];
+                g[0] = name;
+                if (curGroup === oldName) curGroup = name;
+                if (selected.size) {
+                  const newSel = new Set();
+                  selected.forEach(k => {
+                    const sep = k.indexOf('\u0001');
+                    if (sep > 0 && k.slice(0, sep) === oldName) newSel.add(name + '\u0001' + k.slice(sep + 1));
+                    else newSel.add(k);
+                  });
+                  selected.clear(); newSel.forEach(k => selected.add(k));
+                }
+                saveGroups(groups);
+                renderGroupsBar();
+                render();
+                renderMgList();
+                toast('已重命名为「' + name + '」');
+              });
+            }
+          });
+          row.querySelector('.mg-del').addEventListener('click', (e) => {
+            e.stopPropagation();
             if (window.openModal) {
               window.openModal('删除分组「' + gname + '」及其全部字卡？', '', () => {
                 const wasCur = curGroup === gname;

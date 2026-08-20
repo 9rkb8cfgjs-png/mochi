@@ -34,6 +34,10 @@
     const p = (n) => (n < 10 ? '0' + n : '' + n);
     return p(d.getHours()) + ':' + p(d.getMinutes());
   }
+  // v3.7.x：本周日常点击其他日期查看当日内容用——按日期生成键
+  function dayStr(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
   // 轻提示（全局唯一，与其它模块一致）
   function toast(msg) {
     let t = document.getElementById('cc-toast');
@@ -802,6 +806,10 @@ if (ckRefresh) {
           if (val) {
             memoEl.textContent = val; store.set('memo', val); pushHist('memo-history', val);
             try { if (window.idbSet) window.idbSet(window.activePrefix() + ':memo', val); } catch (e) {}
+            // v3.7.x：补写按日期快照，供本周日常点击其他日期查看当日备忘
+            const ds = dayStr(new Date());
+            store.set('memo-' + ds, val);
+            try { if (window.idbSet) window.idbSet(window.activePrefix() + ':memo-' + ds, val); } catch (e) {}
           }
         });
       }
@@ -819,6 +827,10 @@ if (ckRefresh) {
           if (val) {
             moodEl.textContent = val; store.set('today-mood', val); pushHist('mood-history', val);
             try { if (window.idbSet) window.idbSet(window.activePrefix() + ':today-mood', val); } catch (e) {}
+            // v3.7.x：补写按日期快照，供本周日常点击其他日期查看当日心情
+            const ds = dayStr(new Date());
+            store.set('today-mood-' + ds, val);
+            try { if (window.idbSet) window.idbSet(window.activePrefix() + ':today-mood-' + ds, val); } catch (e) {}
           }
         }, { pills: moods.map(m => ({ label: m, value: m })), pill: store.get('today-mood') || '' });
       }
@@ -836,8 +848,50 @@ if (ckRefresh) {
     weekEl.innerHTML = names.map((n, i) => {
       const d = new Date(weekStart);
       d.setDate(weekStart.getDate() + i);
-      return '<div class="week-day' + (i === todayIdx ? ' today' : '') + '"><b>' + (i === todayIdx ? '今' : n) + '</b>' + d.getDate() + '</div>';
+      const ds = dayStr(d);
+      return '<div class="week-day' + (i === todayIdx ? ' today' : '') + '" data-date="' + ds + '"' + (i === todayIdx ? '' : ' role="button"') + '><b>' + (i === todayIdx ? '今' : n) + '</b>' + d.getDate() + '</div>';
     }).join('');
+    // v3.7.x：点击其他日期查看当日留言/备忘/心情等内容（今天保持原状，数据已在桌面展示）
+    weekEl.addEventListener('click', (ev) => {
+      const cell = ev.target.closest('.week-day');
+      if (!cell || cell.classList.contains('today')) return;
+      // 装修模式下不触发查看（避免与卡片拖拽/编辑冲突）
+      const editing = Array.from(document.querySelectorAll('.app-grid')).some(g => g.classList.contains('editing'));
+      if (editing) return;
+      const ds = cell.getAttribute('data-date');
+      if (!ds || !window.openModal) return;
+      const parts = ds.split('-');
+      const dd = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+      const wdNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+      const dateLabel = (+parts[1]) + ' 月 ' + (+parts[2]) + ' 日（' + wdNames[dd.getDay()] + '）';
+      const entry = window.calGetDayEntry ? window.calGetDayEntry(ds) : null;
+      const myMsg = window.calGetMyMessage ? window.calGetMyMessage(ds) : '';
+      const memo = store.get('memo-' + ds) || '';
+      const mood = store.get('today-mood-' + ds) || '';
+      const lines = [];
+      lines.push(dateLabel);
+      lines.push('');
+      if (entry) {
+        lines.push('【今日心情】' + entry.mood + '（' + entry.cat + '）');
+        lines.push(entry.desc);
+        lines.push('【TA 正在】' + entry.activity);
+        lines.push('');
+        lines.push('【TA 留言】');
+        lines.push(entry.message);
+      } else {
+        lines.push('（这一天没有日历记录）');
+      }
+      lines.push('');
+      lines.push('【我的留言】');
+      lines.push(myMsg || '（这一天没有留下留言）');
+      lines.push('');
+      lines.push('【备忘】');
+      lines.push(memo || '（这一天没有备忘）');
+      lines.push('');
+      lines.push('【心情】');
+      lines.push(mood || '（这一天没有记录心情）');
+      window.openModal(ds + ' 当日内容', '', () => {}, { noInput: true, staticText: lines.join('\n') });
+    });
   }
 
   // v3.6.x：多桌面——切换联系人后刷新桌面第二页常驻组件（备忘/心情按新桌面的值回显）。

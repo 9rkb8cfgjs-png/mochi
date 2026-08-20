@@ -9,6 +9,20 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（用户反馈「OPPO Reno6 5G · Edge：朋友圈评论发不出去；联系人的评论看不到」）
+- [AI-A·完成]（**已随本会话统一构建 verify 10/10 + CDP 端到端验证**）：`src/js/feed.js`。
+  - 根因：`mobile-adapt.js` 在安卓把 `<textarea>`（`#feed-comment-input` 评论框、`#feed-input` 发布框）转成 ce-box（contenteditable 转换框）——OPPO Edge 对 ce-box 聚焦/输入失效（与回复设置 stp-val 同源，WORKLOG 2026-08 OPPO Edge 记录）：打不出字，点发送时 `submitComment` 读到空内容静默返回 → 「评论发不出去」；用户互动链路断裂 → 也看不到 TA 的评论/回应。
+  - 修复：评论输入框与发布框预标记 `dataset.ceDone='1'` 让转换器跳过，保持原生 textarea（原生仅弹自动填充条，不影响输入）。
+  - 验证：CDP 手机模拟（390×844 安卓 UA）修复前两输入框均被转 ce-box（ce-ghost+__ceBox），修复后保持原生；端到端：发布→评论→发送→评论显示 + TA 回应评论显示 + 通知「TA 评论了你的动态」全部通过。多桌面链路（联系人2桌面评论二宝动态→切回默认桌面可见）同时验证通过。
+  - 本次构建同时包含 AI-A 已保存改动（chatcard.js 分组/字卡拖动排序+重命名、calendar.js/p2-features.js/home.css 本周日常点击查看其他日期）。
+
+### 2026-08-20（用户需求「本周日常可以点击其他日期，查看其他日期的当日留言/备忘/心情等内容」）
+- [AI-A·完成]（**未构建，请 AI-B 统一执行 node build.mjs**）：`src/js/calendar.js` `src/js/p2-features.js` `src/css/home.css`（均 AI-A 域）。
+  - calendar.js：抽出 `getDayEntry(dateStr)`（任意日期首次访问生成 TA 心情/正在做/留言并落盘 cal-YYYY-MM-DD + IDB），`getToday` 改调用它；暴露 `window.calGetDayEntry` / `window.calGetMyMessage(ds)` 供本周日常复用。
+  - p2-features.js：备忘/心情保存时补写按日期快照（`memo-YYYY-MM-DD` / `today-mood-YYYY-MM-DD` + IDB），供其他日期查看；本周日常 `.week-day` 渲染加 `data-date`，新增点击事件——其他日期用 openModal(noInput+staticText) 弹窗展示该日期的【今日心情/TA 正在/TA 留言/我的留言/备忘/心情】，今天保持原状（cursor:default），装修模式下不触发。
+  - home.css：`.week-day` 加 cursor:pointer + :active 反馈，`.week-day.today` cursor:default。
+  - 验证：node --check 全通过。功能需构建后真机/无头验证。
+
 ### 2026-08-20（用户反馈「通话小框里联系人的头像没变，没有跟随联系人更换聊天头像变化」）
 - [AI-B·完成]（**已构建 verify 10/10 + CDP 冒烟 8/8，随本次提交**）：`src/js/call.js`（AI-B 域）。
   根因：通话开始 `bindCall` 时把 `avatar-partner` 快照进 `currentCall.av`，小框/面板渲染走 `currentCall.av || partnerAv()`——通话中联系人换头像（头像库手动/自动/设置页）后小框头像永远是旧快照。

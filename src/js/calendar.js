@@ -80,11 +80,11 @@
     return sel.join('  ');
   }
 
-  // 生成或获取今日数据（本会话缓存，避免反复生成导致内容"变来变去"）
-  let calCache = null;
-  function getToday() {
-    const key = 'cal-' + todayStr();
-    if (calCache && calCache.date === todayStr()) return calCache;
+  // 生成或获取某一日数据（按日期持久化，首次访问该日期时生成并落盘）
+  // v3.7.x：抽出 getDayEntry 供「本周日常点击其他日期查看当日内容」复用，
+  //   任意日期首次访问都会生成 TA 心情/正在做/留言并保存（历史日期也补齐）。
+  function getDayEntry(dateStr) {
+    const key = 'cal-' + dateStr;
     let entry = null;
     try { entry = JSON.parse(store.get(key) || 'null'); } catch (e) {}
     if (!entry) {
@@ -93,15 +93,25 @@
         mood: m.mood, cat: m.cat, desc: m.desc,
         activity: pick(ACTIVITIES),
         message: genMessage(),
-        date: todayStr()
+        date: dateStr
       };
       store.set(key, JSON.stringify(entry));
       // 手机端 localStorage 写入失败（空间满/隐私模式）时仍写入 IndexedDB 兜底
       try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + key, JSON.stringify(entry)); } catch (e) {}
     }
-    calCache = entry;
     return entry;
   }
+  // 今日数据（本会话缓存，避免反复生成导致内容"变来变去"）
+  let calCache = null;
+  function getToday() {
+    const ds = todayStr();
+    if (calCache && calCache.date === ds) return calCache;
+    calCache = getDayEntry(ds);
+    return calCache;
+  }
+  // 暴露给 p2-features.js 的「本周日常」点击查看其他日期复用
+  window.calGetDayEntry = getDayEntry;
+  window.calGetMyMessage = function (ds) { return store.get('cal-my-' + ds) || ''; };
 
   // v3.6.x：多桌面——切换联系人后清掉本会话缓存（calCache 只按日期缓存、不区分
   // 桌面，残留会导致新桌面显示旧桌面的「今日数据」）；viewY/viewM 同步复位到当前月

@@ -963,6 +963,43 @@
 }
 .mg-add:active { background:rgba(0,0,0,.04); }
 
+/* v3.7.x：管理分组面板——分组拖动排序 + 改名 */
+.mg-handle {
+  width:26px; height:26px; border:none; cursor:grab; background:transparent;
+  color:var(--muted); display:flex; align-items:center; justify-content:center;
+  padding:0; flex-shrink:0; touch-action:none;
+}
+.mg-handle svg { width:16px; height:16px; }
+.mg-handle:active { cursor:grabbing; }
+.mg-rn {
+  width:26px; height:26px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(0,0,0,.05); color:#666; display:flex; align-items:center; justify-content:center;
+  padding:0; flex-shrink:0;
+}
+.mg-rn:active { background:rgba(0,0,0,.1); }
+.mg-row.mg-dragging { opacity:.35; }
+.mg-drag-clone {
+  box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:.95;
+  background:rgba(255,255,255,.98); border-radius:12px;
+  pointer-events:none; transform:scale(1.02);
+}
+.mg-drop-line {
+  height:2px; background:#4a8cff; border-radius:1px; margin:2px 0;
+  box-shadow:0 0 6px rgba(74,140,255,.5);
+}
+/* v3.7.x：字卡拖动排序（长按拖动，跨分组） */
+.cc-item.cc-dragging { opacity:.3; }
+.cc-drag-clone {
+  box-shadow:0 10px 28px rgba(0,0,0,.22); opacity:.96;
+  pointer-events:none; transform:scale(1.03);
+  border-radius:16px; background:rgba(255,255,255,.98);
+}
+.cc-drop-line {
+  height:3px; background:#4a8cff; border-radius:2px; margin:2px 0;
+  box-shadow:0 0 8px rgba(74,140,255,.6);
+}
+.card-list.cc-grid .cc-drop-line, .card-list.cc-grid6 .cc-drop-line { width:100%; flex:0 0 100%; }
+
 /* 管理页：分类卡 */
 .ta-empty { text-align:center; color:#c0c0c0; font-size:12px; padding:10px 0; }
 /* v3.7.x：我的添加自定义分组区块（ta的询问/小问题/好奇/吐槽、查岗、今日情话共用）

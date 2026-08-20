@@ -168,6 +168,9 @@
   .cc-check.on { background:var(--btn-bg); border-color:var(--btn-bg); }
   .cc-check.on::after { color:var(--btn-ink); }
   .cc-managing .cc-item::before { background:var(--btn-bg); color:var(--btn-ink); }
+  .mg-handle { color:var(--dark-soft); }
+  .mg-rn { background:var(--dark-hover); color:var(--dark-soft); }
+  .mg-drag-clone, .cc-drag-clone { background:var(--dark-card); }
 
   .fav-empty { color:#666; }
   .fav-tab { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }

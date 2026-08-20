@@ -493,10 +493,12 @@
 .week-day {
   flex:1; text-align:center; padding:7px 0; border-radius:10px;
   background:rgba(0,0,0,.04); color:var(--muted); font-size:11px;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
 }
 .week-day b { display:block; font-size:14px; color:var(--ink); margin-bottom:2px; }
-.week-day.today { background:var(--ink); color:#fff; }
+.week-day.today { background:var(--ink); color:#fff; cursor:default; }
 .week-day.today b { color:#fff; }
+.week-day:not(.today):active { background:rgba(0,0,0,.10); }
 
 /* v3.5.102：桌面新消息横幅（TA 主动发消息时顶部弹出，点击进聊天） */
 /* v3.6.x：top 加 env(safe-area-inset-top)——iPhone 主屏幕 PWA（standalone）里顶部

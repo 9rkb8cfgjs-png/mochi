@@ -879,10 +879,12 @@ color:var(--ink); display:flex; align-items:center; justify-content:center;
 .week-day {
 flex:1; text-align:center; padding:7px 0; border-radius:10px;
 background:rgba(0,0,0,.04); color:var(--muted); font-size:11px;
+cursor:pointer; -webkit-tap-highlight-color:transparent;
 }
 .week-day b { display:block; font-size:14px; color:var(--ink); margin-bottom:2px; }
-.week-day.today { background:var(--ink); color:#fff; }
+.week-day.today { background:var(--ink); color:#fff; cursor:default; }
 .week-day.today b { color:#fff; }
+.week-day:not(.today):active { background:rgba(0,0,0,.10); }
 .desk-msg {
 position:fixed; top:calc(12px + env(safe-area-inset-top, 0px)); left:50%; transform:translateX(-50%);
 z-index:89; width:min(320px, calc(100% - 24px));
@@ -2662,6 +2664,40 @@ cursor:pointer; font-family:inherit;
 display:flex; align-items:center; justify-content:center; gap:6px;
 }
 .mg-add:active { background:rgba(0,0,0,.04); }
+.mg-handle {
+width:26px; height:26px; border:none; cursor:grab; background:transparent;
+color:var(--muted); display:flex; align-items:center; justify-content:center;
+padding:0; flex-shrink:0; touch-action:none;
+}
+.mg-handle svg { width:16px; height:16px; }
+.mg-handle:active { cursor:grabbing; }
+.mg-rn {
+width:26px; height:26px; border-radius:50%; border:none; cursor:pointer;
+background:rgba(0,0,0,.05); color:#666; display:flex; align-items:center; justify-content:center;
+padding:0; flex-shrink:0;
+}
+.mg-rn:active { background:rgba(0,0,0,.1); }
+.mg-row.mg-dragging { opacity:.35; }
+.mg-drag-clone {
+box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:.95;
+background:rgba(255,255,255,.98); border-radius:12px;
+pointer-events:none; transform:scale(1.02);
+}
+.mg-drop-line {
+height:2px; background:#4a8cff; border-radius:1px; margin:2px 0;
+box-shadow:0 0 6px rgba(74,140,255,.5);
+}
+.cc-item.cc-dragging { opacity:.3; }
+.cc-drag-clone {
+box-shadow:0 10px 28px rgba(0,0,0,.22); opacity:.96;
+pointer-events:none; transform:scale(1.03);
+border-radius:16px; background:rgba(255,255,255,.98);
+}
+.cc-drop-line {
+height:3px; background:#4a8cff; border-radius:2px; margin:2px 0;
+box-shadow:0 0 8px rgba(74,140,255,.6);
+}
+.card-list.cc-grid .cc-drop-line, .card-list.cc-grid6 .cc-drop-line { width:100%; flex:0 0 100%; }
 .ta-empty { text-align:center; color:#c0c0c0; font-size:12px; padding:10px 0; }
 .mg-grp-row { display:flex; align-items:center; gap:8px; margin:2px 0 10px; }
 .mg-grp-row .cc-tool { padding:7px 12px; font-size:12px; }
@@ -3728,6 +3764,9 @@ transition:color .18s ease, background .18s ease;
 .cc-check.on { background:var(--btn-bg); border-color:var(--btn-bg); }
 .cc-check.on::after { color:var(--btn-ink); }
 .cc-managing .cc-item::before { background:var(--btn-bg); color:var(--btn-ink); }
+.mg-handle { color:var(--dark-soft); }
+.mg-rn { background:var(--dark-hover); color:var(--dark-soft); }
+.mg-drag-clone, .cc-drag-clone { background:var(--dark-card); }
 .fav-empty { color:#666; }
 .fav-tab { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
 .fav-tab.sel { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
@@ -3938,7 +3977,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787201910652">Mochi 字卡传讯 v3.6.139 · 部署于 2026-08-20 12:58</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787202949865">Mochi 字卡传讯 v3.6.140 · 部署于 2026-08-20 13:15</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4681,7 +4720,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.139</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.140</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -15370,6 +15409,7 @@ if (manageMode) { toggleSelect(d, gname, i); return; }
 if (typeof c === 'string' && c.indexOf('data:') === 0) { viewImage(c); return; }
 openEditCard(gname, i);
 });
+attachCardDrag(d, gname, i);
 frag.appendChild(d);
 });
 if (anchor && anchor.parentNode === list) list.insertBefore(frag, anchor);
@@ -15378,6 +15418,139 @@ else list.appendChild(frag);
 const RENDER_BATCH = 80;
 let renderToken = 0;
 let rendering = false; // 分块渲染进行中（局部删除前判断：渲染中改走全量 render，防旧批次复活已删卡片）
+const DRAG_CATS = ['text', 'kaomoji', 'emoji', 'sticker'];
+function attachCardDrag(el, gname, i) {
+if (DRAG_CATS.indexOf(cur) < 0) return;
+let pressTimer = null;
+let startX = 0, startY = 0;
+el.addEventListener('pointerdown', (e) => {
+if (manageMode || q || rendering) return;
+if (e.button !== 0 && e.pointerType === 'mouse') return;
+startX = e.clientX; startY = e.clientY;
+pressTimer = setTimeout(() => {
+pressTimer = null;
+if (manageMode || q || rendering) return;
+startCardDrag(e, el, gname, i);
+}, 350);
+});
+el.addEventListener('pointermove', (e) => {
+if (pressTimer && (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) {
+clearTimeout(pressTimer); pressTimer = null;
+}
+});
+const cancel = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
+el.addEventListener('pointerup', cancel);
+el.addEventListener('pointercancel', cancel);
+}
+function startCardDrag(e, el, gname, i) {
+const rect = el.getBoundingClientRect();
+const offsetY = e.clientY - rect.top;
+const clone = el.cloneNode(true);
+clone.classList.add('cc-drag-clone');
+clone.style.position = 'fixed';
+clone.style.left = rect.left + 'px';
+clone.style.top = rect.top + 'px';
+clone.style.width = rect.width + 'px';
+clone.style.zIndex = '1000';
+clone.style.pointerEvents = 'none';
+document.body.appendChild(clone);
+el.classList.add('cc-dragging');
+if (navigator.vibrate) try { navigator.vibrate(15); } catch (err) {}
+let dropTarget = null;
+const onMove = (ev) => {
+ev.preventDefault();
+clone.style.top = (ev.clientY - offsetY) + 'px';
+dropTarget = computeCardDrop(ev.clientY);
+updateCardDropIndicator(dropTarget);
+};
+const onUp = () => {
+document.removeEventListener('pointermove', onMove);
+document.removeEventListener('pointerup', onUp);
+document.removeEventListener('pointercancel', onUp);
+clone.remove();
+el.classList.remove('cc-dragging');
+clearCardDropIndicator();
+if (dropTarget) moveCardTo(gname, i, dropTarget);
+};
+document.addEventListener('pointermove', onMove, { passive: false });
+document.addEventListener('pointerup', onUp);
+document.addEventListener('pointercancel', onUp);
+}
+function computeCardDrop(clientY) {
+const items = Array.from(list.querySelectorAll('.cc-item:not(.cc-dragging)'));
+for (const item of items) {
+const r = item.getBoundingClientRect();
+if (clientY < r.top + r.height / 2) {
+return { gname: item.dataset.g, idx: parseInt(item.dataset.idx, 10), before: true };
+}
+}
+const headers = Array.from(list.querySelectorAll('.cc-group-header'));
+let lastHeader = null;
+for (const h of headers) {
+if (clientY >= h.getBoundingClientRect().top) lastHeader = h;
+}
+if (lastHeader) {
+const gname = lastHeader.dataset.g;
+const grps = groups[cur] || [];
+if (grps.find(x => x[0] === gname)) {
+const groupItems = items.filter(it => it.dataset.g === gname);
+if (groupItems.length) {
+const last = groupItems[groupItems.length - 1];
+return { gname, idx: parseInt(last.dataset.idx, 10), before: false };
+}
+return { gname, idx: 0, before: true, empty: true };
+}
+}
+if (items.length) {
+const last = items[items.length - 1];
+return { gname: last.dataset.g, idx: parseInt(last.dataset.idx, 10), before: false };
+}
+return null;
+}
+function updateCardDropIndicator(target) {
+clearCardDropIndicator();
+if (!target) return;
+const sel = (window.CSS && CSS.escape) ? CSS.escape(String(target.gname)) : String(target.gname).replace(/["\\]/g, '\\/*__SCRIPTS__*/');
+const line = document.createElement('div');
+line.className = 'cc-drop-line';
+if (target.empty) {
+const header = list.querySelector('.cc-group-header[data-g="' + sel + '"]');
+if (header && header.nextSibling) list.insertBefore(line, header.nextSibling);
+else if (header) list.appendChild(line);
+return;
+}
+const ref = list.querySelector('.cc-item[data-g="' + sel + '"][data-idx="' + target.idx + '"]');
+if (!ref) return;
+if (target.before) list.insertBefore(line, ref);
+else if (ref.nextSibling) list.insertBefore(line, ref.nextSibling);
+else list.appendChild(line);
+}
+function clearCardDropIndicator() {
+list.querySelectorAll('.cc-drop-line').forEach(el => el.remove());
+}
+function moveCardTo(fromGname, fromIdx, target) {
+const grps = groups[cur] || [];
+const fromG = grps.find(g => g[0] === fromGname);
+if (!fromG) return;
+const card = fromG[1][fromIdx];
+if (card === undefined) return;
+const toG = grps.find(g => g[0] === target.gname);
+if (!toG) return;
+let toIdx = target.before ? target.idx : target.idx + 1;
+if (fromGname === target.gname) {
+if (fromIdx === toIdx || fromIdx === toIdx - 1) return; // 原地未动
+fromG[1].splice(fromIdx, 1);
+if (fromIdx < toIdx) toIdx -= 1;
+fromG[1].splice(toIdx, 0, card);
+} else {
+fromG[1].splice(fromIdx, 1);
+toG[1].splice(toIdx, 0, card);
+}
+saveGroups(groups);
+renderGroupsBar();
+render();
+toast('字卡已移动');
+}
 function render() {
 const token = ++renderToken;
 rendering = true;
@@ -15435,6 +15608,7 @@ return;
 }
 openEditCard(it.gname, it.i);
 });
+attachCardDrag(el, it.gname, it.i);
 }
 };
 const step = () => {
@@ -15519,19 +15693,118 @@ mask.hidden = true;
 }
 });
 }
+function attachGroupRowDrag(row, gi) {
+const handle = row.querySelector('.mg-handle');
+if (!handle) return;
+handle.addEventListener('pointerdown', (e) => {
+if (e.button !== 0 && e.pointerType === 'mouse') return;
+const listEl = mask.querySelector('.mg-list');
+if (!listEl) return;
+const rect = row.getBoundingClientRect();
+const offsetY = e.clientY - rect.top;
+const clone = row.cloneNode(true);
+clone.classList.add('mg-drag-clone');
+clone.style.position = 'fixed';
+clone.style.left = rect.left + 'px';
+clone.style.top = rect.top + 'px';
+clone.style.width = rect.width + 'px';
+clone.style.margin = '0';
+document.body.appendChild(clone);
+row.classList.add('mg-dragging');
+let dropIdx = gi;
+const onMove = (ev) => {
+ev.preventDefault();
+clone.style.top = (ev.clientY - offsetY) + 'px';
+const rows = Array.from(listEl.querySelectorAll('.mg-row'));
+dropIdx = rows.length;
+for (let i = 0; i < rows.length; i++) {
+if (rows[i] === row) continue;
+const r = rows[i].getBoundingClientRect();
+if (ev.clientY < r.top + r.height / 2) { dropIdx = i; break; }
+}
+listEl.querySelectorAll('.mg-drop-line').forEach(el => el.remove());
+const line = document.createElement('div');
+line.className = 'mg-drop-line';
+if (dropIdx >= rows.length) listEl.appendChild(line);
+else listEl.insertBefore(line, rows[dropIdx]);
+};
+const onUp = () => {
+document.removeEventListener('pointermove', onMove);
+document.removeEventListener('pointerup', onUp);
+document.removeEventListener('pointercancel', onUp);
+clone.remove();
+row.classList.remove('mg-dragging');
+listEl.querySelectorAll('.mg-drop-line').forEach(el => el.remove());
+if (dropIdx === gi || dropIdx === gi + 1) return; // 原地未动
+const grps = groups[cur] || [];
+let target = dropIdx < gi ? dropIdx : dropIdx - 1;
+if (target < 0) target = 0;
+if (target > grps.length - 1) target = grps.length - 1;
+if (target === gi) return;
+const [moved] = grps.splice(gi, 1);
+grps.splice(target, 0, moved);
+saveGroups(groups);
+renderGroupsBar();
+render();
+renderMgList();
+toast('分组已移动');
+};
+document.addEventListener('pointermove', onMove, { passive: false });
+document.addEventListener('pointerup', onUp);
+document.addEventListener('pointercancel', onUp);
+e.preventDefault();
+});
+}
 function renderMgList() {
 const listEl = mask.querySelector('.mg-list');
 const grps = groups[cur] || [];
 if (!grps.length) { listEl.innerHTML = '<div class="mg-empty">暂无分组，点击下方新建</div>'; return; }
 listEl.innerHTML = '';
-grps.forEach(([gname, arr]) => {
+const handleSvg = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
+const editSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>';
+grps.forEach(([gname, arr], gi) => {
 const row = document.createElement('div');
 row.className = 'mg-row';
+row.dataset.gidx = String(gi);
 const builtin = (BUILTIN[cur] || []).some(b => b[0] === gname);
-row.innerHTML = '<span class="mg-name">' + gname + '</span><span class="mg-count">' + arr.length + ' 张</span>' +
-(builtin ? '<span class="mg-tag">内置</span>' : '<button class="mg-del">✕</button>');
+row.innerHTML = '<button class="mg-handle" aria-label="拖动排序">' + handleSvg + '</button>' +
+'<span class="mg-name">' + esc(gname) + '</span><span class="mg-count">' + arr.length + ' 张</span>' +
+(builtin ? '<span class="mg-tag">内置</span>' : '<button class="mg-rn" aria-label="重命名">' + editSvg + '</button><button class="mg-del">✕</button>');
+attachGroupRowDrag(row, gi);
 if (!builtin) {
-row.querySelector('.mg-del').addEventListener('click', () => {
+const rnBtn = row.querySelector('.mg-rn');
+if (rnBtn) rnBtn.addEventListener('click', (e) => {
+e.stopPropagation();
+if (window.openModal) {
+window.openModal('重命名分组', gname, (v) => {
+const name = String(v == null ? '' : v).trim();
+if (!name) return;
+if (name === gname) return;
+if ((groups[cur] || []).some(g => g[0] === name)) { toast('分组「' + name + '」已存在'); return; }
+const g = groups[cur][gi];
+if (!g) return;
+const oldName = g[0];
+g[0] = name;
+if (curGroup === oldName) curGroup = name;
+if (selected.size) {
+const newSel = new Set();
+selected.forEach(k => {
+const sep = k.indexOf('\u0001');
+if (sep > 0 && k.slice(0, sep) === oldName) newSel.add(name + '\u0001' + k.slice(sep + 1));
+else newSel.add(k);
+});
+selected.clear(); newSel.forEach(k => selected.add(k));
+}
+saveGroups(groups);
+renderGroupsBar();
+render();
+renderMgList();
+toast('已重命名为「' + name + '」');
+});
+}
+});
+row.querySelector('.mg-del').addEventListener('click', (e) => {
+e.stopPropagation();
 if (window.openModal) {
 window.openModal('删除分组「' + gname + '」及其全部字卡？', '', () => {
 const wasCur = curGroup === gname;
@@ -19905,10 +20178,8 @@ sel.push(pool.splice(idx, 1)[0]);
 }
 return sel.join('  ');
 }
-let calCache = null;
-function getToday() {
-const key = 'cal-' + todayStr();
-if (calCache && calCache.date === todayStr()) return calCache;
+function getDayEntry(dateStr) {
+const key = 'cal-' + dateStr;
 let entry = null;
 try { entry = JSON.parse(store.get(key) || 'null'); } catch (e) {}
 if (!entry) {
@@ -19917,14 +20188,22 @@ entry = {
 mood: m.mood, cat: m.cat, desc: m.desc,
 activity: pick(ACTIVITIES),
 message: genMessage(),
-date: todayStr()
+date: dateStr
 };
 store.set(key, JSON.stringify(entry));
 try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + key, JSON.stringify(entry)); } catch (e) {}
 }
-calCache = entry;
 return entry;
 }
+let calCache = null;
+function getToday() {
+const ds = todayStr();
+if (calCache && calCache.date === ds) return calCache;
+calCache = getDayEntry(ds);
+return calCache;
+}
+window.calGetDayEntry = getDayEntry;
+window.calGetMyMessage = function (ds) { return store.get('cal-my-' + ds) || ''; };
 document.addEventListener('contact-switched', function () {
 try { calCache = null; viewY = 0; viewM = -1; } catch (e) {}
 });
@@ -26199,6 +26478,7 @@ const comInput = document.getElementById('feed-comment-input');
 const comSend = document.getElementById('feed-comment-send');
 const comSticker = document.getElementById('feed-comment-sticker');
 const comImg = document.getElementById('feed-comment-img');
+if (comInput) comInput.dataset.ceDone = '1';
 let comPid = null;
 let comReplyTarget = null; // v3.5.58：回复模式 { pid, ci }
 let comImgData = []; // 评论携带的图片（dataURL），不塞进输入框文本（避免乱码）
@@ -26563,6 +26843,8 @@ document.getElementById('feed-notice-panel').hidden = true;
 jumpToPost(it.dataset.pid);
 }));
 }
+const feedInput = document.getElementById('feed-input');
+if (feedInput) feedInput.dataset.ceDone = '1';
 const pickBtn = document.getElementById('feed-pick-img');
 const pickFile = document.getElementById('feed-pick-file');
 const preview = document.getElementById('feed-preview');
@@ -27178,6 +27460,9 @@ if (!ts) return '';
 const d = new Date(ts);
 const p = (n) => (n < 10 ? '0' + n : '' + n);
 return p(d.getHours()) + ':' + p(d.getMinutes());
+}
+function dayStr(d) {
+return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 function toast(msg) {
 let t = document.getElementById('cc-toast');
@@ -27872,6 +28157,9 @@ const val = (v || '').trim();
 if (val) {
 memoEl.textContent = val; store.set('memo', val); pushHist('memo-history', val);
 try { if (window.idbSet) window.idbSet(window.activePrefix() + ':memo', val); } catch (e) {}
+const ds = dayStr(new Date());
+store.set('memo-' + ds, val);
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':memo-' + ds, val); } catch (e) {}
 }
 });
 }
@@ -27889,6 +28177,9 @@ const val = (v || '').trim();
 if (val) {
 moodEl.textContent = val; store.set('today-mood', val); pushHist('mood-history', val);
 try { if (window.idbSet) window.idbSet(window.activePrefix() + ':today-mood', val); } catch (e) {}
+const ds = dayStr(new Date());
+store.set('today-mood-' + ds, val);
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':today-mood-' + ds, val); } catch (e) {}
 }
 }, { pills: moods.map(m => ({ label: m, value: m })), pill: store.get('today-mood') || '' });
 }
@@ -27904,8 +28195,48 @@ weekStart.setDate(now.getDate() - todayIdx);
 weekEl.innerHTML = names.map((n, i) => {
 const d = new Date(weekStart);
 d.setDate(weekStart.getDate() + i);
-return '<div class="week-day' + (i === todayIdx ? ' today' : '') + '"><b>' + (i === todayIdx ? '今' : n) + '</b>' + d.getDate() + '</div>';
+const ds = dayStr(d);
+return '<div class="week-day' + (i === todayIdx ? ' today' : '') + '" data-date="' + ds + '"' + (i === todayIdx ? '' : ' role="button"') + '><b>' + (i === todayIdx ? '今' : n) + '</b>' + d.getDate() + '</div>';
 }).join('');
+weekEl.addEventListener('click', (ev) => {
+const cell = ev.target.closest('.week-day');
+if (!cell || cell.classList.contains('today')) return;
+const editing = Array.from(document.querySelectorAll('.app-grid')).some(g => g.classList.contains('editing'));
+if (editing) return;
+const ds = cell.getAttribute('data-date');
+if (!ds || !window.openModal) return;
+const parts = ds.split('-');
+const dd = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+const wdNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const dateLabel = (+parts[1]) + ' 月 ' + (+parts[2]) + ' 日（' + wdNames[dd.getDay()] + '）';
+const entry = window.calGetDayEntry ? window.calGetDayEntry(ds) : null;
+const myMsg = window.calGetMyMessage ? window.calGetMyMessage(ds) : '';
+const memo = store.get('memo-' + ds) || '';
+const mood = store.get('today-mood-' + ds) || '';
+const lines = [];
+lines.push(dateLabel);
+lines.push('');
+if (entry) {
+lines.push('【今日心情】' + entry.mood + '（' + entry.cat + '）');
+lines.push(entry.desc);
+lines.push('【TA 正在】' + entry.activity);
+lines.push('');
+lines.push('【TA 留言】');
+lines.push(entry.message);
+} else {
+lines.push('（这一天没有日历记录）');
+}
+lines.push('');
+lines.push('【我的留言】');
+lines.push(myMsg || '（这一天没有留下留言）');
+lines.push('');
+lines.push('【备忘】');
+lines.push(memo || '（这一天没有备忘）');
+lines.push('');
+lines.push('【心情】');
+lines.push(mood || '（这一天没有记录心情）');
+window.openModal(ds + ' 当日内容', '', () => {}, { noInput: true, staticText: lines.join('\n') });
+});
 }
 document.addEventListener('contact-switched', function () {
 try {
