@@ -1669,4 +1669,21 @@
       if (ccPageEl.hidden && manageMode) exitManage();
     }).observe(ccPageEl, { attributes: true, attributeFilter: ['hidden'] });
   }
+
+  // v3.7.x：字卡库页顶部两大分类切换（可自定义字卡 / 系统预设字卡）
+  const ccSectBtns = document.querySelectorAll('.cc-top-tabs .cc-tab[data-ccsect]');
+  const ccSectBodies = {
+    custom: document.getElementById('cc-sect-custom'),
+    preset: document.getElementById('cc-sect-preset')
+  };
+  ccSectBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const k = btn.getAttribute('data-ccsect');
+      ccSectBtns.forEach(b => b.classList.toggle('sel', b === btn));
+      Object.keys(ccSectBodies).forEach(key => {
+        const el = ccSectBodies[key];
+        if (el) el.hidden = (key !== k);
+      });
+    });
+  });
 })();

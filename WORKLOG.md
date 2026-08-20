@@ -9,6 +9,13 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（用户要求「可自定义字卡/系统预设字卡 两大分类做成字卡库顶部栏，可点击切换」）
+- [本会话·完成]（**已构建 verify 10/10 + CDP 切换专项 11/11，已提交**）：
+  - `src/template.html`：字卡库页（page-chatcard）顶部 `chat-title` 下新增切换栏 `.cc-top-tabs`（复用 .card-tabs/.cc-tab 样式）——两个 tab【可自定义字卡】【系统预设字卡】；7 个自定义入口包进 `#cc-sect-custom`、3 个预设入口包进 `#cc-sect-preset`（默认 hidden），删除原静态 .cc-sect 标题。
+  - `src/js/chatcard.js`（IIFE 末尾）：切换逻辑——点 tab 切 `sel` 选中态 + 切两个容器的 hidden。放在 chatcard.js 内（guard `cc-list/cc-tabs` 恒存在，必执行）。
+  - `src/css/chat-pages.css`：.cc-sect 样式替换为 `.cc-top-tabs`（tab 等宽 flex:1 + 底部容器 `.cc-sect-body[hidden]{display:none}`）。
+  - CDP 验证：初始自定义显示/预设隐藏、点预设↔自定义双向切换、选中态正确、预设组入口 li-default-cards 可正常进入页面并返回保持选中。li id/跳转全不变。
+
 ### 2026-08-20（用户要求「聊天音效：设计系统内置默认可切换使用的提示音」）
 - [本会话·完成]（**已构建 verify 10/10 + 内置音效专项 31/31，本次提交含 AI-A 已保存的 chat.js 切桌面防串桌守卫**）：
   - `src/js/sfx.js`：新增内置音效库（Web Audio API 实时合成、零存储占用）——短提示音 6 个：气泡/叮咚/小鸟/水滴/钢琴/轻叩；来电铃声 2 个：温馨铃/经典铃。AudioContext 单例 + 首次手势 resume（与既有 HTMLMediaElement 解锁并存）；AudioBuffer 缓存复用。

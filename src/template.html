@@ -309,7 +309,11 @@
         <!-- 聊天字卡库页（字卡库列表） -->
     <div class="page" id="page-chatcard" hidden>
       <div class="chat-title">字卡库</div>
-      <div class="cc-sect">可自定义字卡</div>
+      <div class="card-tabs cc-top-tabs">
+        <button class="cc-tab sel" data-ccsect="custom">可自定义字卡</button>
+        <button class="cc-tab" data-ccsect="preset">系统预设字卡</button>
+      </div>
+      <div class="cc-sect-body" id="cc-sect-custom">
       <div class="chat-item glass" id="li-custom-cards">
         <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></div>
         <div class="ci"><div class="n">自定义聊天字卡</div><div class="m" id="cc-sub-count">共收录 0 张字卡</div></div>
@@ -345,7 +349,8 @@
         <div class="ci"><div class="n">TA的吐槽</div><div class="m">突然吐槽你一句 · 情侣式调侃</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
         <div class="t">46</div>
       </div>
-      <div class="cc-sect">系统预设字卡</div>
+      </div>
+      <div class="cc-sect-body" id="cc-sect-preset" hidden>
       <div class="chat-item glass" id="li-default-cards">
         <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.4l6.1-.9z"/></svg></div>
         <div class="ci"><div class="n">聊天默认字卡</div><div class="m">日常默认回复字卡</div></div>
@@ -360,6 +365,7 @@
         <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>
         <div class="ci"><div class="n">聊天回应字卡</div><div class="m">逻辑连接词字卡</div></div>
         <div class="t">102</div>
+      </div>
       </div>
     </div>
 
