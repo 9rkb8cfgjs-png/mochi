@@ -184,7 +184,7 @@
     // v3.7.x：切换模式/张数时取消进行中的抽牌流程，避免旧流程把结果写进已清空的舞台
     if (window.__divActiveDraw) { try { window.__divActiveDraw(); } catch (e) {} window.__divActiveDraw = null; }
     const r = document.getElementById('div-result');
-    if (r) r.innerHTML = '<div class="div-result-empty">点击下方按钮开始抽牌</div>';
+    if (r) r.innerHTML = '<div class="div-result-empty">点击上方按钮开始抽牌</div>';
   }
 
   // ---- v3.7.x：自动发送开关（每个联系人独立记忆，走动态 store） ----
@@ -489,11 +489,22 @@
 
   // 抽牌（v3.7.x：洗牌动画 → 两行牌面滑动抽取 → 结果）
   const drawBtn = document.getElementById('div-draw');
+  const drawBtnIdleHTML = drawBtn ? drawBtn.innerHTML : '';
   if (drawBtn) {
     drawBtn.addEventListener('click', () => {
       const r = document.getElementById('div-result');
       if (!r) return;
-      // 连点/重新抽牌：先取消进行中的流程再重开
+      // v3.8.x：重新抽牌状态（上轮结果已展示）→ 先清空问题输入与结果区，回到
+      // 待抽牌状态，让用户重新输入问题后再点一次开始抽牌；不再直接带旧问题开抽
+      if (drawBtn.textContent.indexOf('重新抽牌') !== -1) {
+        if (window.__divActiveDraw) { try { window.__divActiveDraw(); } catch (e) {} window.__divActiveDraw = null; }
+        const qEl = document.getElementById('div-question');
+        if (qEl) qEl.value = '';
+        clearResult();
+        drawBtn.innerHTML = drawBtnIdleHTML;
+        return;
+      }
+      // 连点/进行中：取消进行中的流程再重开
       if (window.__divActiveDraw) { try { window.__divActiveDraw(); } catch (e) {} window.__divActiveDraw = null; }
       const question = ((document.getElementById('div-question') || {}).value || '').trim();
       // v3.5.130：快照点击时的模式/张数——流程期间切换设置不再影响本次结果

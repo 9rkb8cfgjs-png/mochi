@@ -3330,11 +3330,22 @@ function partialRetractMsg(msgEl, side) {
     const divDraw = document.getElementById('div-chat-draw');
     let chatDrawCancel = null;
     if (divDraw) {
+      const divDrawIdleHTML = divDraw.innerHTML;
       divDraw.addEventListener('click', (e) => {
         e.stopPropagation();
         const r = document.getElementById('div-chat-result');
         if (!r) return;
-        // 连点/重新抽牌：先取消进行中的流程
+        // v3.8.x：重新抽牌状态（上轮结果已展示）→ 先清空问题输入与结果区，回到
+        // 待抽牌状态，让用户重新输入问题后再点一次开始抽牌；不再直接带旧问题开抽
+        if (divDraw.textContent.indexOf('重新抽牌') !== -1) {
+          if (chatDrawCancel) { try { chatDrawCancel(); } catch (err) {} chatDrawCancel = null; }
+          const qEl = document.getElementById('div-chat-question');
+          if (qEl) qEl.value = '';
+          r.innerHTML = '<div class="div-result-empty">点击上方按钮开始抽牌</div>';
+          divDraw.innerHTML = divDrawIdleHTML;
+          return;
+        }
+        // 连点/进行中：先取消进行中的流程
         if (chatDrawCancel) { try { chatDrawCancel(); } catch (err) {} chatDrawCancel = null; }
         const question = (document.getElementById('div-chat-question') || {}).value || '';
         const snapMode = chatDivineMode, snapCount = chatDivineCount;

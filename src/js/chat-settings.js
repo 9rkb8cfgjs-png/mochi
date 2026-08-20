@@ -545,4 +545,36 @@
     });
     setInterval(syncCsFs, 500);
   }
+
+  // v3.7.x：聊天设置「音乐悬浮小窗」开关——与音乐页 #music-float-en / 音乐设置
+  // #sm-set-float 同源（music-global.floatEn，每桌面独立）。本文件先于 music-player.js
+  // 加载，故优先走 window.musicFloatGet/Set 钩子（完整走保存+悬浮框渲染流程）；
+  // 钩子未就绪时退化为直读写 store（切换桌面/初始态兜底，浮框由音乐模块下次渲染兜住）。
+  const csMf = document.getElementById('cs-music-float');
+  if (csMf) {
+    const mfGet = () => {
+      if (window.musicFloatGet) return !!window.musicFloatGet();
+      try {
+        const s = JSON.parse(store.get('music-global') || '{}');
+        return s.floatEn !== undefined ? !!s.floatEn : true; // 默认开
+      } catch (e) { return true; }
+    };
+    const mfSet = (en) => {
+      if (window.musicFloatSet) { window.musicFloatSet(en); return; }
+      try {
+        const s = JSON.parse(store.get('music-global') || '{}');
+        s.floatEn = !!en;
+        store.set('music-global', JSON.stringify(s));
+      } catch (e) {}
+    };
+    const syncCsMf = () => { const v = mfGet(); if (v !== csMf.checked) csMf.checked = v; };
+    syncCsMf();
+    csMf.addEventListener('change', () => {
+      if (csMf.checked === mfGet()) return;
+      mfSet(csMf.checked);
+    });
+    // 音乐页/音乐设置/桌面部件改动或切桌面后 500ms 内同步回本页开关
+    setInterval(syncCsMf, 500);
+    document.addEventListener('contact-switched', syncCsMf);
+  }
 })();

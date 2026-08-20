@@ -952,7 +952,10 @@
     });
     if (!removed) return;
     selected.clear();
-    saveGroups(groups);
+    // v3.7.x：持久化延后——saveGroups 同步序列化整个字卡库（图片/语音 dataURL 可让库
+    // 达几 MB~几十 MB），在确认回调里同步执行会阻塞弹窗关闭（用户反馈「点击确认卡顿」）；
+    // 内存与 DOM 已即时删除，延后到下一帧再写 LS+IDB，与编辑字卡一致
+    scheduleSave();
     // v3.6.x：局部移除被删卡片 + 重建受影响分组，不再整页 render（删除卡顿主因）；
     // 但分块渲染进行中时不能局部更新——旧批次会把已删的卡重新挂载，改走全量 render；
     // v3.7.x：搜索过滤开启时同样全量 render——rebuildGroupAfterRemove 重建整组不带
@@ -1655,5 +1658,15 @@
       const home = document.getElementById('page-chatcard');
       if (home) home.hidden = false;
     });
+  }
+
+  // v3.7.x：离开自定义字卡页时自动退出批量管理模式——manageBar 挂在 body 上，
+  // 不随页面 hidden 隐藏，会残留并"跑到"其他页面（用户反馈）。监听 page-custom-cards
+  // 的 hidden 变化，覆盖所有离开路径：返回按钮 / 底部 tab / 安卓返回键 / 其他入口
+  const ccPageEl = document.getElementById('page-custom-cards');
+  if (ccPageEl && typeof MutationObserver !== 'undefined') {
+    new MutationObserver(() => {
+      if (ccPageEl.hidden && manageMode) exitManage();
+    }).observe(ccPageEl, { attributes: true, attributeFilter: ['hidden'] });
   }
 })();

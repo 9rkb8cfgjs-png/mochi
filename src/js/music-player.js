@@ -2032,6 +2032,17 @@
     syncPlayIcons(audio && !audio.paused);
     syncHeartIcons();
   }
+  // v3.7.x：聊天设置「音乐悬浮小窗」开关钩子——读写同一 floatEn 状态（music-global，
+  // 每桌面独立）。chat-settings.js 加载早于本文件，运行时调用；与音乐页 #music-float-en、
+  // 音乐设置 #sm-set-float 完全同源（复用 saveSettings/syncFloatToggle/renderFloat 流程）。
+  window.musicFloatGet = function () { return !!settings.floatEn; };
+  window.musicFloatSet = function (en) {
+    settings.floatEn = !!en;
+    floatClosed = false;
+    saveSettings();
+    syncFloatToggle();
+    renderFloat();
+  };
   // ================= 收藏（我的收藏：桌面部件/悬浮小框/音乐页列表 共用） =================
   function favIds() {
     try { return JSON.parse(store.get('music-favs') || '[]'); } catch (e) { return []; }

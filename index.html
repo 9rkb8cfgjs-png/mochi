@@ -4083,7 +4083,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787209520553">Mochi 字卡传讯 v3.6.148 · 部署于 2026-08-20 15:05</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787211126619">Mochi 字卡传讯 v3.6.149 · 部署于 2026-08-20 15:32</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4844,7 +4844,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.148</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.149</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -6624,6 +6624,12 @@ color: var(--muted);
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg></div>
           <div class="txt">全屏模式（隐藏手机状态栏）</div>
           <label class="toggle"><input type="checkbox" id="cs-fullscreen"><span class="tk"></span></label>
+        </div>
+        <!-- v3.7.x：音乐悬浮小窗开关（镜像音乐页 #music-float-en / 音乐设置 #sm-set-float，同一 floatEn 状态，每桌面独立） -->
+        <div class="set-row" id="cs-music-float-row">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+          <div class="txt">音乐悬浮小窗</div>
+          <label class="toggle"><input type="checkbox" id="cs-music-float"><span class="tk"></span></label>
         </div>
       </div>
       <div class="gs-title" style="padding-top:2px">壁纸</div>
@@ -13846,10 +13852,19 @@ toast('占卜记录已清空');
 const divDraw = document.getElementById('div-chat-draw');
 let chatDrawCancel = null;
 if (divDraw) {
+const divDrawIdleHTML = divDraw.innerHTML;
 divDraw.addEventListener('click', (e) => {
 e.stopPropagation();
 const r = document.getElementById('div-chat-result');
 if (!r) return;
+if (divDraw.textContent.indexOf('重新抽牌') !== -1) {
+if (chatDrawCancel) { try { chatDrawCancel(); } catch (err) {} chatDrawCancel = null; }
+const qEl = document.getElementById('div-chat-question');
+if (qEl) qEl.value = '';
+r.innerHTML = '<div class="div-result-empty">点击上方按钮开始抽牌</div>';
+divDraw.innerHTML = divDrawIdleHTML;
+return;
+}
 if (chatDrawCancel) { try { chatDrawCancel(); } catch (err) {} chatDrawCancel = null; }
 const question = (document.getElementById('div-chat-question') || {}).value || '';
 const snapMode = chatDivineMode, snapCount = chatDivineCount;
@@ -16260,7 +16275,7 @@ removed++;
 });
 if (!removed) return;
 selected.clear();
-saveGroups(groups);
+scheduleSave();
 if (rendering || q) { render(); updateCount(); toast('已删除 ' + removed + ' 张字卡'); return; }
 touched.forEach((gname) => {
 rebuildGroupAfterRemove(gname);
@@ -16877,6 +16892,12 @@ const home = document.getElementById('page-chatcard');
 if (home) home.hidden = false;
 });
 }
+const ccPageEl = document.getElementById('page-custom-cards');
+if (ccPageEl && typeof MutationObserver !== 'undefined') {
+new MutationObserver(() => {
+if (ccPageEl.hidden && manageMode) exitManage();
+}).observe(ccPageEl, { attributes: true, attributeFilter: ['hidden'] });
+}
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
@@ -17355,6 +17376,32 @@ sfFs.checked = csFs.checked;
 sfFs.dispatchEvent(new Event('change', { bubbles: true }));
 });
 setInterval(syncCsFs, 500);
+}
+const csMf = document.getElementById('cs-music-float');
+if (csMf) {
+const mfGet = () => {
+if (window.musicFloatGet) return !!window.musicFloatGet();
+try {
+const s = JSON.parse(store.get('music-global') || '{}');
+return s.floatEn !== undefined ? !!s.floatEn : true; // 默认开
+} catch (e) { return true; }
+};
+const mfSet = (en) => {
+if (window.musicFloatSet) { window.musicFloatSet(en); return; }
+try {
+const s = JSON.parse(store.get('music-global') || '{}');
+s.floatEn = !!en;
+store.set('music-global', JSON.stringify(s));
+} catch (e) {}
+};
+const syncCsMf = () => { const v = mfGet(); if (v !== csMf.checked) csMf.checked = v; };
+syncCsMf();
+csMf.addEventListener('change', () => {
+if (csMf.checked === mfGet()) return;
+mfSet(csMf.checked);
+});
+setInterval(syncCsMf, 500);
+document.addEventListener('contact-switched', syncCsMf);
 }
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
@@ -19887,6 +19934,14 @@ document.getElementById('sm-f-name').textContent = (m.name || '未知歌曲') + 
 syncPlayIcons(audio && !audio.paused);
 syncHeartIcons();
 }
+window.musicFloatGet = function () { return !!settings.floatEn; };
+window.musicFloatSet = function (en) {
+settings.floatEn = !!en;
+floatClosed = false;
+saveSettings();
+syncFloatToggle();
+renderFloat();
+};
 function favIds() {
 try { return JSON.parse(store.get('music-favs') || '[]'); } catch (e) { return []; }
 }
@@ -20951,7 +21006,7 @@ clearResult();
 function clearResult() {
 if (window.__divActiveDraw) { try { window.__divActiveDraw(); } catch (e) {} window.__divActiveDraw = null; }
 const r = document.getElementById('div-result');
-if (r) r.innerHTML = '<div class="div-result-empty">点击下方按钮开始抽牌</div>';
+if (r) r.innerHTML = '<div class="div-result-empty">点击上方按钮开始抽牌</div>';
 }
 function autoSendGet() { try { return store.get('divine-send-auto') === '1'; } catch (e) { return false; } }
 function autoSendSet(on) { try { store.set('divine-send-auto', on ? '1' : '0'); } catch (e) {} }
@@ -21229,10 +21284,19 @@ clearTimeout(t._timer);
 t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
 }
 const drawBtn = document.getElementById('div-draw');
+const drawBtnIdleHTML = drawBtn ? drawBtn.innerHTML : '';
 if (drawBtn) {
 drawBtn.addEventListener('click', () => {
 const r = document.getElementById('div-result');
 if (!r) return;
+if (drawBtn.textContent.indexOf('重新抽牌') !== -1) {
+if (window.__divActiveDraw) { try { window.__divActiveDraw(); } catch (e) {} window.__divActiveDraw = null; }
+const qEl = document.getElementById('div-question');
+if (qEl) qEl.value = '';
+clearResult();
+drawBtn.innerHTML = drawBtnIdleHTML;
+return;
+}
 if (window.__divActiveDraw) { try { window.__divActiveDraw(); } catch (e) {} window.__divActiveDraw = null; }
 const question = ((document.getElementById('div-question') || {}).value || '').trim();
 const snapMode = mode, snapCount = count;

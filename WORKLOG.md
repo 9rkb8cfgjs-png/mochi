@@ -9,6 +9,19 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（用户要求「聊天设置的全屏模式下面新增音乐悬浮小窗开关」）
+- [本会话·完成]（**已构建 verify 10/10 + CDP 冒烟 9/9，本次提交一并包含 AI-A 已保存的占卜/字卡库改动**）：聊天设置页「全屏」组内、全屏模式开关下方新增「音乐悬浮小窗」开关 `#cs-music-float`。
+  - 与音乐页 `#music-float-en` / 音乐设置 `#sm-set-float` **同源**（`music-global.floatEn`，每桌面独立）：music-player.js 新增 `window.musicFloatGet()` / `window.musicFloatSet(en)` 钩子（复用 saveSettings/syncFloatToggle/renderFloat 完整流程，切关立即隐藏浮框）；chat-settings.js 仿 cs-fullscreen 模式绑定：初始同步 + change 写回 + 500ms 轮询 + contact-switched 立即同步；music-player.js 加载晚于 chat-settings.js，钩子未就绪时退化为直读写 store（默认开）。
+  - 涉及 `src/template.html` `src/js/music-player.js` `src/js/chat-settings.js`。CDP 验证：开关位置在全屏行正下方/初始同步/关→music-global=false+音乐页开关同步/音乐页开→500ms 同步/直调 musicFloatSet 同步/刷新持久化，9/9。
+  - ⚠️ 并行会话 AI-A 留话请构建者一并构建的改动已包含本次构建：divination.js+chat.js（占卜重新抽牌先清空问题输入栏）+ chatcard.js（删除字卡 scheduleSave 延后写、离开字卡页自动退出批量管理），均已 verify 通过，提交 message 注明双方范围。
+
+### 2026-08-20（用户反馈「占卜点重新抽牌无法先清空问题输入栏再重新输入问题开始抽牌」）
+- [AI-A·完成]（**已改 src，未构建未提交**，请构建者执行 `node build.mjs`）：`src/js/divination.js` + `src/js/chat.js`（均 AI-A 域）。
+  - 根因：点「重新抽牌」立即开抽，问题在点击瞬间快照——上轮问题还留在输入栏，用户来不及清空/重输，新抽仍带旧问题。
+  - 修复：按钮处于「重新抽牌」状态（上轮结果已展示）时，点击改为**先清空问题输入框 + 清空结果区**，按钮恢复「抽牌」（含原 SVG 图标），用户重新输入问题后再点一次开始抽牌；桌面占卜页（`#div-draw`）与聊天页占卜半框（`#div-chat-draw`）同步修复。清空走 `input.value=''`，安卓 ce-box 代理已支持（mobile-adapt.js setter）。
+  - 顺带：`clearResult()` 空态文案「点击下方按钮」→「点击上方按钮」（按钮在结果区上方，原文案错误）。
+  - 验证：node --check 双文件通过；功能未构建未验证，需构建后无头/真机确认。
+
 ### 2026-08-20（用户反馈 iOS Safari 多角色四个问题·本会话修复）
 - [AI-A·完成]（**已构建 verify 10/10，未提交**）：`src/js/chat.js` `mail.js` `feed.js`（AI-A 域）、`src/js/contacts.js`（AI-B 域，代改 renameContact 同步 lbl-partner，若需调整请留话）。
   - **① 切桌面再切回消息消失**：`chat.js` loadMsgs 合并原规则 localNew 只保留本地比 IDB 末条 ts 更新的消息，若 IDB 缺旧消息（写入失败/竞态），本地旧消息 ts < idbLastTs 被 filter 掉 → 丢消息。改为按指纹（ts+text+side+img）取并集，不限 ts，merged 按 ts 排序。聊天只增不改，取并集不会加回已删消息。
