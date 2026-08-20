@@ -1106,22 +1106,127 @@
     });
   }
 
-  // ================= 导出数据（字卡库 json，文件名：mochi字卡库数据） =================
+  // ================= 导出数据（v3.7.x：弹窗选择分类 + 分组后导出 json） =================
   const ccExport = document.getElementById('cc-export');
   if (ccExport) {
-    ccExport.addEventListener('click', () => {
-      try {
-        const data = JSON.stringify(groups, null, 2);
-        const blob = new Blob([data], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'mochi字卡库数据.json';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 300);
-        toast('已导出字卡库数据');
-      } catch (e) { toast('导出失败'); }
-    });
+    // 7 大分类 key + 显示名（与分类 tab 一致）
+    const EXPORT_CATS = [
+      ['text', '主字卡'], ['kaomoji', '颜文字'], ['emoji', 'emoji'],
+      ['sticker', '表情包'], ['image', '图片'], ['poke', '拍一拍'], ['voice', '语音']
+    ];
+    const ceMask = document.getElementById('cc-export-mask');
+    const ceCats = document.getElementById('ce-cats');
+    const ceGrps = document.getElementById('ce-grps');
+    const ceSummary = document.getElementById('ce-summary');
+    const ceDo = document.getElementById('ce-do');
+    const ceClose = document.getElementById('ce-close');
+    // 选择状态：{ 分类key: { on: 是否选中分类, grps: { 分组名: 是否选中 } } }
+    let ceState = {};
+    if (ceMask && ceCats && ceGrps) {
+      function ceInit() {
+        ceState = {};
+        EXPORT_CATS.forEach(([key]) => {
+          const gs = groups[key] || [];
+          const st = { on: gs.length > 0, grps: {} };
+          gs.forEach(([name]) => { st.grps[name] = true; });
+          ceState[key] = st;
+        });
+      }
+      function ceRender() {
+        // 分类 chips（显示数量，默认全选非空分类）
+        ceCats.innerHTML = '';
+        EXPORT_CATS.forEach(([key, name]) => {
+          const gs = groups[key] || [];
+          const n = gs.reduce((s, g) => s + (Array.isArray(g[1]) ? g[1].length : 0), 0);
+          const b = document.createElement('span');
+          b.className = 'cc-g-chip' + (ceState[key] && ceState[key].on ? ' sel' : '');
+          b.textContent = name + ' ' + n;
+          b.addEventListener('click', () => {
+            const st = ceState[key];
+            st.on = !st.on;
+            // 重新打开的分类：其分组恢复全选（之前取消的选择不残留）
+            if (st.on) Object.keys(st.grps).forEach(g => { st.grps[g] = true; });
+            ceRender();
+          });
+          ceCats.appendChild(b);
+        });
+        // 分组 chips（按分类分段，只渲染选中的分类）
+        ceGrps.innerHTML = '';
+        const grpCats = EXPORT_CATS.filter(([key]) => ceState[key] && ceState[key].on && (groups[key] || []).length);
+        if (!grpCats.length) {
+          const e = document.createElement('div');
+          e.className = 'cc-empty';
+          e.textContent = '所选分类暂无分组，请先选择有字卡的分类';
+          ceGrps.appendChild(e);
+        } else {
+          grpCats.forEach(([key, cname]) => {
+            const gs = groups[key] || [];
+            const sec = document.createElement('div');
+            sec.className = 'ce-grp-sec';
+            const secName = document.createElement('div');
+            secName.className = 'ce-grp-cat';
+            secName.textContent = cname;
+            sec.appendChild(secName);
+            const chips = document.createElement('div');
+            chips.className = 'cc-groups-bar';
+            gs.forEach(([gname, cards]) => {
+              const n = Array.isArray(cards) ? cards.length : 0;
+              const b = document.createElement('span');
+              b.className = 'cc-g-chip' + (ceState[key].grps[gname] ? ' sel' : '');
+              b.textContent = gname + ' ' + n;
+              b.addEventListener('click', () => {
+                ceState[key].grps[gname] = !ceState[key].grps[gname];
+                ceRender();
+              });
+              chips.appendChild(b);
+            });
+            sec.appendChild(chips);
+            ceGrps.appendChild(sec);
+          });
+        }
+        // 汇总 + 按钮可用态
+        let cards = 0, grps = 0, cats = 0;
+        EXPORT_CATS.forEach(([key]) => {
+          const st = ceState[key];
+          if (!st || !st.on) return;
+          cats++;
+          (groups[key] || []).forEach(([gname, cs]) => {
+            if (st.grps[gname]) { grps++; cards += Array.isArray(cs) ? cs.length : 0; }
+          });
+        });
+        ceSummary.textContent = '已选 ' + cats + ' 个分类 · ' + grps + ' 个分组 · ' + cards + ' 张字卡';
+        if (ceDo) ceDo.disabled = cards === 0;
+      }
+      function ceOpen() { ceInit(); ceRender(); ceMask.hidden = false; }
+      function ceCloseFn() { ceMask.hidden = true; }
+      ccExport.addEventListener('click', ceOpen);
+      if (ceClose) ceClose.addEventListener('click', ceCloseFn);
+      ceMask.addEventListener('click', (e) => { if (e.target === ceMask) ceCloseFn(); });
+      if (ceDo) {
+        ceDo.addEventListener('click', () => {
+          try {
+            const out = { text: [], kaomoji: [], emoji: [], sticker: [], image: [], poke: [], voice: [] };
+            EXPORT_CATS.forEach(([key]) => {
+              const st = ceState[key];
+              if (!st || !st.on) return;
+              (groups[key] || []).forEach(([gname, cs]) => {
+                if (st.grps[gname]) out[key].push([gname, Array.isArray(cs) ? cs.slice() : []]);
+              });
+            });
+            const data = JSON.stringify(out, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'mochi字卡库数据.json';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 300);
+            ceCloseFn();
+            toast('已导出所选字卡');
+          } catch (e) { toast('导出失败'); }
+        });
+      }
+    }
   }
 
   // ================= 导入数据（字卡库 json） =================

@@ -2738,6 +2738,21 @@
   </div>
 </div>
 
+<!-- 导出字卡数据选择弹层（v3.7.x：分类 + 分组多选后导出 json） -->
+<div class="tc-mask" id="cc-export-mask" hidden>
+  <div class="tc-panel">
+    <div class="mg-head"><span>导出字卡数据</span><button class="mg-close" id="ce-close">✕</button></div>
+    <div class="tc-body">
+      <div class="gs-title">选择分类</div>
+      <div class="cc-export-row" id="ce-cats"></div>
+      <div class="gs-title">选择分组</div>
+      <div class="cc-export-grps" id="ce-grps"></div>
+      <div class="ce-summary" id="ce-summary"></div>
+    </div>
+    <button class="cc-tool ce-btn" id="ce-do">导出选中字卡</button>
+  </div>
+</div>
+
 <!-- v3.5.102：桌面新消息横幅（TA 主动发消息时，在桌面/其他页面顶部弹出，点击进聊天） -->
 <div class="desk-msg" id="desk-msg" hidden>
   <div class="desk-msg-av" id="desk-msg-av"></div>

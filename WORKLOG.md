@@ -9,6 +9,14 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（用户要求「自定义聊天字卡里导出数据，需点击后弹窗选择导出的分类和里面的具体分组」）
+- [本会话·完成]（**已构建 verify 10/10 + CDP 导出弹层专项 19/19，已提交**）：
+  - `src/template.html`：新增导出选择弹层 `#cc-export-mask`（复用 tc-mask/tc-panel 居中弹窗 + mg-head 头部），内部分类区 `#ce-cats` / 分组区 `#ce-grps` / 汇总 `#ce-summary` / 导出按钮 `#ce-do`。
+  - `src/js/chatcard.js`：ccExport 点击改为打开选择弹窗——7 大分类 chips（主字卡/颜文字/emoji/表情包/图片/拍一拍/语音，带数量，默认选中非空分类）多选；下方按分类分段显示分组 chips（多选，默认全选，分类重开时恢复全选）；实时汇总「已选 N 分类 · M 分组 · X 字卡」；无选中字卡时导出按钮禁用；导出 JSON 保持原格式（未选分类为空数组，可直接导入）。
+  - `src/css/chat-pages.css`：弹层 chips 复用 .cc-g-chip；新增 .cc-export-row/.cc-export-grps/.ce-grp-sec/.ce-grp-cat/.ce-summary/.ce-btn + `.cc-tool[disabled]` 禁用态。
+  - `src/js/mobile-adapt.js`：`#cc-export-mask` 加入 FLOAT_SELECTORS（锁背景滚动）。
+  - CDP 验证：注入 5 分类测试数据（注意避开 BUILTIN 内置分组/内容，会被 stripBuiltins 剔除）——默认选中非空分类/分组全选/汇总正确、取消分类→分组区联动、重开分类分组恢复全选、取消单分组、全取消按钮禁用、下载 JSON 内容断言（只含选中分类与分组、可直接导入）。
+
 ### 2026-08-20（用户要求「聊天设置音乐悬浮小窗下新增隐藏通话小框按钮；删除更多功能·通话半框里的通话小框开关及说明文字」）
 - [本会话·完成]（**已构建 verify 10/10，未提交**）：
   - `src/template.html`：聊天设置页「全屏」组内、音乐悬浮小窗开关下方新增「隐藏通话小框」开关 `#cs-call-mini-hide`（电话听筒图标）；同时删除通话半框（`#chat-call-panel`）内的「通话小框」`#call-mini-toggle` 开关 + 副标题 + `.call-panel-hint` 说明文字。
@@ -794,3 +802,10 @@
   - **根因**（call.js）：去电 placeCall 拨出时漏调 musicHoldForCall(true)，callHoldPlaying 未记录为 true；挂断 endCall 调 musicHoldForCall(false) 时 callHoldPlaying 为 false，不触发恢复播放。来电 incomingCall 有此调用故正常。
   - **修复**：placeCall 的 closeImageOverlay() 后补 `if (window.musicHoldForCall) window.musicHoldForCall(true)`，与来电对齐——拨出即暂停音乐+隐藏悬浮小框，挂断后自动恢复。
   - 验证：布局 verify 10/10。构建产物已更新。
+
+### 2026-08-20
+- [本会话] 完成（用户反馈「引用图片/表情包消息，发送出去还有『图片』两个字」修复，已构建 verify 10/10 + CDP 13/13，已提交 26d6b39，未推送）：
+  - **根因**（chat.js）：引用纯图片/表情包消息时 lastQuote.text 被设为占位文案「图片/表情包」（引用设置处 4267-4270）；quoteHtml（651-670）与引用预览条 renderQuoteBar（5120-5153）把该占位当文字渲染 → 引用块/预览条出现「图片」两字。
+  - **修复**（src/js/chat.js 共 3 处）：新增常量 `QUOTE_PLACEHOLDER = /^(图片|表情包|\[图片\]|\[表情包\])$/`；quoteHtml 对象分支在「有缩略图」时过滤占位文案（**历史消息里已存的引用块一并修复**）；renderQuoteBar 有缩略图时同样不显示占位文字。组合消息（文字+图）引用的真实文字不受影响（正则不匹配）。
+  - **验证**：tools/verify-quote-image.mjs（新增）CDP 13/13——A 历史引用渲染 4 项（图片/表情包不显示占位、组合保留文字）+ B/C/D UI 交互引用图片/表情包/组合消息各 3 项（预览条与气泡引用块）；verify 布局 10/10。
+  - ⚠️ **对方注意**：本轮 index.html 是 19:31 构建快照，**未包含**你们 19:33 保存的 chatcard.js / mobile-adapt.js / chat-pages.css / template.html 改动（仍在工作区未提交）。请收尾后重新 `node build.mjs` 并提交，避免 src 与产物不一致。

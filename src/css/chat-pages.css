@@ -1129,6 +1129,14 @@
 .tc-body { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; padding:2px; }
 .tc-body::-webkit-scrollbar { display:none; }
 .tc-hint { text-align:center; font-size:11px; color:var(--muted); letter-spacing:1px; }
+/* ===== 导出字卡数据选择弹层（v3.7.x：分类 + 分组多选） ===== */
+.cc-export-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:4px; }
+.cc-export-grps { display:flex; flex-direction:column; gap:10px; }
+.ce-grp-sec { display:flex; flex-direction:column; gap:6px; }
+.ce-grp-cat { font-size:11px; font-weight:700; color:var(--muted); letter-spacing:.5px; padding-left:2px; }
+.ce-summary { text-align:center; font-size:12px; color:var(--muted); margin:12px 0 2px; }
+.ce-btn { margin-top:12px; }
+.cc-tool[disabled] { opacity:.45; pointer-events:none; }
 .tc-q { font-size:16px; font-weight:700; color:var(--ink); line-height:1.7; text-align:center; margin:10px 0 18px; }
 .tc-opt {
   padding:13px 14px; margin-bottom:10px; border:1px solid rgba(0,0,0,.1);
