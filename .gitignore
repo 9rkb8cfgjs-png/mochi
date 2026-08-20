@@ -13,3 +13,6 @@
 # 临时探测脚本
 _*.mjs
 probe-*.mjs
+
+# Node 依赖目录（测试工具用）
+node_modules/
