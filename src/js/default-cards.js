@@ -81,7 +81,17 @@
       bar.appendChild(cEl);
     });
   }
+  // v3.7.x：分批渲染——main 分类 4621 张字卡一次性同步构建 DOM（每卡 div+innerHTML+
+  // querySelector+addEventListener）会阻塞 iOS Safari 主线程数百毫秒到数秒，低端机白屏；
+  // 改为每帧挂载一批（rAF + DocumentFragment），首屏立即可滚动，后续渐进填充。
+  // 切换 tab/分组/搜索时递增 renderToken，旧批次发现 token 不匹配即废弃，防旧卡复活。
+  const RENDER_BATCH = 120;
+  let renderToken = 0;
+  // change 委托查表：idx → {c, item, input}。原每卡一个 change 监听器（4621 个）是
+  // 内存与启动负担，改为 list 单一 change 监听器按 data-idx 查表（rec.input 校验防旧批次残留）
+  let cardByIdx = [];
   function render() {
+    const token = ++renderToken;
     const grps = DATA[cur] || [];
     let shown = grps;
     if (curGroup) shown = shown.filter(g => g[0] === curGroup);
@@ -90,33 +100,62 @@
       shown = shown.map(([g, arr]) => [g, arr.filter(c => c.indexOf(q) >= 0)]).filter(([g, arr]) => arr.length || g.indexOf(q) >= 0);
     }
     list.innerHTML = '';
+    cardByIdx = [];
     if (!shown.length) {
       list.innerHTML = '<div class="cc-empty">暂无默认字卡</div>';
       return;
     }
+    // 展开扁平结构：分组 header 与字卡项交错
+    const flat = [];
     shown.forEach(([gname, arr]) => {
-      const h = document.createElement('div');
-      h.className = 'cc-group-header';
-      h.innerHTML = '<span class="ccg-name">' + gname + '</span><span class="ccg-count">' + arr.length + '</span>';
-      list.appendChild(h);
-      arr.forEach(c => {
-        const off = isCardOff(cur, c);
-        const d = document.createElement('div');
-        d.className = 'cc-item glass' + (off ? ' off' : '');
-        // v3.6.x：整页为系统预设字卡，统一标【系统】与自定义字卡区分；
-        // 右侧单卡开关——逐张开启/关闭该字卡（关闭后聊天回复不再抽取）
-        d.innerHTML = '<div class="cc-txt"><div class="t">' + c + ' <span class="tc-known">系统</span></div></div>' +
-          '<label class="toggle ccard-toggle"><input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span></label>';
-        list.appendChild(d);
-        d.querySelector('input').addEventListener('change', () => {
-          const nowOff = !d.querySelector('input').checked;
-          setCardOff(cur, c, nowOff);
-          d.classList.toggle('off', nowOff);
-          toastCard(c, nowOff);
-        });
-      });
+      flat.push({ header: true, gname, count: arr.length });
+      arr.forEach(c => flat.push({ header: false, c }));
     });
+    const frag = document.createDocumentFragment();
+    let pos = 0;
+    const step = () => {
+      if (token !== renderToken) return; // 新渲染已开始，废弃本批次
+      const end = Math.min(pos + RENDER_BATCH, flat.length);
+      for (; pos < end; pos++) {
+        const it = flat[pos];
+        if (it.header) {
+          const h = document.createElement('div');
+          h.className = 'cc-group-header';
+          h.innerHTML = '<span class="ccg-name">' + it.gname + '</span><span class="ccg-count">' + it.count + '</span>';
+          frag.appendChild(h);
+        } else {
+          const c = it.c;
+          const off = isCardOff(cur, c);
+          const d = document.createElement('div');
+          d.className = 'cc-item glass' + (off ? ' off' : '');
+          // v3.6.x：整页为系统预设字卡，统一标【系统】与自定义字卡区分；
+          // 右侧单卡开关——逐张开启/关闭该字卡（关闭后聊天回复不再抽取）
+          d.innerHTML = '<div class="cc-txt"><div class="t">' + c + ' <span class="tc-known">系统</span></div></div>' +
+            '<label class="toggle ccard-toggle"><input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span></label>';
+          d.dataset.idx = cardByIdx.length;
+          cardByIdx.push({ c, item: d, input: d.querySelector('input') });
+          frag.appendChild(d);
+        }
+      }
+      // 每帧挂载一批：列表渐进出现，首屏立即可滚动
+      list.appendChild(frag);
+      if (pos < flat.length) requestAnimationFrame(step);
+    };
+    step(); // 首帧同步跑第一批（小列表一次完成，行为与原一致）
   }
+  // v3.7.x：change 事件委托——list 单一监听器替代每卡一个（4621 → 1）
+  list.addEventListener('change', (e) => {
+    const input = e.target;
+    if (!input || input.type !== 'checkbox') return;
+    const item = input.closest('.cc-item');
+    if (!item) return;
+    const rec = cardByIdx[Number(item.dataset.idx)];
+    if (!rec || rec.input !== input) return; // 旧批次残留 DOM，忽略
+    const nowOff = !input.checked;
+    setCardOff(cur, rec.c, nowOff);
+    item.classList.toggle('off', nowOff);
+    toastCard(rec.c, nowOff);
+  });
 
   // v3.7.x：互动回应 tab（JS 注入，避免改 template.html）——展示互动卡片预设话术池
   // （邀请TA 接受/拒绝、问问TA 回应、小问题/好奇/吐槽/询问 的预设回应，数据在
@@ -147,9 +186,12 @@
   if (searchInput) {
     // v3.5.138：不再标记 ceDone 跳过 contenteditable 转换——手机 Chrome 对
     // 原生 input 聚焦弹「自动填充」白条；ce-box 兼容 input 转发 + value 代理
+    // v3.7.x：150ms 防抖——main 分类 4621 张字卡每敲一个字全量渲染会卡，输入停顿后再筛
+    let searchTimer = null;
     searchInput.addEventListener('input', () => {
       q = searchInput.value.trim();
-      render();
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(render, 150);
     });
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { searchInput.value = ''; q = ''; render(); searchInput.blur(); }

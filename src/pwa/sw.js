@@ -39,10 +39,27 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (e) => {
+  // v3.7.x：删旧缓存前先确认当前 CACHE 已缓存 index.html。precache 在慢网络下可能
+  // 全部 8s 超时失败（PRECACHE 逐文件 allSettled）→ 新 CACHE 为空，此时若照旧删光
+  // 旧缓存，导航回退 caches.match('./index.html') 拿不到 → Response.error() → 白屏。
+  // iOS PWA 切回前台弱网时极易触发（Edge/Safari 切回瞬间网络未就绪 + SW 更新竞态）。
+  // 当前 CACHE 无 index.html 时，保留一个含 index.html 的旧缓存兜底，等下次更新再清；
+  // 旧缓存都没有 index.html 才全删（留着也无用）。
   e.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
+    caches.keys().then((keys) => {
+      const oldKeys = keys.filter((k) => k !== CACHE);
+      if (!oldKeys.length) return self.clients.claim();
+      return caches.open(CACHE).then((c) => c.match('./index.html')).then((hit) => {
+        if (hit) return Promise.all(oldKeys.map((k) => caches.delete(k)));
+        return Promise.all(oldKeys.map((k) =>
+          caches.open(k).then((c) => c.match('./index.html')).then((m) => m ? k : null)
+        )).then((hits) => {
+          const keep = hits.find(Boolean);
+          if (keep) return Promise.all(oldKeys.filter((k) => k !== keep).map((k) => caches.delete(k)));
+          return Promise.all(oldKeys.map((k) => caches.delete(k)));
+        });
+      }).then(() => self.clients.claim());
+    })
   );
 });
 
@@ -72,19 +89,14 @@ self.addEventListener('fetch', (e) => {
         // 仅导航请求回退到 index.html；其他资源（manifest/图标/JS 等）
         // 只回退自身缓存，绝不用 HTML 顶替——否则安装/更新流程会拿到错误内容
         const fallback = req.mode === 'navigate'
-          ? caches.match('./index.html').then((m) => m || (() => {
-              // v3.7.x：新 SW 的 precache 在慢网络下可能全部失败（PRECACHE 逐文件
-              // 8s 超时），activate 又会删光旧缓存——此时本缓存为空，导航无缓存可回退。
-              // 兜底找任意一个旧缓存里的 index.html（activate 已完成的情况下旧缓存
-              // 已删，这里只兜 activate 完成前/precache 未写入的窗口期），
-              // 保证导航永不白屏；找不到才真正失败。
-              return caches.keys().then((keys) => {
-                for (let i = 0; i < keys.length; i++) {
-                  return caches.match('./index.html', { cacheName: keys[i] });
-                }
-                return undefined;
-              });
-            })())
+          ? caches.match('./index.html').then((m) => m || caches.keys().then((keys) => {
+              // v3.7.x：主缓存无 index.html（precache 失败 / activate 保留了旧缓存兜底），
+              // 遍历所有缓存找第一个命中的 index.html。原 for 循环首次即 return 只查
+              // keys[0]，漏掉其余缓存——改为 reduce 顺序探测，命中即返回，保证导航永不白屏。
+              return keys.reduce((p, k) =>
+                p.then((found) => found || caches.match('./index.html', { cacheName: k }))
+              , Promise.resolve(null));
+            }))
           : caches.match(req);
         return fallback.then((m) => m || Response.error());
       })

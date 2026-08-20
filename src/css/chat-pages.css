@@ -167,6 +167,11 @@
 }
 
 /* ===== 聊天默认字卡页 ===== */
+/* v3.7.x：iOS 性能优化——main 分类 4621 张 .cc-item.glass，.glass 的 box-shadow × 4621
+   触发大量 paint、.cc-item 的 transform transition 让每卡成合成层候选，iOS Safari
+   打开卡顿白屏。本页字卡去掉阴影与缩放反馈（右侧 toggle 开关已是交互反馈，视觉无损） */
+#dc-list .cc-item { box-shadow: none; transition: none; }
+#dc-list .cc-item:active { transform: none; }
 .dc-toggle {
   display:flex; align-items:center; justify-content:space-between; gap:10px;
   border-radius:18px; padding:14px 16px; margin-bottom:14px; flex-shrink:0;

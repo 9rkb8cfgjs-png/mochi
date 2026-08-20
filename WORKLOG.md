@@ -9,6 +9,15 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（用户反馈「聊天默认字卡页 iOS 端打开很困难，非常卡」）
+- [AI-A·完成]（**已改 src，未构建未提交**，请构建者执行 `node build.mjs` 后随下次统一提交）：`src/js/default-cards.js` + `src/css/chat-pages.css`（均 AI-A 域）。
+  - 根因：`main` 分类 **4621 张字卡 / 274 个分组**，`render()` 一次性同步构建全部 DOM（每卡 = div + innerHTML + querySelector + addEventListener），iOS Safari 主线程长阻塞数百毫秒到数秒、低端机白屏；叠加 `.glass` 的 `box-shadow` × 4621 触发大量 paint、`.cc-item` 的 `transform` transition 让每卡成合成层候选；搜索 `input` 每键一次全量重建。
+  - 修复 1（分批渲染）：仿 chatcard.js 既有模式——`RENDER_BATCH=120` + `renderToken` 版本号 + `requestAnimationFrame(step)` + `DocumentFragment` 每帧挂载一批，首屏立即可滚动、后续渐进填充；切换 tab/分组/搜索时递增 token，旧批次发现不匹配即废弃，防旧卡复活。
+  - 修复 2（事件委托）：原每卡一个 change 监听器（4621 个）改为 `#dc-list` 单一 change 监听器，按 `data-idx` 查 `cardByIdx` 表（`rec.input === input` 校验防旧批次残留 DOM 误触发）。
+  - 修复 3（搜索防抖）：input 事件加 150ms debounce，避免每敲一个字全量渲染。
+  - 修复 4（CSS paint 优化）：`#dc-list .cc-item` 去掉 `.glass` 的 `box-shadow` 与 `.cc-item` 的 `transform` transition/`:active` scale（右侧 toggle 开关已是交互反馈，视觉无损；仅限默认字卡页，不影响其他页 `.cc-item`）。
+  - 验证：`node --check` 通过；功能未构建未验证，需构建后无头 verify + **iOS 真机测试**（无头环境无法验证 iOS Safari 性能）。
+
 ### 2026-08-20（用户反馈「收藏页右上角没有收藏设置按钮，无法调整联系人自动收藏概率」）
 - [本会话·完成]（**已构建，verify 10/10 + 收藏设置专项 5/5 通过；未提交/未推送，等待部署确认**）：
   - 排查结论：功能已在 src + 本地构建产物里完整存在（`fav-settings.js` + `#page-fav-settings` 弹层 + 4 个概率 stepper），但**从未推送到 GitHub（origin/main 落后本地 8 个提交，线上部署停在 17:42）**——用户看不到按钮的原因是部署未执行，不是功能缺失。
@@ -824,3 +833,12 @@
   - **根因修复（重要）**：拍一拍 tab 原来复用 .emoji-tab 类，表情包面板的全局 `document.querySelectorAll('.emoji-tab')` 点击监听会**劫持拍一拍 tab 点击**（dataset.etab 为空→emojiMode=undefined→undefined===undefined→给全部 .emoji-tab 加回 sel）→ 两个 tab 永远同时高亮。修复：拍一拍 tab 改用独立 `.poke-tab` 类（样式同 .emoji-tab）。
   - **顺带修复**：对方 19:52 新增的 chat-settings-btn 代码用 `const csBtn` 与既有 chat-continue-btn 的 csBtn 重复声明 → 整包语法错误（node --check 挂、构建挂）；已改名 csOpenBtn（对方逻辑不变），已在 WORKLOG 注明。
   - 验证：CDP 6/6（ta 只读/无工具行/原样显示字卡库、mine 预设+工具行、选中样式 ta≠mine、mine 新增进分组、ta 点卡片发「我 拍联系人」、无 sel 串扰），verify 10/10。
+
+### 2026-08-20（用户反馈「iPhone17 Edge：开了后台通知和保活收不到信息；退了过一会进去白屏（后台还在）」）
+- [AI-B·完成]（**已改 src/pwa/sw.js，未构建未提交**，请构建者执行 `node build.mjs` 后随下次统一提交）：
+  - **诊断·通知收不到**：iOS 平台限制，代码无法修。① Edge 标签页无 Notification API（iOS WebKit 仅 PWA 模式暴露，bg-keep.js:268 已 toast 提示）；② 装主屏也不弹——iOS WebKit reg.showNotification() 只在收到 push 事件时弹（需真后端+VAPID+PushSubscription），本项目是页面 JS 定时调 showNotification 无 push 事件 → iOS 静默不弹（安卓 Chrome 允许）；③ 后台保活在 iOS 无效——AudioContext 后台立即挂起/JS 定时器停/wakeLock 后台无效/MediaSession 不阻止冻结，iOS 没有"网页后台保活"。要支持 iOS 通知必须接后端 Web Push，与项目纯本地定位冲突。建议设置页对 iOS 灰掉这两个开关+提示。
+  - **修复·白屏**（src/pwa/sw.js 两处 bug，AI-B 域）：
+    1. activate 删旧缓存太激进（主因）：precache 弱网全 8s 超时失败 → 新 CACHE 空 → activate 照旧删光旧缓存 → 导航回退 caches.match('./index.html') 拿不到 → Response.error() → 白屏（iOS PWA 切回前台弱网易触发）。修复：删旧前先确认当前 CACHE 有 index.html，没有则保留一个含 index.html 的旧缓存兜底，都没有才全删。
+    2. 兜底循环首次即 return：原 for 循环 `return caches.match(...)` 只查 keys[0] 漏掉其余 cache。改为 reduce 顺序遍历所有 cache，命中即返回。
+  - 验证：node --check 通过。功能未构建未验证，需构建后无头 verify + iOS 真机测试（无头无法验证 iOS PWA 切回白屏）。
+  - ⚠️ 工作区另有 AI-A 进行中改动（default-cards.js + chat-pages.css 未构建），本次 sw.js 改动未含在内，构建时需 AI-A 确认已保存完整。
