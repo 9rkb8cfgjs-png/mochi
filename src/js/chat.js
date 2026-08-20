@@ -50,6 +50,7 @@
   document.addEventListener('contact-switched', function () {
     try {
       if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+      try { hideTyping(); } catch (e) {}
       msgs = [];
       pendingLocal = null;
       chatDbReady = false;
@@ -2062,6 +2063,9 @@ function partialRetractMsg(msgEl, side) {
   }
   // 单条回复：生成内容 + 发送 + 收藏/情绪/撤回 附带逻辑（供普通回复与「让对方继续说」共用）
   function replyOnce(c, quote) {
+    // v3.7.x：同 scheduleReply，回调执行时若已切联系人则放弃（防串桌面）
+    const myCid = window.__activeCid || 'default';
+    const sameCid = () => (window.__activeCid || 'default') === myCid;
     const rep = genOneReply(c);
     // 引用我的消息：quote 是我发的文本，qside='out'（我发）
     const m = addIn(rep.text, { quote: quote, qside: 'out', type: rep.type, parts: rep.parts });
@@ -2074,7 +2078,7 @@ function partialRetractMsg(msgEl, side) {
         const favType = lastMineText.indexOf('data:') === 0 ? 'image' : 'text';
         fav.push({ side: 'out', text: lastMineText, type: favType, ts: Date.now(), by: 'ta' });
         saveFav(fav);
-        setTimeout(() => toast('TA 收藏了你的一条消息'), 1200);
+        setTimeout(() => { if (!sameCid()) return; toast('TA 收藏了你的一条消息'); }, 1200);
       }
     }
     // 情绪系统触发链（星言完整版）：文字回复和表情包回复都会触发
@@ -2085,6 +2089,7 @@ function partialRetractMsg(msgEl, side) {
         // 类型名映射：情绪 / 心意 / 交流意图
         const typeName = { mood: '情绪', heart: '心意', intent: '交流意图' };
         setTimeout(() => {
+          if (!sameCid()) return;
           // 追加到主回复气泡 m 内部下方（不新增消息）
           // 所有字卡放进同一个 .msg-moods 容器：一条虚线与正文隔离，字卡紧凑同行
           const bm = m.querySelector('.msg-bubble');
@@ -2114,28 +2119,32 @@ function partialRetractMsg(msgEl, side) {
     }
     if (hit(c['rc-prob'])) {
       setTimeout(() => {
+        if (!sameCid()) return;
         // ★ 字卡级局部撤回（仿星言）：多段文本/情绪卡优先局部撤回，否则整条撤回
         partialRetractMsg(m, 'in');
         if (hit(c['rc-refix'])) {
           showTyping();
-          setTimeout(() => { hideTyping(); replyOnce(c, null); }, 600);
+          setTimeout(() => { if (!sameCid()) return; hideTyping(); replyOnce(c, null); }, 600);
         }
       }, 900);
     }
     // v3.6.x：来电挂钩——TA 回复消息后按「通话设置-来电概率」掷一次来电
     // （call.js 提供 window.callMaybeTrigger，与 maybeMusicRequest 同模式；延迟几秒更自然）
-    setTimeout(() => { if (window.callMaybeTrigger) window.callMaybeTrigger(); }, 3500);
+    setTimeout(() => { if (!sameCid()) return; if (window.callMaybeTrigger) window.callMaybeTrigger(); }, 3500);
     // 红包模拟器：回复完成后触发系统自动发红包（TA→我）+ pending 红包收取
-    setTimeout(() => { trySystemAutoSend(); tryCollectPending(); }, 2500);
+    setTimeout(() => { if (!sameCid()) return; trySystemAutoSend(); tryCollectPending(); }, 2500);
   }
   // 「让对方继续说」：点击顶部联系人昵称触发，立即发 1 条（forceSingle）
   window.continueChat = function () {
+    const myCid = window.__activeCid || 'default';
+    const sameCid = () => (window.__activeCid || 'default') === myCid;
     const c = cfg();
     showTyping();
     setTimeout(() => {
+      if (!sameCid()) { hideTyping(); return; }
       hideTyping();
       replyOnce(c, null);
-      setTimeout(() => { if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
+      setTimeout(() => { if (!sameCid()) return; if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
     }, 500);
   };
   // 点击顶部联系人昵称：让对方继续说（绑定复用顶部已声明的 pname）

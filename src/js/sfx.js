@@ -1,11 +1,13 @@
-// ===== 功能：音效设置（v3.5.60） =====
-// 本地上传音频，设置三类音效：
-//  - 联系人来电铃声（sfx-ring）
-//  - 联系人发送/回复消息音效（sfx-in）
-//  - 我发送消息音效（sfx-out）
-// 未设置的音效不播放；设置后对应事件自动播放
+// ===== 功能：音效设置（v3.5.60 / v3.7.x 内置音效库） =====
+// 三类音效：
+//  - 联系人来电铃声（sfx-ring / sfx-ring-b）
+//  - 联系人发送/回复消息音效（sfx-in / sfx-in-b）
+//  - 我发送消息音效（sfx-out / sfx-out-b）
+// v3.7.x：新增【内置音效库】——Web Audio API 实时合成，零存储占用、开箱即用。
+//   每个联系人桌面可分别选择：静音 / 任一内置音效 / 上传自定义音频。
+//   播放优先级：自定义上传（dataURL） > 内置音效（sfx-*-b，'none'=静音） > 默认内置。
+//   默认内置：in=气泡 / out=轻叩 / ring=温馨铃（用户未做任何选择时直接生效）。
 (function () {
-  const uid = window.activePrefix();
   const store = window.activeStore();
   function toast(msg) {
     let t = document.getElementById('cc-toast');
@@ -16,7 +18,153 @@
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2200);
   }
   const KEYS = { ring: 'sfx-ring', in: 'sfx-in', out: 'sfx-out' };
+  const BKEYS = { ring: 'sfx-ring-b', in: 'sfx-in-b', out: 'sfx-out-b' };
   const NAMES = { ring: '联系人来电铃声', in: '联系人发送和回复消息', out: '我发送消息' };
+
+  // ================= 内置音效库（v3.7.x） =================
+  // 全部由 Web Audio API 合成，无外部资源、不占 localStorage。
+  // 常用短音：bubble 气泡 / ding 叮咚 / bird 小鸟 / drop 水滴 / piano 钢琴 / tick 轻叩
+  // 来电铃声：ring-warm 温馨铃 / ring-classic 经典铃
+  const PRESET_NAMES = {
+    bubble: '气泡', ding: '叮咚', bird: '小鸟', drop: '水滴',
+    piano: '钢琴', tick: '轻叩', 'ring-warm': '温馨铃', 'ring-classic': '经典铃'
+  };
+  // 每类可选的预设顺序（UI 胶囊显示顺序；'none'=静音由渲染逻辑统一加在最前）
+  const PRESET_ORDER = {
+    ring: ['ring-warm', 'ring-classic'],
+    in: ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick'],
+    out: ['tick', 'bubble', 'piano', 'drop']
+  };
+  // 用户未选择任何音效时的默认内置
+  const DEFAULT_BUILTIN = { ring: 'ring-warm', in: 'bubble', out: 'tick' };
+  const PRESET_CONTAINERS = { ring: 'sfx-ring-presets', in: 'sfx-in-presets', out: 'sfx-out-presets' };
+
+  // AudioContext 单例：首建 + 每次播放前 resume（iOS 自动播放策略要求）
+  let _ctx = null;
+  function ensureCtx() {
+    try {
+      if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (_ctx.state === 'suspended') { const p = _ctx.resume(); if (p && p.catch) p.catch(function () {}); }
+      return _ctx;
+    } catch (e) { return null; }
+  }
+  // Web Audio 同样受 iOS 自动播放策略约束：首次真实手势内 resume，
+  // 之后定时器/后台触发的音效播放一律放行（与上方 HTMLMediaElement 解锁并行，互不干扰）
+  function unlockCtx() { ensureCtx(); }
+  document.addEventListener('touchstart', unlockCtx, { passive: true });
+  document.addEventListener('click', unlockCtx, { passive: true });
+  document.addEventListener('keydown', unlockCtx);
+
+  function makeBuf(ctx, dur, fill) {
+    const sr = ctx.sampleRate;
+    const buf = ctx.createBuffer(1, Math.max(1, Math.ceil(sr * dur)), sr);
+    fill(buf.getChannelData(0), sr);
+    return buf;
+  }
+  // 指数扫频正弦（相位积分，无爆音）：t0 起始、f0→f1 指数过渡（k 控制速度）、amp 振幅、att 衰减速率
+  function oscInto(d, sr, t0, dur, f0, f1, k, amp, att) {
+    const start = Math.max(0, Math.floor(t0 * sr));
+    const end = Math.min(d.length, Math.ceil((t0 + dur) * sr));
+    let ph = 0;
+    for (let i = start; i < end; i++) {
+      const t = (i / sr) - t0;
+      const f = f1 + (f0 - f1) * Math.exp(-t * k);
+      ph += 2 * Math.PI * f / sr;
+      d[i] += Math.sin(ph) * amp * Math.exp(-t * att);
+    }
+  }
+  // 噪声层（起音"炸开"感）
+  function noiseInto(d, sr, t0, dur, amp, att) {
+    const start = Math.max(0, Math.floor(t0 * sr));
+    const end = Math.min(d.length, Math.ceil((t0 + dur) * sr));
+    for (let i = start; i < end; i++) {
+      const t = (i / sr) - t0;
+      d[i] += (Math.random() * 2 - 1) * amp * Math.exp(-t * att);
+    }
+  }
+  // 气泡：短促"啵"——快速下滑 pop + 起音噪声，轻盈俏皮
+  function synthBubble(ctx) {
+    return makeBuf(ctx, 0.18, (d, sr) => {
+      oscInto(d, sr, 0, 0.18, 880, 360, 14, 0.5, 26);
+      noiseInto(d, sr, 0, 0.05, 0.2, 90);
+    });
+  }
+  // 叮咚：经典消息音——G6「叮」+ C6「咚」，清脆双音
+  function synthDing(ctx) {
+    return makeBuf(ctx, 0.52, (d, sr) => {
+      oscInto(d, sr, 0, 0.14, 1568, 1568, 0, 0.4, 26);
+      oscInto(d, sr, 0, 0.14, 3136, 3136, 0, 0.09, 30);
+      oscInto(d, sr, 0.2, 0.32, 1046, 1046, 0, 0.42, 13);
+      oscInto(d, sr, 0.2, 0.32, 2092, 2092, 0, 0.1, 15);
+    });
+  }
+  // 小鸟：两声上滑啾啾，可爱灵动
+  function synthBird(ctx) {
+    return makeBuf(ctx, 0.32, (d, sr) => {
+      oscInto(d, sr, 0, 0.1, 2100, 3300, 22, 0.35, 32);
+      oscInto(d, sr, 0.155, 0.13, 1700, 2600, 18, 0.3, 26);
+    });
+  }
+  // 水滴：清脆下滑"叮"落，干净透亮
+  function synthDrop(ctx) {
+    return makeBuf(ctx, 0.22, (d, sr) => {
+      oscInto(d, sr, 0, 0.2, 1400, 520, 16, 0.45, 20);
+      oscInto(d, sr, 0, 0.15, 2800, 1600, 22, 0.1, 34);
+    });
+  }
+  // 钢琴：E5 单音带泛音、长衰减，柔和温暖
+  function synthPiano(ctx) {
+    return makeBuf(ctx, 0.75, (d, sr) => {
+      const f = 659.25;
+      oscInto(d, sr, 0, 0.75, f, f, 0, 0.4, 6.5);
+      oscInto(d, sr, 0, 0.75, f * 2, f * 2, 0, 0.13, 8);
+      oscInto(d, sr, 0, 0.75, f * 3, f * 3, 0, 0.06, 10);
+    });
+  }
+  // 轻叩：极短促柔和点击，存在感低不打扰（默认"我发送消息"音）
+  function synthTick(ctx) {
+    return makeBuf(ctx, 0.07, (d, sr) => {
+      oscInto(d, sr, 0, 0.06, 1200, 850, 50, 0.35, 75);
+      noiseInto(d, sr, 0, 0.02, 0.12, 120);
+    });
+  }
+  // 铃声基础：音符序列合成（f 频率、d 时长、gap 该音后静音时长），循环播放时衔接自然
+  function synthRingNotes(ctx, notes, dur) {
+    return makeBuf(ctx, dur, (d, sr) => {
+      let t0 = 0;
+      notes.forEach(n => {
+        oscInto(d, sr, t0, n.d, n.f, n.f, 0, 0.42, 5);
+        oscInto(d, sr, t0, n.d, n.f * 2, n.f * 2, 0, 0.09, 6);
+        t0 += n.d + (n.gap || 0);
+      });
+    });
+  }
+  // 温馨铃：C5→E5→G5→E5 上形琶音，温柔不刺耳（默认来电铃声）
+  function synthRingWarm(ctx) {
+    return synthRingNotes(ctx, [
+      { f: 523.25, d: 0.45 }, { f: 659.25, d: 0.45 },
+      { f: 783.99, d: 0.45 }, { f: 659.25, d: 0.75 }
+    ], 2.1);
+  }
+  // 经典铃：双音交替 + 长间隔，更接近传统电话铃
+  function synthRingClassic(ctx) {
+    return synthRingNotes(ctx, [
+      { f: 659.25, d: 0.35, gap: 0.12 }, { f: 659.25, d: 0.35, gap: 0.7 }
+    ], 1.52);
+  }
+  const SYNTHS = {
+    bubble: synthBubble, ding: synthDing, bird: synthBird,
+    drop: synthDrop, piano: synthPiano, tick: synthTick,
+    'ring-warm': synthRingWarm, 'ring-classic': synthRingClassic
+  };
+  // AudioBuffer 缓存：ctx 单例下复用，避免每次播放重复合成
+  const _bufCache = {};
+  function builtinBuffer(ctx, id) {
+    if (!_bufCache[id]) {
+      try { _bufCache[id] = SYNTHS[id](ctx); } catch (e) { return null; }
+    }
+    return _bufCache[id];
+  }
 
   // v3.6.x：iOS Safari 自动播放策略修复——HTMLMediaElement 有声播放必须由用户手势解锁，
   // 否则定时器触发的铃声/消息音会被静默拒绝（play() 抛 NotAllowedError，被下方 catch 吞掉，
@@ -51,35 +199,81 @@
     document.addEventListener('keydown', tryUnlock);
   })();
 
-  // 播放音效（每次新建 Audio，避免并发冲突；无设置不播）
-  // v3.5.127：ring 用单例保存引用——来电铃声长，通话结束必须能停止
-  let ringAudio = null;
-  window.stopSfx = function (type) {
-    if (type === 'ring' && ringAudio) {
-      try { ringAudio.pause(); ringAudio = null; } catch (e) { ringAudio = null; }
+  // 播放内置音效（Web Audio）；loop=true 用于来电铃声循环（可被 stopSfx 停止）
+  let ringSrc = null;
+  let ringAudio = null; // 自定义上传铃声的 Audio 单例（长铃循环可停止）
+  function playBuiltin(id, loop) {
+    const ctx = ensureCtx();
+    if (!ctx) return;
+    const buf = builtinBuffer(ctx, id);
+    if (!buf) return;
+    let src;
+    try {
+      src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = !!loop;
+      const g = ctx.createGain();
+      g.gain.value = 0.9;
+      src.connect(g);
+      g.connect(ctx.destination);
+      src.start();
+    } catch (e) { return; }
+    if (loop) {
+      if (ringSrc) { try { ringSrc.stop(); } catch (e) {} }
+      ringSrc = src;
     }
-  };
-  // v3.5.129：playSfx(type, opts)——opts.loop=false 时试听用（设置页点试听不该无限循环）
+  }
+
+  // 播放音效：自定义上传（dataURL）优先，其次内置音效（'none'=静音，缺省=默认内置）
   window.playSfx = function (type, opts) {
     try {
-      const data = store.get(KEYS[type]);
-      if (!data) return;
       const loop = !(opts && opts.loop === false);
-      if (type === 'ring' && loop) {
-        if (ringAudio) { try { ringAudio.pause(); } catch (e) {} }
-        ringAudio = new Audio(data);
-        ringAudio.loop = true;
-        ringAudio.volume = 0.9;
-        ringAudio.play().catch(() => { ringAudio = null; });
-      } else {
-        const a = new Audio(data);
-        a.volume = 0.9;
-        a.play().catch(() => {});
+      const custom = store.get(KEYS[type]);
+      if (custom && typeof custom === 'string' && custom.length > 10) {
+        // —— 自定义上传音频（每次新建 Audio，避免并发冲突；ring 长铃用单例可停止）——
+        if (type === 'ring' && loop) {
+          if (ringAudio) { try { ringAudio.pause(); } catch (e) {} }
+          ringAudio = new Audio(custom);
+          ringAudio.loop = true;
+          ringAudio.volume = 0.9;
+          ringAudio.play().catch(() => { ringAudio = null; });
+        } else {
+          const a = new Audio(custom);
+          a.volume = 0.9;
+          a.play().catch(() => {});
+        }
+        return;
       }
+      // —— 内置音效 ——
+      const bid = store.get(BKEYS[type]);
+      if (bid === 'none') return; // 用户选择静音
+      const id = (bid && SYNTHS[bid]) ? bid : DEFAULT_BUILTIN[type];
+      playBuiltin(id, loop);
     } catch (e) {}
   };
+  // 停止长音（来电铃声）：同时停自定义 Audio 与内置 BufferSource
+  window.stopSfx = function (type) {
+    if (type === 'ring') {
+      if (ringAudio) { try { ringAudio.pause(); } catch (e) {} ringAudio = null; }
+      if (ringSrc) { try { ringSrc.stop(); } catch (e) {} ringSrc = null; }
+    }
+  };
+  // 供设置页胶囊试听内置音效（不循环）
+  window.playBuiltinSfx = function (id, loop) { playBuiltin(id, loop); };
 
-  // 上传音频：FileReader → dataURL（超 3MB 提示可能过大）
+  // —— 当前音效状态：{ custom, id, label } ——
+  function sfxState(type) {
+    const custom = store.get(KEYS[type]);
+    if (custom && typeof custom === 'string' && custom.length > 10) {
+      return { custom: true, id: null, label: '自定义' };
+    }
+    const bid = store.get(BKEYS[type]);
+    if (bid === 'none') return { custom: false, id: 'none', label: '静音' };
+    const id = (bid && PRESET_NAMES[bid]) ? bid : DEFAULT_BUILTIN[type];
+    return { custom: false, id: id, label: PRESET_NAMES[id] || id };
+  }
+
+  // 上传音频：FileReader → dataURL（超 3MB 提示可能过大）；上传即替换内置，内置键清除
   function bindUpload(key, id) {
     const btn = document.getElementById(id);
     if (!btn) return;
@@ -95,8 +289,10 @@
         const reader = new FileReader();
         reader.onload = () => {
           store.set(KEYS[key], reader.result);
+          store.remove(BKEYS[key]); // 切换到自定义，清掉内置选择避免胶囊高亮歧义
           updateVals();
-          toast(NAMES[key] + '音效已设置');
+          renderPresets(key, PRESET_CONTAINERS[key]);
+          toast(NAMES[key] + '已设置为自定义音频');
         };
         reader.onerror = () => { toast('音频读取失败'); };
         reader.readAsDataURL(f);
@@ -104,32 +300,60 @@
       input.click();
     });
   }
-  // 试听
+  // 试听：内置/自定义均可直接试听（不循环）
   function bindPlay(key, id) {
     const btn = document.getElementById(id);
     if (!btn) return;
     btn.addEventListener('click', () => {
-      if (!store.get(KEYS[key])) { toast('请先上传' + NAMES[key] + '音效'); return; }
-      // v3.5.129：试听不循环（铃声 loop 会永远响下去没有停止入口）
       window.playSfx(key, { loop: false });
     });
   }
-  // 清除
+  // 清除：仅移除自定义上传音频，回落到内置音效（或保持用户选的静音）
   function bindClear(key, id) {
     const btn = document.getElementById(id);
     if (!btn) return;
     btn.addEventListener('click', () => {
       store.remove(KEYS[key]);
       updateVals();
-      toast(NAMES[key] + '音效已清除');
+      renderPresets(key, PRESET_CONTAINERS[key]);
+      toast(NAMES[key] + '自定义音频已清除');
     });
   }
   // 状态显示
   function updateVals() {
-    [['ring', 'sfx-ring-val'], ['in', 'sfx-in-val'], ['out', 'sfx-out-val']].forEach(([key, valId]) => {
-      const el = document.getElementById(valId);
-      if (el) el.textContent = store.get(KEYS[key]) ? '已设置' : '未设置';
+    [['ring', 'sfx-ring-val'], ['in', 'sfx-in-val'], ['out', 'sfx-out-val']].forEach((pair) => {
+      const el = document.getElementById(pair[1]);
+      if (el) el.textContent = sfxState(pair[0]).label;
     });
+  }
+  // 预设胶囊渲染：[静音] [气泡] [叮咚] … 点击应用并试听；当前项高亮
+  function renderPresets(type, containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '';
+    const st = sfxState(type);
+    const ids = ['none'].concat(PRESET_ORDER[type] || []);
+    ids.forEach((id) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sfx-preset' + ((!st.custom && st.id === id) ? ' on' : '');
+      b.textContent = (id === 'none') ? '静音' : (PRESET_NAMES[id] || id);
+      b.addEventListener('click', () => {
+        // 选择内置/静音 → 清除自定义上传，避免播放优先级歧义
+        if (store.get(KEYS[type])) store.remove(KEYS[type]);
+        store.set(BKEYS[type], id);
+        updateVals();
+        renderPresets(type, containerId);
+        if (id === 'none') toast(NAMES[type] + '音效已静音');
+        else window.playSfx(type, { loop: false });
+      });
+      el.appendChild(b);
+    });
+  }
+  function renderAllPresets() {
+    renderPresets('ring', PRESET_CONTAINERS.ring);
+    renderPresets('in', PRESET_CONTAINERS.in);
+    renderPresets('out', PRESET_CONTAINERS.out);
   }
 
   bindUpload('ring', 'sfx-ring-upload');
@@ -143,25 +367,28 @@
   bindClear('out', 'sfx-out-clear');
 
   // v3.5.94：音效音频（dataURL）可能只存在 IndexedDB → 启动补读
-  // v3.5.99：补读完成后无条件刷新一次标签——idbRestore 可能已先把音效回填进
-  //   localStorage，此时 store.get 有值、走不到旧分支里的 updateVals，导致
-  //   界面一直显示「未设置」但试听正常。updateVals 幂等，这里统一兜底。
-  // v3.6.x：修复——这段补读原本被错位写进「上传音频」的 reader.onload 回调里，
-  //   只在用户上传音效时才执行（还会多跑 3 次多余 idbGet），页面加载时从不运行，
-  //   刷新后音效页一直显示「未设置」；移回模块顶层随加载执行
+  // v3.7.x：补读扩展到内置音效选择键（sfx-*-b），并统一兜底刷新界面
   try {
     if (window.idbGet) {
-      ['sfx-ring', 'sfx-in', 'sfx-out'].forEach(key => {
+      ['sfx-ring', 'sfx-in', 'sfx-out', 'sfx-ring-b', 'sfx-in-b', 'sfx-out-b'].forEach(key => {
         window.idbGet(window.activePrefix() + ':' + key).then(v => {
           if (v && typeof v === 'string' && v.length > 2 && !store.get(key)) {
             store.set(key, v);
           }
           updateVals();
+          renderAllPresets();
         });
       });
     }
   } catch (e) {}
+  renderAllPresets();
   updateVals();
+
+  // 切桌面：音效每桌面独立，重渲染当前桌面的选择状态
+  document.addEventListener('contact-switched', () => {
+    updateVals();
+    renderAllPresets();
+  });
 
   // 设置页入口：点行 → 独立音效设置页；返回回设置页
   // 事件委托绑定（document 级）：确保点击一定生效，不受其他脚本/异常影响

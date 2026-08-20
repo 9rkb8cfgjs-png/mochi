@@ -507,6 +507,15 @@ overscroll-behavior: contain;
 word-break: break-word;
 overflow-wrap: anywhere;
 }
+.sfx-presets { display:flex; flex-wrap:wrap; gap:8px; padding:2px 16px 14px 28px; }
+.sfx-preset {
+padding:6px 13px; border-radius:99px; font-size:12px; font-weight:600;
+border:1px solid rgba(0,0,0,.12); background:#fff; color:#444;
+font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;
+transition:background .15s ease, color .15s ease, border-color .15s ease;
+}
+.sfx-preset:active { background:rgba(0,0,0,.07); }
+.sfx-preset.on { background:var(--ink); color:#fff; border-color:var(--ink); }
 :root {
 --widget-bg:#ffffff;
 --widget-border:rgba(0,0,0,.1);
@@ -4060,6 +4069,9 @@ color: var(--muted);
 .feed-pick-img:active { background:var(--dark-hover); }
 .feed-comment-input { background:var(--dark-input); border-color:var(--dark-border-12); color:var(--ink); }
 .feed-comment-input:focus { background:var(--dark-card); }
+.sfx-preset { background:var(--dark-hover); color:var(--dark-soft); border-color:var(--dark-border-12); }
+.sfx-preset:active { background:var(--btn-bg); color:var(--btn-ink); }
+.sfx-preset.on { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
 }
 </style>
 </head>
@@ -4092,7 +4104,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787212754163">Mochi 字卡传讯 v3.6.150 · 部署于 2026-08-20 15:59</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787213142992">Mochi 字卡传讯 v3.6.152 · 部署于 2026-08-20 16:05</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4855,7 +4867,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.150</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.152</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5406,10 +5418,11 @@ color: var(--muted);
             <div class="val" id="sfx-ring-val"></div>
           </div>
           <div class="set-row sub" id="sfx-ring-tools">
-            <button class="cc-tool" id="sfx-ring-upload">上传音频</button>
+            <button class="cc-tool" id="sfx-ring-upload">自定义音频</button>
             <button class="cc-tool" id="sfx-ring-play">试听</button>
             <button class="cc-tool" id="sfx-ring-clear">清除</button>
           </div>
+          <div class="sfx-presets" id="sfx-ring-presets"></div>
         </div>
         <div class="gs-title">聊天音效</div>
         <div class="set-group glass">
@@ -5419,22 +5432,24 @@ color: var(--muted);
             <div class="val" id="sfx-in-val"></div>
           </div>
           <div class="set-row sub" id="sfx-in-tools">
-            <button class="cc-tool" id="sfx-in-upload">上传音频</button>
+            <button class="cc-tool" id="sfx-in-upload">自定义音频</button>
             <button class="cc-tool" id="sfx-in-play">试听</button>
             <button class="cc-tool" id="sfx-in-clear">清除</button>
           </div>
+          <div class="sfx-presets" id="sfx-in-presets"></div>
           <div class="set-row" id="sfx-out-row">
             <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12h-4l-4-7v14l4-7h4z"/><path d="M7 9a4 4 0 010 6"/></svg></div>
             <div class="txt">我发送消息</div>
             <div class="val" id="sfx-out-val"></div>
           </div>
           <div class="set-row sub" id="sfx-out-tools">
-            <button class="cc-tool" id="sfx-out-upload">上传音频</button>
+            <button class="cc-tool" id="sfx-out-upload">自定义音频</button>
             <button class="cc-tool" id="sfx-out-play">试听</button>
             <button class="cc-tool" id="sfx-out-clear">清除</button>
           </div>
+          <div class="sfx-presets" id="sfx-out-presets"></div>
         </div>
-        <div class="sm-set-hint" style="padding:0 16px 8px">支持 mp3 / wav / ogg / m4a 等音频格式。设置后当小发生对应事件时自动播放；不设置则不播放。</div>
+        <div class="sm-set-hint" style="padding:0 16px 8px">内置音效开箱即用：点击下方音效即可切换并试听；也可上传自定义音频（mp3 / wav / ogg / m4a）。选择内置音效会替换自定义音频；「静音」关闭该类音效。</div>
       </div>
     </div>
 
@@ -11131,6 +11146,7 @@ let saveTimer = null;
 document.addEventListener('contact-switched', function () {
 try {
 if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+try { hideTyping(); } catch (e) {}
 msgs = [];
 pendingLocal = null;
 chatDbReady = false;
@@ -12687,14 +12703,17 @@ reply += ' ' + pick(pool.kaomoji);
 return { text: reply, type: type };
 }
 function scheduleReply() {
+const myCid = window.__activeCid || 'default';
+const sameCid = () => (window.__activeCid || 'default') === myCid;
 const c = cfg();
 if (hit(c['rn-prob'])) {
-setTimeout(() => addIn('', { special: 'read' }), randInt(1000, 4000));
+setTimeout(() => { if (!sameCid()) return; addIn('', { special: 'read' }); }, randInt(1000, 4000));
 return;
 }
 const delay = (c['rs-min'] + Math.random() * Math.max(1, c['rs-max'] - c['rs-min'])) * 1000;
 showTyping();
 setTimeout(() => {
+if (!sameCid()) { hideTyping(); return; }
 hideTyping();
 if (hit(c['touch-prob'])) {
 performPoke();
@@ -12705,18 +12724,21 @@ const rpMax = Math.max(rpMin, Number(c['reply-max']) || 2);
 const count = randInt(rpMin, rpMax);
 for (let i = 0; i < count; i++) {
 setTimeout(() => {
+if (!sameCid()) return;
 hideTyping();
 const q = hit(c['quote-prob']) ? (lastMineText || null) : null;
 replyOnce(c, q);
 if (i < count - 1) showTyping();
 if (i === count - 1) {
-setTimeout(() => { if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
+setTimeout(() => { if (!sameCid()) return; if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
 }
 }, i * randInt(1200, 2800));
 }
 }, delay);
 }
 function replyOnce(c, quote) {
+const myCid = window.__activeCid || 'default';
+const sameCid = () => (window.__activeCid || 'default') === myCid;
 const rep = genOneReply(c);
 const m = addIn(rep.text, { quote: quote, qside: 'out', type: rep.type, parts: rep.parts });
 if (lastMineText && Math.random() * 100 < 30) {
@@ -12725,7 +12747,7 @@ if (!fav.some(f => f.side === 'out' && f.text === lastMineText)) {
 const favType = lastMineText.indexOf('data:') === 0 ? 'image' : 'text';
 fav.push({ side: 'out', text: lastMineText, type: favType, ts: Date.now(), by: 'ta' });
 saveFav(fav);
-setTimeout(() => toast('TA 收藏了你的一条消息'), 1200);
+setTimeout(() => { if (!sameCid()) return; toast('TA 收藏了你的一条消息'); }, 1200);
 }
 }
 if (rep.type === 'text' || rep.type === 'sticker' || rep.type === 'image') {
@@ -12734,6 +12756,7 @@ const chain = (window.triggerEmotionChain && window.triggerEmotionChain()) || nu
 if (chain && chain.length) {
 const typeName = { mood: '情绪', heart: '心意', intent: '交流意图' };
 setTimeout(() => {
+if (!sameCid()) return;
 const bm = m.querySelector('.msg-bubble');
 if (bm) {
 let mm = bm.querySelector('.msg-moods');
@@ -12760,23 +12783,27 @@ saveMsgs();
 }
 if (hit(c['rc-prob'])) {
 setTimeout(() => {
+if (!sameCid()) return;
 partialRetractMsg(m, 'in');
 if (hit(c['rc-refix'])) {
 showTyping();
-setTimeout(() => { hideTyping(); replyOnce(c, null); }, 600);
+setTimeout(() => { if (!sameCid()) return; hideTyping(); replyOnce(c, null); }, 600);
 }
 }, 900);
 }
-setTimeout(() => { if (window.callMaybeTrigger) window.callMaybeTrigger(); }, 3500);
-setTimeout(() => { trySystemAutoSend(); tryCollectPending(); }, 2500);
+setTimeout(() => { if (!sameCid()) return; if (window.callMaybeTrigger) window.callMaybeTrigger(); }, 3500);
+setTimeout(() => { if (!sameCid()) return; trySystemAutoSend(); tryCollectPending(); }, 2500);
 }
 window.continueChat = function () {
+const myCid = window.__activeCid || 'default';
+const sameCid = () => (window.__activeCid || 'default') === myCid;
 const c = cfg();
 showTyping();
 setTimeout(() => {
+if (!sameCid()) { hideTyping(); return; }
 hideTyping();
 replyOnce(c, null);
-setTimeout(() => { if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
+setTimeout(() => { if (!sameCid()) return; if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
 }, 500);
 };
 if (pname) {
@@ -30399,7 +30426,6 @@ else initEls();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = window.activePrefix();
 const store = window.activeStore();
 function toast(msg) {
 let t = document.getElementById('cc-toast');
@@ -30410,7 +30436,129 @@ clearTimeout(t._timer);
 t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2200);
 }
 const KEYS = { ring: 'sfx-ring', in: 'sfx-in', out: 'sfx-out' };
+const BKEYS = { ring: 'sfx-ring-b', in: 'sfx-in-b', out: 'sfx-out-b' };
 const NAMES = { ring: '联系人来电铃声', in: '联系人发送和回复消息', out: '我发送消息' };
+const PRESET_NAMES = {
+bubble: '气泡', ding: '叮咚', bird: '小鸟', drop: '水滴',
+piano: '钢琴', tick: '轻叩', 'ring-warm': '温馨铃', 'ring-classic': '经典铃'
+};
+const PRESET_ORDER = {
+ring: ['ring-warm', 'ring-classic'],
+in: ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick'],
+out: ['tick', 'bubble', 'piano', 'drop']
+};
+const DEFAULT_BUILTIN = { ring: 'ring-warm', in: 'bubble', out: 'tick' };
+const PRESET_CONTAINERS = { ring: 'sfx-ring-presets', in: 'sfx-in-presets', out: 'sfx-out-presets' };
+let _ctx = null;
+function ensureCtx() {
+try {
+if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
+if (_ctx.state === 'suspended') { const p = _ctx.resume(); if (p && p.catch) p.catch(function () {}); }
+return _ctx;
+} catch (e) { return null; }
+}
+function unlockCtx() { ensureCtx(); }
+document.addEventListener('touchstart', unlockCtx, { passive: true });
+document.addEventListener('click', unlockCtx, { passive: true });
+document.addEventListener('keydown', unlockCtx);
+function makeBuf(ctx, dur, fill) {
+const sr = ctx.sampleRate;
+const buf = ctx.createBuffer(1, Math.max(1, Math.ceil(sr * dur)), sr);
+fill(buf.getChannelData(0), sr);
+return buf;
+}
+function oscInto(d, sr, t0, dur, f0, f1, k, amp, att) {
+const start = Math.max(0, Math.floor(t0 * sr));
+const end = Math.min(d.length, Math.ceil((t0 + dur) * sr));
+let ph = 0;
+for (let i = start; i < end; i++) {
+const t = (i / sr) - t0;
+const f = f1 + (f0 - f1) * Math.exp(-t * k);
+ph += 2 * Math.PI * f / sr;
+d[i] += Math.sin(ph) * amp * Math.exp(-t * att);
+}
+}
+function noiseInto(d, sr, t0, dur, amp, att) {
+const start = Math.max(0, Math.floor(t0 * sr));
+const end = Math.min(d.length, Math.ceil((t0 + dur) * sr));
+for (let i = start; i < end; i++) {
+const t = (i / sr) - t0;
+d[i] += (Math.random() * 2 - 1) * amp * Math.exp(-t * att);
+}
+}
+function synthBubble(ctx) {
+return makeBuf(ctx, 0.18, (d, sr) => {
+oscInto(d, sr, 0, 0.18, 880, 360, 14, 0.5, 26);
+noiseInto(d, sr, 0, 0.05, 0.2, 90);
+});
+}
+function synthDing(ctx) {
+return makeBuf(ctx, 0.52, (d, sr) => {
+oscInto(d, sr, 0, 0.14, 1568, 1568, 0, 0.4, 26);
+oscInto(d, sr, 0, 0.14, 3136, 3136, 0, 0.09, 30);
+oscInto(d, sr, 0.2, 0.32, 1046, 1046, 0, 0.42, 13);
+oscInto(d, sr, 0.2, 0.32, 2092, 2092, 0, 0.1, 15);
+});
+}
+function synthBird(ctx) {
+return makeBuf(ctx, 0.32, (d, sr) => {
+oscInto(d, sr, 0, 0.1, 2100, 3300, 22, 0.35, 32);
+oscInto(d, sr, 0.155, 0.13, 1700, 2600, 18, 0.3, 26);
+});
+}
+function synthDrop(ctx) {
+return makeBuf(ctx, 0.22, (d, sr) => {
+oscInto(d, sr, 0, 0.2, 1400, 520, 16, 0.45, 20);
+oscInto(d, sr, 0, 0.15, 2800, 1600, 22, 0.1, 34);
+});
+}
+function synthPiano(ctx) {
+return makeBuf(ctx, 0.75, (d, sr) => {
+const f = 659.25;
+oscInto(d, sr, 0, 0.75, f, f, 0, 0.4, 6.5);
+oscInto(d, sr, 0, 0.75, f * 2, f * 2, 0, 0.13, 8);
+oscInto(d, sr, 0, 0.75, f * 3, f * 3, 0, 0.06, 10);
+});
+}
+function synthTick(ctx) {
+return makeBuf(ctx, 0.07, (d, sr) => {
+oscInto(d, sr, 0, 0.06, 1200, 850, 50, 0.35, 75);
+noiseInto(d, sr, 0, 0.02, 0.12, 120);
+});
+}
+function synthRingNotes(ctx, notes, dur) {
+return makeBuf(ctx, dur, (d, sr) => {
+let t0 = 0;
+notes.forEach(n => {
+oscInto(d, sr, t0, n.d, n.f, n.f, 0, 0.42, 5);
+oscInto(d, sr, t0, n.d, n.f * 2, n.f * 2, 0, 0.09, 6);
+t0 += n.d + (n.gap || 0);
+});
+});
+}
+function synthRingWarm(ctx) {
+return synthRingNotes(ctx, [
+{ f: 523.25, d: 0.45 }, { f: 659.25, d: 0.45 },
+{ f: 783.99, d: 0.45 }, { f: 659.25, d: 0.75 }
+], 2.1);
+}
+function synthRingClassic(ctx) {
+return synthRingNotes(ctx, [
+{ f: 659.25, d: 0.35, gap: 0.12 }, { f: 659.25, d: 0.35, gap: 0.7 }
+], 1.52);
+}
+const SYNTHS = {
+bubble: synthBubble, ding: synthDing, bird: synthBird,
+drop: synthDrop, piano: synthPiano, tick: synthTick,
+'ring-warm': synthRingWarm, 'ring-classic': synthRingClassic
+};
+const _bufCache = {};
+function builtinBuffer(ctx, id) {
+if (!_bufCache[id]) {
+try { _bufCache[id] = SYNTHS[id](ctx); } catch (e) { return null; }
+}
+return _bufCache[id];
+}
 (function unlockIosMedia() {
 var unlocked = false;
 function tryUnlock() {
@@ -30438,30 +30586,70 @@ document.addEventListener('touchstart', tryUnlock, { passive: true });
 document.addEventListener('click', tryUnlock, { passive: true });
 document.addEventListener('keydown', tryUnlock);
 })();
-let ringAudio = null;
-window.stopSfx = function (type) {
-if (type === 'ring' && ringAudio) {
-try { ringAudio.pause(); ringAudio = null; } catch (e) { ringAudio = null; }
+let ringSrc = null;
+let ringAudio = null; // 自定义上传铃声的 Audio 单例（长铃循环可停止）
+function playBuiltin(id, loop) {
+const ctx = ensureCtx();
+if (!ctx) return;
+const buf = builtinBuffer(ctx, id);
+if (!buf) return;
+let src;
+try {
+src = ctx.createBufferSource();
+src.buffer = buf;
+src.loop = !!loop;
+const g = ctx.createGain();
+g.gain.value = 0.9;
+src.connect(g);
+g.connect(ctx.destination);
+src.start();
+} catch (e) { return; }
+if (loop) {
+if (ringSrc) { try { ringSrc.stop(); } catch (e) {} }
+ringSrc = src;
 }
-};
+}
 window.playSfx = function (type, opts) {
 try {
-const data = store.get(KEYS[type]);
-if (!data) return;
 const loop = !(opts && opts.loop === false);
+const custom = store.get(KEYS[type]);
+if (custom && typeof custom === 'string' && custom.length > 10) {
 if (type === 'ring' && loop) {
 if (ringAudio) { try { ringAudio.pause(); } catch (e) {} }
-ringAudio = new Audio(data);
+ringAudio = new Audio(custom);
 ringAudio.loop = true;
 ringAudio.volume = 0.9;
 ringAudio.play().catch(() => { ringAudio = null; });
 } else {
-const a = new Audio(data);
+const a = new Audio(custom);
 a.volume = 0.9;
 a.play().catch(() => {});
 }
+return;
+}
+const bid = store.get(BKEYS[type]);
+if (bid === 'none') return; // 用户选择静音
+const id = (bid && SYNTHS[bid]) ? bid : DEFAULT_BUILTIN[type];
+playBuiltin(id, loop);
 } catch (e) {}
 };
+window.stopSfx = function (type) {
+if (type === 'ring') {
+if (ringAudio) { try { ringAudio.pause(); } catch (e) {} ringAudio = null; }
+if (ringSrc) { try { ringSrc.stop(); } catch (e) {} ringSrc = null; }
+}
+};
+window.playBuiltinSfx = function (id, loop) { playBuiltin(id, loop); };
+function sfxState(type) {
+const custom = store.get(KEYS[type]);
+if (custom && typeof custom === 'string' && custom.length > 10) {
+return { custom: true, id: null, label: '自定义' };
+}
+const bid = store.get(BKEYS[type]);
+if (bid === 'none') return { custom: false, id: 'none', label: '静音' };
+const id = (bid && PRESET_NAMES[bid]) ? bid : DEFAULT_BUILTIN[type];
+return { custom: false, id: id, label: PRESET_NAMES[id] || id };
+}
 function bindUpload(key, id) {
 const btn = document.getElementById(id);
 if (!btn) return;
@@ -30477,8 +30665,10 @@ toast('正在读取音频…');
 const reader = new FileReader();
 reader.onload = () => {
 store.set(KEYS[key], reader.result);
+store.remove(BKEYS[key]); // 切换到自定义，清掉内置选择避免胶囊高亮歧义
 updateVals();
-toast(NAMES[key] + '音效已设置');
+renderPresets(key, PRESET_CONTAINERS[key]);
+toast(NAMES[key] + '已设置为自定义音频');
 };
 reader.onerror = () => { toast('音频读取失败'); };
 reader.readAsDataURL(f);
@@ -30490,7 +30680,6 @@ function bindPlay(key, id) {
 const btn = document.getElementById(id);
 if (!btn) return;
 btn.addEventListener('click', () => {
-if (!store.get(KEYS[key])) { toast('请先上传' + NAMES[key] + '音效'); return; }
 window.playSfx(key, { loop: false });
 });
 }
@@ -30500,14 +30689,42 @@ if (!btn) return;
 btn.addEventListener('click', () => {
 store.remove(KEYS[key]);
 updateVals();
-toast(NAMES[key] + '音效已清除');
+renderPresets(key, PRESET_CONTAINERS[key]);
+toast(NAMES[key] + '自定义音频已清除');
 });
 }
 function updateVals() {
-[['ring', 'sfx-ring-val'], ['in', 'sfx-in-val'], ['out', 'sfx-out-val']].forEach(([key, valId]) => {
-const el = document.getElementById(valId);
-if (el) el.textContent = store.get(KEYS[key]) ? '已设置' : '未设置';
+[['ring', 'sfx-ring-val'], ['in', 'sfx-in-val'], ['out', 'sfx-out-val']].forEach((pair) => {
+const el = document.getElementById(pair[1]);
+if (el) el.textContent = sfxState(pair[0]).label;
 });
+}
+function renderPresets(type, containerId) {
+const el = document.getElementById(containerId);
+if (!el) return;
+el.innerHTML = '';
+const st = sfxState(type);
+const ids = ['none'].concat(PRESET_ORDER[type] || []);
+ids.forEach((id) => {
+const b = document.createElement('button');
+b.type = 'button';
+b.className = 'sfx-preset' + ((!st.custom && st.id === id) ? ' on' : '');
+b.textContent = (id === 'none') ? '静音' : (PRESET_NAMES[id] || id);
+b.addEventListener('click', () => {
+if (store.get(KEYS[type])) store.remove(KEYS[type]);
+store.set(BKEYS[type], id);
+updateVals();
+renderPresets(type, containerId);
+if (id === 'none') toast(NAMES[type] + '音效已静音');
+else window.playSfx(type, { loop: false });
+});
+el.appendChild(b);
+});
+}
+function renderAllPresets() {
+renderPresets('ring', PRESET_CONTAINERS.ring);
+renderPresets('in', PRESET_CONTAINERS.in);
+renderPresets('out', PRESET_CONTAINERS.out);
 }
 bindUpload('ring', 'sfx-ring-upload');
 bindPlay('ring', 'sfx-ring-play');
@@ -30520,17 +30737,23 @@ bindPlay('out', 'sfx-out-play');
 bindClear('out', 'sfx-out-clear');
 try {
 if (window.idbGet) {
-['sfx-ring', 'sfx-in', 'sfx-out'].forEach(key => {
+['sfx-ring', 'sfx-in', 'sfx-out', 'sfx-ring-b', 'sfx-in-b', 'sfx-out-b'].forEach(key => {
 window.idbGet(window.activePrefix() + ':' + key).then(v => {
 if (v && typeof v === 'string' && v.length > 2 && !store.get(key)) {
 store.set(key, v);
 }
 updateVals();
+renderAllPresets();
 });
 });
 }
 } catch (e) {}
+renderAllPresets();
 updateVals();
+document.addEventListener('contact-switched', () => {
+updateVals();
+renderAllPresets();
+});
 document.addEventListener('click', (e) => {
 if (e.target && e.target.closest && e.target.closest('#row-sfx-settings')) {
 document.querySelectorAll('.page').forEach(p => p.hidden = true);

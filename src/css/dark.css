@@ -388,4 +388,9 @@
   .feed-pick-img:active { background:var(--dark-hover); }
   .feed-comment-input { background:var(--dark-input); border-color:var(--dark-border-12); color:var(--ink); }
   .feed-comment-input:focus { background:var(--dark-card); }
+
+  /* sfx.js 内置音效预设胶囊 */
+  .sfx-preset { background:var(--dark-hover); color:var(--dark-soft); border-color:var(--dark-border-12); }
+  .sfx-preset:active { background:var(--btn-bg); color:var(--btn-ink); }
+  .sfx-preset.on { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
 }
