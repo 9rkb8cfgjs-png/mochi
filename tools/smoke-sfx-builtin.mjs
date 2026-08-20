@@ -119,17 +119,23 @@ check('我发消息预设胶囊 7 个（静音+6 内置，与联系人同款）'
 const c1b = JSON.parse(await evalJs("(function(){function names(id){var el=document.getElementById(id);return Array.from(el.querySelectorAll('.sfx-preset')).map(function(x){return x.textContent;}).join(',');}return JSON.stringify({in:names('sfx-in-presets'),out:names('sfx-out-presets')});})()") || '{}');
 check('联系人消息与我所发消息的内置音效列表一致', c1b.in === c1b.out, 'in=' + c1b.in + ' out=' + c1b.out);
 
-// —— 用例 2：默认内置生效 + 默认胶囊高亮 + 状态显示 ——
-const c2 = JSON.parse(await evalJs("(function(){var val=function(id){var el=document.getElementById(id);return el?el.textContent:'';};function on(id,label){var el=document.getElementById(id);var b=el?Array.from(el.querySelectorAll('.sfx-preset')).find(function(x){return x.textContent===label;}):null;return b?b.classList.contains('on'):false;}return JSON.stringify({ring:val('sfx-ring-val'),in:val('sfx-in-val'),out:val('sfx-out-val'),ringOn:on('sfx-ring-presets','温馨铃'),inOn:on('sfx-in-presets','气泡'),outOn:on('sfx-out-presets','气泡'),noneOn:on('sfx-in-presets','静音')});})()") || '{}');
-check('默认来电铃声=温馨铃', c2.ring === '温馨铃', c2.ring);
-check('默认联系人消息=气泡', c2.in === '气泡', c2.in);
-check('默认我发送和回复消息=气泡（与联系人同一种）', c2.out === '气泡', c2.out);
-check('默认内置胶囊高亮（温馨铃/气泡/气泡）', c2.ringOn === true && c2.inOn === true && c2.outOn === true);
-check('默认静音胶囊不高亮', c2.noneOn === false);
+// —— 用例 2：默认关闭——未做任何选择时全部静音 + 静音胶囊高亮 ——
+const c2 = JSON.parse(await evalJs("(function(){var val=function(id){var el=document.getElementById(id);return el?el.textContent:'';};function on(id,label){var el=document.getElementById(id);var b=el?Array.from(el.querySelectorAll('.sfx-preset')).find(function(x){return x.textContent===label;}):null;return b?b.classList.contains('on'):false;}return JSON.stringify({ring:val('sfx-ring-val'),in:val('sfx-in-val'),out:val('sfx-out-val'),ringNoneOn:on('sfx-ring-presets','静音'),inNoneOn:on('sfx-in-presets','静音'),outNoneOn:on('sfx-out-presets','静音'),inBubbleOn:on('sfx-in-presets','气泡')});})()") || '{}');
+check('默认来电铃声=静音（默认关闭）', c2.ring === '静音', c2.ring);
+check('默认联系人消息=静音（默认关闭）', c2.in === '静音', c2.in);
+check('默认我发送和回复消息=静音（默认关闭）', c2.out === '静音', c2.out);
+check('三行默认均高亮「静音」', c2.ringNoneOn === true && c2.inNoneOn === true && c2.outNoneOn === true);
+check('默认内置胶囊不高亮', c2.inBubbleOn === false);
 
 // —— 用例 3：记录合成基线（全局探针，其他模块可能已用过 AudioContext，只比较增量）——
 const baseBufSrc = await evalJs('window.__sfxBufSrc') || 0;
 check('记录合成基线（无异常）', typeof baseBufSrc === 'number', 'base=' + baseBufSrc);
+
+// —— 用例 3b：默认关闭核心验证——未选择任何音效时 playSfx 三类都不播放 ——
+await evalJs("(function(){if(window.playSfx)window.playSfx('in');if(window.playSfx)window.playSfx('out');if(window.playSfx)window.playSfx('ring');return true;})()");
+await sleep(200);
+const spyDefaultMute = await evalJs('window.__sfxBufSrc') || 0;
+check('缺省（未选音效）时 playSfx 三类都不播放', spyDefaultMute === baseBufSrc, 'bufSrc=' + spyDefaultMute);
 
 // —— 用例 4：点「叮咚」胶囊 → 写 sfx-in-b + 状态更新 + 试听合成播放 ——
 const c4 = JSON.parse(await evalJs("(function(){var b=Array.from(document.querySelectorAll('#sfx-in-presets .sfx-preset')).find(function(x){return x.textContent==='叮咚';});if(b)b.click();var s=window.activeStore();var bid=null;try{bid=s.get('sfx-in-b');}catch(e){}var val=document.getElementById('sfx-in-val');var onDing=document.getElementById('sfx-in-presets').querySelector('.sfx-preset.on');return JSON.stringify({clicked:!!b,bid:bid,val:val?val.textContent:'',onText:onDing?onDing.textContent:''});})()") || '{}');

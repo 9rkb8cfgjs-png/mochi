@@ -2,11 +2,12 @@
 // 三类音效：
 //  - 联系人来电铃声（sfx-ring / sfx-ring-b）
 //  - 联系人发送/回复消息音效（sfx-in / sfx-in-b）
-//  - 我发送消息音效（sfx-out / sfx-out-b）
-// v3.7.x：新增【内置音效库】——Web Audio API 实时合成，零存储占用、开箱即用。
+//  - 我发送/回复消息音效（sfx-out / sfx-out-b）
+// v3.7.x：新增【内置音效库】——Web Audio API 实时合成，零存储占用。
 //   每个联系人桌面可分别选择：静音 / 任一内置音效 / 上传自定义音频。
-//   播放优先级：自定义上传（dataURL） > 内置音效（sfx-*-b，'none'=静音） > 默认内置。
-//   默认内置：in=气泡 / out=轻叩 / ring=温馨铃（用户未做任何选择时直接生效）。
+//   播放优先级：自定义上传（dataURL） > 内置音效（sfx-*-b）。
+// v3.7.x：默认关闭——未做任何选择（缺省）或显式选「静音」（'none'）时均不播放；
+//   需在音效设置页主动点选内置音效或上传自定义音频后才会生效（用户要求）。
 (function () {
   const store = window.activeStore();
   function toast(msg) {
@@ -36,10 +37,8 @@
     in: ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick'],
     out: ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick']
   };
-  // 用户未选择任何音效时的默认内置
-  // v3.7.x：联系人消息与我方消息默认同一种内置音效（in/out 都是 bubble），
-  //   收发默认听感一致；用户仍可各自切换成不同音效
-  const DEFAULT_BUILTIN = { ring: 'ring-warm', in: 'bubble', out: 'bubble' };
+  // v3.7.x：默认关闭——不再有"缺省即播默认内置"的兜底；
+  //   缺省（无键）与显式「静音」（'none'）在 sfxState/playSfx 中统一按静音处理。
   const PRESET_CONTAINERS = { ring: 'sfx-ring-presets', in: 'sfx-in-presets', out: 'sfx-out-presets' };
 
   // AudioContext 单例：首建 + 每次播放前 resume（iOS 自动播放策略要求）
@@ -249,9 +248,9 @@
       }
       // —— 内置音效 ——
       const bid = store.get(BKEYS[type]);
-      if (bid === 'none') return; // 用户选择静音
-      const id = (bid && SYNTHS[bid]) ? bid : DEFAULT_BUILTIN[type];
-      playBuiltin(id, loop);
+      // v3.7.x：默认关闭——缺省（无键）或显式静音（'none'）都不播放，
+      //   只有用户主动选过内置音效才播
+      if (bid !== 'none' && bid && SYNTHS[bid]) playBuiltin(bid, loop);
     } catch (e) {}
   };
   // 停止长音（来电铃声）：同时停自定义 Audio 与内置 BufferSource
@@ -271,9 +270,11 @@
       return { custom: true, id: null, label: '自定义' };
     }
     const bid = store.get(BKEYS[type]);
-    if (bid === 'none') return { custom: false, id: 'none', label: '静音' };
-    const id = (bid && PRESET_NAMES[bid]) ? bid : DEFAULT_BUILTIN[type];
-    return { custom: false, id: id, label: PRESET_NAMES[id] || id };
+    // v3.7.x：默认关闭——缺省与显式「静音」统一显示/高亮为静音
+    if (bid === 'none' || !(bid && PRESET_NAMES[bid])) {
+      return { custom: false, id: 'none', label: '静音' };
+    }
+    return { custom: false, id: bid, label: PRESET_NAMES[bid] };
   }
 
   // 上传音频：FileReader → dataURL（超 3MB 提示可能过大）；上传即替换内置，内置键清除
