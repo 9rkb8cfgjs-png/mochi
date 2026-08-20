@@ -4103,7 +4103,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787221978292">Mochi 字卡传讯 v3.6.160 · 部署于 2026-08-20 18:32</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787222226399">Mochi 字卡传讯 v3.6.161 · 部署于 2026-08-20 18:37</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4872,7 +4872,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.160</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.161</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -12727,11 +12727,12 @@ return;
 const rpMin = Math.max(1, Number(c['reply-min']) || 1);
 const rpMax = Math.max(rpMin, Number(c['reply-max']) || 2);
 const count = randInt(rpMin, rpMax);
+const wantQuote = hit(c['quote-prob']) && !!lastMineText;
 for (let i = 0; i < count; i++) {
 setTimeout(() => {
 if (!sameCid()) return;
 hideTyping();
-const q = hit(c['quote-prob']) ? (lastMineText || null) : null;
+const q = (wantQuote && i === 0) ? lastMineText : null;
 replyOnce(c, q);
 if (i < count - 1) showTyping();
 if (i === count - 1) {
@@ -20879,14 +20880,17 @@ clearTimeout(el._timer);
 el._timer = setTimeout(hideGreetBanner, 8000);
 }
 function doGreet() {
+const myCid = window.__activeCid || 'default';
 greeted = true;
 store.set(key, '1');
 try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + key, '1'); } catch (e) {}
 const splashEl = document.getElementById('splash');
 const iv = setInterval(() => {
+if ((window.__activeCid || 'default') !== myCid) { try { clearInterval(iv); } catch (e) {} return; }
 if (!splashEl || splashEl.classList.contains('hide')) {
 clearInterval(iv);
 setTimeout(() => {
+if ((window.__activeCid || 'default') !== myCid) return;
 try {
 const phonePage = document.getElementById('page-phone');
 if (phonePage && phonePage.hidden) return;
@@ -20904,11 +20908,13 @@ function maybeGreet() {
 if (greeted) return;
 if (store.get(key)) { greeted = true; return; }
 if (window.idbGet) {
-window.idbGet(window.activePrefix() + ':' + key).then(v => {
+const myPrefix = window.activePrefix();
+window.idbGet(myPrefix + ':' + key).then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v) { greeted = true; store.set(key, '1'); return; }
 if (greeted) return;
 doGreet();
-}).catch(() => { if (!greeted) doGreet(); });
+}).catch(() => { if (window.activePrefix() !== myPrefix) return; if (!greeted) doGreet(); });
 } else {
 doGreet();
 }
@@ -26737,6 +26743,10 @@ return { role: 'me', owner: window.__activeCid || 'default', authorName: s.get('
 function taAuthorOf(p) {
 return { role: 'ta', owner: p.owner || 'default', authorName: p.taName || taFeedNameFor(p.owner || 'default'), authorAv: p.taAv || taAvFor(p.owner || 'default') };
 }
+function taAuthorOfCid(cid) {
+const o = cid || 'default';
+return { role: 'ta', owner: o, authorName: taFeedNameFor(o), authorAv: taAvFor(o) };
+}
 function stampAuthor(obj, a) { obj.role = a.role; obj.owner = a.owner; obj.authorName = a.authorName; obj.authorAv = a.authorAv; return obj; }
 function toast(msg) {
 let t = document.getElementById('cc-toast');
@@ -27073,8 +27083,8 @@ const wasMe = i >= 0;
 if (wasMe) p.likes.splice(i, 1); else p.likes.push(nm);
 save(list);
 renderVisible();
-if (!wasMe && (p.role || p.by) === 'me' && Math.random() * 100 < feedCfg().likeback) {
-const cfg = feedCfg();
+if (!wasMe && (p.role || p.by) === 'me' && Math.random() * 100 < feedCfgFor(p.owner || 'default').likeback) {
+const cfg = feedCfgFor(p.owner || 'default');
 setTimeout(() => {
 const list2 = load();
 const p2 = list2.find(x => x.id === p.id);
@@ -27349,30 +27359,33 @@ save(list);
 const replyCi = comReplyTarget.ci;
 hideCommentBar();
 renderVisible();
-if (Math.random() * 100 < feedCfg().replyProb) {
-const cfg = feedCfg();
+const tcOwner = (tc && tc.owner) || p.owner || 'default';
+const tcfg = feedCfgFor(tcOwner);
+if (Math.random() * 100 < tcfg.replyProb) {
+const cfg = tcfg;
 setTimeout(() => {
 const list2 = load();
 const p2 = list2.find(x => x.id === pid);
 if (!p2 || !p2.comments || !p2.comments[replyCi]) return;
 p2.comments[replyCi].replies = p2.comments[replyCi].replies || [];
-const replyText = pickReplyContent(cfg, p2.owner || 'default');
-p2.comments[replyCi].replies.push(stampAuthor({ content: replyText, ts: Date.now() }, taAuthorOf(p2)));
+const replyText = pickReplyContent(cfg, tcOwner);
+p2.comments[replyCi].replies.push(stampAuthor({ content: replyText, ts: Date.now() }, taAuthorOfCid(tcOwner)));
 save(list2);
 renderVisible();
-addNotice('comment', p2.id, (p2.taName || taFeedNameFor(p2.owner || 'default')) + ' 回复了你：' + noticeTextClean(replyText), p2.owner || 'default');
+addNotice('comment', p2.id, taFeedNameFor(tcOwner) + ' 回复了你：' + noticeTextClean(replyText), tcOwner);
 }, (cfg.replySpeedMin + Math.random() * Math.max(1, cfg.replySpeedMax - cfg.replySpeedMin)) * 1000);
 }
 return;
 }
 p.comments = p.comments || [];
-const commentText = pickReplyContent(feedCfg(), p.owner || 'default');
+const pcfg = feedCfgFor(p.owner || 'default');
+const commentText = pickReplyContent(pcfg, p.owner || 'default');
 p.comments.push(stampAuthor({ content: content, ts: Date.now(), replies: [] }, activeMe()));
 save(list);
 hideCommentBar();
 renderVisible();
-if (Math.random() * 100 < feedCfg().commentProb) {
-const cfg = feedCfg();
+if (Math.random() * 100 < pcfg.commentProb) {
+const cfg = pcfg;
 setTimeout(() => {
 const list2 = load();
 const p2 = list2.find(x => x.id === pid);
@@ -27614,32 +27627,36 @@ renderVisible();
 toast('已发布');
 const pubCardEl = document.getElementById('feed-publish-card');
 if (pubCardEl) pubCardEl.hidden = true;
-if (Math.random() * 100 < feedCfg().likeProb) {
-const cfg = feedCfg();
+const allContacts = (window.getContacts && window.getContacts()) || [{ id: 'default' }];
+allContacts.forEach(ct => {
+const cid = ct && ct.id ? ct.id : 'default';
+const ccfg = feedCfgFor(cid);
+if (Math.random() * 100 < ccfg.likeProb) {
 setTimeout(() => {
 const list2 = load();
 const p2 = list2.find(x => x.id === id);
 if (!p2) return;
 p2.likes = p2.likes || [];
-p2.likes.push(p2.taName || taFeedNameFor(p2.owner || 'default'));
+const nm = taFeedNameFor(cid);
+if (p2.likes.indexOf(nm) < 0) p2.likes.push(nm);
 save(list2);
 renderVisible();
-addNotice('like', p2.id, (p2.taName || taFeedNameFor(p2.owner || 'default')) + ' 赞了你的动态', p2.owner || 'default');
-}, (cfg.likeSpeedMin + Math.random() * Math.max(1, cfg.likeSpeedMax - cfg.likeSpeedMin)) * 1000);
+addNotice('like', p2.id, nm + ' 赞了你的动态', cid);
+}, (ccfg.likeSpeedMin + Math.random() * Math.max(1, ccfg.likeSpeedMax - ccfg.likeSpeedMin)) * 1000);
 }
-if (Math.random() * 100 < feedCfg().commentProb) {
-const cfg = feedCfg();
+if (Math.random() * 100 < ccfg.commentProb) {
 setTimeout(() => {
 const list2 = load();
 const p2 = list2.find(x => x.id === id);
 if (!p2) return;
 p2.comments = p2.comments || [];
-p2.comments.push(stampAuthor({ content: pickReplyContent(cfg, p2.owner || 'default'), ts: Date.now(), replies: [] }, taAuthorOf(p2)));
+p2.comments.push(stampAuthor({ content: pickReplyContent(ccfg, cid), ts: Date.now(), replies: [] }, taAuthorOfCid(cid)));
 save(list2);
 renderVisible();
-addNotice('comment', p2.id, (p2.taName || taFeedNameFor(p2.owner || 'default')) + ' 评论了你的动态', p2.owner || 'default');
-}, (cfg.commentSpeedMin + Math.random() * Math.max(1, cfg.commentSpeedMax - cfg.commentSpeedMin)) * 1000);
+addNotice('comment', p2.id, taFeedNameFor(cid) + ' 评论了你的动态', cid);
+}, (ccfg.commentSpeedMin + Math.random() * Math.max(1, ccfg.commentSpeedMax - ccfg.commentSpeedMin)) * 1000);
 }
+});
 if (Math.random() * 100 < 30 && window.addTaFavItem) {
 const cfg = feedCfg();
 setTimeout(() => {
@@ -27652,8 +27669,18 @@ toast('TA 收藏了你的朋友圈动态');
 }, (cfg.likeSpeedMin + Math.random() * Math.max(1, cfg.likeSpeedMax - cfg.likeSpeedMin)) * 1000);
 }
 }
-function feedCfg() {
-const c = (window.replyCfg && window.replyCfg()) || {};
+function feedCfgFor(cid) {
+const s = (cid && cid !== 'default') ? window.storeFor(cid) : window.activeStore();
+const c = {};
+['fd-like-prob', 'fd-like-speed-min', 'fd-like-speed-max', 'fd-comment-prob', 'fd-comment-speed-min', 'fd-comment-speed-max',
+'fd-reply-prob', 'fd-reply-speed-min', 'fd-reply-speed-max', 'fd-likeback-prob', 'fd-card-prob', 'fd-max-cards', 'fd-image-prob',
+'fd-post-prob', 'fd-post-daily-max', 'fd-post-cool', 'fd-min-interval', 'fd-max-interval',
+'fd-min-cards-post', 'fd-max-cards-post', 'fd-post-kaomoji', 'fd-post-emoji', 'fd-post-sticker', 'fd-post-image'].forEach(k => {
+try {
+const v = s.get('reply-' + k);
+if (v !== null && v !== undefined && v !== '') { const n = Number(v); if (!isNaN(n)) c[k] = n; }
+} catch (e) {}
+});
 const num = (k, d) => c[k] !== undefined ? c[k] : d;
 return {
 likeProb: num('fd-like-prob', 60), likeSpeedMin: num('fd-like-speed-min', 1), likeSpeedMax: num('fd-like-speed-max', 60),
@@ -27669,6 +27696,9 @@ minCardsPost: num('fd-min-cards-post', 4), maxCardsPost: num('fd-max-cards-post'
 postKaomoji: num('fd-post-kaomoji', 10), postEmoji: num('fd-post-emoji', 10),
 postSticker: num('fd-post-sticker', 30), postImage: num('fd-post-image', 30)
 };
+}
+function feedCfg() {
+return feedCfgFor(window.__activeCid || 'default');
 }
 function feedLast() { const v = parseInt(store.get('feed-last'), 10); return isNaN(v) ? 0 : v; }
 function feedNext() { const v = parseFloat(store.get('feed-next')); return isNaN(v) ? 0 : v; }
@@ -27701,7 +27731,7 @@ function maybeAutoPostFor(cid) {
 try {
 const cs = window.storeFor(cid);
 const now = Date.now();
-const cfg = feedCfg();
+const cfg = feedCfgFor(cid);
 let last = parseInt(cs.get('feed-last'), 10); if (isNaN(last)) last = 0;
 let next = parseFloat(cs.get('feed-next')); if (isNaN(next)) next = 0;
 if (last > now || last < 0) { last = 0; next = 0; }
@@ -28016,26 +28046,31 @@ feedMergeFromIdb(v);
 feedDbReady = true;
 render();
 });
-window.idbGet(window.activePrefix() + ':feed-ta-cover').then(v => {
+const myPrefix = window.activePrefix();
+window.idbGet(myPrefix + ':feed-ta-cover').then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v && typeof v === 'string' && v.length > 2 && !window.activeStore().get('feed-ta-cover')) {
 window.activeStore().set('feed-ta-cover', v);
 renderCover();
 renderFeedAllCover();
 }
 });
-window.idbGet(window.activePrefix() + ':feed-cover-bg').then(v => {
+window.idbGet(myPrefix + ':feed-cover-bg').then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v && typeof v === 'string' && v.length > 2 && !window.activeStore().get('feed-cover-bg')) {
 window.activeStore().set('feed-cover-bg', v);
 renderCover();
 }
 });
-window.idbGet(window.activePrefix() + ':avatar-user').then(v => {
+window.idbGet(myPrefix + ':avatar-user').then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v && typeof v === 'string' && v.length > 2 && !window.activeStore().get('avatar-user')) {
 window.activeStore().set('avatar-user', v);
 renderCover();
 }
 });
-window.idbGet(window.activePrefix() + ':feed-ta-avatar').then(v => {
+window.idbGet(myPrefix + ':feed-ta-avatar').then(v => {
+if (window.activePrefix() !== myPrefix) return;
 if (v && typeof v === 'string' && v.length > 2 && !window.activeStore().get('feed-ta-avatar')) {
 window.activeStore().set('feed-ta-avatar', v);
 renderCover();

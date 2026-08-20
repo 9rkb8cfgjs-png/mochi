@@ -344,6 +344,22 @@
     });
     if (envMigrated) saveMsgs();
   }
+  // v3.7.x：好奇卡片快捷项快照人称修正——历史聊天记录里 ask-curious 卡片的
+  // curiousQuick/curiousAnswer 快照在源数据修正前已写入，ta-ask.js 的迁移只修
+  // ta-curious 数据不修聊天记录快照，这里补修历史卡片显示（cp6/cw4/cy11 三处）
+  {
+    const CQ_FIX = { '再等等，会遇到我': '再等等，会遇到你', '你身边': '我身边', '只给我看': '只给你看' };
+    let cqMigrated = false;
+    msgs.forEach(r => {
+      if (!r || r.special !== 'ask-curious') return;
+      if (Array.isArray(r.curiousQuick)) {
+        const fixed = r.curiousQuick.map(o => CQ_FIX[o] || o);
+        if (fixed.some((o, i) => o !== r.curiousQuick[i])) { r.curiousQuick = fixed; cqMigrated = true; }
+      }
+      if (typeof r.curiousAnswer === 'string' && CQ_FIX[r.curiousAnswer]) { r.curiousAnswer = CQ_FIX[r.curiousAnswer]; cqMigrated = true; }
+    });
+    if (cqMigrated) saveMsgs();
+  }
   // v3.6.x：还原被 XSS 转义损坏的系统提示图标（历史乱码消息，函数定义见 escTxt 下方；
   // IDB 合并回调里还会再跑一次，防止同步还原被 IDB 权威快照覆盖）
   if (restoreEscapedPokeIcons()) saveMsgs();
@@ -2042,14 +2058,17 @@ function partialRetractMsg(msgEl, side) {
       const rpMin = Math.max(1, Number(c['reply-min']) || 1);
       const rpMax = Math.max(rpMin, Number(c['reply-max']) || 2);
       const count = randInt(rpMin, rpMax);
+      // v3.7.x：一轮回复最多引用一次。引用源 lastMineText 在本轮固定不变（TA 回复期间
+      // 我没发新消息），若每条独立掷骰 hit(quote-prob) 会出现两种观感问题：
+      //  ① 多条都命中 → 连续引用同一条消息发很多条；
+      //  ② 全没命中 → 这一轮一条引用都没有。
+      // 改为本轮整体掷骰一次：命中则只给第一条带引用（先引用再回复，更像真人），其余普通回复。
+      const wantQuote = hit(c['quote-prob']) && !!lastMineText;
       for (let i = 0; i < count; i++) {
         setTimeout(() => {
           if (!sameCid()) return;
           hideTyping();
-          // v3.7.x：修复「TA 连环引用同一条消息」——原实现把上面的 quote 在循环外算一次，
-          // 连发 N 条时 N 条全部带上同一个引用块（且同一轮 30% 命中与否全军覆没）。
-          // 改为每条回复独立掷骰 + 独立取值：命中才带引用、未命中普通回复，不再连环引用。
-          const q = hit(c['quote-prob']) ? (lastMineText || null) : null;
+          const q = (wantQuote && i === 0) ? lastMineText : null;
           replyOnce(c, q);
           // 还有下一条时继续显示「正在输入」
           if (i < count - 1) showTyping();

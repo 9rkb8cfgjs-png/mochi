@@ -103,6 +103,12 @@
     // v3.7.x：旧数据缺 taName 快照时，回退按动态所属桌面取 TA 昵称/头像
     return { role: 'ta', owner: p.owner || 'default', authorName: p.taName || taFeedNameFor(p.owner || 'default'), authorAv: p.taAv || taAvFor(p.owner || 'default') };
   }
+  // v3.7.x：按「指定联系人桌面」取 TA 身份——用户发布动态后所有桌面的 TA 都可能
+  // 评论/回复，评论作者身份必须用评论者自己的桌面（不是动态所属桌面）
+  function taAuthorOfCid(cid) {
+    const o = cid || 'default';
+    return { role: 'ta', owner: o, authorName: taFeedNameFor(o), authorAv: taAvFor(o) };
+  }
   function stampAuthor(obj, a) { obj.role = a.role; obj.owner = a.owner; obj.authorName = a.authorName; obj.authorAv = a.authorAv; return obj; }
   function toast(msg) {
     let t = document.getElementById('cc-toast');
@@ -513,8 +519,9 @@
       if (wasMe) p.likes.splice(i, 1); else p.likes.push(nm);
       save(list);
       renderVisible();
-      if (!wasMe && (p.role || p.by) === 'me' && Math.random() * 100 < feedCfg().likeback) {
-        const cfg = feedCfg();
+      if (!wasMe && (p.role || p.by) === 'me' && Math.random() * 100 < feedCfgFor(p.owner || 'default').likeback) {
+        // v3.7.x：回赞的是动态所属桌面 TA，用该桌面设置
+        const cfg = feedCfgFor(p.owner || 'default');
         setTimeout(() => {
           const list2 = load();
           const p2 = list2.find(x => x.id === p.id);
@@ -814,32 +821,38 @@ function submitComment() {
     hideCommentBar();
     renderVisible();
     // TA 有概率回应我的回复（写回复区 + 消息提醒）
-    if (Math.random() * 100 < feedCfg().replyProb) {
-      const cfg = feedCfg();
+    // v3.7.x：多桌面——回应用「被回复评论作者」的桌面身份/字卡/设置（评论可能是
+    // 其他桌面联系人的 TA 发的，不能再一律用动态所属桌面）
+    const tcOwner = (tc && tc.owner) || p.owner || 'default';
+    const tcfg = feedCfgFor(tcOwner);
+    if (Math.random() * 100 < tcfg.replyProb) {
+      const cfg = tcfg;
       setTimeout(() => {
         const list2 = load();
         const p2 = list2.find(x => x.id === pid);
         if (!p2 || !p2.comments || !p2.comments[replyCi]) return;
         p2.comments[replyCi].replies = p2.comments[replyCi].replies || [];
-        const replyText = pickReplyContent(cfg, p2.owner || 'default');
-        p2.comments[replyCi].replies.push(stampAuthor({ content: replyText, ts: Date.now() }, taAuthorOf(p2)));
+        const replyText = pickReplyContent(cfg, tcOwner);
+        p2.comments[replyCi].replies.push(stampAuthor({ content: replyText, ts: Date.now() }, taAuthorOfCid(tcOwner)));
         save(list2);
         renderVisible();
-        addNotice('comment', p2.id, (p2.taName || taFeedNameFor(p2.owner || 'default')) + ' 回复了你：' + noticeTextClean(replyText), p2.owner || 'default');
+        addNotice('comment', p2.id, taFeedNameFor(tcOwner) + ' 回复了你：' + noticeTextClean(replyText), tcOwner);
       }, (cfg.replySpeedMin + Math.random() * Math.max(1, cfg.replySpeedMax - cfg.replySpeedMin)) * 1000);
     }
     return;
   }
   p.comments = p.comments || [];
   // v3.5.58：TA 评论回应内容按概率混入表情包（使用表情包概率）
-  const commentText = pickReplyContent(feedCfg(), p.owner || 'default');
+  // v3.7.x：评论回应用「动态所属桌面」TA 的设置/字卡库（不再混当前桌面）
+  const pcfg = feedCfgFor(p.owner || 'default');
+  const commentText = pickReplyContent(pcfg, p.owner || 'default');
   p.comments.push(stampAuthor({ content: content, ts: Date.now(), replies: [] }, activeMe()));
   save(list);
   hideCommentBar();
   renderVisible();
   // TA 有概率评论回应
-  if (Math.random() * 100 < feedCfg().commentProb) {
-    const cfg = feedCfg();
+  if (Math.random() * 100 < pcfg.commentProb) {
+    const cfg = pcfg;
     setTimeout(() => {
       const list2 = load();
       const p2 = list2.find(x => x.id === pid);
@@ -1115,35 +1128,42 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     // v3.5.59：发布后收起发布框
     const pubCardEl = document.getElementById('feed-publish-card');
     if (pubCardEl) pubCardEl.hidden = true;
-    // TA 有概率立即点赞
-    if (Math.random() * 100 < feedCfg().likeProb) {
-      const cfg = feedCfg();
-      setTimeout(() => {
-        const list2 = load();
-        const p2 = list2.find(x => x.id === id);
-        if (!p2) return;
-        p2.likes = p2.likes || [];
-        p2.likes.push(p2.taName || taFeedNameFor(p2.owner || 'default'));
-        save(list2);
-        renderVisible();
-        addNotice('like', p2.id, (p2.taName || taFeedNameFor(p2.owner || 'default')) + ' 赞了你的动态', p2.owner || 'default');
-      }, (cfg.likeSpeedMin + Math.random() * Math.max(1, cfg.likeSpeedMax - cfg.likeSpeedMin)) * 1000);
-    }
-    // TA 有概率首次评论我的动态（首次评论概率 fd-comment-prob + 评论最快/最慢时间）
-    if (Math.random() * 100 < feedCfg().commentProb) {
-      const cfg = feedCfg();
-      setTimeout(() => {
-        const list2 = load();
-        const p2 = list2.find(x => x.id === id);
-        if (!p2) return;
-        p2.comments = p2.comments || [];
-        p2.comments.push(stampAuthor({ content: pickReplyContent(cfg, p2.owner || 'default'), ts: Date.now(), replies: [] }, taAuthorOf(p2)));
-        save(list2);
-        renderVisible();
-        addNotice('comment', p2.id, (p2.taName || taFeedNameFor(p2.owner || 'default')) + ' 评论了你的动态', p2.owner || 'default');
-      }, (cfg.commentSpeedMin + Math.random() * Math.max(1, cfg.commentSpeedMax - cfg.commentSpeedMin)) * 1000);
-    }
-    // v3.6.x：TA 收藏我发布的动态（30% 概率，与聊天消息收藏一致，延迟同点赞节奏）
+    // v3.7.x：所有桌面联系人的 TA 都有概率回应我的动态（各自桌面设置/字卡库/身份）——
+    // 原实现只掷当前桌面 TA。朋友圈是全局共享层，其他联系人也要能点赞/评论我。
+    const allContacts = (window.getContacts && window.getContacts()) || [{ id: 'default' }];
+    allContacts.forEach(ct => {
+      const cid = ct && ct.id ? ct.id : 'default';
+      const ccfg = feedCfgFor(cid);
+      // 该桌面的 TA 有概率立即点赞
+      if (Math.random() * 100 < ccfg.likeProb) {
+        setTimeout(() => {
+          const list2 = load();
+          const p2 = list2.find(x => x.id === id);
+          if (!p2) return;
+          p2.likes = p2.likes || [];
+          const nm = taFeedNameFor(cid);
+          if (p2.likes.indexOf(nm) < 0) p2.likes.push(nm);
+          save(list2);
+          renderVisible();
+          addNotice('like', p2.id, nm + ' 赞了你的动态', cid);
+        }, (ccfg.likeSpeedMin + Math.random() * Math.max(1, ccfg.likeSpeedMax - ccfg.likeSpeedMin)) * 1000);
+      }
+      // 该桌面的 TA 有概率首次评论我的动态
+      if (Math.random() * 100 < ccfg.commentProb) {
+        setTimeout(() => {
+          const list2 = load();
+          const p2 = list2.find(x => x.id === id);
+          if (!p2) return;
+          p2.comments = p2.comments || [];
+          p2.comments.push(stampAuthor({ content: pickReplyContent(ccfg, cid), ts: Date.now(), replies: [] }, taAuthorOfCid(cid)));
+          save(list2);
+          renderVisible();
+          addNotice('comment', p2.id, taFeedNameFor(cid) + ' 评论了你的动态', cid);
+        }, (ccfg.commentSpeedMin + Math.random() * Math.max(1, ccfg.commentSpeedMax - ccfg.commentSpeedMin)) * 1000);
+      }
+    });
+    // v3.6.x：TA 收藏我发布的动态（30% 概率，与聊天消息收藏一致，延迟同点赞节奏）——
+    // 收藏写入当前桌面（各桌面收藏隔离），保持只由当前桌面 TA 触发
     if (Math.random() * 100 < 30 && window.addTaFavItem) {
       const cfg = feedCfg();
       setTimeout(() => {
@@ -1157,8 +1177,20 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     }
   }
   // ================= TA 自动发布（定时机制，概率在回复设置-朋友圈调整，星言朋友圈机制） =================
-  function feedCfg() {
-    const c = (window.replyCfg && window.replyCfg()) || {};
+  // v3.7.x：按「指定联系人桌面」读朋友圈回复设置（fd-*）——多桌面下各联系人
+  // TA 用各自桌面的设置回应我的动态/回复；feedCfg() = 当前桌面
+  function feedCfgFor(cid) {
+    const s = (cid && cid !== 'default') ? window.storeFor(cid) : window.activeStore();
+    const c = {};
+    ['fd-like-prob', 'fd-like-speed-min', 'fd-like-speed-max', 'fd-comment-prob', 'fd-comment-speed-min', 'fd-comment-speed-max',
+     'fd-reply-prob', 'fd-reply-speed-min', 'fd-reply-speed-max', 'fd-likeback-prob', 'fd-card-prob', 'fd-max-cards', 'fd-image-prob',
+     'fd-post-prob', 'fd-post-daily-max', 'fd-post-cool', 'fd-min-interval', 'fd-max-interval',
+     'fd-min-cards-post', 'fd-max-cards-post', 'fd-post-kaomoji', 'fd-post-emoji', 'fd-post-sticker', 'fd-post-image'].forEach(k => {
+      try {
+        const v = s.get('reply-' + k);
+        if (v !== null && v !== undefined && v !== '') { const n = Number(v); if (!isNaN(n)) c[k] = n; }
+      } catch (e) {}
+    });
     const num = (k, d) => c[k] !== undefined ? c[k] : d;
     return {
       likeProb: num('fd-like-prob', 60), likeSpeedMin: num('fd-like-speed-min', 1), likeSpeedMax: num('fd-like-speed-max', 60),
@@ -1174,6 +1206,9 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
       postKaomoji: num('fd-post-kaomoji', 10), postEmoji: num('fd-post-emoji', 10),
       postSticker: num('fd-post-sticker', 30), postImage: num('fd-post-image', 30)
     };
+  }
+  function feedCfg() {
+    return feedCfgFor(window.__activeCid || 'default');
   }
   function feedLast() { const v = parseInt(store.get('feed-last'), 10); return isNaN(v) ? 0 : v; }
   function feedNext() { const v = parseFloat(store.get('feed-next')); return isNaN(v) ? 0 : v; }
@@ -1212,7 +1247,8 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     try {
       const cs = window.storeFor(cid);
       const now = Date.now();
-      const cfg = feedCfg();
+      // v3.7.x：各桌面的 TA 用各自桌面的朋友圈设置（原实现用当前桌面 cfg，串设置）
+      const cfg = feedCfgFor(cid);
       let last = parseInt(cs.get('feed-last'), 10); if (isNaN(last)) last = 0;
       let next = parseFloat(cs.get('feed-next')); if (isNaN(next)) next = 0;
       if (last > now || last < 0) { last = 0; next = 0; }

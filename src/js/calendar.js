@@ -273,6 +273,8 @@
       el._timer = setTimeout(hideGreetBanner, 8000);
     }
     function doGreet() {
+      // 多桌面：异步轮询期间切换联系人会把横幅/标记写到新桌面 → 捕获 cid 校验
+      const myCid = window.__activeCid || 'default';
       greeted = true;
       store.set(key, '1');
       try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + key, '1'); } catch (e) {}
@@ -280,9 +282,11 @@
       // 盖住，8 秒自动收起多半已过期，用户根本看不到。轮询到开屏隐藏后 1s 再显示。
       const splashEl = document.getElementById('splash');
       const iv = setInterval(() => {
+        if ((window.__activeCid || 'default') !== myCid) { try { clearInterval(iv); } catch (e) {} return; }
         if (!splashEl || splashEl.classList.contains('hide')) {
           clearInterval(iv);
           setTimeout(() => {
+            if ((window.__activeCid || 'default') !== myCid) return;
             try {
               // 仅桌面可见时展示；聊天/其他页面或已有弹窗打开时不打扰（横幅随时可再进日历看）
               const phonePage = document.getElementById('page-phone');
@@ -302,11 +306,13 @@
       if (store.get(key)) { greeted = true; return; }
       // localStorage 无标记：查 IndexedDB（防止 localStorage 写失败/被清导致每天重复弹）
       if (window.idbGet) {
-        window.idbGet(window.activePrefix() + ':' + key).then(v => {
+        const myPrefix = window.activePrefix();
+        window.idbGet(myPrefix + ':' + key).then(v => {
+          if (window.activePrefix() !== myPrefix) return;
           if (v) { greeted = true; store.set(key, '1'); return; }
           if (greeted) return;
           doGreet();
-        }).catch(() => { if (!greeted) doGreet(); });
+        }).catch(() => { if (window.activePrefix() !== myPrefix) return; if (!greeted) doGreet(); });
       } else {
         doGreet();
       }

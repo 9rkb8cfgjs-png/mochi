@@ -2285,6 +2285,8 @@
       const candidates = library.slice();
       if (!candidates.length) return;
       const track = candidates[Math.floor(Math.random() * candidates.length)];
+      // 多桌面：弹窗期间切换联系人后点按钮会把接受/拒绝写到新桌面 → 捕获 cid 校验
+      const myCid = window.__activeCid || 'default';
       reqData = { trackId: track.id };
       taActive = true;
       const name = partnerName();
@@ -2301,6 +2303,7 @@
           '<div class="mail-actions"><button class="cc-tool" id="sm-req-no">稍后</button><button class="cc-tool" id="sm-req-yes">一起听</button></div>');
         document.getElementById('sm-req-no').addEventListener('click', () => {
           document.getElementById('tc-mask').hidden = true;
+          if ((window.__activeCid || 'default') !== myCid) { reqData = null; return; }
           reqData = null;
           // 记录：TA 邀请听歌（拒绝）
           history.push({ id: 'smh_' + Date.now(), trackId: '', trackName: '', triggerType: '拒绝了 TA 的听歌邀请《' + esc(trackName) + '》', rejected: true, ts: Date.now() });
@@ -2310,6 +2313,7 @@
         });
         document.getElementById('sm-req-yes').addEventListener('click', () => {
           document.getElementById('tc-mask').hidden = true;
+          if ((window.__activeCid || 'default') !== myCid) { reqData = null; return; }
           if (!reqData) return;
           playTrack(reqData.trackId);
           addRecord(reqData.trackId, '接受了 TA 的听歌邀请');
@@ -2714,6 +2718,10 @@
     try {
       if (audio) { try { audio.pause(); } catch (e) {} audio = null; }
       currentId = null;
+      // 多桌面：TA 互动状态是模块级，残留会让新桌面误以为 TA 在一起听/冷却中/有待确认请求
+      taActive = false;
+      cooldownAt = 0;
+      reqData = null;
       loadAll();
       try { renderPage(); } catch (e) {}
       try { renderFloat(); } catch (e) {}

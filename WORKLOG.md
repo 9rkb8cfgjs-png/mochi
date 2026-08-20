@@ -741,3 +741,14 @@
   - 新增数据：`poke-user-ta`/`poke-user-mine`（每桌面独立，LS+IDB 双写，键带 activePrefix 命名空间，IDB 内容多时恢复覆盖）；面板「＋ 新增」按钮 openModal 输入加入当前 tab 池；自定义输入行按当前 tab 方向发送；tab 记忆 `poke-tab`（每桌面）；contact-switched 重载池+关面板。
   - 旧字卡库【拍一拍】自定义字卡仍兼容：按人称自动归类（含"你"→我的tab；含"我"→联系人的tab；中性→我的tab）显示为「自定义」小节；performPoke（联系人自动拍一拍）字卡池改为 pokeAllCards()（预设+新增+旧自定义），不再只读 getPokeCards()。
   - 已 node --check 通过。⚠️ 并行会话正在改 mail.js/music-player.js/pong.js/chat.js（未提交），本次构建已一并带上，提交信息注明双方范围。
+### 2026-08-20
+- [本会话] 完成（用户反馈「我发布朋友圈，好像不是所有桌面联系人都能回复我」——**已构建 verify 10/10 + CDP 全员回应 11/11，待提交**）：
+  - **根因**：`src/js/feed.js` publish() 的 TA 点赞/评论回应只掷**当前桌面** TA（feedCfg() + taAuthorOf(p2)），其他桌面联系人的 TA 从不回应我发布的动态。
+  - **修复**（feed.js）：
+    1. 新增 `feedCfgFor(cid)`（按指定联系人桌面读 reply-fd-* 设置），`feedCfg()` 改为读当前桌面（等价原逻辑）；`maybeAutoPostFor` 改用 feedCfgFor(cid)（原用当前桌面 cfg 串设置）。
+    2. 新增 `taAuthorOfCid(cid)`（按桌面取 TA 身份：feed-ta-name/feed-ta-avatar 回退 lbl-partner/avatar-partner）。
+    3. publish() 遍历**所有联系人**：每个桌面的 TA 按**各自桌面设置**掷点赞/评论概率，用**各自桌面字卡库**生成内容、**各自桌面身份**署名（评论 owner=该桌面），通知/弹窗 owner 正确传递；收藏保持仅当前桌面 TA（各桌面收藏隔离）。
+    4. submitComment 回复分支：TA 回应按**被回复评论的作者桌面**（tc.owner）取设置/字卡/身份——用户回复二宝的评论，由二宝（用二宝桌面字卡）回应，不再一律用动态所属桌面 TA；评论模式回应用动态所属桌面（taAuthorOf(p2) 原语义）。
+    5. 点赞回赞/评论回应延迟与概率改按所属桌面设置。
+  - **CDP 验证 11/11**：发布后大宝+二宝都点赞/评论；二宝评论内容用二宝桌面字卡库、owner=cid2；回复二宝评论→二宝按评论 owner 用自己桌面字卡回应。
+  - 涉及 `src/js/feed.js`；提交含并行会话已保存的 calendar.js/chat.js/music-player.js 改动与构建产物（node --check 全过）。
