@@ -453,13 +453,19 @@
   function doRetry() {
     disarmRetry();
     if (store.get(FS_KEY) !== '1' || isFullscreen()) return; // 用户已关闭/已全屏 → 放弃
+    // v3.7.x：浏览器标签模式不自动重入（retry 路径同 reenterFs）
+    if (!fsInPwa()) { try { store.set(FS_KEY, '0'); } catch (e) {} return; }
     enterFs();
   }
   function reenterFs() {
     // v3.7.x：浏览器标签模式不自动重入全屏——每次打开页面就弹「退出全屏」提示条，
-    // 用户无法正常使用；仅 PWA 安装态（standalone/fullscreen 直启）才自动恢复
+    // 用户无法正常使用；仅 PWA 安装态（standalone/fullscreen 直启）才自动恢复。
+    // 注意：浏览器模式下用户正在全屏时切后台（切回来仍应保持）——只在「已退出全屏」
+    // 时清标记，否则切后台回来把用户主动开启的全屏静默取消掉
     if (!fsInPwa()) {
-      try { store.set(FS_KEY, '0'); } catch (e) {}
+      if (!isFullscreen()) {
+        try { store.set(FS_KEY, '0'); } catch (e) {}
+      }
       return;
     }
     // v3.6.x：上次走的是 CSS 兜底（浏览器转横屏）→ 直接恢复兜底，不再请求原生全屏

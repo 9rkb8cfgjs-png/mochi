@@ -138,6 +138,11 @@ html { margin:0; padding:0; }
   font-size:13px; font-weight:800; color:#c0392b; text-align:center;
   margin-bottom:10px; letter-spacing:.5px;
 }
+/* v3.7.x：正文内小标题——「关于bug」「简单说明/详细说明/要修得先知道」加粗强调 */
+.splash-confirm-sec {
+  margin-top:12px; font-weight:800; color:var(--ink); font-size:12.5px;
+}
+.splash-confirm-lbl { font-weight:800; color:var(--ink); }
 .splash-confirm-text { font-size:12px; line-height:1.7; color:var(--soft-ink); text-align:left; }
 .splash-confirm-text p { margin:0 0 8px; }
 .splash-confirm-text p:last-child { margin-bottom:0; }
