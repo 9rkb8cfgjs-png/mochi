@@ -16,3 +16,7 @@ probe-*.mjs
 
 # Node 依赖目录（测试工具用）
 node_modules/
+
+# 调试截图/预览图与项目结构快照（不入库）
+tools/*.png
+codebase-structure.md
