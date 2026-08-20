@@ -110,35 +110,8 @@
     if (!playlists.some(p => p.id === 'spl_default')) {
       playlists.unshift({ id: 'spl_default', name: '默认歌单', createdAt: Date.now() });
     }
-    // 首次运行：往默认歌单里放 2 首内置示例歌（使用网易云官方外链——现已恢复可用，
-    // 302 跳转真实 CDN mp3 无需自定义请求头，浏览器可直接播放完整歌曲）
-    if (!library.length && !store.get('music-seed-done')) {
-      const seeds = [
-        { id: 2613048732, name: 'Moonlit Dream', artist: 'DLSS · shell（月光梦）', cover: 'https://p2.music.126.net/cXuoNwFzgFoQF7bGvC2mIQ==/109951169832660411.jpg' },
-        { id: 27538343, name: 'Baby', artist: 'EXO-K', cover: '' }
-      ];
-      const ids = [];
-      seeds.forEach((s, i) => {
-        const id = 'sm_seed_' + Date.now() + '_' + i;
-        ids.push(id);
-        library.push({ id: id, neteaseId: String(s.id), name: s.name || '示例旋律-' + (i + 1), artist: s.artist || '', cover: s.cover || '', url: neteaseMetingUrl(s.id), source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
-      });
-      store.set('music-seed-done', '1');
-      saveLibrary();
-      // 异步识别歌名（失败则保留已知/默认名）
-      seeds.forEach((s, i) => {
-        fetchNeteaseInfo(String(s.id), (info) => {
-          const m = library.find(x => x.id === ids[i]);
-          if (m && info && info.name) {
-            m.name = info.name;
-            if (info.artist) m.artist = info.artist;
-            if (info.duration && !m.duration) m.duration = info.duration;
-            saveLibrary();
-            renderPage();
-          }
-        });
-      });
-    }
+    // v3.9.x：不再自动放入内置示例歌曲（原「首次运行往默认歌单放 2 首种子歌」逻辑已移除）——
+    // 音乐库由用户自行上传/导入，默认歌单不预置任何歌曲
     // v3.5.112：网易云外链已恢复可用（302 → 真实 CDN mp3，无需请求头）。
     // 旧版本曾把种子歌曲强制替换成本地 14 秒旋律并清空 url——检测这类旧数据，
     // 自动恢复网易云外链（source:'url'），让默认歌曲回到完整版；
@@ -164,23 +137,23 @@
         if (isSeed) { try { if (window.idbDelete) window.idbDelete(window.activePrefix() + ':music-file:' + m.id); } catch (e) {} }
       }
     });
-    // v3.6.x：种子歌自愈——若 2 首内置示例歌在本地丢失（清除数据/备份恢复后
-    // music-seed-done 已置位不再补种、或记录损坏），重新补回默认歌单，
-    // 保证「默认歌单」始终有歌可播
+    // v3.9.x：移除内置种子歌——旧版本自动放入的默认歌曲（id 以 sm_seed_ 开头）在
+    // 升级后自动删除；原「种子歌自愈补回」逻辑同步移除，默认歌单不再自动补任何歌曲
     {
-      const SEED_DEFS = [
-        { id: 2613048732, name: 'Moonlit Dream', artist: 'DLSS · shell（月光梦）', cover: 'https://p2.music.126.net/cXuoNwFzgFoQF7bGvC2mIQ==/109951169832660411.jpg' },
-        { id: 27538343, name: 'Baby', artist: 'EXO-K', cover: '' }
-      ];
-      let healed = false;
-      SEED_DEFS.forEach((s, i) => {
-        const has = library.some(m => m && String(m.neteaseId || '') === String(s.id));
-        if (has) return;
-        const id = 'sm_seed_' + Date.now() + '_' + i + '_h';
-        library.push({ id: id, neteaseId: String(s.id), name: s.name, artist: s.artist, cover: s.cover || '', url: neteaseMetingUrl(s.id), source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
-        healed = true;
-      });
-      if (healed) saveLibrary();
+      const before = library.length;
+      library = library.filter(m => !(m && m.id && m.id.indexOf('sm_seed_') === 0));
+      if (library.length !== before) {
+        saveLibrary();
+        // 清理种子歌可能残留的本地音频文件（IDB）
+        try {
+          if (window.idbGetAllKeys) {
+            window.idbGetAllKeys().then(keys => {
+              keys.filter(k => k.indexOf(window.activePrefix() + ':music-file:sm_seed_') === 0)
+                .forEach(k => { if (window.idbDelete) window.idbDelete(k); });
+            });
+          }
+        } catch (e) {}
+      }
     }
   }
 

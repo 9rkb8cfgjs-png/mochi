@@ -601,6 +601,11 @@
   font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
 .poke-add-btn:active { opacity:.85; }
+/* 拍一拍工具行（新建分组 / 新增拍一拍，复用 .emoji-tool） */
+.poke-tools {
+  display:flex; gap:6px; margin-bottom:8px; flex-shrink:0;
+}
+.poke-tools .emoji-tool { flex:1; }
 /* 拍一拍列表：预设/自定义 小节标题 */
 .poke-sec-label {
   font-size:11px; color:var(--muted); padding:8px 2px 4px; flex-shrink:0;

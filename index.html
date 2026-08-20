@@ -1440,6 +1440,10 @@ color:#666; font-size:13px; font-weight:700; cursor:pointer;
 font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
 .poke-add-btn:active { opacity:.85; }
+.poke-tools {
+display:flex; gap:6px; margin-bottom:8px; flex-shrink:0;
+}
+.poke-tools .emoji-tool { flex:1; }
 .poke-sec-label {
 font-size:11px; color:var(--muted); padding:8px 2px 4px; flex-shrink:0;
 }
@@ -4132,7 +4136,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787223815885">Mochi 字卡传讯 v3.6.162 · 部署于 2026-08-20 19:03</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787224284325">Mochi 字卡传讯 v3.6.164 · 部署于 2026-08-20 19:11</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4901,7 +4905,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.162</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.164</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -13133,30 +13137,45 @@ const POKE_PRESETS = {
 ta: ['拍了拍我', '戳了戳我的脸蛋', '弹了一下我的额头', '揉了揉我的头发', '捏了捏我的脸颊', '拍了拍我的肩膀'],
 mine: ['拍了拍你', '戳了戳你的脸蛋', '弹了一下你的额头', '揉了揉你的头发', '捏了捏你的脸颊', '拍了拍你的肩膀']
 };
-function pokeUserKey(kind) { return window.activePrefix() + ':poke-user-' + kind; }
-function pokeUserLoad(kind) {
+function pokeUserGroupsKey(kind) { return window.activePrefix() + ':poke-groups-' + kind; }
+function pokeUserGroupsLoad(kind) {
+try {
+const v = JSON.parse(store.get('poke-groups-' + kind) || 'null');
+if (Array.isArray(v)) return v.filter(g => Array.isArray(g) && Array.isArray(g[1]));
+} catch (e) {}
+return null;
+}
+function pokeUserGroupsSave(kind) {
+try {
+const data = JSON.stringify(pokeUserGroups[kind]);
+store.set('poke-groups-' + kind, data);
+if (window.idbSet) window.idbSet(pokeUserGroupsKey(kind), data);
+} catch (e) {}
+}
+function pokeUserGroupsInit(kind) {
+const loaded = pokeUserGroupsLoad(kind);
+if (loaded) return loaded;
+let legacy = [];
 try {
 const v = JSON.parse(store.get('poke-user-' + kind) || 'null');
-if (Array.isArray(v)) return v.filter(x => typeof x === 'string' && x.trim());
+if (Array.isArray(v)) legacy = v.filter(x => typeof x === 'string' && x.trim());
 } catch (e) {}
-return [];
-}
-function pokeUserSave(kind) {
+const g = [['我的新增', legacy]];
 try {
-const data = JSON.stringify(userPoke[kind]);
-store.set('poke-user-' + kind, data);
-if (window.idbSet) window.idbSet(pokeUserKey(kind), data);
+store.set('poke-groups-' + kind, JSON.stringify(g));
+if (window.idbSet) window.idbSet(pokeUserGroupsKey(kind), JSON.stringify(g));
 } catch (e) {}
+return g;
 }
-const userPoke = { ta: pokeUserLoad('ta'), mine: pokeUserLoad('mine') };
+const pokeUserGroups = { ta: pokeUserGroupsInit('ta'), mine: pokeUserGroupsInit('mine') };
 (function () {
 if (!window.idbGet) return;
 ['ta', 'mine'].forEach(kind => {
-window.idbGet(pokeUserKey(kind)).then(v => {
+window.idbGet(pokeUserGroupsKey(kind)).then(v => {
 if (!v) return;
 try {
 const arr = JSON.parse(v);
-if (Array.isArray(arr) && arr.length > userPoke[kind].length) userPoke[kind] = arr;
+if (Array.isArray(arr) && arr.length > pokeUserGroups[kind].length) pokeUserGroups[kind] = arr;
 } catch (e) {}
 }).catch(() => {});
 });
@@ -13171,12 +13190,16 @@ function pokeAllCards() {
 const out = [];
 (POKE_PRESETS.ta || []).forEach(x => out.push(x));
 (POKE_PRESETS.mine || []).forEach(x => out.push(x));
-(userPoke.ta || []).forEach(x => out.push(x));
-(userPoke.mine || []).forEach(x => out.push(x));
+['ta', 'mine'].forEach(kind => {
+(pokeUserGroups[kind] || []).forEach(g => {
+if (Array.isArray(g) && Array.isArray(g[1])) g[1].forEach(x => out.push(x));
+});
+});
 try { ((window.getPokeCards && window.getPokeCards()) || []).forEach(x => out.push(x)); } catch (e) {}
 return out;
 }
-let pokeMode = 'ta'; // 当前 tab：ta=联系人昵称的拍一拍 / mine=我的拍一拍
+let pokeMode = 'ta';            // 当前 tab：ta=联系人昵称的拍一拍 / mine=我的拍一拍
+let pokeCurGroup = '__preset';  // 当前选中分组（'__preset' = 预设）
 const pokeTabsRow = document.createElement('div');
 pokeTabsRow.className = 'poke-tabs-row';
 const pokeTabTa = document.createElement('button');
@@ -13187,13 +13210,22 @@ const pokeTabMine = document.createElement('button');
 pokeTabMine.className = 'emoji-tab';
 pokeTabMine.type = 'button';
 pokeTabMine.dataset.ptab = 'mine';
-const pokeAddBtn = document.createElement('button');
-pokeAddBtn.className = 'poke-add-btn';
-pokeAddBtn.type = 'button';
-pokeAddBtn.textContent = '＋ 新增';
 pokeTabsRow.appendChild(pokeTabTa);
 pokeTabsRow.appendChild(pokeTabMine);
-pokeTabsRow.appendChild(pokeAddBtn);
+const pokeToolsRow = document.createElement('div');
+pokeToolsRow.className = 'poke-tools';
+const pokeNewGroupBtn = document.createElement('button');
+pokeNewGroupBtn.className = 'emoji-tool poke-tool';
+pokeNewGroupBtn.type = 'button';
+pokeNewGroupBtn.textContent = '＋ 新建分组';
+const pokeAddBtn = document.createElement('button');
+pokeAddBtn.className = 'emoji-tool poke-tool';
+pokeAddBtn.type = 'button';
+pokeAddBtn.textContent = '＋ 新增拍一拍';
+pokeToolsRow.appendChild(pokeNewGroupBtn);
+pokeToolsRow.appendChild(pokeAddBtn);
+const pokeGroupsBar = document.createElement('div');
+pokeGroupsBar.className = 'poke-groups';
 const pokeInputRow = document.createElement('div');
 pokeInputRow.className = 'poke-input-row';
 const pokeInput = document.createElement('input');
@@ -13229,6 +13261,8 @@ pokeInputRow.appendChild(pokeInput);
 pokeInputRow.appendChild(pokeInputGo);
 if (pokeCard) {
 pokeCard.insertBefore(pokeTabsRow, pokeList);
+pokeCard.insertBefore(pokeToolsRow, pokeList);
+pokeCard.insertBefore(pokeGroupsBar, pokeList);
 pokeCard.insertBefore(pokeInputRow, pokeList);
 }
 function sendPoke(action) {
@@ -13261,11 +13295,18 @@ setTimeout(() => { retractMsg(m2, 'in'); }, 900);
 }, randInt(800, 2000));
 }, randInt(600, 1200));
 }
-function savePokePref() { try { store.set('poke-tab', pokeMode); } catch (e) {} }
+function savePokePref() {
+try { store.set('poke-tab', pokeMode); } catch (e) {}
+try { store.set('poke-group-' + pokeMode, pokeCurGroup); } catch (e) {}
+}
 (function () {
 try {
 const p = store.get('poke-tab');
 if (p === 'mine') pokeMode = 'mine';
+} catch (e) {}
+try {
+const g = store.get('poke-group-' + pokeMode);
+if (typeof g === 'string' && g) pokeCurGroup = g;
 } catch (e) {}
 })();
 function pokeTabLabel(kind) {
@@ -13276,11 +13317,25 @@ return n + ' 的拍一拍';
 const n = store.get('lbl-user') || '我';
 return (n === '我' ? '我的' : n + ' 的') + '拍一拍';
 }
-function pokeSectionLabel(t) {
-const s = document.createElement('div');
-s.className = 'poke-sec-label';
-s.textContent = t;
-return s;
+function pokeTabGroups(kind) {
+const out = [];
+const presets = (POKE_PRESETS[kind] || []).slice();
+out.push({ key: '__preset', label: '预设', cards: presets });
+(pokeUserGroups[kind] || []).forEach(g => {
+if (!Array.isArray(g) || !Array.isArray(g[1]) || !g[0]) return;
+out.push({ key: g[0], label: g[0], cards: g[1].slice(), user: true });
+});
+let legacy = [];
+try { legacy = (window.getPokeGroups && window.getPokeGroups()) || []; } catch (e) {}
+legacy.forEach(g => {
+if (!Array.isArray(g) || !Array.isArray(g[1])) return;
+const cards = g[1].filter(c => pokeKindOf(c) === kind);
+if (!cards.length) return;
+const exist = out.find(x => x.key === g[0]);
+if (exist) exist.cards = exist.cards.concat(cards);
+else out.push({ key: g[0], label: g[0], cards });
+});
+return out;
 }
 function pokeCardEl(c) {
 const d = document.createElement('div');
@@ -13288,6 +13343,23 @@ d.className = 'cc-item glass';
 d.innerHTML = '<div class="cc-txt"><div class="t">' + c + '</div></div>';
 d.addEventListener('click', () => { sendPoke(c); closePokeCard(); });
 return d;
+}
+function renderPokeGroupsBar(groups) {
+if (!pokeGroupsBar) return;
+pokeGroupsBar.innerHTML = '';
+if (!groups.some(g => g.key === pokeCurGroup)) pokeCurGroup = groups.length ? groups[0].key : '__preset';
+groups.forEach(g => {
+const c = document.createElement('span');
+c.className = 'emoji-g-chip' + (pokeCurGroup === g.key ? ' sel' : '');
+c.textContent = g.label + g.cards.length;
+c.addEventListener('click', (e) => {
+e.stopPropagation();
+pokeCurGroup = g.key;
+savePokePref();
+renderPokeCard();
+});
+pokeGroupsBar.appendChild(c);
+});
 }
 function renderPokeCard() {
 const name = store.get('lbl-partner') || 'TA';
@@ -13297,30 +13369,20 @@ pokeTabMine.textContent = pokeTabLabel('mine');
 pokeTabTa.classList.toggle('sel', pokeMode === 'ta');
 pokeTabMine.classList.toggle('sel', pokeMode === 'mine');
 pokeInput.placeholder = pokeMode === 'ta' ? '输入拍一拍文字，如：弹了一下我的额头' : '输入拍一拍文字，如：拍了拍你的脸蛋';
+const groups = pokeTabGroups(pokeMode);
+renderPokeGroupsBar(groups);
 if (!pokeList) return;
 pokeList.innerHTML = '';
-const presets = (POKE_PRESETS[pokeMode] || []).slice();
-const users = (userPoke[pokeMode] || []).slice();
-let extra = [];
-try { extra = ((window.getPokeCards && window.getPokeCards()) || []).filter(c => pokeKindOf(c) === pokeMode); } catch (e) {}
-if (!presets.length && !users.length && !extra.length) {
-pokeList.innerHTML = '<div class="cc-empty">暂无拍一拍字卡<br>点击上方「＋ 新增」添加，或直接输入拍一拍文字</div>';
+if (!groups.length) {
+pokeList.innerHTML = '<div class="cc-empty">暂无拍一拍字卡<br>点击「＋ 新增拍一拍」添加，或直接输入拍一拍文字</div>';
 return;
 }
-if (presets.length) {
-pokeList.appendChild(pokeSectionLabel('预设'));
-presets.forEach(c => pokeList.appendChild(pokeCardEl(c)));
+const cur = groups.find(g => g.key === pokeCurGroup) || groups[0];
+if (!cur.cards.length) {
+pokeList.innerHTML = '<div class="cc-empty">该分组暂无拍一拍<br>点击「＋ 新增拍一拍」添加到该分组</div>';
+return;
 }
-if (users.length || extra.length) {
-const ps = new Set(presets);
-const custom = [];
-users.forEach(c => { if (!ps.has(c)) custom.push(c); });
-extra.forEach(c => { if (!ps.has(c)) custom.push(c); });
-if (custom.length) {
-pokeList.appendChild(pokeSectionLabel('自定义'));
-custom.forEach(c => pokeList.appendChild(pokeCardEl(c)));
-}
-}
+cur.cards.forEach(c => pokeList.appendChild(pokeCardEl(c)));
 }
 function closePokeCard() {
 if (pokeCard) pokeCard.hidden = true;
@@ -13333,23 +13395,43 @@ pokeTabMine.addEventListener('click', (e) => {
 e.stopPropagation();
 if (pokeMode !== 'mine') { pokeMode = 'mine'; savePokePref(); renderPokeCard(); }
 });
+pokeNewGroupBtn.addEventListener('click', (e) => {
+e.stopPropagation();
+window.openModal('新建拍一拍分组（当前为「' + pokeTabLabel(pokeMode) + '」）', '', (v) => {
+v = (v || '').trim();
+if (!v) { toast('请输入分组名'); return; }
+const groups = pokeUserGroups[pokeMode];
+if (groups.some(g => g[0] === v)) { toast('分组「' + v + '」已存在'); return; }
+groups.push([v, []]);
+pokeUserGroupsSave(pokeMode);
+pokeCurGroup = v;
+savePokePref();
+renderPokeCard();
+toast('已新建分组「' + v + '」');
+});
+});
 pokeAddBtn.addEventListener('click', (e) => {
 e.stopPropagation();
-const cur = pokeMode;
-const hint = cur === 'ta'
-? '（将作为「' + (store.get('lbl-partner') || 'TA') + '」的拍一拍，如：弹了一下我的额头）'
-: '（将作为你的拍一拍，如：拍了拍你的脸蛋）';
+const kind = pokeMode;
+const groups = pokeUserGroups[kind];
+let target = groups.find(g => g[0] === pokeCurGroup) || groups[0];
+if (!target) { target = ['我的新增', []]; groups.push(target); }
+const hint = kind === 'ta'
+? '（将添加到「' + target[0] + '」，作为「' + (store.get('lbl-partner') || 'TA') + '」的拍一拍）'
+: '（将添加到「' + target[0] + '」，作为你的拍一拍）';
 window.openModal('新增拍一拍' + hint, '', (v) => {
 v = (v || '').trim();
 if (!v) { toast('请输入拍一拍文字'); return; }
-userPoke[cur].push(v);
-pokeUserSave(cur);
+target[1].push(v);
+pokeUserGroupsSave(kind);
+pokeCurGroup = target[0];
+savePokePref();
 renderPokeCard();
-toast('已添加拍一拍');
+toast('已添加到「' + target[0] + '」');
 });
 });
 document.addEventListener('contact-switched', function () {
-try { userPoke.ta = pokeUserLoad('ta'); userPoke.mine = pokeUserLoad('mine'); } catch (e) {}
+try { pokeUserGroups.ta = pokeUserGroupsInit('ta'); pokeUserGroups.mine = pokeUserGroupsInit('mine'); } catch (e) {}
 try { if (pokeCard) pokeCard.hidden = true; } catch (e) {}
 });
 const morePoke = document.getElementById('more-poke');
@@ -14546,6 +14628,7 @@ if (morePanel) morePanel.hidden = true;
 closeIme(); // v3.5.116：收起输入法，面板不被键盘遮挡
 if (pokeInput) pokeInput.value = '';
 try { const p = store.get('poke-tab'); if (p === 'mine') pokeMode = 'mine'; else if (p === 'ta') pokeMode = 'ta'; } catch (e) {}
+try { const g = store.get('poke-group-' + pokeMode); if (typeof g === 'string' && g) pokeCurGroup = g; } catch (e) {}
 renderPokeCard();
 }
 document.addEventListener('click', (e) => {
@@ -18567,32 +18650,6 @@ store.set('music-default-done', '1');
 if (!playlists.some(p => p.id === 'spl_default')) {
 playlists.unshift({ id: 'spl_default', name: '默认歌单', createdAt: Date.now() });
 }
-if (!library.length && !store.get('music-seed-done')) {
-const seeds = [
-{ id: 2613048732, name: 'Moonlit Dream', artist: 'DLSS · shell（月光梦）', cover: 'https://p2.music.126.net/cXuoNwFzgFoQF7bGvC2mIQ==/109951169832660411.jpg' },
-{ id: 27538343, name: 'Baby', artist: 'EXO-K', cover: '' }
-];
-const ids = [];
-seeds.forEach((s, i) => {
-const id = 'sm_seed_' + Date.now() + '_' + i;
-ids.push(id);
-library.push({ id: id, neteaseId: String(s.id), name: s.name || '示例旋律-' + (i + 1), artist: s.artist || '', cover: s.cover || '', url: neteaseMetingUrl(s.id), source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
-});
-store.set('music-seed-done', '1');
-saveLibrary();
-seeds.forEach((s, i) => {
-fetchNeteaseInfo(String(s.id), (info) => {
-const m = library.find(x => x.id === ids[i]);
-if (m && info && info.name) {
-m.name = info.name;
-if (info.artist) m.artist = info.artist;
-if (info.duration && !m.duration) m.duration = info.duration;
-saveLibrary();
-renderPage();
-}
-});
-});
-}
 library.forEach(m => {
 if (!m || !m.neteaseId) return;
 const seedId = String(m.neteaseId);
@@ -18607,19 +18664,19 @@ if (isSeed) { try { if (window.idbDelete) window.idbDelete(window.activePrefix()
 }
 });
 {
-const SEED_DEFS = [
-{ id: 2613048732, name: 'Moonlit Dream', artist: 'DLSS · shell（月光梦）', cover: 'https://p2.music.126.net/cXuoNwFzgFoQF7bGvC2mIQ==/109951169832660411.jpg' },
-{ id: 27538343, name: 'Baby', artist: 'EXO-K', cover: '' }
-];
-let healed = false;
-SEED_DEFS.forEach((s, i) => {
-const has = library.some(m => m && String(m.neteaseId || '') === String(s.id));
-if (has) return;
-const id = 'sm_seed_' + Date.now() + '_' + i + '_h';
-library.push({ id: id, neteaseId: String(s.id), name: s.name, artist: s.artist, cover: s.cover || '', url: neteaseMetingUrl(s.id), source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
-healed = true;
+const before = library.length;
+library = library.filter(m => !(m && m.id && m.id.indexOf('sm_seed_') === 0));
+if (library.length !== before) {
+saveLibrary();
+try {
+if (window.idbGetAllKeys) {
+window.idbGetAllKeys().then(keys => {
+keys.filter(k => k.indexOf(window.activePrefix() + ':music-file:sm_seed_') === 0)
+.forEach(k => { if (window.idbDelete) window.idbDelete(k); });
 });
-if (healed) saveLibrary();
+}
+} catch (e) {}
+}
 }
 }
 const DEMO_NOTES = [
