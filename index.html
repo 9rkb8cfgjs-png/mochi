@@ -4190,7 +4190,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787239178311">Mochi 字卡传讯 v3.6.175 · 部署于 2026-08-20 23:19</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787240109344">Mochi 字卡传讯 v3.6.176 · 部署于 2026-08-20 23:35</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4959,7 +4959,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.175</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.176</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -19185,6 +19185,23 @@ if (res && res.name) cb(res); else tryNext();
 }
 tryNext();
 }
+function fetchNeteaseCover(id, cb) {
+let controller;
+try { controller = new AbortController(); } catch (e) { controller = null; }
+const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 8000);
+fetch('https://api.injahow.cn/meting/?type=song&id=' + encodeURIComponent(String(id)), controller ? { signal: controller.signal } : undefined)
+.then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+.then(txt => {
+clearTimeout(timer);
+try {
+const j = JSON.parse(txt);
+const pic = (j && j[0] && j[0].pic) || '';
+if (pic) { cb(String(pic).replace(/^http:\/\//i, 'https://')); return; }
+} catch (e) {}
+cb(null);
+})
+.catch(() => { clearTimeout(timer); cb(null); });
+}
 function extractPlaylistId(line) {
 if (!line || typeof line !== 'string') return '';
 if (/\.mp3/i.test(line)) return '';
@@ -19417,6 +19434,56 @@ tmp.src = neteaseMetingUrl(m.neteaseId);
 function probeAllMissingDurations() {
 library.forEach(m => { if (m && m.neteaseId && !m.duration) enqueueDurProbe(m); });
 }
+let coverQueueRunning = false;
+const coverQueue = [];
+const COVER_CONCURRENCY = 3;
+function enqueueCoverFetch(m) {
+if (!m || !m.neteaseId || m.cover || m._coverLoading) return;
+if (coverQueue.some(x => x.id === m.id)) return;
+m._coverLoading = true;
+coverQueue.push(m);
+if (coverQueue.length <= COVER_CONCURRENCY) runCoverQueue();
+}
+function runCoverQueue() {
+if (coverQueueRunning) return;
+coverQueueRunning = true;
+const next = () => {
+if (!coverQueue.length) { coverQueueRunning = false; return; }
+const m = coverQueue.shift();
+fetchNeteaseCover(m.neteaseId, (pic) => {
+const mm = findTrack(m.id);
+if (mm) {
+mm._coverLoading = false;
+if (pic && !mm.cover) {
+mm.cover = pic;
+saveLibrary();
+updateCoverUI(m.id);
+if (mm.id === currentId) setWidgetCover(mm);
+}
+}
+next();
+});
+};
+for (let i = 0; i < COVER_CONCURRENCY; i++) next();
+}
+function ensureSongCover(m) { enqueueCoverFetch(m); }
+function ensureMissingCovers() {
+library.forEach(m => { if (m && m.neteaseId && !m.cover) enqueueCoverFetch(m); });
+}
+function updateCoverUI(id) {
+const m = findTrack(id);
+if (!m || !m.cover) return;
+document.querySelectorAll('#music-lib-list .sm-song, #tc-body .sm-song').forEach(row => {
+if (row.dataset.id === id) {
+const ico = row.querySelector('.sm-song-ico');
+if (ico) {
+ico.className = 'sm-song-ico has-cov';
+ico.style.backgroundImage = 'url(\'' + m.cover + '\')';
+ico.innerHTML = '';
+}
+}
+});
+}
 function importPlaylistIds(ids, cb, targetPl) {
 let total = 0, plOk = 0, plFail = 0, skipped = 0;
 const next = (i) => {
@@ -19620,6 +19687,7 @@ library.push(item);
 added++;
 if (neteaseId) {
 enqueueDurProbe(item);
+ensureSongCover(item);
 fetchNeteaseInfo(neteaseId, info => {
 const m = findTrack(id);
 if (m && info && info.name) {
@@ -19717,6 +19785,7 @@ library.push(item);
 added++;
 if (neteaseId) {
 enqueueDurProbe(item);
+ensureSongCover(item);
 fetchNeteaseInfo(neteaseId, info => {
 const mm = library.find(x => x.id === nid);
 if (mm && info && info.name) {
@@ -20445,6 +20514,7 @@ const m = findTrack(id);
 if (!m) return;
 if (m) m._httpsRetried = false;
 currentId = id;
+ensureSongCover(m);
 teardownAudio();
 if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
 if (m.source === 'local' || (!m.url && m.source !== 'url')) {
@@ -20665,17 +20735,7 @@ cover.style.backgroundSize = '';
 cover.style.backgroundPosition = '';
 cover.classList.remove('has-cover');
 }
-if (m && m.neteaseId && !m.cover) {
-fetchNeteaseInfo(String(m.neteaseId), (info) => {
-const mm = findTrack(m.id);
-if (mm && info && info.pic) {
-mm.cover = info.pic;
-saveLibrary();
-setWidgetCover(mm);
-renderPage();
-}
-});
-}
+if (m && m.neteaseId && !m.cover) ensureSongCover(m);
 }
 function isFloatOn() { return settings.floatEn && !floatClosed && currentId && audio; }
 function renderFloat() {
@@ -21207,6 +21267,7 @@ document.querySelectorAll('.page').forEach(p => p.hidden = true);
 musicPage.hidden = false;
 renderPage();
 probeAllMissingDurations();
+ensureMissingCovers();
 });
 }
 const musicBack = document.getElementById('music-back');

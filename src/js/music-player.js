@@ -350,6 +350,28 @@
     }
     tryNext();
   }
+  // ================= 网易云歌曲封面拉取（meting type=song） =================
+  // v3.9.x：链接添加/批量导入的网易云单曲不带封面（只有歌单导入才带 pic），而
+  // fetchNeteaseInfo 的 pic 字段依赖失效的 CORS 代理拿不到。改用 meting type=song
+  // 接口（与播放同源的 api.injahow.cn，大陆直连、无 CORS、移动端同样可用）返回的
+  // pic 代理 URL（302 → https 图片 CDN），img 直接引用即可显示。
+  function fetchNeteaseCover(id, cb) {
+    let controller;
+    try { controller = new AbortController(); } catch (e) { controller = null; }
+    const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 8000);
+    fetch('https://api.injahow.cn/meting/?type=song&id=' + encodeURIComponent(String(id)), controller ? { signal: controller.signal } : undefined)
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(txt => {
+        clearTimeout(timer);
+        try {
+          const j = JSON.parse(txt);
+          const pic = (j && j[0] && j[0].pic) || '';
+          if (pic) { cb(String(pic).replace(/^http:\/\//i, 'https://')); return; }
+        } catch (e) {}
+        cb(null);
+      })
+      .catch(() => { clearTimeout(timer); cb(null); });
+  }
 
   // ================= 网易云歌单导入 =================
   // v3.8.x：直接导入网易云歌单（粘贴歌单分享链接 / 链接添加里填歌单 ID）。
@@ -610,6 +632,61 @@
   function probeAllMissingDurations() {
     library.forEach(m => { if (m && m.neteaseId && !m.duration) enqueueDurProbe(m); });
   }
+  // ================= 网易云歌曲封面补全（列表/小组件共用，并发节流） =================
+  // v3.9.x：链接添加/批量导入的单曲没有封面 → 导入后/播放时/打开音乐页时后台拉取
+  //（fetchNeteaseCover，meting type=song）。并发 3 条排队，_coverLoading 防重复请求，
+  // 拉到后写回 cover 并局部刷新封面图标（不整页重渲染），正在播放的同步刷新桌面小组件。
+  let coverQueueRunning = false;
+  const coverQueue = [];
+  const COVER_CONCURRENCY = 3;
+  function enqueueCoverFetch(m) {
+    if (!m || !m.neteaseId || m.cover || m._coverLoading) return;
+    if (coverQueue.some(x => x.id === m.id)) return;
+    m._coverLoading = true;
+    coverQueue.push(m);
+    if (coverQueue.length <= COVER_CONCURRENCY) runCoverQueue();
+  }
+  function runCoverQueue() {
+    if (coverQueueRunning) return;
+    coverQueueRunning = true;
+    const next = () => {
+      if (!coverQueue.length) { coverQueueRunning = false; return; }
+      const m = coverQueue.shift();
+      fetchNeteaseCover(m.neteaseId, (pic) => {
+        const mm = findTrack(m.id);
+        if (mm) {
+          mm._coverLoading = false;
+          if (pic && !mm.cover) {
+            mm.cover = pic;
+            saveLibrary();
+            updateCoverUI(m.id);
+            if (mm.id === currentId) setWidgetCover(mm);
+          }
+        }
+        next();
+      });
+    };
+    for (let i = 0; i < COVER_CONCURRENCY; i++) next();
+  }
+  function ensureSongCover(m) { enqueueCoverFetch(m); }
+  function ensureMissingCovers() {
+    library.forEach(m => { if (m && m.neteaseId && !m.cover) enqueueCoverFetch(m); });
+  }
+  // 局部刷新某首歌曲在列表/歌单面板里的封面图标（has-cov 与正常渲染一致，图标丢弃）
+  function updateCoverUI(id) {
+    const m = findTrack(id);
+    if (!m || !m.cover) return;
+    document.querySelectorAll('#music-lib-list .sm-song, #tc-body .sm-song').forEach(row => {
+      if (row.dataset.id === id) {
+        const ico = row.querySelector('.sm-song-ico');
+        if (ico) {
+          ico.className = 'sm-song-ico has-cov';
+          ico.style.backgroundImage = 'url(\'' + m.cover + '\')';
+          ico.innerHTML = '';
+        }
+      }
+    });
+  }
   // 串行导入多个歌单（避免并发刷爆网络）
   function importPlaylistIds(ids, cb, targetPl) {
     let total = 0, plOk = 0, plFail = 0, skipped = 0;
@@ -857,8 +934,9 @@
             library.push(item);
             added++;
             if (neteaseId) {
-              // v3.9.x：后台探测时长（识别歌名失败也不影响，时长单独补）
+              // v3.9.x：后台探测时长（识别歌名失败也不影响，时长单独补）+ 拉取歌曲封面
               enqueueDurProbe(item);
+              ensureSongCover(item);
               fetchNeteaseInfo(neteaseId, info => {
                 const m = findTrack(id);
                 if (m && info && info.name) {
@@ -968,8 +1046,9 @@
           added++;
           // v3.6.x：数字 ID 自动识别歌曲名（与「链接添加」一致，识别到后覆盖默认名）
           if (neteaseId) {
-            // v3.9.x：后台探测时长
+            // v3.9.x：后台探测时长 + 拉取歌曲封面
             enqueueDurProbe(item);
+            ensureSongCover(item);
             fetchNeteaseInfo(neteaseId, info => {
               const mm = library.find(x => x.id === nid);
               if (mm && info && info.name) {
@@ -1796,6 +1875,8 @@
     // 每次新播放重置，允许重新尝试 meting URL
     if (m) m._httpsRetried = false;
     currentId = id;
+    // v3.9.x：播放时顺带补封面（列表/小组件缺封面的网易云歌曲）
+    ensureSongCover(m);
     teardownAudio();
     if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
     if (m.source === 'local' || (!m.url && m.source !== 'url')) {
@@ -2038,18 +2119,9 @@
       cover.style.backgroundPosition = '';
       cover.classList.remove('has-cover');
     }
-    // 没有歌曲封面时异步拉取（仅网易云链接歌曲）；拉到后刷新（若模式为 playlist 且歌单有封面，刷新后仍显示歌单封面）
-    if (m && m.neteaseId && !m.cover) {
-      fetchNeteaseInfo(String(m.neteaseId), (info) => {
-        const mm = findTrack(m.id);
-        if (mm && info && info.pic) {
-          mm.cover = info.pic;
-          saveLibrary();
-          setWidgetCover(mm);
-          renderPage();
-        }
-      });
-    }
+    // 没有歌曲封面时异步拉取（仅网易云链接歌曲，meting type=song；拉到后局部刷新，
+    // 正在播放的歌曲由 ensureSongCover 内部再触发 setWidgetCover 更新小组件）
+    if (m && m.neteaseId && !m.cover) ensureSongCover(m);
   }
 
   // ================= 悬浮小框 =================
@@ -2629,6 +2701,8 @@
       renderPage();
       // v3.9.x：打开音乐页时补探测缺失时长（覆盖本版本之前导入、时长还是 00:00 的旧歌曲）
       probeAllMissingDurations();
+      // v3.9.x：顺带补历史导入歌曲的封面（网易云单曲链接添加的旧数据没有封面）
+      ensureMissingCovers();
     });
   }
   const musicBack = document.getElementById('music-back');

@@ -9,6 +9,13 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（本会话，用户反馈「网易云歌曲链接添加的歌曲不显示封面；点击播放个别歌曲也不显示封面」）
+- [本会话·完成]（**已构建 verify 10/10 + CDP 封面专项 5/5，本次提交**）：`src/js/music-player.js`（AI-A 域，用户直接反馈故本会话统一实现）。
+  - **根因**：「添加链接音乐」「批量导入」导入的网易云单曲 `cover` 恒为空（只有歌单导入带 pic）；`setWidgetCover` 原来的异步拉封面走 `fetchNeteaseInfo` 的 pic 字段——该字段依赖已失效的 CORS 代理（且页面标题解析不返回 pic），基本拿不到。
+  - **修复**：新增 `fetchNeteaseCover(id, cb)`（meting `type=song` 接口，与播放同源 api.injahow.cn，大陆直连、无 CORS、移动端可用，返回 pic 代理 URL → 302 https 图片 CDN）；新增封面并发队列（`enqueueCoverFetch`/`runCoverQueue`，并发 3，`_coverLoading` 防重）+ `ensureSongCover`（幂等入口）+ `ensureMissingCovers`（历史歌曲补全）+ `updateCoverUI`（局部刷新封面图标，不整页重渲染）。
+  - **挂点**：「添加链接音乐」「批量导入」网易云单曲导入后自动拉封面；`playTrack` 播放时补封面；`setWidgetCover` 拉封面逻辑改走队列；音乐页打开时 `ensureMissingCovers()` 补历史缺封面歌曲。
+  - 验证：CDP 真实导入 `#/song?id=27538343` → 1s 内 cover 写回（meting pic 代理地址）+ 列表图标 has-cov + 播放后桌面小组件 has-cover 背景图，无 JS 异常。
+
 ### 2026-08-20（本会话，用户反馈「网易云链接格式导入：新增 #/song?id= 与 outer/url?id=.mp3 格式自动转换导入；添加歌曲里说明可直接链接导入，不用只输入 ID」）
 - [本会话·完成]（**已构建 verify 10/10 + 单测 10/10 + CDP 真实导入 10/10，本次提交**）：`src/js/music-player.js`（AI-A 域，用户直接反馈故本会话统一实现）。
   - **统一提取函数** `extractNeteaseSongId`（新增，放 extractPlaylistId 旁）：支持纯数字 ID、`song?id=xxx`、**`#/song?id=xxx`（hash 路由分享链接）**、**`song/media/outer/url?id=xxx.mp3`（官方外链）**、`/song/xxx` 路径、分享文本混排（「分享…《歌名》…https://music.163.com/song?id=xxx @QQ音乐」）——单测 10/10（含不误提取普通 mp3 直链）。「添加链接音乐」「批量导入」两处手写提取正则统一替换为它，提取后自动转 meting 播放直链。
