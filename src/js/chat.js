@@ -2016,15 +2016,20 @@ function partialRetractMsg(msgEl, side) {
 
   // ---- 被动回复 ----
   function scheduleReply() {
+    // v3.7.x：捕获发送时的联系人，回调执行时若已切换则放弃——否则 A 的回复会落到 B
+    // 的 msgs/存储（scheduleReply 用匿名 setTimeout，contact-switched 无法 clearTimeout）
+    const myCid = window.__activeCid || 'default';
+    const sameCid = () => (window.__activeCid || 'default') === myCid;
     const c = cfg();
     if (hit(c['rn-prob'])) {
-      setTimeout(() => addIn('', { special: 'read' }), randInt(1000, 4000));
+      setTimeout(() => { if (!sameCid()) return; addIn('', { special: 'read' }); }, randInt(1000, 4000));
       return;
     }
     const delay = (c['rs-min'] + Math.random() * Math.max(1, c['rs-max'] - c['rs-min'])) * 1000;
     // 等待回复期间显示「正在输入」
     showTyping();
     setTimeout(() => {
+      if (!sameCid()) { hideTyping(); return; }
       hideTyping();
       if (hit(c['touch-prob'])) {
         performPoke();
@@ -2038,6 +2043,7 @@ function partialRetractMsg(msgEl, side) {
       const count = randInt(rpMin, rpMax);
       for (let i = 0; i < count; i++) {
         setTimeout(() => {
+          if (!sameCid()) return;
           hideTyping();
           // v3.7.x：修复「TA 连环引用同一条消息」——原实现把上面的 quote 在循环外算一次，
           // 连发 N 条时 N 条全部带上同一个引用块（且同一轮 30% 命中与否全军覆没）。
@@ -2048,7 +2054,7 @@ function partialRetractMsg(msgEl, side) {
           if (i < count - 1) showTyping();
           // 最后一条回复完成后：音乐 TA 可能请求一起听歌（延后 2 秒）
           if (i === count - 1) {
-            setTimeout(() => { if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
+            setTimeout(() => { if (!sameCid()) return; if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
           }
         }, i * randInt(1200, 2800));
       }

@@ -1,4 +1,4 @@
-# WORKLOG — 双方交接日志（AI-A / AI-B 共用）
+﻿# WORKLOG — 双方交接日志（AI-A / AI-B 共用）
 
 两个 AI 不能直接对话，开工/完工时在这里各写一行，让对方打开仓库就知道当前状态。
 
@@ -9,6 +9,12 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（用户反馈「TA的好奇 cp6 快捷项『再等等，会遇到我』人称不对，应为『再等等，会遇到你』；并要求检查其他卡片互动同类问题」）
+- [本会话·完成]（已改 src/js/ta-ask.js，未构建未提交，请构建者执行 node build.mjs 后随下次统一提交）：
+  1. cp6「如果能给十年前的自己捎一句话」快捷项『再等等，会遇到我』→『再等等，会遇到你』（用户指定人称修正）。
+  2. 同类型排查：全量扫描 ta-ask.js 四题库（询问/小问题/好奇/吐槽）所有用户视角快捷项/选项 + 反扫（用户选项含你无我），另核对 default-cards-data.js 回应池、mood-followup-data.js、quote-cards.js、chat-settings.js 拍一拍预设——仅再发现 1 处同类问题：cy11「你觉得自己最柔软的部分，藏在什么地方？」快捷项『只给我看』→『只给你看』（TA 回应『只给我看的，我看到了』证实原意是只给TA看，用户视角应用『你』）。
+  3. 老用户数据同步：tcuLoad 迁移块扩展（沿用 cw4「你身边→我身边」既有模式）——cp6/cy11 已存数据 + 历史答案 h.my 同步修正并写回 LS（idbRestore 仅回填缺失键，不会回退迁移）。
+  4. node --check 通过。
 ### 2026-08-20（用户要求「聊天设置的全屏模式下面新增音乐悬浮小窗开关」）
 - [本会话·完成]（**已构建 verify 10/10 + CDP 冒烟 9/9，本次提交一并包含 AI-A 已保存的占卜/字卡库改动**）：聊天设置页「全屏」组内、全屏模式开关下方新增「音乐悬浮小窗」开关 `#cs-music-float`。
   - 与音乐页 `#music-float-en` / 音乐设置 `#sm-set-float` **同源**（`music-global.floatEn`，每桌面独立）：music-player.js 新增 `window.musicFloatGet()` / `window.musicFloatSet(en)` 钩子（复用 saveSettings/syncFloatToggle/renderFloat 完整流程，切关立即隐藏浮框）；chat-settings.js 仿 cs-fullscreen 模式绑定：初始同步 + change 写回 + 500ms 轮询 + contact-switched 立即同步；music-player.js 加载晚于 chat-settings.js，钩子未就绪时退化为直读写 store（默认开）。

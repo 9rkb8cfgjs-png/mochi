@@ -309,6 +309,7 @@
         <!-- 聊天字卡库页（字卡库列表） -->
     <div class="page" id="page-chatcard" hidden>
       <div class="chat-title">字卡库</div>
+      <div class="cc-sect">可自定义字卡</div>
       <div class="chat-item glass" id="li-custom-cards">
         <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></div>
         <div class="ci"><div class="n">自定义聊天字卡</div><div class="m" id="cc-sub-count">共收录 0 张字卡</div></div>
@@ -324,6 +325,27 @@
         <div class="ci"><div class="n">桌面今日情话</div><div class="m">桌面每日展示 · 可自由添加</div></div>
         <div class="t" id="cc-quote-count">46</div>
       </div>
+      <div class="chat-item glass" id="li-ta-ask">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <div class="ci"><div class="n">TA的询问</div><div class="m">开放式提问 · 按题库向你提问</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
+        <div class="t">3</div>
+      </div>
+      <div class="chat-item glass" id="li-ta-choose">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+        <div class="ci"><div class="n">TA的小问题</div><div class="m">选择题轻互动 · 选完 TA 再回应</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
+        <div class="t">18</div>
+      </div>
+      <div class="chat-item glass" id="li-ta-curious">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18"/><circle cx="12" cy="12" r="2"/></svg></div>
+        <div class="ci"><div class="n">TA的好奇</div><div class="m">开放式提问 · 回答后 TA 记住你</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
+        <div class="t">26</div>
+      </div>
+      <div class="chat-item glass" id="li-ta-roast">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.4 5.7.3-4.4 3.6 1.5 5.5-4.6-3.3-4.6 3.3 1.5-5.5-4.4-3.6 5.7-.3z"/></svg></div>
+        <div class="ci"><div class="n">TA的吐槽</div><div class="m">突然吐槽你一句 · 情侣式调侃</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
+        <div class="t">46</div>
+      </div>
+      <div class="cc-sect">系统预设字卡</div>
       <div class="chat-item glass" id="li-default-cards">
         <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.4l6.1-.9z"/></svg></div>
         <div class="ci"><div class="n">聊天默认字卡</div><div class="m">日常默认回复字卡</div></div>
@@ -334,32 +356,12 @@
         <div class="ci"><div class="n">聊天情绪字卡</div><div class="m">按情绪分类的字卡</div></div>
         <div class="t">209</div>
       </div>
-<div class="chat-item glass" id="li-reply-cards">
-  <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>
-  <div class="ci"><div class="n">聊天回应字卡</div><div class="m">逻辑连接词字卡</div></div>
-  <div class="t">102</div>
-</div>
-<div class="chat-item glass" id="li-ta-ask">
-  <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-  <div class="ci"><div class="n">TA的询问</div><div class="m">开放式提问 · 按题库向你提问</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
-  <div class="t">3</div>
-</div>
-<div class="chat-item glass" id="li-ta-choose">
-  <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
-  <div class="ci"><div class="n">TA的小问题</div><div class="m">选择题轻互动 · 选完 TA 再回应</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
-  <div class="t">18</div>
-</div>
-<div class="chat-item glass" id="li-ta-curious">
-  <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18"/><circle cx="12" cy="12" r="2"/></svg></div>
-  <div class="ci"><div class="n">TA的好奇</div><div class="m">开放式提问 · 回答后 TA 记住你</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
-  <div class="t">26</div>
-</div>
-<div class="chat-item glass" id="li-ta-roast">
-  <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.4 5.7.3-4.4 3.6 1.5 5.5-4.6-3.3-4.6 3.3 1.5-5.5-4.4-3.6 5.7-.3z"/></svg></div>
-  <div class="ci"><div class="n">TA的吐槽</div><div class="m">突然吐槽你一句 · 情侣式调侃</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
-  <div class="t">46</div>
-</div>
-</div>
+      <div class="chat-item glass" id="li-reply-cards">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>
+        <div class="ci"><div class="n">聊天回应字卡</div><div class="m">逻辑连接词字卡</div></div>
+        <div class="t">102</div>
+      </div>
+    </div>
 
 <!-- TA的询问管理页 -->
 <div class="page" id="page-ta-ask" hidden>

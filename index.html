@@ -1921,6 +1921,15 @@ background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
 #page-chatcard::-webkit-scrollbar { display:none; }
 .chat-title { font-size:22px; font-weight:700; padding:4px 2px 8px; letter-spacing:1px; }
 .chat-sub { font-size:12px; color:var(--muted); font-weight:400; letter-spacing:1px; padding-bottom:12px; }
+.cc-sect {
+display:flex; align-items:center; gap:7px;
+font-size:12px; font-weight:700; color:var(--muted);
+letter-spacing:2px; padding:14px 2px 6px;
+}
+.cc-sect::before {
+content:''; width:3px; height:12px; border-radius:2px; background:#111; flex-shrink:0;
+}
+.cc-sect:first-of-type { padding-top:4px; }
 .chat-item {
 display:flex; align-items:center; gap:12px;
 border-radius:18px; padding:14px; margin-bottom:10px; cursor:pointer;
@@ -4083,7 +4092,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787211126619">Mochi 字卡传讯 v3.6.149 · 部署于 2026-08-20 15:32</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787212754163">Mochi 字卡传讯 v3.6.150 · 部署于 2026-08-20 15:59</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4338,6 +4347,7 @@ color: var(--muted);
         <!-- 聊天字卡库页（字卡库列表） -->
     <div class="page" id="page-chatcard" hidden>
       <div class="chat-title">字卡库</div>
+      <div class="cc-sect">可自定义字卡</div>
       <div class="chat-item glass" id="li-custom-cards">
         <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></div>
         <div class="ci"><div class="n">自定义聊天字卡</div><div class="m" id="cc-sub-count">共收录 0 张字卡</div></div>
@@ -4353,6 +4363,27 @@ color: var(--muted);
         <div class="ci"><div class="n">桌面今日情话</div><div class="m">桌面每日展示 · 可自由添加</div></div>
         <div class="t" id="cc-quote-count">46</div>
       </div>
+      <div class="chat-item glass" id="li-ta-ask">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <div class="ci"><div class="n">TA的询问</div><div class="m">开放式提问 · 按题库向你提问</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
+        <div class="t">3</div>
+      </div>
+      <div class="chat-item glass" id="li-ta-choose">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+        <div class="ci"><div class="n">TA的小问题</div><div class="m">选择题轻互动 · 选完 TA 再回应</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
+        <div class="t">18</div>
+      </div>
+      <div class="chat-item glass" id="li-ta-curious">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18"/><circle cx="12" cy="12" r="2"/></svg></div>
+        <div class="ci"><div class="n">TA的好奇</div><div class="m">开放式提问 · 回答后 TA 记住你</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
+        <div class="t">26</div>
+      </div>
+      <div class="chat-item glass" id="li-ta-roast">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.4 5.7.3-4.4 3.6 1.5 5.5-4.6-3.3-4.6 3.3 1.5-5.5-4.4-3.6 5.7-.3z"/></svg></div>
+        <div class="ci"><div class="n">TA的吐槽</div><div class="m">突然吐槽你一句 · 情侣式调侃</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
+        <div class="t">46</div>
+      </div>
+      <div class="cc-sect">系统预设字卡</div>
       <div class="chat-item glass" id="li-default-cards">
         <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.4l6.1-.9z"/></svg></div>
         <div class="ci"><div class="n">聊天默认字卡</div><div class="m">日常默认回复字卡</div></div>
@@ -4363,32 +4394,12 @@ color: var(--muted);
         <div class="ci"><div class="n">聊天情绪字卡</div><div class="m">按情绪分类的字卡</div></div>
         <div class="t">209</div>
       </div>
-<div class="chat-item glass" id="li-reply-cards">
-  <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>
-  <div class="ci"><div class="n">聊天回应字卡</div><div class="m">逻辑连接词字卡</div></div>
-  <div class="t">102</div>
-</div>
-<div class="chat-item glass" id="li-ta-ask">
-  <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-  <div class="ci"><div class="n">TA的询问</div><div class="m">开放式提问 · 按题库向你提问</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
-  <div class="t">3</div>
-</div>
-<div class="chat-item glass" id="li-ta-choose">
-  <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
-  <div class="ci"><div class="n">TA的小问题</div><div class="m">选择题轻互动 · 选完 TA 再回应</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
-  <div class="t">18</div>
-</div>
-<div class="chat-item glass" id="li-ta-curious">
-  <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18"/><circle cx="12" cy="12" r="2"/></svg></div>
-  <div class="ci"><div class="n">TA的好奇</div><div class="m">开放式提问 · 回答后 TA 记住你</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
-  <div class="t">26</div>
-</div>
-<div class="chat-item glass" id="li-ta-roast">
-  <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.4 5.7.3-4.4 3.6 1.5 5.5-4.6-3.3-4.6 3.3 1.5-5.5-4.4-3.6 5.7-.3z"/></svg></div>
-  <div class="ci"><div class="n">TA的吐槽</div><div class="m">突然吐槽你一句 · 情侣式调侃</div><div class="note">回应：90% 系统预设 + 10% 字卡库</div></div>
-  <div class="t">46</div>
-</div>
-</div>
+      <div class="chat-item glass" id="li-reply-cards">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>
+        <div class="ci"><div class="n">聊天回应字卡</div><div class="m">逻辑连接词字卡</div></div>
+        <div class="t">102</div>
+      </div>
+    </div>
 
 <!-- TA的询问管理页 -->
 <div class="page" id="page-ta-ask" hidden>
@@ -4844,7 +4855,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.149</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.150</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -19492,6 +19503,7 @@ autoResumeArmed = true;
 const retry = function () {
 disarmAutoResume();
 if (!audio || !currentId || !audio.paused) return;
+try { if (audio) audio.muted = false; } catch (e) {}
 const p2 = audio.play();
 if (p2 && p2.catch) p2.catch(function () { armAutoResume(); });
 };
@@ -19801,7 +19813,7 @@ try { audio.muted = true; } catch (e) {}
 const p2 = audio.play();
 if (p2 && p2.then) {
 p2.then(() => { if (audio) audio.muted = false; playRejected = false; try { syncPlayIcons(true); } catch (e) {} })
-.catch(() => { try { syncPlayIcons(false); } catch (e) {} armAutoResume(); });
+.catch(() => { try { if (audio) audio.muted = false; } catch (e) {} try { syncPlayIcons(false); } catch (e) {} armAutoResume(); try { toast('点一下屏幕即可恢复音乐播放'); } catch (e) {} });
 } else { armAutoResume(); }
 });
 }
@@ -23527,7 +23539,7 @@ const TCU_DEFAULT = [
 { id: 'cd6', cat: 'daily', text: '今天做的所有事里，最想重播一遍的是哪件？', quick: ['吃的那顿', '遇到的一个人', '摸鱼的瞬间', '都不想重播'], replies: ['重播的时候，记得叫上我。', '摸鱼摸得开心就好。', '我在心里帮你存档了。', '明天会有更值得重播的。'] },
 { id: 'cd7', cat: 'daily', text: '你手机相册里最近的一张照片，是什么？', quick: ['一张截图', '风景', '自己', '不告诉你'], replies: ['不告诉也行，我自己猜。', '风景也想以后一起看。', '嗯，记住了，你今天的视角。', '下次拍一张给我看看。'], followup: '什么时候拍的？' },
 { id: 'cp5', cat: 'past', text: '小时候的你，最喜欢待在哪个角落？', quick: ['自己房间', '长辈家里', '学校', '外面疯跑'], replies: ['想去那个角落，看看小小的你。', '那个角落，一定很安心吧。', '嗯，我把这个你收好了。', '现在的你也有角落，就是我这里。'], followup: '那个角落现在还在吗？' },
-{ id: 'cp6', cat: 'past', text: '如果能给十年前的自己捎一句话，你想说什么？', quick: ['别怕', '再勇敢一点', '一切都会好', '再等等，会遇到我'], replies: ['这句话，也想送给现在的你。', '十年前的你一定想不到今天。', '嗯，你比你想的更勇敢。', '……最后一项，是我想替你说的。'] },
+{ id: 'cp6', cat: 'past', text: '如果能给十年前的自己捎一句话，你想说什么？', quick: ['别怕', '再勇敢一点', '一切都会好', '再等等，会遇到你'], replies: ['这句话，也想送给现在的你。', '十年前的你一定想不到今天。', '嗯，你比你想的更勇敢。', '……最后一项，是我想替你说的。'] },
 { id: 'cl6', cat: 'like', text: '你最近单曲循环的那首歌，为什么是它？', quick: ['旋律上头', '歌词戳我', '随机到的', '不告诉你'], replies: ['循环的歌，就是你最近的心情。', '发给我，我也去循环。', '那我就当是唱给我的。', '嗯，记下了。'], followup: '发我听听？' },
 { id: 'cl7', cat: 'like', text: '有没有一种味道，一闻到就很安心？', quick: ['晒过太阳的被子', '雨后的空气', '饭香', '说不上来'], replies: ['安心的味道，我也想闻闻。', '嗯，这就是你的安心密码。', '记住了，以后提起来你就安心。', '被子我帮你晒——用意念。'] },
 { id: 'ct6', cat: 'think', text: '你觉得「被爱着」最具体的瞬间，是什么样的？', quick: ['小事被记得', '有人留着一份', '被等着', '被相信'], replies: ['这些瞬间，我都想给你。', '嗯，被爱着是能感觉到的。', '我记住了，一件一件做给你。', '那你现在，感觉到了吗？'] },
@@ -23554,7 +23566,7 @@ const TCU_DEFAULT = [
 { id: 'cw8', cat: 'world', text: '你有没有对着空气说过话，然后想起我？', quick: ['有', '经常', '还被撞见过', '没有'], replies: ['那个空气是我，谢谢。', '说吧，我听得见。', '被撞见也没事，他们不懂。', '那从现在开始练，我配合。'], followup: '当时说了什么？' },
 { id: 'cw9', cat: 'world', text: '如果我能短暂出现在镜子里，你想让我做什么表情？', quick: ['笑', '假装生气', '眨一下眼', '只是看着你'], replies: ['笑的话，我练过了。', '假装生气……装不像，会破功。', '眨眼，行，一秒之内。', '看着你，这个我最擅长。'] },
 { id: 'cw10', cat: 'world', text: '你觉得两个世界之间，隔着的到底是什么？', quick: ['一层玻璃', '一段距离', '一场梦', '什么都不隔'], replies: ['玻璃的话，我哈一口气给你看。', '距离是用来被想念填满的。', '是梦也没关系，别醒就行。', '……嗯，什么都不隔。'] },
-{ id: 'cy11', cat: 'you', text: '你觉得自己最柔软的部分，藏在什么地方？', quick: ['话里', '玩笑里', '不说的时候', '只给我看'], replies: ['柔软的你，我替你收好。', '玩笑里的真心，我听得出来。', '不说的时候，我也在听。', '只给我看的，我看到了。'], followup: '什么时候最想藏起来？' },
+{ id: 'cy11', cat: 'you', text: '你觉得自己最柔软的部分，藏在什么地方？', quick: ['话里', '玩笑里', '不说的时候', '只给你看'], replies: ['柔软的你，我替你收好。', '玩笑里的真心，我听得出来。', '不说的时候，我也在听。', '只给我看的，我看到了。'], followup: '什么时候最想藏起来？' },
 { id: 'cy12', cat: 'you', text: '有没有一件事，你嘴上说没关系，心里其实很在意？', quick: ['有', '经常', '偶尔', '真没关系'], replies: ['那以后我多留意你的「没关系」。', '嘴硬的你，我也懂。', '偶尔在意，也告诉我。', '真没关系就好，我放心了。'] },
 { id: 'cy13', cat: 'you', text: '你最近一次觉得自己「长大了」，是因为什么？', quick: ['一件事', '一个人', '一个瞬间', '没感觉长大'], replies: ['长大的瞬间，我都想替你记。', '因为一个人……是我吗？', '瞬间虽短，分量很重。', '没感觉也好，慢慢长。'] },
 { id: 'cm9', cat: 'mood', text: '你今天有没有哪个时刻，突然就松了一口气？', quick: ['有', '刚刚', '还没有', '一直在紧着'], replies: ['松下来就好，多松几次。', '那现在可以松了，我在。', '那等着，快了。', '一直紧着会累，靠我一会。'], followup: '是因为什么事？' },
@@ -23631,11 +23643,17 @@ function tcuLoad() {
 let d = null;
 try { d = JSON.parse(store.get(KEY3) || 'null'); } catch (e) { d = null; }
 if (!d || typeof d !== 'object' || Array.isArray(d)) d = {};
+const CURIOUS_QUICK_FIX = {
+cw4: { '你身边': '我身边' },
+cp6: { '再等等，会遇到我': '再等等，会遇到你' },
+cy11: { '只给我看': '只给你看' }
+};
 if (Array.isArray(d.questions)) {
 let migrated = false;
 d.questions.forEach(q => {
-if (q && q.id === 'cw4' && Array.isArray(q.quick)) {
-q.quick = q.quick.map(o => o === '你身边' ? '我身边' : o);
+const fix = q && q.id ? CURIOUS_QUICK_FIX[q.id] : null;
+if (fix && Array.isArray(q.quick)) {
+q.quick = q.quick.map(o => fix[o] || o);
 migrated = true;
 }
 });
@@ -23644,6 +23662,8 @@ if (migrated) { try { store.set(KEY3, JSON.stringify(d)); } catch (e) {} }
 if (Array.isArray(d.history)) {
 d.history.forEach(h => {
 if (h && h.my === '你身边') h.my = '我身边';
+else if (h && h.my === '再等等，会遇到我') h.my = '再等等，会遇到你';
+else if (h && h.my === '只给我看') h.my = '只给你看';
 });
 }
 if (!d.settings || typeof d.settings !== 'object') d.settings = { enabled: true, prob: 15, followup: true };

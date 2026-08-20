@@ -1514,6 +1514,7 @@
     const retry = function () {
       disarmAutoResume();
       if (!audio || !currentId || !audio.paused) return;
+      try { if (audio) audio.muted = false; } catch (e) {}
       const p2 = audio.play();
       if (p2 && p2.catch) p2.catch(function () { armAutoResume(); });
     };
@@ -1889,7 +1890,7 @@
             const p2 = audio.play();
             if (p2 && p2.then) {
               p2.then(() => { if (audio) audio.muted = false; playRejected = false; try { syncPlayIcons(true); } catch (e) {} })
-                .catch(() => { try { syncPlayIcons(false); } catch (e) {} armAutoResume(); });
+                .catch(() => { try { if (audio) audio.muted = false; } catch (e) {} try { syncPlayIcons(false); } catch (e) {} armAutoResume(); try { toast('点一下屏幕即可恢复音乐播放'); } catch (e) {} });
             } else { armAutoResume(); }
           });
         }
