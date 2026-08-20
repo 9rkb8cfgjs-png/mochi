@@ -1185,12 +1185,26 @@
   // 批量管理模式：勾选多首 → 删除 / 加入歌单
   let musicBatch = false;
   const batchSel = new Set();
+  // v3.9.x：我的音乐库分类筛选——'all' 全部 / 'default' 未分类 / 具体歌单 id
+  let libFilter = 'all';
+  function libSongsFor(filter) {
+    if (filter === 'default') return library.filter(m => !m.playlistId || m.playlistId === 'default');
+    if (filter && filter !== 'all') return library.filter(m => m.playlistId === filter);
+    return library.slice();
+  }
   function renderLibrary() {
     const listEl = document.getElementById('music-lib-list');
     const emptyEl = document.getElementById('music-lib-empty');
     if (!listEl) return;
-    const songs = library.filter(m => !m.playlistId || m.playlistId === 'default');
-    if (emptyEl) emptyEl.hidden = songs.length > 0;
+    const songs = libSongsFor(libFilter);
+    if (emptyEl) {
+      emptyEl.hidden = songs.length > 0;
+      if (!songs.length) {
+        emptyEl.textContent = libFilter === 'all'
+          ? '还没有音乐，上传本地音乐，建立属于你们的声音陪伴空间'
+          : (libFilter === 'default' ? '还没有未分类的音乐' : '这个歌单还没有歌曲');
+      }
+    }
     listEl.innerHTML = songs.length
       ? songs.map(m => {
           const active = m.id === currentId;
@@ -1229,6 +1243,33 @@
       b.addEventListener('click', () => openSongMenu(b.dataset.id));
     });
   }
+  // v3.9.x：我的音乐库分类筛选条——全部音乐 / 未分类音乐（无未分类歌曲时不显示）/ 各歌单
+  function renderLibFilter() {
+    const wrap = document.getElementById('music-lib-filter');
+    if (!wrap) return;
+    const unclassified = library.filter(m => !m.playlistId || m.playlistId === 'default');
+    // 当前筛选分组已不存在（未分类被删光 / 歌单被删）→ 自动回退「全部音乐」
+    if (libFilter === 'default' && !unclassified.length) libFilter = 'all';
+    if (libFilter !== 'all' && libFilter !== 'default' && !playlists.some(p => p.id === libFilter)) libFilter = 'all';
+    wrap.hidden = !library.length;
+    const chip = (key, name, count) =>
+      '<button class="mlf-chip' + (libFilter === key ? ' sel' : '') + '" data-mlf="' + key + '">' +
+      '<span class="mlf-name">' + name + '</span><span class="mlf-cnt">' + count + '</span></button>';
+    let html = chip('all', '全部音乐', library.length);
+    if (unclassified.length) html += chip('default', '未分类音乐', unclassified.length);
+    html += playlists.map(p => chip(p.id, esc(p.name), library.filter(m => m.playlistId === p.id).length)).join('');
+    wrap.innerHTML = html;
+    wrap.querySelectorAll('.mlf-chip').forEach(b => {
+      b.addEventListener('click', () => {
+        if (libFilter === b.dataset.mlf) return;
+        libFilter = b.dataset.mlf;
+        if (musicBatch) batchSel.clear();
+        renderLibFilter();
+        renderLibrary();
+        updateBatchCount();
+      });
+    });
+  }
   // 批量管理：进入/退出
   function enterBatch() {
     musicBatch = true;
@@ -1246,7 +1287,7 @@
         '<button class="music-batch-btn" id="mb-exit">退出</button>';
       document.body.appendChild(bar);
       bar.querySelector('#mb-all').addEventListener('click', () => {
-        const ids = library.filter(m => !m.playlistId || m.playlistId === 'default').map(m => m.id);
+        const ids = libSongsFor(libFilter).map(m => m.id);
         if (batchSel.size === ids.length && ids.length) batchSel.clear();
         else ids.forEach(id => batchSel.add(id));
         renderLibrary();
@@ -1318,15 +1359,24 @@
     if (!el) return;
     const h = history.slice().reverse();
     el.innerHTML = h.length
-      ? h.map(x => '<div class="sm-his">' +
-          '<span class="sm-his-ico">' + (x.mode
-            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>'
-            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>') + '</span>' +
-          '<div class="sm-his-info"><div class="sm-his-name">' + (x.mode ? esc(x.triggerType || '播放模式') : esc(x.trackName || '未知歌曲')) + '</div>' +
-          '<div class="sm-his-sub">' + fmtDT(x.ts) + (x.mode ? '' : (x.triggerType ? ' · ' + esc(x.triggerType) : '')) + '</div></div></div>').join('')
+      ? h.map(x => {
+          // v3.9.x：听歌记录显示歌曲封面——优先取记录里冗余存的 cover，
+          // 没有（旧记录/歌曲删了）再按 trackId 回查当前音乐库；都拿不到保留原图标
+          const t = (!x.mode && x.trackId) ? findTrack(x.trackId) : null;
+          const cov = (!x.mode && (x.cover || (t && t.cover))) || '';
+          const ico = cov
+            ? '<span class="sm-his-ico has-cov" style="background-image:url(\'' + esc(cov) + '\')"></span>'
+            : '<span class="sm-his-ico">' + (x.mode
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>') + '</span>';
+          return '<div class="sm-his">' + ico +
+            '<div class="sm-his-info"><div class="sm-his-name">' + (x.mode ? esc(x.triggerType || '播放模式') : esc(x.trackName || '未知歌曲')) + '</div>' +
+            '<div class="sm-his-sub">' + fmtDT(x.ts) + (x.mode ? '' : (x.triggerType ? ' · ' + esc(x.triggerType) : '')) + '</div></div></div>';
+        }).join('')
       : '<div class="ta-empty">还没有梦角邀请听歌记录，TA 邀请你一起听歌的记录会出现在这里</div>';
   }
   function renderPage() {
+    renderLibFilter();
     renderLibrary();
     renderPlaylists();
     renderFavList();
@@ -2172,7 +2222,8 @@
   // 记录：TA 邀请一起听歌（接受/拒绝）、TA 切歌/随机挑歌、TA 换播放模式
   function addRecord(trackId, triggerType) {
     const m = findTrack(trackId);
-    history.push({ id: 'smh_' + Date.now(), trackId: trackId, trackName: m ? (m.name || '未知歌曲') : '未知歌曲', triggerType: triggerType, ts: Date.now() });
+    // v3.9.x：冗余存 cover——历史记录独立显示封面，歌曲之后被删/换封面不影响已产生的记录
+    history.push({ id: 'smh_' + Date.now(), trackId: trackId, trackName: m ? (m.name || '未知歌曲') : '未知歌曲', cover: m ? (m.cover || '') : '', triggerType: triggerType, ts: Date.now() });
     if (history.length > 500) history = history.slice(-500);
     saveHistory();
     renderHistory();
@@ -2722,6 +2773,7 @@
       taActive = false;
       cooldownAt = 0;
       reqData = null;
+      libFilter = 'all';
       loadAll();
       try { renderPage(); } catch (e) {}
       try { renderFloat(); } catch (e) {}

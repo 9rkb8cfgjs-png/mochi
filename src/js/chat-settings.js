@@ -580,4 +580,29 @@
     setInterval(syncCsMf, 500);
     document.addEventListener('contact-switched', syncCsMf);
   }
+
+  // v3.7.x：聊天设置「隐藏通话小框」开关——与通话半框/通话模块同源
+  // （call-mini-enabled，每桌面独立，默认显示小框）。本开关语义反转：勾选=隐藏。
+  // 优先走 window.getCallMiniEnabled/setCallMiniEnabled 钩子（call.js 暴露）；
+  // 钩子未就绪时退化为直读写 store（call-mini-enabled !== '0' 即显示）。
+  const csCmh = document.getElementById('cs-call-mini-hide');
+  if (csCmh) {
+    const cmhGet = () => {
+      if (window.getCallMiniEnabled) return !window.getCallMiniEnabled();
+      try { return store.get('call-mini-enabled') === '0'; } catch (e) { return false; }
+    };
+    const cmhSet = (hide) => {
+      if (window.setCallMiniEnabled) { window.setCallMiniEnabled(!hide); return; }
+      try { store.set('call-mini-enabled', hide ? '0' : '1'); } catch (e) {}
+    };
+    const syncCsCmh = () => { const v = cmhGet(); if (v !== csCmh.checked) csCmh.checked = v; };
+    syncCsCmh();
+    csCmh.addEventListener('change', () => {
+      if (csCmh.checked === cmhGet()) return;
+      cmhSet(csCmh.checked);
+      toast(csCmh.checked ? '通话小框已隐藏：接通后保持通话面板，不弹出悬浮小框' : '通话小框已开启：接通后自动最小化为悬浮小框');
+    });
+    setInterval(syncCsCmh, 500);
+    document.addEventListener('contact-switched', syncCsCmh);
+  }
 })();

@@ -268,8 +268,9 @@
       showPage('page-mail');
       if (window.chatAddSystem) window.chatAddSystem('你给 ' + name + ' 回了一封信');
       toast('回信已寄出');
-      // v3.6.x：TA 收藏我的回信（30% 概率，与聊天消息收藏一致）
-      if (Math.random() * 100 < 30 && window.addTaFavItem) {
+      // v3.6.x：TA 收藏我的回信（概率可调，与聊天消息收藏一致）
+      // v3.7.x：概率由收藏设置页控制，默认 30%
+      if (Math.random() * 100 < (window.favCfg ? window.favCfg().taMail : 30) && window.addTaFavItem) {
         window.addTaFavItem({ kind: 'mail', title: l.tt || '', text: val, ts: Date.now() });
         setTimeout(() => toast('TA 收藏了你的回信'), 1200);
       }

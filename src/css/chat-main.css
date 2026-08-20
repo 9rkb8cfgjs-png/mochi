@@ -447,7 +447,7 @@
 .more-item svg { width:22px; height:22px; }
 .more-item span { font-size:11px; }
 
-/* 通话半框（复用 .poke-card 容器）：状态行 + 拨打/挂断大按钮 + 通话小框开关 */
+/* 通话半框（复用 .poke-card 容器）：状态行 + 拨打/挂断大按钮 */
 #chat-call-panel .poke-card-scroll { min-height:0; max-height:none; }
 .call-panel-status {
   text-align:center; font-size:13px; font-weight:600; color:var(--ink);
@@ -463,14 +463,6 @@
 .call-panel-hang { background:#e5484d; color:#fff; }
 .call-panel-dial:active, .call-panel-hang:active { opacity:.85; }
 .call-panel-dial svg, .call-panel-hang svg { width:18px; height:18px; flex-shrink:0; }
-.call-panel-switch { margin:6px 2px 4px; }
-.call-panel-switch .call-panel-switch-sub {
-  display:block; font-style:normal; font-weight:400; font-size:11px;
-  color:var(--muted); margin-top:2px; line-height:1.4;
-}
-.call-panel-hint {
-  font-size:11px; color:var(--muted); padding:2px 4px 8px; line-height:1.6;
-}
 
 /* 猜拳半框（复用 .poke-card 容器）：战绩 + 提示 + 三个出拳按钮 */
 #chat-rps-panel { height:auto; max-height:56%; }

@@ -3124,4 +3124,12 @@ window.openTCPanel = openTCPanel;
   attachIdbRestore(KEY2, tcLoad, tcMerge);
   attachIdbRestore(KEY3, tcuLoad, tcuMerge);
   attachIdbRestore(KEY4, trLoad, trMerge);
+  // v3.7.x：多桌面——会话级触发/已问题目/链计数是模块级，残留会让新桌面继承旧桌面的状态
+  document.addEventListener('contact-switched', function () {
+    _tcSessionTriggered = false;
+    _tcAskedIds = [];
+    _tcChain = 0;
+    _tcuSessionTriggered = false;
+    _trSessionTriggered = false;
+  });
 })();

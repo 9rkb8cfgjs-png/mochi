@@ -410,4 +410,11 @@ window.getReplyCard = function () {
     if (!pool.length) return '';
     return pool[Math.floor(Math.random() * pool.length)];
   };
+  // v3.7.x：多桌面——情绪/心意状态是模块级，残留会让新桌面继承旧桌面的连续衰减/冷却/历史
+  document.addEventListener('contact-switched', function () {
+    emotionStreak = 0;
+    emotionLastTs = 0;
+    heartHistory = [];
+    specialLastTime = 0;
+  });
 })();

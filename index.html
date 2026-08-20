@@ -1315,14 +1315,6 @@ font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
 .call-panel-hang { background:#e5484d; color:#fff; }
 .call-panel-dial:active, .call-panel-hang:active { opacity:.85; }
 .call-panel-dial svg, .call-panel-hang svg { width:18px; height:18px; flex-shrink:0; }
-.call-panel-switch { margin:6px 2px 4px; }
-.call-panel-switch .call-panel-switch-sub {
-display:block; font-style:normal; font-weight:400; font-size:11px;
-color:var(--muted); margin-top:2px; line-height:1.4;
-}
-.call-panel-hint {
-font-size:11px; color:var(--muted); padding:2px 4px 8px; line-height:1.6;
-}
 #chat-rps-panel { height:auto; max-height:56%; }
 #chat-rps-panel .poke-card-scroll { min-height:0; max-height:none; }
 .rps-score {
@@ -2330,6 +2322,26 @@ color:#666; border-radius:12px; cursor:pointer; font-family:inherit;
 .fav-tab.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
 .fav-tabs.fav-kind-row { padding-top:0; padding-bottom:12px; }
 .fav-body { padding:6px 18px; }
+.fs-stat-box { padding:4px 14px; }
+.fs-stat-head {
+font-size:12px; font-weight:700; letter-spacing:.5px; color:var(--muted);
+padding:14px 0 6px; border-top:1px solid rgba(0,0,0,.05);
+}
+.fs-stat-head:first-child { border-top:none; padding-top:4px; }
+.fs-stat-row {
+display:flex; align-items:baseline; justify-content:space-between;
+padding:7px 0; font-size:13px;
+}
+.fs-stat-label { color:#444; }
+.fs-stat-val { font-weight:700; color:var(--ink); }
+.fs-stat-val em {
+font-style:normal; font-weight:400; font-size:11px; color:var(--muted);
+margin-left:6px;
+}
+.fs-tip {
+font-size:11.5px; line-height:1.6; color:var(--muted);
+padding:10px 4px 4px; letter-spacing:.2px;
+}
 .cal-scroll { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; padding:0 18px; }
 .cal-scroll::-webkit-scrollbar { display:none; }
 .cal-card {
@@ -3169,6 +3181,21 @@ background:rgba(255,255,255,.92); color:#111; font-size:12px; cursor:pointer;
 }
 .sm-tool:active { background:rgba(0,0,0,.04); }
 .sm-tool svg { width:15px; height:15px; flex-shrink:0; }
+.music-lib-filter {
+display:flex; gap:8px; margin-bottom:12px; overflow-x:auto;
+scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch;
+}
+.music-lib-filter::-webkit-scrollbar { display:none; }
+.mlf-chip {
+flex:0 0 auto; display:inline-flex; align-items:center; gap:5px;
+padding:7px 12px; font-size:12px; font-weight:600; font-family:inherit;
+border:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.92);
+color:#666; border-radius:999px; cursor:pointer;
+-webkit-tap-highlight-color:transparent;
+}
+.mlf-chip .mlf-cnt { font-size:11px; font-weight:500; opacity:.6; }
+.mlf-chip.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+.mlf-chip.sel .mlf-cnt { opacity:.85; }
 .sm-song {
 display:flex; align-items:center; gap:10px; padding:10px 8px;
 border-radius:10px; cursor:pointer;
@@ -3271,6 +3298,8 @@ width:34px; height:34px; border-radius:8px; background:rgba(0,0,0,.06); flex-shr
 display:flex; align-items:center; justify-content:center; color:#555;
 }
 .sm-his-ico svg { width:16px; height:16px; }
+.sm-his-ico.has-cov { background-size:cover; background-position:center; }
+.sm-his-ico.has-cov svg { display:none; }
 .sm-his-info { flex:1; min-width:0; }
 .sm-his-name { font-size:13px; font-weight:600; color:var(--ink); }
 .sm-his-sub { font-size:11px; color:var(--muted); margin-top:2px; }
@@ -4103,7 +4132,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787222226399">Mochi 字卡传讯 v3.6.161 · 部署于 2026-08-20 18:37</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787223815885">Mochi 字卡传讯 v3.6.162 · 部署于 2026-08-20 19:03</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4872,7 +4901,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.161</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.162</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5718,6 +5747,7 @@ color: var(--muted);
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>批量管理
             </button>
           </div>
+          <div class="music-lib-filter" id="music-lib-filter"></div>
           <div id="music-lib-list"></div>
           <div class="ta-empty" id="music-lib-empty" hidden>还没有音乐，上传本地音乐，建立属于你们的声音陪伴空间</div>
         </div>
@@ -6165,6 +6195,9 @@ color: var(--muted);
           <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </span>
         <span class="ch-name">收藏</span>
+        <span class="ch-settings" id="fav-settings-btn" title="收藏设置">
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+        </span>
       </div>
       <div class="fav-tabs" id="fav-tabs">
         <button class="fav-tab sel" data-tab="mine" id="fav-tab-mine">我的收藏</button>
@@ -6172,6 +6205,30 @@ color: var(--muted);
       </div>
       <div class="chat-body fav-body" id="fav-list">
         <!-- 收藏的消息由 JS 渲染 -->
+      </div>
+    </div>
+
+    <!-- 收藏设置页（收藏夹右上角进入） -->
+    <div class="page" id="page-fav-settings" hidden>
+      <div class="chat-head">
+        <span class="ch-back" id="fav-settings-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </span>
+        <span class="ch-name">收藏设置</span>
+      </div>
+      <div class="gs-scroll">
+        <div class="gs-title">收藏统计</div>
+        <div class="set-group glass">
+          <div class="fs-stat-box" id="fav-stats-body"></div>
+        </div>
+        <div class="gs-title">联系人自动收藏概率</div>
+        <div class="set-group glass">
+          <div class="gs-row"><span>收藏聊天消息</span><div class="stepper" data-k="ta-msg" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="fav-ta-msg-val" readonly><button class="stp-max">+</button></div></div>
+          <div class="gs-row"><span>收藏互动卡片</span><div class="stepper" data-k="ta-card" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="fav-ta-card-val" readonly><button class="stp-max">+</button></div></div>
+          <div class="gs-row"><span>收藏我的回信</span><div class="stepper" data-k="ta-mail" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="fav-ta-mail-val" readonly><button class="stp-max">+</button></div></div>
+          <div class="gs-row"><span>收藏朋友圈动态</span><div class="stepper" data-k="ta-feed" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="fav-ta-feed-val" readonly><button class="stp-max">+</button></div></div>
+        </div>
+        <div class="fs-tip">联系人在你发送内容后按概率自动收藏到「联系人的收藏」。概率 0% 表示永不收藏，100% 表示每次都收藏。</div>
       </div>
     </div>
 
@@ -6293,11 +6350,7 @@ color: var(--muted);
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
             挂断通话
           </button>
-          <label class="div-switch-row div-chat-switch call-panel-switch">
-            <span class="div-switch-t">通话小框<em class="call-panel-switch-sub">接通后自动最小化为悬浮小框</em></span>
-            <span class="div-switch"><input type="checkbox" id="call-mini-toggle"><span class="div-switch-knob"></span></span>
-          </label>
-          <div class="call-panel-hint">关闭后：通话接通不再弹出悬浮小框，改由通话大面板常驻显示；点「缩小」可收起转入后台，仍可在这里挂断。</div>
+
         </div>
       </div>
       <!-- 猜拳：聊天页底部半框（露出聊天消息，和联系人猜拳，联系人随机出拳） -->
@@ -6661,6 +6714,12 @@ color: var(--muted);
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
           <div class="txt">音乐悬浮小窗</div>
           <label class="toggle"><input type="checkbox" id="cs-music-float"><span class="tk"></span></label>
+        </div>
+        <!-- v3.7.x：隐藏通话小框开关（同源 call-mini-enabled，每桌面独立；勾选=接通后不弹出悬浮小框，保持通话大面板常驻） -->
+        <div class="set-row" id="cs-call-mini-hide-row">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg></div>
+          <div class="txt">隐藏通话小框</div>
+          <label class="toggle"><input type="checkbox" id="cs-call-mini-hide"><span class="tk"></span></label>
         </div>
       </div>
       <div class="gs-title" style="padding-top:2px">壁纸</div>
@@ -11150,7 +11209,16 @@ let pendingLocal = null; // 权威就绪前暂存的内存消息（绝不落盘�
 let saveTimer = null;
 document.addEventListener('contact-switched', function () {
 try {
-if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+if (saveTimer) {
+clearTimeout(saveTimer);
+saveTimer = null;
+if (pendingSaveData && pendingSavePrefix) {
+try { if (window.idbSet) window.idbSet(pendingSavePrefix + ':chat-msgs', pendingSaveData); } catch (e) {}
+try { writeLsSnapshot(pendingSaveData, pendingSavePrefix); } catch (e) {}
+}
+pendingSaveData = null;
+pendingSavePrefix = null;
+}
 try { hideTyping(); } catch (e) {}
 msgs = [];
 pendingLocal = null;
@@ -11169,7 +11237,7 @@ try { fillAvatar('chat-user-av', 'avatar-user'); fillAvatar('chat-partner-av', '
 } catch (e) {}
 });
 const LS_SNAP_LIMIT = 2 * 1024 * 1024;
-function writeLsSnapshot(raw) {
+function writeLsSnapshot(raw, prefix) {
 try {
 let snap = raw;
 if (snap.length > LS_SNAP_LIMIT) {
@@ -11188,23 +11256,25 @@ return c;
 }
 }
 if (snap.length <= LS_SNAP_LIMIT) {
-localStorage.setItem(window.activePrefix() + ':chat-msgs', snap);
+localStorage.setItem((prefix || window.activePrefix()) + ':chat-msgs', snap);
 }
 } catch (e) {}
 }
 let readyFuse = null;
 function armReadyFuse() {
 if (readyFuse || chatDbReady) return;
+const fusePrefix = window.activePrefix();
 readyFuse = setTimeout(function () {
 readyFuse = null;
 if (chatDbReady) return;
 chatDbReady = true;
 const fuseMsgs = (pendingLocal && pendingLocal.length) ? pendingLocal : msgs;
 if (fuseMsgs && fuseMsgs.length) {
-try { writeLsSnapshot(JSON.stringify(fuseMsgs)); } catch (e) {}
+try { writeLsSnapshot(JSON.stringify(fuseMsgs), fusePrefix); } catch (e) {}
 }
 }, 15000);
 }
+let pendingSaveData = null, pendingSavePrefix = null;
 function saveMsgs() {
 const data = JSON.stringify(msgs);
 if (!chatDbReady) {
@@ -11214,10 +11284,14 @@ return;
 }
 if (saveTimer) clearTimeout(saveTimer);
 const myPrefix = window.activePrefix();
+pendingSaveData = data;
+pendingSavePrefix = myPrefix;
 saveTimer = setTimeout(() => {
 saveTimer = null;
+pendingSaveData = null;
+pendingSavePrefix = null;
 try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', data); } catch (e) {}
-writeLsSnapshot(data);
+writeLsSnapshot(data, myPrefix);
 }, 400);
 }
 function flushSave() {
@@ -11228,7 +11302,7 @@ saveTimer = null;
 const data = JSON.stringify(msgs);
 const myPrefix = window.activePrefix();
 try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', data); } catch (e) {}
-writeLsSnapshot(data);
+writeLsSnapshot(data, myPrefix);
 } else if (!chatDbReady && msgs.length) {
 writeLsSnapshot(JSON.stringify(msgs));
 }
@@ -11287,7 +11361,7 @@ if (pendingLocal && pendingLocal.length) {
 msgs = pendingLocal.concat(msgs.filter(m => !pendingLocal.some(p => p && p.ts === m.ts && p.text === m.text)));
 pendingLocal = null;
 try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
-writeLsSnapshot(JSON.stringify(msgs));
+writeLsSnapshot(JSON.stringify(msgs), myPrefix);
 }
 return;
 }
@@ -11356,6 +11430,19 @@ if (t !== r.text) { r.text = envSvg + t; envMigrated = true; }
 }
 });
 if (envMigrated) saveMsgs();
+}
+{
+const CQ_FIX = { '再等等，会遇到我': '再等等，会遇到你', '你身边': '我身边', '只给我看': '只给你看' };
+let cqMigrated = false;
+msgs.forEach(r => {
+if (!r || r.special !== 'ask-curious') return;
+if (Array.isArray(r.curiousQuick)) {
+const fixed = r.curiousQuick.map(o => CQ_FIX[o] || o);
+if (fixed.some((o, i) => o !== r.curiousQuick[i])) { r.curiousQuick = fixed; cqMigrated = true; }
+}
+if (typeof r.curiousAnswer === 'string' && CQ_FIX[r.curiousAnswer]) { r.curiousAnswer = CQ_FIX[r.curiousAnswer]; cqMigrated = true; }
+});
+if (cqMigrated) saveMsgs();
 }
 if (restoreEscapedPokeIcons()) saveMsgs();
 let changed = false;
@@ -12747,7 +12834,8 @@ const myCid = window.__activeCid || 'default';
 const sameCid = () => (window.__activeCid || 'default') === myCid;
 const rep = genOneReply(c);
 const m = addIn(rep.text, { quote: quote, qside: 'out', type: rep.type, parts: rep.parts });
-if (lastMineText && Math.random() * 100 < 30) {
+const _favProbMsg = (window.favCfg ? window.favCfg().taMsg : 30);
+if (lastMineText && Math.random() * 100 < _favProbMsg) {
 const fav = getFav();
 if (!fav.some(f => f.side === 'out' && f.text === lastMineText)) {
 const favType = lastMineText.indexOf('data:') === 0 ? 'image' : 'text';
@@ -13088,36 +13176,7 @@ const out = [];
 try { ((window.getPokeCards && window.getPokeCards()) || []).forEach(x => out.push(x)); } catch (e) {}
 return out;
 }
-function performPokeWith(action) {
-if (!action) return;
-const name = store.get('lbl-partner') || 'TA';
-const myName = store.get('lbl-user') || '我';
-let text;
-if (action.indexOf('你') >= 0) {
-text = name + ' ' + action.replace(/你/g, myName);
-} else if (action.indexOf('我') >= 0) {
-text = name + ' ' + action;
-} else {
-text = name + ' ' + action + ' ' + myName;
-}
-addRec({ side: 'in', text: text, special: 'poke' });
-if (window.logFish) window.logFish();
-setTimeout(() => {
-const c2 = cfg();
-if (hit(c2['rn-prob'])) { addIn('', { special: 'read' }); return; }
-showTyping();
-setTimeout(() => {
-hideTyping();
-if (hit(c2['touch-prob'])) { performPoke(); return; }
-const r = genOneReply(c2);
-const m2 = addIn(r.text, { type: r.type });
-if (hit(c2['rc-prob'])) {
-setTimeout(() => { retractMsg(m2, 'in'); }, 900);
-}
-}, randInt(800, 2000));
-}, randInt(600, 1200));
-}
-let pokeMode = 'ta'; // 当前 tab：ta=联系人的拍一拍 / mine=我的拍一拍
+let pokeMode = 'ta'; // 当前 tab：ta=联系人昵称的拍一拍 / mine=我的拍一拍
 const pokeTabsRow = document.createElement('div');
 pokeTabsRow.className = 'poke-tabs-row';
 const pokeTabTa = document.createElement('button');
@@ -13152,7 +13211,7 @@ pokeInputGo.textContent = '拍一拍';
 function doPokeInput() {
 const v = (pokeInput && pokeInput.value || '').trim();
 if (!v) { toast('先输入拍一拍文字'); return; }
-if (pokeMode === 'ta') performPokeWith(v); else sendPoke(v);
+sendPoke(v);
 if (pokeInput) pokeInput.value = '';
 closePokeCard();
 }
@@ -13223,14 +13282,11 @@ s.className = 'poke-sec-label';
 s.textContent = t;
 return s;
 }
-function pokeCardEl(c, kind) {
+function pokeCardEl(c) {
 const d = document.createElement('div');
 d.className = 'cc-item glass';
 d.innerHTML = '<div class="cc-txt"><div class="t">' + c + '</div></div>';
-d.addEventListener('click', () => {
-if (kind === 'ta') performPokeWith(c); else sendPoke(c);
-closePokeCard();
-});
+d.addEventListener('click', () => { sendPoke(c); closePokeCard(); });
 return d;
 }
 function renderPokeCard() {
@@ -13253,7 +13309,7 @@ return;
 }
 if (presets.length) {
 pokeList.appendChild(pokeSectionLabel('预设'));
-presets.forEach(c => pokeList.appendChild(pokeCardEl(c, pokeMode)));
+presets.forEach(c => pokeList.appendChild(pokeCardEl(c)));
 }
 if (users.length || extra.length) {
 const ps = new Set(presets);
@@ -13262,7 +13318,7 @@ users.forEach(c => { if (!ps.has(c)) custom.push(c); });
 extra.forEach(c => { if (!ps.has(c)) custom.push(c); });
 if (custom.length) {
 pokeList.appendChild(pokeSectionLabel('自定义'));
-custom.forEach(c => pokeList.appendChild(pokeCardEl(c, pokeMode)));
+custom.forEach(c => pokeList.appendChild(pokeCardEl(c)));
 }
 }
 }
@@ -13530,7 +13586,9 @@ wallet.systemBalance -= amtFen;
 rpWalletSet(wallet);
 rpDailyIncr();
 const amt = amtFen / 100;
+const myCid = window.__activeCid || 'default';
 setTimeout(() => {
+if ((window.__activeCid || 'default') !== myCid) return;
 addIn('', { special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now(), rpCover: rpCoverGet() ? 1 : 0 });
 if (window.logFish) window.logFish();
 }, randInt(800, 2000));
@@ -13539,11 +13597,13 @@ function rpThanksMsg() {
 return pick(['谢谢亲爱的～', '收到啦❤', '嘿嘿谢谢宝宝', '爱你哟', '🥰 谢谢', '开心！谢谢～', '么么哒']);
 }
 function rpCollectFeedback() {
+const myCid = window.__activeCid || 'default';
 const r = Math.random();
 if (r < 0.5) {
-setTimeout(() => addIn(rpThanksMsg(), {}), randInt(600, 1800));
+setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; addIn(rpThanksMsg(), {}); }, randInt(600, 1800));
 } else if (r < 0.8) {
 setTimeout(() => {
+if ((window.__activeCid || 'default') !== myCid) return;
 try {
 const c = cfg();
 const rep = genOneReply(c);
@@ -13557,6 +13617,7 @@ const idx = msgs.indexOf(msg);
 if (idx < 0) return;
 const rec = msgs[idx];
 if (!rec || rec.rpStatus !== 'pending') return;
+const myCid = window.__activeCid || 'default';
 const r = Math.random();
 const wallet = rpWalletGet();
 const amtFen = Math.round((rec.rpAmount || 0) * 100);
@@ -13566,7 +13627,7 @@ wallet.myBalance += amtFen;
 rpWalletSet(wallet);
 saveMsgsNow();
 renderWindow(false, true);
-setTimeout(() => addIn('TA 退回了你的红包 ¥' + Number(rec.rpAmount || 0).toFixed(2), { special: 'poke' }), randInt(500, 1200));
+setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; addIn('TA 退回了你的红包 ¥' + Number(rec.rpAmount || 0).toFixed(2), { special: 'poke' }); }, randInt(500, 1200));
 } else if (r < 0.9) {
 rec.rpStatus = 'received';
 rec.rpOpenedAt = Date.now();
@@ -13575,7 +13636,7 @@ rpWalletSet(wallet);
 saveMsgsNow();
 renderWindow(false, true);
 const amtTxt = '¥' + Number(rec.rpAmount || 0).toFixed(2);
-setTimeout(() => addIn('TA 领取了你的红包 ' + amtTxt, { special: 'poke' }), randInt(400, 1000));
+setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; addIn('TA 领取了你的红包 ' + amtTxt, { special: 'poke' }); }, randInt(400, 1000));
 rpCollectFeedback();
 }
 }
@@ -13592,7 +13653,8 @@ rpWalletSet(wallet);
 saveMsgsNow();
 renderWindow(false, true);
 const amtTxt = '¥' + Number(rec.rpAmount || 0).toFixed(2);
-setTimeout(() => addIn('TA 领取了你的红包 ' + amtTxt, { special: 'poke' }), randInt(400, 1000));
+const myCid = window.__activeCid || 'default';
+setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; addIn('TA 领取了你的红包 ' + amtTxt, { special: 'poke' }); }, randInt(400, 1000));
 rpCollectFeedback();
 }
 function rpExpireCheck() {
@@ -14360,7 +14422,6 @@ const callPanelName = document.getElementById('call-panel-name');
 const callPanelStatus = document.getElementById('call-panel-status');
 const callPanelDial = document.getElementById('call-panel-dial');
 const callPanelHang = document.getElementById('call-panel-hang');
-const callMiniToggle = document.getElementById('call-mini-toggle');
 let callPanelTimer = null;
 function fmtCallDur(sec) {
 if (isNaN(sec) || sec < 0) return '00:00';
@@ -14399,11 +14460,6 @@ const rp = document.getElementById('chat-rps-panel'); if (rp) rp.hidden = true;
 if (window.closeAvlib) window.closeAvlib();
 chatCallPanel.hidden = false;
 closeIme();
-if (callMiniToggle) {
-let on = true;
-try { on = !!(window.getCallMiniEnabled && window.getCallMiniEnabled()); } catch (err) {}
-callMiniToggle.checked = on;
-}
 updateCallPanel();
 clearInterval(callPanelTimer);
 callPanelTimer = setInterval(updateCallPanel, 1000);
@@ -14475,12 +14531,6 @@ if (callPanelHang) callPanelHang.addEventListener('click', (e) => {
 e.stopPropagation();
 if (window.hangupCall) window.hangupCall();
 setTimeout(updateCallPanel, 120);
-});
-if (callMiniToggle) callMiniToggle.addEventListener('change', (e) => {
-e.stopPropagation();
-const on = callMiniToggle.checked;
-if (window.setCallMiniEnabled) window.setCallMiniEnabled(on);
-toast(on ? '通话小框已开启：接通后自动最小化为悬浮小框' : '通话小框已隐藏：接通后保持通话面板，不弹出悬浮小框');
 });
 document.addEventListener('contact-switched', function () {
 try { closeChatCall(); } catch (e) {}
@@ -14561,7 +14611,8 @@ function favHeartHtml() {
 return '<button class="msg-fav-heart" title="收藏整张互动卡片"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>收藏</button>';
 }
 function taFavCard(rec) {
-if (!rec || Math.random() * 100 >= 30) return;
+const _favProbCard = (window.favCfg ? window.favCfg().taCard : 30);
+if (!rec || Math.random() * 100 >= _favProbCard) return;
 const f = cardSnapshot(rec);
 if (!f) return;
 if (window.addTaFavItem(f)) setTimeout(() => toast('TA 收藏了你们的互动卡片'), 1200);
@@ -14685,8 +14736,7 @@ const FAV_KINDS = [
 { k: 'all', label: '全部' }, { k: 'msg', label: '聊天消息' },
 { k: 'card', label: '互动卡片' }, { k: 'mail', label: '信件' }, { k: 'feed', label: '朋友圈' }
 ];
-function renderFav() {
-if (!favList) return;
+function renderFav() {    if (!favList) return;
 const fav = getFav();
 favList.innerHTML = '';
 const partnerName = store.get('lbl-partner') || 'TA';
@@ -14862,6 +14912,7 @@ if (!tb) return;
 favKind = tb.dataset.kind;
 renderFav();
 });
+window.renderFav = renderFav;
 const favApp = document.querySelector('.app[data-app="note"]');
 if (favApp && favPage) {
 favApp.addEventListener('click', () => {
@@ -16919,6 +16970,7 @@ if (g && g.text) return g;
 return { text: [], kaomoji: [], emoji: [], sticker: [], image: [], poke: [], voice: [] };
 }
 document.addEventListener('contact-switched', function () {
+if (editSaveTimer) { clearTimeout(editSaveTimer); editSaveTimer = null; }
 groups = loadGroups();
 try { renderGroupsBar(); render(); } catch (e) {}
 });
@@ -17487,6 +17539,26 @@ mfSet(csMf.checked);
 setInterval(syncCsMf, 500);
 document.addEventListener('contact-switched', syncCsMf);
 }
+const csCmh = document.getElementById('cs-call-mini-hide');
+if (csCmh) {
+const cmhGet = () => {
+if (window.getCallMiniEnabled) return !window.getCallMiniEnabled();
+try { return store.get('call-mini-enabled') === '0'; } catch (e) { return false; }
+};
+const cmhSet = (hide) => {
+if (window.setCallMiniEnabled) { window.setCallMiniEnabled(!hide); return; }
+try { store.set('call-mini-enabled', hide ? '0' : '1'); } catch (e) {}
+};
+const syncCsCmh = () => { const v = cmhGet(); if (v !== csCmh.checked) csCmh.checked = v; };
+syncCsCmh();
+csCmh.addEventListener('change', () => {
+if (csCmh.checked === cmhGet()) return;
+cmhSet(csCmh.checked);
+toast(csCmh.checked ? '通话小框已隐藏：接通后保持通话面板，不弹出悬浮小框' : '通话小框已开启：接通后自动最小化为悬浮小框');
+});
+setInterval(syncCsCmh, 500);
+document.addEventListener('contact-switched', syncCsCmh);
+}
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
@@ -17714,6 +17786,156 @@ calsBack.addEventListener('click', () => {
 showPage('page-setting');
 });
 }
+})();
+} catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
+(function () { try {
+(function () {
+const ls = window.activeStore();
+const DEFAULTS = {
+'ta-msg': 30,   // TA 收藏我发的聊天消息概率
+'ta-card': 30,  // TA 收藏互动卡片概率
+'ta-mail': 30,  // TA 收藏我的回信概率
+'ta-feed': 30   // TA 收藏我的朋友圈动态概率
+};
+function readNum(k) {
+const v = ls.get('fav-' + k);
+let n = (v === null || v === undefined || v === '') ? DEFAULTS[k] : Number(v);
+if (isNaN(n)) { n = DEFAULTS[k]; try { ls.set('fav-' + k, String(n)); } catch (e) {} }
+return n;
+}
+function getCfg() {
+return {
+taMsg: readNum('ta-msg'),
+taCard: readNum('ta-card'),
+taMail: readNum('ta-mail'),
+taFeed: readNum('ta-feed')
+};
+}
+window.favCfg = getCfg;
+window.saveFavCfg = function (k, v) { ls.set('fav-' + k, String(v)); };
+function showPage(id) {
+document.querySelectorAll('.page').forEach(p => p.hidden = true);
+const el = document.getElementById(id);
+if (el) el.hidden = false;
+}
+function syncUI() {
+const cfg = getCfg();
+document.querySelectorAll('#page-fav-settings .stepper').forEach(st => {
+const k = st.dataset.k;
+const val = st.querySelector('input.stp-val');
+if (val) {
+const camel = k.replace(/-(.)/g, (_, c) => c.toUpperCase());
+const num = cfg[camel] !== undefined ? cfg[camel] : DEFAULTS[k];
+const str = String(num);
+val.value = str;
+val.setAttribute('value', str);
+}
+});
+}
+function renderStats() {
+const box = document.getElementById('fav-stats-body');
+if (!box) return;
+let fav = [];
+try { fav = JSON.parse(ls.get('fav-msgs') || '[]'); } catch (e) { fav = []; }
+if (!Array.isArray(fav)) fav = [];
+const total = fav.length;
+const mine = fav.filter(f => f.by !== 'ta').length;
+const ta = fav.filter(f => f.by === 'ta').length;
+const kinds = ['msg', 'card', 'mail', 'feed'];
+const kindLabel = { msg: '聊天消息', card: '互动卡片', mail: '信件', feed: '朋友圈' };
+const kindCount = {};
+const taKindCount = {};
+kinds.forEach(k => { kindCount[k] = 0; taKindCount[k] = 0; });
+fav.forEach(f => {
+const k = f.kind || 'msg';
+if (kindCount[k] !== undefined) kindCount[k]++;
+if (f.by === 'ta' && taKindCount[k] !== undefined) taKindCount[k]++;
+});
+const pct = (a, b) => (b <= 0 ? 0 : Math.round(a / b * 100));
+const row = (label, val, sub) => '<div class="fs-stat-row"><span class="fs-stat-label">' + label + '</span><span class="fs-stat-val">' + val + (sub ? '<em>' + sub + '</em>' : '') + '</span></div>';
+let html = '';
+html += '<div class="fs-stat-head">收藏总览</div>';
+html += row('总收藏', total, '条');
+html += row('我的收藏', mine, pct(mine, total) + '%');
+html += row('联系人收藏', ta, pct(ta, total) + '%');
+html += '<div class="fs-stat-head">分类统计（联系人 / 总数）</div>';
+kinds.forEach(k => {
+html += row(kindLabel[k], taKindCount[k] + ' / ' + kindCount[k], pct(taKindCount[k], kindCount[k]) + '% 来自联系人');
+});
+box.innerHTML = html;
+}
+document.querySelectorAll('#page-fav-settings .stepper').forEach(st => {
+const k = st.dataset.k;
+const min = 0, max = 100, step = 5;
+const val = st.querySelector('.stp-val');
+const fmt = (v) => String(Math.round(v));
+st.querySelector('.stp-min').addEventListener('click', () => {
+const cur = parseFloat(val.value);
+const nv = Math.max(min, cur - step);
+val.value = fmt(nv); window.saveFavCfg(k, val.value);
+});
+st.querySelector('.stp-max').addEventListener('click', () => {
+const cur = parseFloat(val.value);
+const nv = Math.min(max, cur + step);
+val.value = fmt(nv); window.saveFavCfg(k, val.value);
+});
+val.removeAttribute('readonly');
+val.setAttribute('inputmode', 'decimal');
+const selectAll = () => {
+try {
+const box = val.__ceBox;
+if (box) {
+const r = document.createRange();
+r.selectNodeContents(box);
+const sel = window.getSelection();
+sel.removeAllRanges();
+sel.addRange(r);
+} else { val.select(); }
+} catch (e) {}
+};
+val.addEventListener('click', function () {
+try { val.focus(); } catch (e) {}
+selectAll();
+});
+const commit = () => {
+let v = parseFloat(val.value);
+if (!isFinite(v)) v = min;
+v = Math.min(max, Math.max(min, v));
+v = Math.round(v);
+val.value = fmt(v);
+window.saveFavCfg(k, val.value);
+};
+val.addEventListener('change', commit);
+val.addEventListener('blur', commit);
+val.addEventListener('keydown', function (e) {
+if (e.key === 'Enter' && !e.isComposing) {
+e.preventDefault();
+try { val.blur(); } catch (err) {}
+}
+});
+});
+const favSettingsBtn = document.getElementById('fav-settings-btn');
+if (favSettingsBtn) {
+favSettingsBtn.addEventListener('click', () => {
+syncUI();
+renderStats();
+showPage('page-fav-settings');
+});
+}
+const favSettingsBack = document.getElementById('fav-settings-back');
+if (favSettingsBack) {
+favSettingsBack.addEventListener('click', () => {
+showPage('page-fav');
+try { if (window.renderFav) window.renderFav(); } catch (e) {}
+});
+}
+try {
+document.addEventListener('mochi-restore-done', () => {
+const page = document.getElementById('page-fav-settings');
+if (page && !page.hidden) { syncUI(); renderStats(); }
+});
+} catch (e) {}
+syncUI();
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
@@ -18243,6 +18465,12 @@ if (!pool.length && cat !== 'echo') pool = (followup['echo'] || []).filter(t => 
 if (!pool.length) return '';
 return pool[Math.floor(Math.random() * pool.length)];
 };
+document.addEventListener('contact-switched', function () {
+emotionStreak = 0;
+emotionLastTs = 0;
+heartHistory = [];
+specialLastTime = 0;
+});
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
@@ -19281,12 +19509,25 @@ toast('歌单已创建');
 }
 let musicBatch = false;
 const batchSel = new Set();
+let libFilter = 'all';
+function libSongsFor(filter) {
+if (filter === 'default') return library.filter(m => !m.playlistId || m.playlistId === 'default');
+if (filter && filter !== 'all') return library.filter(m => m.playlistId === filter);
+return library.slice();
+}
 function renderLibrary() {
 const listEl = document.getElementById('music-lib-list');
 const emptyEl = document.getElementById('music-lib-empty');
 if (!listEl) return;
-const songs = library.filter(m => !m.playlistId || m.playlistId === 'default');
-if (emptyEl) emptyEl.hidden = songs.length > 0;
+const songs = libSongsFor(libFilter);
+if (emptyEl) {
+emptyEl.hidden = songs.length > 0;
+if (!songs.length) {
+emptyEl.textContent = libFilter === 'all'
+? '还没有音乐，上传本地音乐，建立属于你们的声音陪伴空间'
+: (libFilter === 'default' ? '还没有未分类的音乐' : '这个歌单还没有歌曲');
+}
+}
 listEl.innerHTML = songs.length
 ? songs.map(m => {
 const active = m.id === currentId;
@@ -19325,6 +19566,31 @@ listEl.querySelectorAll('.sm-song-more').forEach(b => {
 b.addEventListener('click', () => openSongMenu(b.dataset.id));
 });
 }
+function renderLibFilter() {
+const wrap = document.getElementById('music-lib-filter');
+if (!wrap) return;
+const unclassified = library.filter(m => !m.playlistId || m.playlistId === 'default');
+if (libFilter === 'default' && !unclassified.length) libFilter = 'all';
+if (libFilter !== 'all' && libFilter !== 'default' && !playlists.some(p => p.id === libFilter)) libFilter = 'all';
+wrap.hidden = !library.length;
+const chip = (key, name, count) =>
+'<button class="mlf-chip' + (libFilter === key ? ' sel' : '') + '" data-mlf="' + key + '">' +
+'<span class="mlf-name">' + name + '</span><span class="mlf-cnt">' + count + '</span></button>';
+let html = chip('all', '全部音乐', library.length);
+if (unclassified.length) html += chip('default', '未分类音乐', unclassified.length);
+html += playlists.map(p => chip(p.id, esc(p.name), library.filter(m => m.playlistId === p.id).length)).join('');
+wrap.innerHTML = html;
+wrap.querySelectorAll('.mlf-chip').forEach(b => {
+b.addEventListener('click', () => {
+if (libFilter === b.dataset.mlf) return;
+libFilter = b.dataset.mlf;
+if (musicBatch) batchSel.clear();
+renderLibFilter();
+renderLibrary();
+updateBatchCount();
+});
+});
+}
 function enterBatch() {
 musicBatch = true;
 batchSel.clear();
@@ -19341,7 +19607,7 @@ bar.innerHTML =
 '<button class="music-batch-btn" id="mb-exit">退出</button>';
 document.body.appendChild(bar);
 bar.querySelector('#mb-all').addEventListener('click', () => {
-const ids = library.filter(m => !m.playlistId || m.playlistId === 'default').map(m => m.id);
+const ids = libSongsFor(libFilter).map(m => m.id);
 if (batchSel.size === ids.length && ids.length) batchSel.clear();
 else ids.forEach(id => batchSel.add(id));
 renderLibrary();
@@ -19410,15 +19676,22 @@ const el = document.getElementById('music-his-list');
 if (!el) return;
 const h = history.slice().reverse();
 el.innerHTML = h.length
-? h.map(x => '<div class="sm-his">' +
-'<span class="sm-his-ico">' + (x.mode
+? h.map(x => {
+const t = (!x.mode && x.trackId) ? findTrack(x.trackId) : null;
+const cov = (!x.mode && (x.cover || (t && t.cover))) || '';
+const ico = cov
+? '<span class="sm-his-ico has-cov" style="background-image:url(\'' + esc(cov) + '\')"></span>'
+: '<span class="sm-his-ico">' + (x.mode
 ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>'
-: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>') + '</span>' +
+: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>') + '</span>';
+return '<div class="sm-his">' + ico +
 '<div class="sm-his-info"><div class="sm-his-name">' + (x.mode ? esc(x.triggerType || '播放模式') : esc(x.trackName || '未知歌曲')) + '</div>' +
-'<div class="sm-his-sub">' + fmtDT(x.ts) + (x.mode ? '' : (x.triggerType ? ' · ' + esc(x.triggerType) : '')) + '</div></div></div>').join('')
+'<div class="sm-his-sub">' + fmtDT(x.ts) + (x.mode ? '' : (x.triggerType ? ' · ' + esc(x.triggerType) : '')) + '</div></div></div>';
+}).join('')
 : '<div class="ta-empty">还没有梦角邀请听歌记录，TA 邀请你一起听歌的记录会出现在这里</div>';
 }
 function renderPage() {
+renderLibFilter();
 renderLibrary();
 renderPlaylists();
 renderFavList();
@@ -20147,7 +20420,7 @@ if (pos && pos.left && pos.top) { el.style.left = pos.left; el.style.top = pos.t
 }
 function addRecord(trackId, triggerType) {
 const m = findTrack(trackId);
-history.push({ id: 'smh_' + Date.now(), trackId: trackId, trackName: m ? (m.name || '未知歌曲') : '未知歌曲', triggerType: triggerType, ts: Date.now() });
+history.push({ id: 'smh_' + Date.now(), trackId: trackId, trackName: m ? (m.name || '未知歌曲') : '未知歌曲', cover: m ? (m.cover || '') : '', triggerType: triggerType, ts: Date.now() });
 if (history.length > 500) history = history.slice(-500);
 saveHistory();
 renderHistory();
@@ -20251,6 +20524,7 @@ cooldownAt = now;
 const candidates = library.slice();
 if (!candidates.length) return;
 const track = candidates[Math.floor(Math.random() * candidates.length)];
+const myCid = window.__activeCid || 'default';
 reqData = { trackId: track.id };
 taActive = true;
 const name = partnerName();
@@ -20267,6 +20541,7 @@ window.openTCPanel('音乐', '' +
 '<div class="mail-actions"><button class="cc-tool" id="sm-req-no">稍后</button><button class="cc-tool" id="sm-req-yes">一起听</button></div>');
 document.getElementById('sm-req-no').addEventListener('click', () => {
 document.getElementById('tc-mask').hidden = true;
+if ((window.__activeCid || 'default') !== myCid) { reqData = null; return; }
 reqData = null;
 history.push({ id: 'smh_' + Date.now(), trackId: '', trackName: '', triggerType: '拒绝了 TA 的听歌邀请《' + esc(trackName) + '》', rejected: true, ts: Date.now() });
 if (history.length > 500) history = history.slice(-500);
@@ -20275,6 +20550,7 @@ if (window.chatAddSystem) window.chatAddSystem('你拒绝了 ' + name + ' 的听
 });
 document.getElementById('sm-req-yes').addEventListener('click', () => {
 document.getElementById('tc-mask').hidden = true;
+if ((window.__activeCid || 'default') !== myCid) { reqData = null; return; }
 if (!reqData) return;
 playTrack(reqData.trackId);
 addRecord(reqData.trackId, '接受了 TA 的听歌邀请');
@@ -20638,6 +20914,10 @@ document.addEventListener('contact-switched', function () {
 try {
 if (audio) { try { audio.pause(); } catch (e) {} audio = null; }
 currentId = null;
+taActive = false;
+cooldownAt = 0;
+reqData = null;
+libFilter = 'all';
 loadAll();
 try { renderPage(); } catch (e) {}
 try { renderFloat(); } catch (e) {}
@@ -24752,6 +25032,13 @@ attachIdbRestore(KEY, taAskLoad, taAskMerge);
 attachIdbRestore(KEY2, tcLoad, tcMerge);
 attachIdbRestore(KEY3, tcuLoad, tcuMerge);
 attachIdbRestore(KEY4, trLoad, trMerge);
+document.addEventListener('contact-switched', function () {
+_tcSessionTriggered = false;
+_tcAskedIds = [];
+_tcChain = 0;
+_tcuSessionTriggered = false;
+_trSessionTriggered = false;
+});
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
@@ -26076,7 +26363,7 @@ updateBadge();
 showPage('page-mail');
 if (window.chatAddSystem) window.chatAddSystem('你给 ' + name + ' 回了一封信');
 toast('回信已寄出');
-if (Math.random() * 100 < 30 && window.addTaFavItem) {
+if (Math.random() * 100 < (window.favCfg ? window.favCfg().taMail : 30) && window.addTaFavItem) {
 window.addTaFavItem({ kind: 'mail', title: l.tt || '', text: val, ts: Date.now() });
 setTimeout(() => toast('TA 收藏了你的回信'), 1200);
 }
@@ -27657,7 +27944,7 @@ addNotice('comment', p2.id, taFeedNameFor(cid) + ' 评论了你的动态', cid);
 }, (ccfg.commentSpeedMin + Math.random() * Math.max(1, ccfg.commentSpeedMax - ccfg.commentSpeedMin)) * 1000);
 }
 });
-if (Math.random() * 100 < 30 && window.addTaFavItem) {
+if (Math.random() * 100 < (window.favCfg ? window.favCfg().taFeed : 30) && window.addTaFavItem) {
 const cfg = feedCfg();
 setTimeout(() => {
 const list2 = load();

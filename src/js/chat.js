@@ -49,7 +49,17 @@
   // B 桌面发消息会带上 A 桌面聊天里的消息内容（数据串桌面）。
   document.addEventListener('contact-switched', function () {
     try {
-      if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+      // v3.7.x：防抖期间切联系人——先把待写消息落盘到旧桌面，再清 timer + 重置 msgs
+      if (saveTimer) {
+        clearTimeout(saveTimer);
+        saveTimer = null;
+        if (pendingSaveData && pendingSavePrefix) {
+          try { if (window.idbSet) window.idbSet(pendingSavePrefix + ':chat-msgs', pendingSaveData); } catch (e) {}
+          try { writeLsSnapshot(pendingSaveData, pendingSavePrefix); } catch (e) {}
+        }
+        pendingSaveData = null;
+        pendingSavePrefix = null;
+      }
       try { hideTyping(); } catch (e) {}
       msgs = [];
       pendingLocal = null;
@@ -76,7 +86,7 @@
   // loadMsgs 在 IDB 无数据时自动从这份快照恢复（复用了原「老版本 LS 迁入 IDB」
   // 的恢复分支，同一键名）。
   const LS_SNAP_LIMIT = 2 * 1024 * 1024;
-  function writeLsSnapshot(raw) {
+  function writeLsSnapshot(raw, prefix) {
     try {
       let snap = raw;
       if (snap.length > LS_SNAP_LIMIT) {
@@ -95,7 +105,7 @@
         }
       }
       if (snap.length <= LS_SNAP_LIMIT) {
-        localStorage.setItem(window.activePrefix() + ':chat-msgs', snap);
+        localStorage.setItem((prefix || window.activePrefix()) + ':chat-msgs', snap);
       }
     } catch (e) {}
   }
@@ -107,16 +117,20 @@
   let readyFuse = null;
   function armReadyFuse() {
     if (readyFuse || chatDbReady) return;
+    const fusePrefix = window.activePrefix();
     readyFuse = setTimeout(function () {
       readyFuse = null;
       if (chatDbReady) return;
       chatDbReady = true;
       const fuseMsgs = (pendingLocal && pendingLocal.length) ? pendingLocal : msgs;
       if (fuseMsgs && fuseMsgs.length) {
-        try { writeLsSnapshot(JSON.stringify(fuseMsgs)); } catch (e) {}
+        try { writeLsSnapshot(JSON.stringify(fuseMsgs), fusePrefix); } catch (e) {}
       }
     }, 15000);
   }
+  // v3.7.x：防抖期间切联系人 → contact-switched 清 saveTimer 会让待写消息丢失，
+  //   暂存 data+prefix 供 handler 切前强制落盘到正确（旧）桌面
+  let pendingSaveData = null, pendingSavePrefix = null;
   function saveMsgs() {
     const data = JSON.stringify(msgs);
     // 权威未就绪（IDB 打开/读取挂起，如 X浏览器等第三方浏览器后台挂起）：消息暂存
@@ -131,10 +145,14 @@
     // v3.6.x 修复（防抖定时器跨联系人写串）：闭包捕获当前命名空间，
     // 防止 400ms 回调执行时 activePrefix() 已切到新联系人
     const myPrefix = window.activePrefix();
+    pendingSaveData = data;
+    pendingSavePrefix = myPrefix;
     saveTimer = setTimeout(() => {
       saveTimer = null;
+      pendingSaveData = null;
+      pendingSavePrefix = null;
       try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', data); } catch (e) {}
-      writeLsSnapshot(data);
+      writeLsSnapshot(data, myPrefix);
     }, 400);
   }
   // v3.5.128：页面离开（刷新/关闭/切后台被回收）前强制落盘防抖窗口内的消息
@@ -148,7 +166,7 @@
       const data = JSON.stringify(msgs);
       const myPrefix = window.activePrefix();
       try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', data); } catch (e) {}
-      writeLsSnapshot(data);
+      writeLsSnapshot(data, myPrefix);
     } else if (!chatDbReady && msgs.length) {
       // IDB 未就绪期间的杀进程/切后台：内存消息写 LS 快照兜底，下次启动从快照恢复
       writeLsSnapshot(JSON.stringify(msgs));
@@ -232,7 +250,7 @@
               msgs = pendingLocal.concat(msgs.filter(m => !pendingLocal.some(p => p && p.ts === m.ts && p.text === m.text)));
               pendingLocal = null;
               try { if (window.idbSet) window.idbSet(myPrefix + ':chat-msgs', JSON.stringify(msgs)); } catch (e) {}
-              writeLsSnapshot(JSON.stringify(msgs));
+              writeLsSnapshot(JSON.stringify(msgs), myPrefix);
             }
             return;
           }
@@ -2088,8 +2106,10 @@ function partialRetractMsg(msgEl, side) {
     const rep = genOneReply(c);
     // 引用我的消息：quote 是我发的文本，qside='out'（我发）
     const m = addIn(rep.text, { quote: quote, qside: 'out', type: rep.type, parts: rep.parts });
-    // TA 收藏夹：联系人有概率（30%）收藏我发的最新一条消息（独立于情绪系统，任何回复后判定）
-    if (lastMineText && Math.random() * 100 < 30) {
+    // TA 收藏夹：联系人有概率收藏我发的最新一条消息（独立于情绪系统，任何回复后判定）
+    // v3.7.x：概率可调（收藏设置页），默认 30%
+    const _favProbMsg = (window.favCfg ? window.favCfg().taMsg : 30);
+    if (lastMineText && Math.random() * 100 < _favProbMsg) {
       const fav = getFav();
       // 同一条内容不重复收藏（已收藏过则跳过）
       if (!fav.some(f => f.side === 'out' && f.text === lastMineText)) {
@@ -2451,7 +2471,7 @@ function partialRetractMsg(msgEl, side) {
   }
   // 我方拍一拍：聊天页内浮层卡片（联系人昵称 / 我的昵称 双 tab，仿表情包面板）
   // v3.7.x：内置预设拍一拍 + 用户新增（每桌面独立）+ 字卡库【拍一拍】旧自定义字卡
-  //   （按人称自动归类进两个 tab），点卡片按 tab 方向发出
+  //   （按人称自动归类进两个 tab）；两个 tab 点卡片都发送"我 拍联系人"
   const pokeCard = document.getElementById('poke-card');
   const pokeList = document.getElementById('poke-list');
   const pokeClose = document.getElementById('poke-card-close');
@@ -2508,40 +2528,11 @@ function partialRetractMsg(msgEl, side) {
     try { ((window.getPokeCards && window.getPokeCards()) || []).forEach(x => out.push(x)); } catch (e) {}
     return out;
   }
-  // 联系人拍我（「联系人昵称的拍一拍」tab 点卡片/输入后发出，显示"联系人昵称 + 字卡"）
-  function performPokeWith(action) {
-    if (!action) return;
-    const name = store.get('lbl-partner') || 'TA';
-    const myName = store.get('lbl-user') || '我';
-    let text;
-    if (action.indexOf('你') >= 0) {
-      text = name + ' ' + action.replace(/你/g, myName);
-    } else if (action.indexOf('我') >= 0) {
-      text = name + ' ' + action;
-    } else {
-      text = name + ' ' + action + ' ' + myName;
-    }
-    addRec({ side: 'in', text: text, special: 'poke' });
-    if (window.logFish) window.logFish();
-    // 联系人拍我后接着回复一条（节奏与 sendPoke 一致）
-    setTimeout(() => {
-      const c2 = cfg();
-      if (hit(c2['rn-prob'])) { addIn('', { special: 'read' }); return; }
-      showTyping();
-      setTimeout(() => {
-        hideTyping();
-        if (hit(c2['touch-prob'])) { performPoke(); return; }
-        const r = genOneReply(c2);
-        const m2 = addIn(r.text, { type: r.type });
-        if (hit(c2['rc-prob'])) {
-          setTimeout(() => { retractMsg(m2, 'in'); }, 900);
-        }
-      }, randInt(800, 2000));
-    }, randInt(600, 1200));
-  }
   // 拍一拍双 tab（复用表情包 .emoji-tabs/.emoji-tab 样式）+ 新增按钮 + 自定义文字输入行
   // v3.6.x：JS 注入到 poke-card（模板只放静态头/列表锚点，这里与 renderPokeCard 同步）
-  let pokeMode = 'ta'; // 当前 tab：ta=联系人的拍一拍 / mine=我的拍一拍
+  // v3.7.x：拍一拍面板是给用户用的——两个 tab 点卡片/输入都发送"我 拍联系人"
+  //   （字卡里的"我/你"由 sendPoke 自动替换成联系人昵称），不再触发"联系人拍我"
+  let pokeMode = 'ta'; // 当前 tab：ta=联系人昵称的拍一拍 / mine=我的拍一拍
   const pokeTabsRow = document.createElement('div');
   pokeTabsRow.className = 'poke-tabs-row';
   const pokeTabTa = document.createElement('button');
@@ -2576,7 +2567,7 @@ function partialRetractMsg(msgEl, side) {
   function doPokeInput() {
     const v = (pokeInput && pokeInput.value || '').trim();
     if (!v) { toast('先输入拍一拍文字'); return; }
-    if (pokeMode === 'ta') performPokeWith(v); else sendPoke(v);
+    sendPoke(v);
     if (pokeInput) pokeInput.value = '';
     closePokeCard();
   }
@@ -2653,14 +2644,12 @@ function partialRetractMsg(msgEl, side) {
     s.textContent = t;
     return s;
   }
-  function pokeCardEl(c, kind) {
+  function pokeCardEl(c) {
     const d = document.createElement('div');
     d.className = 'cc-item glass';
     d.innerHTML = '<div class="cc-txt"><div class="t">' + c + '</div></div>';
-    d.addEventListener('click', () => {
-      if (kind === 'ta') performPokeWith(c); else sendPoke(c);
-      closePokeCard();
-    });
+    // 两个 tab 点卡片都发送"我 拍联系人"（sendPoke 把字卡里的"我/你"换成联系人昵称）
+    d.addEventListener('click', () => { sendPoke(c); closePokeCard(); });
     return d;
   }
   function renderPokeCard() {
@@ -2683,7 +2672,7 @@ function partialRetractMsg(msgEl, side) {
     }
     if (presets.length) {
       pokeList.appendChild(pokeSectionLabel('预设'));
-      presets.forEach(c => pokeList.appendChild(pokeCardEl(c, pokeMode)));
+      presets.forEach(c => pokeList.appendChild(pokeCardEl(c)));
     }
     if (users.length || extra.length) {
       // 与预设同文案的旧字卡不再重复显示（stripBuiltins 只处理内置分组，跨分组同名不剔）
@@ -2693,7 +2682,7 @@ function partialRetractMsg(msgEl, side) {
       extra.forEach(c => { if (!ps.has(c)) custom.push(c); });
       if (custom.length) {
         pokeList.appendChild(pokeSectionLabel('自定义'));
-        custom.forEach(c => pokeList.appendChild(pokeCardEl(c, pokeMode)));
+        custom.forEach(c => pokeList.appendChild(pokeCardEl(c)));
       }
     }
   }
@@ -2979,7 +2968,9 @@ function partialRetractMsg(msgEl, side) {
     rpWalletSet(wallet);
     rpDailyIncr();
     const amt = amtFen / 100;
+    const myCid = window.__activeCid || 'default';
     setTimeout(() => {
+      if ((window.__activeCid || 'default') !== myCid) return;
       addIn('', { special: 'redpacket', rpAmount: amt, rpWish: wish, rpStatus: 'pending', rpTs: Date.now(), rpCover: rpCoverGet() ? 1 : 0 });
       if (window.logFish) window.logFish();
     }, randInt(800, 2000));
@@ -2990,11 +2981,13 @@ function partialRetractMsg(msgEl, side) {
   }
   // 领取后反馈：50% 感谢表情 / 30% 正常聊天字卡 / 20% 静默
   function rpCollectFeedback() {
+    const myCid = window.__activeCid || 'default';
     const r = Math.random();
     if (r < 0.5) {
-      setTimeout(() => addIn(rpThanksMsg(), {}), randInt(600, 1800));
+      setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; addIn(rpThanksMsg(), {}); }, randInt(600, 1800));
     } else if (r < 0.8) {
       setTimeout(() => {
+        if ((window.__activeCid || 'default') !== myCid) return;
         try {
           const c = cfg();
           const rep = genOneReply(c);
@@ -3008,6 +3001,7 @@ function partialRetractMsg(msgEl, side) {
     if (idx < 0) return;
     const rec = msgs[idx];
     if (!rec || rec.rpStatus !== 'pending') return;
+    const myCid = window.__activeCid || 'default';
     const r = Math.random();
     const wallet = rpWalletGet();
     const amtFen = Math.round((rec.rpAmount || 0) * 100);
@@ -3017,7 +3011,7 @@ function partialRetractMsg(msgEl, side) {
       rpWalletSet(wallet);
       saveMsgsNow();
       renderWindow(false, true);
-      setTimeout(() => addIn('TA 退回了你的红包 ¥' + Number(rec.rpAmount || 0).toFixed(2), { special: 'poke' }), randInt(500, 1200));
+      setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; addIn('TA 退回了你的红包 ¥' + Number(rec.rpAmount || 0).toFixed(2), { special: 'poke' }); }, randInt(500, 1200));
     } else if (r < 0.9) {
       rec.rpStatus = 'received';
       rec.rpOpenedAt = Date.now();
@@ -3026,7 +3020,7 @@ function partialRetractMsg(msgEl, side) {
       saveMsgsNow();
       renderWindow(false, true);
       const amtTxt = '¥' + Number(rec.rpAmount || 0).toFixed(2);
-      setTimeout(() => addIn('TA 领取了你的红包 ' + amtTxt, { special: 'poke' }), randInt(400, 1000));
+      setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; addIn('TA 领取了你的红包 ' + amtTxt, { special: 'poke' }); }, randInt(400, 1000));
       // TA 领取后发感谢表情/消息
       rpCollectFeedback();
     }
@@ -3045,7 +3039,8 @@ function partialRetractMsg(msgEl, side) {
     saveMsgsNow();
     renderWindow(false, true);
     const amtTxt = '¥' + Number(rec.rpAmount || 0).toFixed(2);
-    setTimeout(() => addIn('TA 领取了你的红包 ' + amtTxt, { special: 'poke' }), randInt(400, 1000));
+    const myCid = window.__activeCid || 'default';
+    setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; addIn('TA 领取了你的红包 ' + amtTxt, { special: 'poke' }); }, randInt(400, 1000));
     // TA 收取后发感谢
     rpCollectFeedback();
   }
@@ -3885,14 +3880,14 @@ function partialRetractMsg(msgEl, side) {
   });
 
   // ---- 通话：聊天页底部半框（v3.7.x 更多功能「通话」→ 打开半框，不再直接拨打） ----
-  // 半框内含：当前通话状态 + 拨打/挂断 + 「通话小框」开关（隐藏后接通不弹悬浮小框）
+  // 半框内含：当前通话状态 + 拨打/挂断（「通话小框」开关已移至聊天设置页「隐藏通话小框」）
   const chatCallPanel = document.getElementById('chat-call-panel');
   const chatCallClose = document.getElementById('chat-call-close');
   const callPanelName = document.getElementById('call-panel-name');
   const callPanelStatus = document.getElementById('call-panel-status');
   const callPanelDial = document.getElementById('call-panel-dial');
   const callPanelHang = document.getElementById('call-panel-hang');
-  const callMiniToggle = document.getElementById('call-mini-toggle');
+
   let callPanelTimer = null;
   function fmtCallDur(sec) {
     if (isNaN(sec) || sec < 0) return '00:00';
@@ -3932,12 +3927,7 @@ function partialRetractMsg(msgEl, side) {
     if (window.closeAvlib) window.closeAvlib();
     chatCallPanel.hidden = false;
     closeIme();
-    // 同步小框开关（每联系人桌面独立）
-    if (callMiniToggle) {
-      let on = true;
-      try { on = !!(window.getCallMiniEnabled && window.getCallMiniEnabled()); } catch (err) {}
-      callMiniToggle.checked = on;
-    }
+
     updateCallPanel();
     clearInterval(callPanelTimer);
     callPanelTimer = setInterval(updateCallPanel, 1000);
@@ -4016,13 +4006,7 @@ function partialRetractMsg(msgEl, side) {
     if (window.hangupCall) window.hangupCall();
     setTimeout(updateCallPanel, 120);
   });
-  // 通话小框开关
-  if (callMiniToggle) callMiniToggle.addEventListener('change', (e) => {
-    e.stopPropagation();
-    const on = callMiniToggle.checked;
-    if (window.setCallMiniEnabled) window.setCallMiniEnabled(on);
-    toast(on ? '通话小框已开启：接通后自动最小化为悬浮小框' : '通话小框已隐藏：接通后保持通话面板，不弹出悬浮小框');
-  });
+
   // v3.7.x：切换联系人桌面时关闭通话半框（防半框残留到新桌面）
   document.addEventListener('contact-switched', function () {
     try { closeChatCall(); } catch (e) {}
@@ -4118,9 +4102,10 @@ function partialRetractMsg(msgEl, side) {
   function favHeartHtml() {
     return '<button class="msg-fav-heart" title="收藏整张互动卡片"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>收藏</button>';
   }
-  // TA 收藏整张互动卡片（30% 概率，回答后随 TA 的回应一起判定）
+  // TA 收藏整张互动卡片（概率可调，回答后随 TA 的回应一起判定）
   function taFavCard(rec) {
-    if (!rec || Math.random() * 100 >= 30) return;
+    const _favProbCard = (window.favCfg ? window.favCfg().taCard : 30);
+    if (!rec || Math.random() * 100 >= _favProbCard) return;
     const f = cardSnapshot(rec);
     if (!f) return;
     if (window.addTaFavItem(f)) setTimeout(() => toast('TA 收藏了你们的互动卡片'), 1200);
@@ -4267,8 +4252,7 @@ function partialRetractMsg(msgEl, side) {
     { k: 'all', label: '全部' }, { k: 'msg', label: '聊天消息' },
     { k: 'card', label: '互动卡片' }, { k: 'mail', label: '信件' }, { k: 'feed', label: '朋友圈' }
   ];
-  function renderFav() {
-    if (!favList) return;
+  function renderFav() {    if (!favList) return;
     const fav = getFav();
     favList.innerHTML = '';
     const partnerName = store.get('lbl-partner') || 'TA';
@@ -4465,6 +4449,9 @@ function partialRetractMsg(msgEl, side) {
     favKind = tb.dataset.kind;
     renderFav();
   });
+
+  // 暴露 renderFav 供收藏设置页返回时刷新列表
+  window.renderFav = renderFav;
 
   // 桌面收藏图标进入
   const favApp = document.querySelector('.app[data-app="note"]');

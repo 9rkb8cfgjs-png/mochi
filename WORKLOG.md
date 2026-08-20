@@ -9,6 +9,15 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（用户要求「聊天设置音乐悬浮小窗下新增隐藏通话小框按钮；删除更多功能·通话半框里的通话小框开关及说明文字」）
+- [本会话·完成]（**已构建 verify 10/10，未提交**）：
+  - `src/template.html`：聊天设置页「全屏」组内、音乐悬浮小窗开关下方新增「隐藏通话小框」开关 `#cs-call-mini-hide`（电话听筒图标）；同时删除通话半框（`#chat-call-panel`）内的「通话小框」`#call-mini-toggle` 开关 + 副标题 + `.call-panel-hint` 说明文字。
+  - `src/js/chat-settings.js`：仿 `cs-music-float` 模式绑定新开关——语义反转（勾选=隐藏），走 `window.getCallMiniEnabled/setCallMiniEnabled` 钩子（call.js 暴露），未就绪时退化为直读写 `call-mini-enabled` store（默认显示）；初始同步 + change 写回 + toast 提示 + 500ms 轮询 + contact-switched 同步。
+  - `src/js/chat.js`：删除 `callMiniToggle` 变量定义、`openChatCall` 中同步开关代码、change 监听三处；更新注释。
+  - `src/css/chat-main.css`：删除已无用的 `.call-panel-switch` / `.call-panel-switch-sub` / `.call-panel-hint` 样式，更新注释。
+  - 验证：`node --check` 双 JS 通过；`node tools/verify.mjs` 10/10；产物文本断言：新开关/文案存在、旧开关/提示/副标题已删（"接通后自动最小化为悬浮小框"仅保留在新开关 toast 文案中，符合预期）。
+  - ⚠️ 构建同时包含工作区已保存的对方改动（chatcard.js/mood-reply-cards.js/music-player.js/ta-ask.js/chat-pages.css），未提交，待用户确认。
+
 ### 2026-08-20（用户反馈「引用后没有取消按钮；引用含表情包/图片的消息时缩略图区域乱码挡住文字」）
 - [本会话·完成]（**已构建 verify 10/10 + 引用预览冒烟 18/18，本次提交**）：`src/css/chat-main.css`（AI-A 域）、`src/js/chat.js`（AI-A 域）、`tools/smoke-quote-preview.mjs`（冒烟增强）。
   - 根因 1（取消按钮不可见）：`.chat-draft-quote-x { position:static }` 写在 `.chat-draft-x { position:absolute }` **之前**——同优先级 (0,1,0) 后定义者生效，按钮被覆盖成 absolute 定位跑出预览条外（CDP 实测按钮 right=390 超出条 right=376，用户根本看不到删除按钮）。修复：按钮覆盖规则移到 `.chat-draft-x` 之后，顺带 18px 圆形更明显。
@@ -752,3 +761,20 @@
     5. 点赞回赞/评论回应延迟与概率改按所属桌面设置。
   - **CDP 验证 11/11**：发布后大宝+二宝都点赞/评论；二宝评论内容用二宝桌面字卡库、owner=cid2；回复二宝评论→二宝按评论 owner 用自己桌面字卡回应。
   - 涉及 `src/js/feed.js`；提交含并行会话已保存的 calendar.js/chat.js/music-player.js 改动与构建产物（node --check 全过）。
+- [本会话] 完成「音乐库分类筛选」（用户需求：我的音乐库下可切换 全部音乐/未分类音乐/已建歌单，未分类无歌不显示分组）：
+  - **template.html**：`#music-lib-list` 上方加 `<div class="music-lib-filter" id="music-lib-filter">` 锚点（工具行下方）。
+  - **music-player.js**：新增 `libFilter` 状态（'all'/'default'/歌单id，切桌面重置）+ `libSongsFor()` 过滤辅助 + `renderLibFilter()`（chips 渲染：全部音乐/未分类音乐[无歌自动隐藏]/各歌单，当前分组消失自动回退全部，筛选条全空歌时隐藏）；`renderLibrary()` 改按 libFilter 过滤、空态文案区分（全部/未分类/空歌单）；批量管理「全选」同步按当前筛选；`renderPage()` 先渲染筛选条。
+  - **chat-pages.css**：`.music-lib-filter`/`.mlf-chip` 横向滚动 pill 样式（与 fav-tab 同风格）。
+  - 验证：`tools/verify-music-filter.mjs`（新增）CDP 14/14 通过（全新数据未分类0首→chip隐藏；注入未分类歌→chip出现且筛选正确）+ verify.mjs 布局 10/10。
+  - ⚠️ 未 git 提交：工作区仍有并行会话未提交改动（chat.js/chatcard.js/mood-reply-cards.js/ta-ask.js/template.html 通话小框相关等），本次 build 已一并打包；提交前请确认 AI-A 通话改动是否完整。
+- [本会话] 修复「梦角邀请听歌记录不显示封面」（用户反馈）：
+  - 根因：renderHistory() 只渲染固定图标（播放模式/音符），从未读封面；addRecord 也不存 cover。
+  - 修复（music-player.js）：renderHistory() 记录封面——优先取记录冗余存的 x.cover，没有再按 trackId 回查当前音乐库歌曲 cover；都拿不到保留原图标（mode/拒绝/已删歌不受影响）。addRecord() 冗余存 cover（歌曲之后被删/换封面，旧记录仍显示当时封面）。
+  - chat-pages.css：.sm-his-ico.has-cov 封面背景样式（cover/居中 + 隐藏 svg）。
+  - 验证：tools/verify-music-history-cover.mjs（新增）8/8（回查/冗余/无封面回退/mode 图标）+ verify-music-filter.mjs 14/14 + verify 布局 10/10。构建产物已更新，未提交（同上轮，工作区有并行会话改动）。
+
+### 2026-08-20
+- [本会话] 完成（用户反馈「为什么联系人的拍一拍里还能显示联系人名称的拍一拍，这个功能是给我用的」，用户确认选「都改成我拍联系人」——**已构建 verify 10/10 + CDP 实测 4/4，待提交**）：`src/js/chat.js`。
+  - 拍一拍面板两个 tab 点卡片/输入**都发送"我 拍联系人"**：tab「二宝 的拍一拍」里的"拍了拍我/弹了一下我的额头"点选后经 sendPoke 把字卡"我"替换成联系人昵称 → 显示"我 拍了拍二宝"/"我 弹了一下二宝的额头"，不再出现"二宝 拍了拍我"。
+  - 删除了 performPokeWith（联系人拍我方向的发送函数）及其调用点——⚠️ 对方在它里面加的 myCid 桌面切换守卫随函数一并移除（该函数已无调用方）；若后续需要"面板触发联系人拍我"再重加。performPoke（联系人自动拍一拍）保持不变。
+  - 验证：CDP 4/4（tab1 点"拍了拍我"→"我 拍了拍二宝"、tab1 点"弹了一下我的额头"→"我 弹了一下二宝的额头"、tab2 点"拍了拍你"→"我 拍了拍二宝"、tab1 输入"揉了揉我的头发"→"我 揉了揉二宝的头发"；全程无"二宝 拍…"出现），verify 10/10。

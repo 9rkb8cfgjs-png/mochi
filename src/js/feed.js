@@ -1162,9 +1162,10 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
         }, (ccfg.commentSpeedMin + Math.random() * Math.max(1, ccfg.commentSpeedMax - ccfg.commentSpeedMin)) * 1000);
       }
     });
-    // v3.6.x：TA 收藏我发布的动态（30% 概率，与聊天消息收藏一致，延迟同点赞节奏）——
+    // v3.6.x：TA 收藏我发布的动态（概率可调，与聊天消息收藏一致，延迟同点赞节奏）——
     // 收藏写入当前桌面（各桌面收藏隔离），保持只由当前桌面 TA 触发
-    if (Math.random() * 100 < 30 && window.addTaFavItem) {
+    // v3.7.x：概率由收藏设置页控制，默认 30%
+    if (Math.random() * 100 < (window.favCfg ? window.favCfg().taFeed : 30) && window.addTaFavItem) {
       const cfg = feedCfg();
       setTimeout(() => {
         const list2 = load();

@@ -474,6 +474,28 @@
 .fav-tabs.fav-kind-row { padding-top:0; padding-bottom:12px; }
 .fav-body { padding:6px 18px; }
 
+/* ===== 收藏设置页 ===== */
+.fs-stat-box { padding:4px 14px; }
+.fs-stat-head {
+  font-size:12px; font-weight:700; letter-spacing:.5px; color:var(--muted);
+  padding:14px 0 6px; border-top:1px solid rgba(0,0,0,.05);
+}
+.fs-stat-head:first-child { border-top:none; padding-top:4px; }
+.fs-stat-row {
+  display:flex; align-items:baseline; justify-content:space-between;
+  padding:7px 0; font-size:13px;
+}
+.fs-stat-label { color:#444; }
+.fs-stat-val { font-weight:700; color:var(--ink); }
+.fs-stat-val em {
+  font-style:normal; font-weight:400; font-size:11px; color:var(--muted);
+  margin-left:6px;
+}
+.fs-tip {
+  font-size:11.5px; line-height:1.6; color:var(--muted);
+  padding:10px 4px 4px; letter-spacing:.2px;
+}
+
 /* 日历页 */
 .cal-scroll { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; padding:0 18px; }
 .cal-scroll::-webkit-scrollbar { display:none; }
@@ -1409,6 +1431,22 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
 }
 .sm-tool:active { background:rgba(0,0,0,.04); }
 .sm-tool svg { width:15px; height:15px; flex-shrink:0; }
+/* 音乐库分类筛选条 —— v3.9.x（全部音乐 / 未分类音乐 / 各歌单，横向滚动） */
+.music-lib-filter {
+  display:flex; gap:8px; margin-bottom:12px; overflow-x:auto;
+  scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch;
+}
+.music-lib-filter::-webkit-scrollbar { display:none; }
+.mlf-chip {
+  flex:0 0 auto; display:inline-flex; align-items:center; gap:5px;
+  padding:7px 12px; font-size:12px; font-weight:600; font-family:inherit;
+  border:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.92);
+  color:#666; border-radius:999px; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.mlf-chip .mlf-cnt { font-size:11px; font-weight:500; opacity:.6; }
+.mlf-chip.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+.mlf-chip.sel .mlf-cnt { opacity:.85; }
 /* 歌曲行 */
 .sm-song {
   display:flex; align-items:center; gap:10px; padding:10px 8px;
@@ -1517,6 +1555,8 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + env(safe-area-inset-bott
   display:flex; align-items:center; justify-content:center; color:#555;
 }
 .sm-his-ico svg { width:16px; height:16px; }
+.sm-his-ico.has-cov { background-size:cover; background-position:center; }
+.sm-his-ico.has-cov svg { display:none; }
 .sm-his-info { flex:1; min-width:0; }
 .sm-his-name { font-size:13px; font-weight:600; color:var(--ink); }
 .sm-his-sub { font-size:11px; color:var(--muted); margin-top:2px; }

@@ -1620,6 +1620,7 @@
   }
   // 切换联系人后重载字卡库（好友圈 TA 取各自桌面字卡、当前桌面字卡库也要刷新）
   document.addEventListener('contact-switched', function () {
+    if (editSaveTimer) { clearTimeout(editSaveTimer); editSaveTimer = null; }
     groups = loadGroups();
     try { renderGroupsBar(); render(); } catch (e) {}
   });
