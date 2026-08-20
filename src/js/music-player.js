@@ -364,6 +364,22 @@
     const m = line.match(/playlist[\/?#]*(?:id=)?(\d+)/i);
     return m ? m[1] : '';
   }
+  // v3.9.x：从任意输入中提取网易云歌曲数字 ID——纯数字、song?id=xxx、#/song?id=xxx
+  //（hash 路由分享链接）、song/media/outer/url?id=xxx.mp3（官方外链）、/song/xxx 路径、
+  // 分享文本混排（「分享…《歌名》https://music.163.com/song?id=xxx @QQ音乐」）都能识别；
+  // 提取后统一转成 meting 播放直链（见 neteaseMetingUrl），用户不用手动抠数字。
+  function extractNeteaseSongId(line) {
+    if (!line || typeof line !== 'string') return '';
+    const s = String(line).trim();
+    if (/^\d+$/.test(s)) return s;
+    let m = s.match(/[?&]id=(\d+)/);
+    if (m) return m[1];
+    m = s.match(/\/(?:song|playlist)\/(\d+)/i);
+    if (m) return m[1];
+    m = s.match(/\/(\d{5,})(?:\.mp3)?(?:\?|#|$)/);
+    if (m) return m[1];
+    return '';
+  }
   function fetchNeteasePlaylist(id, cb) {
     const apiUrl = 'https://music.163.com/api/v6/playlist/detail?id=' + encodeURIComponent(String(id)) + '&n=1000&s=8';
     const sources = [
@@ -795,9 +811,9 @@
       '<div class="sm-form">' +
       '<div class="sm-fld"><label>歌曲名称</label><input class="tc-input" id="sm-url-name" placeholder="可留空，识别后自动补全"></div>' +
       '<div class="sm-fld"><label>歌手</label><input class="tc-input" id="sm-url-artist" placeholder="可留空"></div>' +
-      '<div class="sm-fld"><label>网易云歌曲ID 或 音乐直链</label><textarea class="tc-input" id="sm-url-link" rows="3" placeholder="如 2064961530&#10;每行一个，支持批量"></textarea></div>' +
+      '<div class="sm-fld"><label>网易云歌曲ID 或 链接 / 音乐直链</label><textarea class="tc-input" id="sm-url-link" rows="3" placeholder="如 2064961530&#10;或 https://music.163.com/#/song?id=xxx&#10;每行一个，支持批量"></textarea></div>' +
       '<div class="sm-fld"><label>导入到歌单</label><select class="tc-input" id="sm-target-pl">' + targetPlOptions() + '</select></div>' +
-      '<div class="sm-fld-hint">直接填网易云歌曲数字 ID（如 2064961530）即自动导入；也可粘贴完整链接或 mp3 直链。支持批量：每行一个 ID 或链接；批量时歌曲名/歌手自动识别，可不填。<br>粘贴歌单分享链接（music.163.com/playlist?id=xxx 或 #/playlist?id=xxx）自动导入整个歌单。<br><span style="opacity:.75">⚠ 链接上传的 VIP/付费歌曲无法播放（仅免费歌曲可播）；歌单导入受网络环境影响，失败可稍后重试</span></div>' +
+      '<div class="sm-fld-hint">填网易云歌曲数字 ID（如 2064961530）或<b>直接粘贴完整网易云链接</b>（如 music.163.com/#/song?id=xxx、song/media/outer/url?id=xxx.mp3），都会自动识别导入，不用手动填 ID；mp3 直链也可。支持批量：每行一个 ID 或链接；批量时歌曲名/歌手自动识别，可不填。<br>粘贴歌单分享链接（music.163.com/playlist?id=xxx 或 #/playlist?id=xxx）自动导入整个歌单。<br><span style="opacity:.75">⚠ 链接上传的 VIP/付费歌曲无法播放（仅免费歌曲可播）；歌单导入受网络环境影响，失败可稍后重试</span></div>' +
       '</div>' +
       '<div class="mail-actions"><button class="cc-tool" id="sm-url-cancel">取消</button><button class="cc-tool" id="sm-url-ok">确认添加</button></div>');
     document.getElementById('sm-url-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
@@ -826,16 +842,9 @@
         const addLinkLines = (lins, batchMode) => {
           let added = 0;
           lins.forEach((ln, li) => {
-            let neteaseId = '';
-            if (/^\d+$/.test(ln)) neteaseId = ln;
-            else {
-              const idMatch = ln.match(/[?&]id=(\d+)/);
-              if (idMatch) neteaseId = idMatch[1];
-              else {
-                const pathMatch = ln.match(/\/(\d+)(?:\.mp3)?$/);
-                if (pathMatch) neteaseId = pathMatch[1];
-              }
-            }
+            // v3.9.x：统一提取——纯数字 / #/song?id=xxx / outer/url?id=xxx.mp3 等
+            // 任意网易云链接 / 分享文本，都能自动识别出歌曲 ID
+            const neteaseId = extractNeteaseSongId(ln);
             let url = ln;
             let nm = batchMode ? '' : name;
             if (neteaseId) {
@@ -892,8 +901,8 @@
   function openBatch() {
     if (!window.openTCPanel) return;
     window.openTCPanel('批量导入音乐', '' +
-      '<div class="sm-fld-hint" style="margin-bottom:8px"><b>支持 3 种导入方式：</b><br>① <b>网易云歌单</b>：直接粘贴歌单分享链接（music.163.com/playlist?id=xxx 或 #/playlist?id=xxx），自动导入整个歌单；<br>② <b>网易云单曲</b>：每行一个歌曲数字 ID（如 2064961530）或歌曲链接，自动识别歌名；<br>③ <b>本地/直链</b>：按「歌曲名称 / 歌手 / 音乐直链URL」格式粘贴，每首歌空一行分隔。<br><br><span style="opacity:.75">⚠ 链接上传的 VIP/付费歌曲无法播放（仅免费歌曲可播）；歌单导入受网络环境影响（部分手机浏览器可能拦截），失败可稍后重试</span></div>' +
-      '<textarea id="sm-batch-input" class="tc-input" rows="8" placeholder="网易云歌单链接：https://music.163.com/playlist?id=3778678&#10;网易云单曲ID：27538343&#10;&#10;歌曲名称：Baby&#10;歌手：EXO-K&#10;音乐直链URL：https://example.com/music2.mp3"></textarea>' +
+      '<div class="sm-fld-hint" style="margin-bottom:8px"><b>支持 3 种导入方式：</b><br>① <b>网易云歌单</b>：直接粘贴歌单分享链接（music.163.com/playlist?id=xxx 或 #/playlist?id=xxx），自动导入整个歌单；<br>② <b>网易云单曲</b>：每行一个歌曲数字 ID（如 2064961530），或<b>直接粘贴完整网易云链接</b>（如 music.163.com/#/song?id=xxx、song/media/outer/url?id=xxx.mp3），自动识别导入，不用手动填 ID；<br>③ <b>本地/直链</b>：按「歌曲名称 / 歌手 / 音乐直链URL」格式粘贴，每首歌空一行分隔（URL 栏同样支持直接贴网易云链接）。<br><br><span style="opacity:.75">⚠ 链接上传的 VIP/付费歌曲无法播放（仅免费歌曲可播）；歌单导入受网络环境影响（部分手机浏览器可能拦截），失败可稍后重试</span></div>' +
+      '<textarea id="sm-batch-input" class="tc-input" rows="8" placeholder="网易云歌单链接：https://music.163.com/playlist?id=3778678&#10;网易云单曲链接：https://music.163.com/#/song?id=27538343&#10;或纯数字 ID：27538343&#10;&#10;歌曲名称：Baby&#10;歌手：EXO-K&#10;音乐直链URL：http://music.163.com/song/media/outer/url?id=27538343.mp3"></textarea>' +
       '<div class="sm-fld"><label>导入到歌单</label><select class="tc-input" id="sm-target-pl">' + targetPlOptions() + '</select></div>' +
       '<div class="mail-actions"><button class="cc-tool" id="sm-batch-cancel">取消</button><button class="cc-tool" id="sm-batch-ok">开始导入</button></div>');
     document.getElementById('sm-batch-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
@@ -923,7 +932,13 @@
           } else {
             unit.lines.forEach(line => {
               const sepMatch = line.match(/^([^:=]+?)(?:[:：＝=])\s*(.+)$/);
-              if (!sepMatch) return;
+              if (!sepMatch) {
+                // v3.9.x：标签块里混入的裸链接/纯数字行直接当作 URL 值（无需标签，
+                // 用户可在标签之间顺手贴一条网易云链接/ID）
+                const t = line.trim();
+                if (/^\d+$/.test(t) || /^https?:\/\//i.test(t)) url = t;
+                return;
+              }
               const key = sepMatch[1].replace(/\s+/g, '').toLowerCase();
               const val = sepMatch[2].trim();
               if (/^(歌曲名称|歌名|名称|name|歌曲)$/.test(key)) name = val;
@@ -935,15 +950,8 @@
           if (extractPlaylistId(url)) return; // 歌单链接单独走歌单导入，不当作单曲
           // v3.6.x：URL 栏支持纯数字网易云 ID / 完整网易云链接 / 任意 mp3 直链——
           // 统一提取数字 ID 并规范化成网易云直链（与「链接添加」一致）
-          let neteaseId = '';
-          if (/^\d+$/.test(url)) {
-            neteaseId = url;
-          } else {
-            const idMatch = url.match(/[?&]id=(\d+)/);
-            const pathMatch = url.match(/\/(\d+)(?:\.mp3)?$/);
-            if (idMatch) neteaseId = idMatch[1];
-            else if (pathMatch) neteaseId = pathMatch[1];
-          }
+          // v3.9.x：改用统一提取函数（支持 #/song?id=xxx、outer/url?id=xxx.mp3 等格式）
+          const neteaseId = extractNeteaseSongId(url);
           if (neteaseId) {
             url = neteaseMetingUrl(neteaseId);
             if (!name) name = '网易云音乐-' + neteaseId; // 只填数字时自动补默认名

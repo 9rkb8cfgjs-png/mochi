@@ -1120,6 +1120,20 @@
         nq.isPreset = true; // v3.6.x：系统预设标记——预设只可启停、不可删除
         d.questions.push(nq);
         changed = true;
+      } else if (ids[q.id]) {
+        // v3.7.x：题已存在——若是预设题，按选项 t 同步 TC_DEFAULT 的新 reply（多条数组），
+        // 保留用户对 enabled/liked 的修改，只更新 reply 让系统预设回应跟代码升级
+        const local = d.questions.find(x => x && x.id === q.id);
+        if (local && local.isPreset === true && Array.isArray(local.options)) {
+          q.options.forEach(defOpt => {
+            const lo = local.options.find(o => o && o.t === defOpt.t);
+            if (lo) {
+              const defR = defOpt.reply, loR = lo.reply;
+              const same = (Array.isArray(defR) && Array.isArray(loR) && defR.length === loR.length && defR.every((v, i) => v === loR[i])) || (!Array.isArray(defR) && !Array.isArray(loR) && defR === loR);
+              if (!same) { lo.reply = defR; changed = true; }
+            }
+          });
+        }
       }
     });
     TC_DEFAULT.forEach(q => {
@@ -1358,14 +1372,13 @@ window.openTCPanel = openTCPanel;
     if (favBtn) favBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><path d="M12 2l2.4 5 5.6.8-4 4 .9 5.6-4.9-2.6-4.9 2.6.9-5.6-4-4 5.6-.8z"/></svg>' + '收藏（' + d.favs.length + '）';
   }
   function escT(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
-  // v3.7.x：选项 reply 展示文本——数组显示"回应1 等3条"，字符串原样
+  // v3.7.x：选项 reply 展示文本——多条用「 ｜ 」全部分隔列出，字符串原样
   function optReplyLabel(o) {
     if (!o) return '';
     if (Array.isArray(o.reply) && o.reply.length) {
       const arr = o.reply.filter(s => typeof s === 'string' && s.trim()).map(s => s.trim());
-      if (arr.length === 1) return arr[0];
-      if (arr.length > 1) return arr[0] + ' 等' + arr.length + '条';
-      return '';
+      if (!arr.length) return '';
+      return arr.join(' ｜ ');
     }
     if (typeof o.reply === 'string' && o.reply.trim()) return o.reply.trim();
     return '';

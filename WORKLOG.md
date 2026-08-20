@@ -9,6 +9,14 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（本会话，用户反馈「网易云链接格式导入：新增 #/song?id= 与 outer/url?id=.mp3 格式自动转换导入；添加歌曲里说明可直接链接导入，不用只输入 ID」）
+- [本会话·完成]（**已构建 verify 10/10 + 单测 10/10 + CDP 真实导入 10/10，本次提交**）：`src/js/music-player.js`（AI-A 域，用户直接反馈故本会话统一实现）。
+  - **统一提取函数** `extractNeteaseSongId`（新增，放 extractPlaylistId 旁）：支持纯数字 ID、`song?id=xxx`、**`#/song?id=xxx`（hash 路由分享链接）**、**`song/media/outer/url?id=xxx.mp3`（官方外链）**、`/song/xxx` 路径、分享文本混排（「分享…《歌名》…https://music.163.com/song?id=xxx @QQ音乐」）——单测 10/10（含不误提取普通 mp3 直链）。「添加链接音乐」「批量导入」两处手写提取正则统一替换为它，提取后自动转 meting 播放直链。
+  - **批量导入标签模式增强**：标签块内混入的裸链接/纯数字行直接当作 URL 值（原来静默忽略）。
+  - **文案**：「添加链接音乐」label 改「网易云歌曲ID 或 链接 / 音乐直链」、hint 写明「直接粘贴完整网易云链接（如 music.163.com/#/song?id=xxx、song/media/outer/url?id=xxx.mp3），自动识别导入，不用手动填 ID」、占位符加 #/song?id= 示例；「批量导入」② 同步改「每行一个 ID 或直接粘贴完整网易云链接」+ 占位符加外链示例。
+  - 验证：CDP 真实导入——`#/song?id=27538343` → 导入成功且 url 自动变 meting 直链；`outer/url?id=2064961530.mp3` → 同上；标签模式混入裸链接「音乐直链URL：https://music.163.com/#/song?id=1973665667」→ 导入且歌名识别「海屿你」；时长后台补全 3 首；无 JS 异常。
+  - ⚠️ 本次提交同时包含 AI-A 已保存的 ta-ask.js 改动（预设题 reply 同步+展示文本，产物已含，同次提交保持一致）；**未跟踪 tools 调试脚本（diag-*/poke-dbg/verify-quote-image/_tc_opts.txt 等）未提交**，请 AI-A 确认哪些保留提交、哪些删除。
+
 ### 2026-08-20（用户需求「我的拍一拍里新增的字卡无法修改/删除，写错写重复没法处理」）
 - [本会话·完成]（**已构建 verify 10/10 + 拍一拍编辑删除专项 15/15，未提交**，请构建者统一 commit+push）：`src/js/chat.js` + `src/css/chat-main.css`（均 AI-A 域）+ `src/css/dark.css`（AI-B 域代改 3 行按钮深色样式，请知悉）+ 新增 `tools/smoke-poke-edit.mjs`（回归脚本，保留）。
   - **修改**：我的拍一拍·用户分组每张字卡右侧新增 ✎ 按钮，点击弹 `openModal` 修改框（预填原文字），保存后写回对应分组（`pokeUserGroups.mine` → LS+IDB 双写），同分组查重「该分组已有相同的拍一拍」。
