@@ -578,3 +578,9 @@
 
 ### 2026-08-19
 - [AI-A] 完成：新增双人贪吃蛇小游戏（聊天更多功能→贪吃蛇）。已构建 verify 10/10 + CDP 冒烟 12/12。20x20地图/双蛇同时移动/统y碰撞结算(公平)/TA=生存判断+目标评分+flood-fill空间+9种概率行为池+冷却/速度120->90ms随时间/滑动+方向键+WASD+虚拟方向键/倒计时3-2-1/胜负平+长度食物得分存活时间/结束调interact字卡池(游戏胜利/失败/平局·回应)作TA回复+special:snake卡片入聊天。文件:src/js/snake-game.js(新)、template.html、chat.js、default-cards-data.js、chat-pages.css、mobile-adapt.js、tabs.js、build.mjs。仿pong.js模式。未提交。
+### 2026-08-20
+- [本会话] 完成（用户反馈「多桌面联系人情部下，信箱看不出是哪个联系人发的；切换到谁的桌面，来信就自动变成谁的名字」——**已构建 verify 10/10 + CDP 多桌面 7/7，待提交**）：
+  - **根因**：`src/js/mail.js` 模块顶部 `const uid = window.activePrefix()` **加载时固定**，而 `loadSnap()`/`writeSnap()` 用 `uid + ':' + SNAP_KEY` → **无论切到哪个桌面都读写 default 桌面的 `mail-letters-snap`**。非 default 桌面信箱主键（每桌面独立 `mail-letters`）为空时 `load()` 兜底 `loadSnap()` 读到 **default 桌面的信** → 串桌面 + 渲染时 `partnerName()`（当前桌面 TA）显示名字 → 「同一封信在谁桌面显示谁的名字」。
+  - **修复**：删除固定 uid，新增 `snapKey() { return window.activePrefix() + ':' + SNAP_KEY; }`，loadSnap/writeSnap（3 处）全部走动态键 → 每桌面各写各的快照，非 default 桌面不再读到 default 的信。排查确认：chat.js `writeLsSnapshot` 已是动态 `activePrefix()` ✓；feed.js 快照固定 default 是**故意**（feed-posts 全局共享数据）✓。
+  - **CDP 验证**：修复前——联系人2桌面信箱显示 default 桌面的信（内容相同+「来自 二宝」）；修复后——隔离正确（cid2 主键空时信箱空）、两桌面各自来信独立、default 显示「来自 大宝」/cid2 显示「来自 二宝」互不串。verify 10/10。
+  - 涉及 `src/js/mail.js`（AI-A 名下，本会话代改；build 产物含并行会话已保存的 chat.js/decision.js 改动，一并提交）。

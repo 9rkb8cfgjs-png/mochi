@@ -3938,7 +3938,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787201432716">Mochi 字卡传讯 v3.6.138 · 部署于 2026-08-20 12:50</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787201910652">Mochi 字卡传讯 v3.6.139 · 部署于 2026-08-20 12:58</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4681,7 +4681,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.138</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.139</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -12237,8 +12237,10 @@ window.chatAddSystem = function (text, opts) {
 opts = opts || {};
 return addIn(text, { special: opts.special || 'poke', img: opts.img, askQuestion: opts.askQuestion, askStatus: opts.askStatus, choiceQuestion: opts.choiceQuestion, choiceOptions: opts.choiceOptions, choicePref: opts.choicePref, choiceCat: opts.choiceCat, curiousQuestion: opts.curiousQuestion, curiousQuick: opts.curiousQuick, curiousReplies: opts.curiousReplies, curiousFollowup: opts.curiousFollowup, curiousQid: opts.curiousQid, curiousCat: opts.curiousCat, roastText: opts.roastText, roastCat: opts.roastCat });
 };
-window.chatAddIn = function (text) {
-return addIn(text);
+window.chatAddIn = function (text, opts) {
+const r = addIn(text, opts);
+if (opts && opts.enter && !chatVisible()) enterChat();
+return r;
 };
 function saveMsgsNow() {
 const data = JSON.stringify(msgs);
@@ -13991,7 +13993,7 @@ if (window.logFish) window.logFish();
 showTyping();
 setTimeout(() => {
 hideTyping();
-const grp = d.result === 'win' ? '游戏胜利·回应' : d.result === 'lose' ? '游戏失败·回应' : '游戏平局·回应';
+const grp = d.result === 'win' ? '游戏失败·回应' : d.result === 'lose' ? '游戏胜利·回应' : '游戏平局·回应';
 const pool = window.getInteractPool ? window.getInteractPool(grp, ['再来一局？']) : ['再来一局？'];
 const say = pool.length ? pool[Math.floor(Math.random() * pool.length)] : '再来一局？';
 addRec({ side: 'in', text: say });
@@ -25001,7 +25003,6 @@ maybeIncoming();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
 (function () {
-const uid = window.activePrefix();
 const store = window.activeStore();
 const KEY = 'mail-letters';
 const SNAP_KEY = 'mail-letters-snap';
@@ -25023,9 +25024,10 @@ t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
 clearTimeout(t._timer);
 t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
 }
+function snapKey() { return window.activePrefix() + ':' + SNAP_KEY; }
 function loadSnap() {
 try {
-const v = localStorage.getItem(uid + ':' + SNAP_KEY);
+const v = localStorage.getItem(snapKey());
 if (v) { const a = JSON.parse(v); if (Array.isArray(a)) return a; }
 } catch (e) {}
 return [];
@@ -25040,8 +25042,8 @@ if (c.partnerReply) { c.partnerReply = Object.assign({}, c.partnerReply); c.part
 return c;
 }
 function writeSnap(list) {
-if (!list || !list.length) { try { localStorage.removeItem(uid + ':' + SNAP_KEY); } catch (e) {} return; }
-try { const snap = JSON.stringify(list.map(stripLetterImg)); if (snap.length <= LS_BIG_LIMIT) localStorage.setItem(uid + ':' + SNAP_KEY, snap); } catch (e) {}
+if (!list || !list.length) { try { localStorage.removeItem(snapKey()); } catch (e) {} return; }
+try { const snap = JSON.stringify(list.map(stripLetterImg)); if (snap.length <= LS_BIG_LIMIT) localStorage.setItem(snapKey(), snap); } catch (e) {}
 }
 function load() {
 let list = [];
@@ -28147,7 +28149,7 @@ if (loadSettings().replyToChat) {
 const replyText = type === 'typeb' && options
 ? '【帮我决定】' + question + '\n选项：\n' + options.map((o, i) => (i + 1) + '. ' + o).join('\n') + '\n→ ' + result
 : '【帮我决定】' + question + ' → ' + result;
-if (window.chatAddIn) window.chatAddIn(replyText);
+if (window.chatAddIn) window.chatAddIn(replyText, { enter: true });
 }
 toast('帮我决定已完成');
 }, thinkTime * 1000);

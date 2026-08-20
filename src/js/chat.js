@@ -1722,8 +1722,10 @@
     return addIn(text, { special: opts.special || 'poke', img: opts.img, askQuestion: opts.askQuestion, askStatus: opts.askStatus, choiceQuestion: opts.choiceQuestion, choiceOptions: opts.choiceOptions, choicePref: opts.choicePref, choiceCat: opts.choiceCat, curiousQuestion: opts.curiousQuestion, curiousQuick: opts.curiousQuick, curiousReplies: opts.curiousReplies, curiousFollowup: opts.curiousFollowup, curiousQid: opts.curiousQid, curiousCat: opts.curiousCat, roastText: opts.roastText, roastCat: opts.roastCat });
   };
   // 供外部模块推送普通"联系人消息"（如查岗日常更新），持久化 + 渲染
-  window.chatAddIn = function (text) {
-    return addIn(text);
+  window.chatAddIn = function (text, opts) {
+    const r = addIn(text, opts);
+    if (opts && opts.enter && !chatVisible()) enterChat();
+    return r;
   };
   // v3.6.x：提交互动答案后立即同步写盘（不等防抖）——
   // chatChooseReply 等函数开头的 loadMsgs() 是异步读 IDB，其合并回调会在
@@ -3709,7 +3711,7 @@ function partialRetractMsg(msgEl, side) {
     showTyping();
     setTimeout(() => {
       hideTyping();
-      const grp = d.result === 'win' ? '游戏胜利·回应' : d.result === 'lose' ? '游戏失败·回应' : '游戏平局·回应';
+      const grp = d.result === 'win' ? '游戏失败·回应' : d.result === 'lose' ? '游戏胜利·回应' : '游戏平局·回应';
       const pool = window.getInteractPool ? window.getInteractPool(grp, ['再来一局？']) : ['再来一局？'];
       const say = pool.length ? pool[Math.floor(Math.random() * pool.length)] : '再来一局？';
       addRec({ side: 'in', text: say });

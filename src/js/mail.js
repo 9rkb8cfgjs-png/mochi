@@ -1,7 +1,6 @@
 // ===== 功能：信箱（仿星言简约版【星言信箱】，矢量图简约风格） =====
 // 收信（TA 主动来信）/ 寄信 / 回信；信纸样式展示；聊天里插入写信/回信/来信提示
 (function () {
-  const uid = window.activePrefix();
   const store = window.activeStore();
   const KEY = 'mail-letters';
   // v3.7.x：LS 剥图快照兜底——对齐 feed.js feed-posts-snap。信件含图片 dataURL 时主键
@@ -31,9 +30,14 @@
   // mailPending，原 load() 只读持久层 → 来信弹窗已提示「给你寄来了一封信」、信箱列表
   // 却是空白（OPPO 雨见浏览器 IndexedDB 打开/读取慢或挂起时真实复现）；这里把暂存
   // 信件按 id 合并在持久层之上，弹窗提示过的一切信件都可见可回可清角标。
+  // v3.7.x：快照键用【动态】activePrefix——原实现模块加载时 const uid 固定，
+  // 切到其它联系人桌面后 loadSnap/writeSnap 仍读写 default 桌面的快照：
+  // 非 default 桌面信箱主键为空时兜底读到 default 桌面的信 → 串桌面 +
+  // 「同一封信在谁桌面就显示谁的名字」（信箱是每桌面隔离数据，快照必须按桌面分开）
+  function snapKey() { return window.activePrefix() + ':' + SNAP_KEY; }
   function loadSnap() {
     try {
-      const v = localStorage.getItem(uid + ':' + SNAP_KEY);
+      const v = localStorage.getItem(snapKey());
       if (v) { const a = JSON.parse(v); if (Array.isArray(a)) return a; }
     } catch (e) {}
     return [];
@@ -49,8 +53,8 @@
     return c;
   }
   function writeSnap(list) {
-    if (!list || !list.length) { try { localStorage.removeItem(uid + ':' + SNAP_KEY); } catch (e) {} return; }
-    try { const snap = JSON.stringify(list.map(stripLetterImg)); if (snap.length <= LS_BIG_LIMIT) localStorage.setItem(uid + ':' + SNAP_KEY, snap); } catch (e) {}
+    if (!list || !list.length) { try { localStorage.removeItem(snapKey()); } catch (e) {} return; }
+    try { const snap = JSON.stringify(list.map(stripLetterImg)); if (snap.length <= LS_BIG_LIMIT) localStorage.setItem(snapKey(), snap); } catch (e) {}
   }
   function load() {
     let list = [];
