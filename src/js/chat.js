@@ -76,6 +76,8 @@
       // v3.7.x：切换联系人后刷新顶部栏名字 + 双方头像（原实现从不刷新，顶部栏停留在旧联系人名字）
       try { updateChatPartnerName(); } catch (e) {}
       try { fillAvatar('chat-user-av', 'avatar-user'); fillAvatar('chat-partner-av', 'avatar-partner'); } catch (e) {}
+      // v3.7.x：切联系人后刷新"让对方继续说"入口（昵称 title / 底部按钮显隐）
+      try { if (window.applyContinueSayUI) window.applyContinueSayUI(); } catch (e) {}
     } catch (e) {}
   });
   // v3.6.x：localStorage 兜底快照——聊天记录权威数据只存 IndexedDB（几千条带图
@@ -1764,7 +1766,9 @@
   function addIn(text, opts) {
     opts = opts || {};
     // v3.5.60：联系人普通消息（非系统提示）播放设置的音效
-    if (!opts.special && window.playSfx) window.playSfx('in');
+    // v3.7.x：opts.silent——一轮回复/主动发送的第 2+ 条、红包感谢、决定币/Pong 回复等
+    //   系统触发消息不响，避免多条连响听感"循环"及系统消息误响
+    if (!opts.special && !opts.silent && window.playSfx) window.playSfx('in');
     // v3.6.x：主动发送标识——标记 initiative，渲染时气泡左上角显示小爱心
     // 注意：必须在此透传给 addRec（曾漏传导致爱心从不显示）
     return addRec({ side: 'in', text: text, initiative: opts.initiative, special: opts.special, quote: opts.quote, type: opts.type, img: opts.img, parts: opts.parts, askQuestion: opts.askQuestion, askStatus: opts.askStatus, choiceQuestion: opts.choiceQuestion, choiceOptions: opts.choiceOptions, choicePref: opts.choicePref, choiceCat: opts.choiceCat, choiceStatus: opts.choiceStatus, choiceAnswer: opts.choiceAnswer, choiceReply: opts.choiceReply, choiceMatch: opts.choiceMatch, curiousQuestion: opts.curiousQuestion, curiousQuick: opts.curiousQuick, curiousReplies: opts.curiousReplies, curiousFollowup: opts.curiousFollowup, curiousQid: opts.curiousQid, curiousCat: opts.curiousCat, curiousStatus: opts.curiousStatus, curiousAnswer: opts.curiousAnswer, curiousReply: opts.curiousReply, roastText: opts.roastText, roastCat: opts.roastCat, roastStatus: opts.roastStatus, roastAnswer: opts.roastAnswer, roastReply: opts.roastReply, rpAmount: opts.rpAmount, rpWish: opts.rpWish, rpStatus: opts.rpStatus, rpTs: opts.rpTs, rpCover: opts.rpCover });
@@ -2090,7 +2094,7 @@ function partialRetractMsg(msgEl, side) {
           if (!sameCid()) return;
           hideTyping();
           const q = (wantQuote && i === 0) ? lastMineText : null;
-          replyOnce(c, q);
+          replyOnce(c, q, i > 0);
           // 还有下一条时继续显示「正在输入」
           if (i < count - 1) showTyping();
           // 最后一条回复完成后：音乐 TA 可能请求一起听歌（延后 2 秒）
@@ -2102,13 +2106,14 @@ function partialRetractMsg(msgEl, side) {
     }, delay);
   }
   // 单条回复：生成内容 + 发送 + 收藏/情绪/撤回 附带逻辑（供普通回复与「让对方继续说」共用）
-  function replyOnce(c, quote) {
+  // v3.7.x：silent——一轮多条回复时第 2+ 条不响音效（每轮只响一次）
+  function replyOnce(c, quote, silent) {
     // v3.7.x：同 scheduleReply，回调执行时若已切联系人则放弃（防串桌面）
     const myCid = window.__activeCid || 'default';
     const sameCid = () => (window.__activeCid || 'default') === myCid;
     const rep = genOneReply(c);
     // 引用我的消息：quote 是我发的文本，qside='out'（我发）
-    const m = addIn(rep.text, { quote: quote, qside: 'out', type: rep.type, parts: rep.parts });
+    const m = addIn(rep.text, { quote: quote, qside: 'out', type: rep.type, parts: rep.parts, silent: silent });
     // TA 收藏夹：联系人有概率收藏我发的最新一条消息（独立于情绪系统，任何回复后判定）
     // v3.7.x：概率可调（收藏设置页），默认 30%
     const _favProbMsg = (window.favCfg ? window.favCfg().taMsg : 30);
@@ -2176,25 +2181,57 @@ function partialRetractMsg(msgEl, side) {
     // 红包模拟器：回复完成后触发系统自动发红包（TA→我）+ pending 红包收取
     setTimeout(() => { if (!sameCid()) return; trySystemAutoSend(); tryCollectPending(); }, 2500);
   }
-  // 「让对方继续说」：点击顶部联系人昵称触发，立即发 1 条（forceSingle）
+  // 「让对方继续说」：cs-normal=0 理解回复（快速 0.3~1s 回 1 条）；=1 按正常回复时间（rs/reply 设置）
+  // 跳过已读不回/拍一拍分支——这是"让对方继续说"，必须真说
   window.continueChat = function () {
     const myCid = window.__activeCid || 'default';
     const sameCid = () => (window.__activeCid || 'default') === myCid;
     const c = cfg();
+    let delay, count;
+    if (c['cs-normal'] === 1) {
+      const rsMin = Math.max(1, Number(c['rs-min']) || 1);
+      const rsMax = Math.max(rsMin, Number(c['rs-max']) || rsMin);
+      delay = (rsMin + Math.random() * (rsMax - rsMin)) * 1000;
+      const rpMin = Math.max(1, Number(c['reply-min']) || 1);
+      const rpMax = Math.max(rpMin, Number(c['reply-max']) || 2);
+      count = randInt(rpMin, rpMax);
+    } else {
+      delay = randInt(300, 1000); count = 1;
+    }
     showTyping();
     setTimeout(() => {
       if (!sameCid()) { hideTyping(); return; }
       hideTyping();
-      replyOnce(c, null);
-      setTimeout(() => { if (!sameCid()) return; if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
-    }, 500);
+      for (let i = 0; i < count; i++) {
+        setTimeout(() => {
+          if (!sameCid()) return;
+          hideTyping();
+          replyOnce(c, null, i > 0);
+          if (i < count - 1) showTyping();
+          if (i === count - 1) setTimeout(() => { if (!sameCid()) return; if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
+        }, i * randInt(1200, 2800));
+      }
+    }, delay);
   };
-  // 点击顶部联系人昵称：让对方继续说（绑定复用顶部已声明的 pname）
+  // 点击顶部联系人昵称：让对方继续说（cs-trigger-name 控制是否生效）
   if (pname) {
     pname.addEventListener('click', () => {
-      if (window.continueChat) window.continueChat();
+      const c = cfg();
+      if (c['cs-trigger-name'] === 1 && window.continueChat) window.continueChat();
     });
   }
+  // 底部聊天栏「继续说」按钮（cs-trigger-bar 控制显隐）
+  const csBtn = document.getElementById('chat-continue-btn');
+  if (csBtn) csBtn.addEventListener('click', () => { if (window.continueChat) window.continueChat(); });
+  // 刷新"让对方继续说"入口可见性（设置页改开关后即时生效）
+  window.applyContinueSayUI = function () {
+    try {
+      const c = cfg();
+      if (pname) pname.title = c['cs-trigger-name'] === 1 ? '点击让对方继续说' : '';
+      if (csBtn) csBtn.style.display = c['cs-trigger-bar'] === 1 ? '' : 'none';
+    } catch (e) {}
+  };
+  window.applyContinueSayUI();
   // 点击顶部联系人头像：打开查岗半框（复用 poke-card 样式）
   const pAv = document.getElementById('chat-partner-av');
   if (pAv) {
@@ -2329,7 +2366,7 @@ function partialRetractMsg(msgEl, side) {
         hideTyping();
         const am = autoMsg();
         // v3.6.x：主动发送标识——标记 initiative，渲染时气泡左上角显示小爱心
-        const m = addIn(am.text, { type: am.type, initiative: true });
+        const m = addIn(am.text, { type: am.type, initiative: true, silent: i > 0 });
         if (hit(c['rc-prob'])) {
           setTimeout(() => {
             retractMsg(m, 'in');
@@ -2417,10 +2454,11 @@ function partialRetractMsg(msgEl, side) {
   }
 
   // 聊天设置：右上角三点进入，返回回聊天页
-  const csBtn = document.getElementById('chat-settings-btn');
+  // v3.7.x：变量名避免与上方 chat-continue-btn 的 csBtn 冲突（对方同名重复声明导致整包语法错误）
+  const csOpenBtn = document.getElementById('chat-settings-btn');
   const csPage = document.getElementById('page-chat-settings');
-  if (csBtn && csPage) {
-    csBtn.addEventListener('click', () => {
+  if (csOpenBtn && csPage) {
+    csOpenBtn.addEventListener('click', () => {
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       csPage.hidden = false;
     });
@@ -2559,12 +2597,14 @@ function partialRetractMsg(msgEl, side) {
   let pokeCurGroup = '__preset';  // 当前选中分组（'__preset' = 预设）
   const pokeTabsRow = document.createElement('div');
   pokeTabsRow.className = 'poke-tabs-row';
+  // 拍一拍双 tab 用独立 .poke-tab 类（不能用 .emoji-tab：表情包面板全局
+  // document.querySelectorAll('.emoji-tab') 的监听会劫持拍一拍 tab 点击并把 sel 加回全部 tab）
   const pokeTabTa = document.createElement('button');
-  pokeTabTa.className = 'emoji-tab sel';
+  pokeTabTa.className = 'poke-tab sel poke-tab-ta';
   pokeTabTa.type = 'button';
   pokeTabTa.dataset.ptab = 'ta';
   const pokeTabMine = document.createElement('button');
-  pokeTabMine.className = 'emoji-tab';
+  pokeTabMine.className = 'poke-tab poke-tab-mine';
   pokeTabMine.type = 'button';
   pokeTabMine.dataset.ptab = 'mine';
   pokeTabsRow.appendChild(pokeTabTa);
@@ -2682,24 +2722,25 @@ function partialRetractMsg(msgEl, side) {
     const n = store.get('lbl-user') || '我';
     return (n === '我' ? '我的' : n + ' 的') + '拍一拍';
   }
-  // 当前 tab 的全部分组：预设 + 用户分组 + 旧字卡库【拍一拍】分组（按人称归类）→ [{key,label,cards}]
+  // 当前 tab 的分组列表 → [{key,label,cards}]
+  // v3.7.x：联系人的拍一拍 = 只读展示 自定义聊天字卡 → 拍一拍 的分组和字卡（原样展示，
+  //   不按人称归类、不混入预设/用户分组）；我的拍一拍 = 预设 + 用户分组（可新增/新建分组）
   function pokeTabGroups(kind) {
     const out = [];
-    const presets = (POKE_PRESETS[kind] || []).slice();
+    if (kind === 'ta') {
+      let legacy = [];
+      try { legacy = (window.getPokeGroups && window.getPokeGroups()) || []; } catch (e) {}
+      legacy.forEach(g => {
+        if (!Array.isArray(g) || !Array.isArray(g[1]) || !g[0]) return;
+        out.push({ key: g[0], label: g[0], cards: g[1].slice() });
+      });
+      return out;
+    }
+    const presets = (POKE_PRESETS.mine || []).slice();
     out.push({ key: '__preset', label: '预设', cards: presets });
-    (pokeUserGroups[kind] || []).forEach(g => {
+    (pokeUserGroups.mine || []).forEach(g => {
       if (!Array.isArray(g) || !Array.isArray(g[1]) || !g[0]) return;
       out.push({ key: g[0], label: g[0], cards: g[1].slice(), user: true });
-    });
-    let legacy = [];
-    try { legacy = (window.getPokeGroups && window.getPokeGroups()) || []; } catch (e) {}
-    legacy.forEach(g => {
-      if (!Array.isArray(g) || !Array.isArray(g[1])) return;
-      const cards = g[1].filter(c => pokeKindOf(c) === kind);
-      if (!cards.length) return;
-      const exist = out.find(x => x.key === g[0]);
-      if (exist) exist.cards = exist.cards.concat(cards);
-      else out.push({ key: g[0], label: g[0], cards });
     });
     return out;
   }
@@ -2735,18 +2776,25 @@ function partialRetractMsg(msgEl, side) {
     pokeTabMine.textContent = pokeTabLabel('mine');
     pokeTabTa.classList.toggle('sel', pokeMode === 'ta');
     pokeTabMine.classList.toggle('sel', pokeMode === 'mine');
-    pokeInput.placeholder = pokeMode === 'ta' ? '输入拍一拍文字，如：弹了一下我的额头' : '输入拍一拍文字，如：拍了拍你的脸蛋';
+    // v3.7.x：联系人的拍一拍 = 只读展示（隐藏新增/输入行）；我的拍一拍 = 可新增
+    if (pokeToolsRow) pokeToolsRow.hidden = pokeMode !== 'mine';
+    if (pokeInputRow) pokeInputRow.hidden = pokeMode !== 'mine';
+    pokeInput.placeholder = '输入拍一拍文字，如：拍了拍你的脸蛋';
     const groups = pokeTabGroups(pokeMode);
     renderPokeGroupsBar(groups);
     if (!pokeList) return;
     pokeList.innerHTML = '';
     if (!groups.length) {
-      pokeList.innerHTML = '<div class="cc-empty">暂无拍一拍字卡<br>点击「＋ 新增拍一拍」添加，或直接输入拍一拍文字</div>';
+      pokeList.innerHTML = pokeMode === 'ta'
+        ? '<div class="cc-empty">暂无拍一拍字卡<br>请到 自定义聊天字卡 → 拍一拍 添加</div>'
+        : '<div class="cc-empty">暂无拍一拍字卡<br>点击「＋ 新增拍一拍」添加，或直接输入拍一拍文字</div>';
       return;
     }
     const cur = groups.find(g => g.key === pokeCurGroup) || groups[0];
     if (!cur.cards.length) {
-      pokeList.innerHTML = '<div class="cc-empty">该分组暂无拍一拍<br>点击「＋ 新增拍一拍」添加到该分组</div>';
+      pokeList.innerHTML = pokeMode === 'ta'
+        ? '<div class="cc-empty">该分组暂无拍一拍字卡<br>请到 自定义聊天字卡 → 拍一拍 添加</div>'
+        : '<div class="cc-empty">该分组暂无拍一拍<br>点击「＋ 新增拍一拍」添加到该分组</div>';
       return;
     }
     cur.cards.forEach(c => pokeList.appendChild(pokeCardEl(c)));
@@ -2779,14 +2827,12 @@ function partialRetractMsg(msgEl, side) {
   });
   pokeAddBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    const kind = pokeMode;
+    const kind = pokeMode; // 工具行仅在我的拍一拍显示，kind 恒为 'mine'
     const groups = pokeUserGroups[kind];
     // 目标分组：当前选中的用户分组；否则第一个用户分组；都没有则新建「我的新增」
     let target = groups.find(g => g[0] === pokeCurGroup) || groups[0];
     if (!target) { target = ['我的新增', []]; groups.push(target); }
-    const hint = kind === 'ta'
-      ? '（将添加到「' + target[0] + '」，作为「' + (store.get('lbl-partner') || 'TA') + '」的拍一拍）'
-      : '（将添加到「' + target[0] + '」，作为你的拍一拍）';
+    const hint = '（将添加到「' + target[0] + '」，作为你的拍一拍）';
     window.openModal('新增拍一拍' + hint, '', (v) => {
       v = (v || '').trim();
       if (!v) { toast('请输入拍一拍文字'); return; }
@@ -3070,7 +3116,7 @@ function partialRetractMsg(msgEl, side) {
     const myCid = window.__activeCid || 'default';
     const r = Math.random();
     if (r < 0.5) {
-      setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; addIn(rpThanksMsg(), {}); }, randInt(600, 1800));
+      setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; addIn(rpThanksMsg(), { silent: true }); }, randInt(600, 1800));
     } else if (r < 0.8) {
       setTimeout(() => {
         if ((window.__activeCid || 'default') !== myCid) return;

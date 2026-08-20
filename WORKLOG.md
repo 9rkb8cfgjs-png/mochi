@@ -809,3 +809,11 @@
   - **修复**（src/js/chat.js 共 3 处）：新增常量 `QUOTE_PLACEHOLDER = /^(图片|表情包|\[图片\]|\[表情包\])$/`；quoteHtml 对象分支在「有缩略图」时过滤占位文案（**历史消息里已存的引用块一并修复**）；renderQuoteBar 有缩略图时同样不显示占位文字。组合消息（文字+图）引用的真实文字不受影响（正则不匹配）。
   - **验证**：tools/verify-quote-image.mjs（新增）CDP 13/13——A 历史引用渲染 4 项（图片/表情包不显示占位、组合保留文字）+ B/C/D UI 交互引用图片/表情包/组合消息各 3 项（预览条与气泡引用块）；verify 布局 10/10。
   - ⚠️ **对方注意**：本轮 index.html 是 19:31 构建快照，**未包含**你们 19:33 保存的 chatcard.js / mobile-adapt.js / chat-pages.css / template.html 改动（仍在工作区未提交）。请收尾后重新 `node build.mjs` 并提交，避免 src 与产物不一致。
+
+### 2026-08-20
+- [本会话] 完成（用户反馈「联系人的拍一拍/我的拍一拍点击颜色一样没区分；联系人的拍一拍只需展示自定义聊天字卡【拍一拍】的分组和字卡，新增只放在我的拍一拍」——**已构建 verify 10/10 + CDP 实测 6/6，待提交**）：`src/js/chat.js` + `src/css/chat-main.css`。
+  - **tab 分工**：联系人的拍一拍 = 只读展示 自定义聊天字卡 → 拍一拍 的分组和字卡（原样，不归类不混入预设/用户分组；隐藏工具行+输入行，空态提示去字卡库添加）；我的拍一拍 = 预设 + 用户分组 + 「新建分组」「新增拍一拍」+ 输入行。
+  - **tab 配色区分**：联系人的=浅色描边（透明底+深色描边，对方气泡风）；我的=深色填充（我方气泡风）。
+  - **根因修复（重要）**：拍一拍 tab 原来复用 .emoji-tab 类，表情包面板的全局 `document.querySelectorAll('.emoji-tab')` 点击监听会**劫持拍一拍 tab 点击**（dataset.etab 为空→emojiMode=undefined→undefined===undefined→给全部 .emoji-tab 加回 sel）→ 两个 tab 永远同时高亮。修复：拍一拍 tab 改用独立 `.poke-tab` 类（样式同 .emoji-tab）。
+  - **顺带修复**：对方 19:52 新增的 chat-settings-btn 代码用 `const csBtn` 与既有 chat-continue-btn 的 csBtn 重复声明 → 整包语法错误（node --check 挂、构建挂）；已改名 csOpenBtn（对方逻辑不变），已在 WORKLOG 注明。
+  - 验证：CDP 6/6（ta 只读/无工具行/原样显示字卡库、mine 预设+工具行、选中样式 ta≠mine、mine 新增进分组、ta 点卡片发「我 拍联系人」、无 sel 串扰），verify 10/10。

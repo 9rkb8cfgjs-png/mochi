@@ -1429,9 +1429,22 @@ cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
 .poke-tabs-row {
 display:flex; gap:6px; margin-bottom:10px; flex-shrink:0;
 }
-.poke-tabs-row .emoji-tab {
+.poke-tabs-row .poke-tab {
 flex:1; min-width:0; padding:9px 6px; font-size:12px; white-space:nowrap;
 overflow:hidden; text-overflow:ellipsis;
+border-radius:11px; border:1px solid rgba(0,0,0,.1);
+background:rgba(255,255,255,.92); color:#666; font-weight:700;
+cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.poke-tabs-row .poke-tab.sel {
+background:var(--ink); color:var(--card-bg, #fff); border-color:var(--ink); font-weight:800;
+}
+.poke-tabs-row .poke-tab.poke-tab-ta.sel {
+background:transparent; color:var(--ink); border-color:var(--ink);
+border-width:1.5px; font-weight:800;
+}
+.poke-tabs-row .poke-tab.poke-tab-mine.sel {
+background:var(--ink); color:var(--card-bg, #fff); border-color:var(--ink); font-weight:800;
 }
 .poke-add-btn {
 flex:0 0 auto; padding:9px 12px; border-radius:11px;
@@ -2495,12 +2508,20 @@ from { opacity:0; transform:translateY(12px) scale(.95); }
 to { opacity:1; transform:none; }
 }
 .div-question-q { font-size:12px; color:var(--muted); text-align:center; margin-top:8px; line-height:1.6; }
+.div-result-actions { display:flex; gap:10px; margin-top:10px; }
+.div-result-actions .div-send-btn { flex:1; margin-top:0; }
 .div-send-btn {
 margin-top:10px; width:100%; border:none; border-radius:12px; padding:12px 0;
 background:var(--ink); color:#fff; font-size:13px; font-weight:700; cursor:pointer;
 font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
 .div-send-btn:active { opacity:.85; }
+.div-copy-btn {
+flex:1; border:none; border-radius:12px; padding:12px 0;
+background:rgba(0,0,0,.06); color:var(--ink); font-size:13px; font-weight:700; cursor:pointer;
+font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.div-copy-btn:active { opacity:.85; }
 .div-h-item {
 display:flex; align-items:center; gap:8px; padding:9px 2px;
 border-bottom:1px solid rgba(0,0,0,.06);
@@ -4143,7 +4164,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787225797033">Mochi 字卡传讯 v3.6.167 · 部署于 2026-08-20 19:36</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787226923119">Mochi 字卡传讯 v3.6.168 · 部署于 2026-08-20 19:55</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4912,7 +4933,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.167</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.168</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -5333,6 +5354,12 @@ color: var(--muted);
             <div class="gs-row"><span>发送条数最多</span><div class="stepper" data-k="as-count-max" data-min="1" data-max="20" data-step="1"><button class="stp-min">−</button><input class="stp-val" id="as-count-max-val" readonly><button class="stp-max">+</button></div></div>
             <div class="gs-row"><span>免打扰（弱化主动发送）</span><label class="toggle"><input type="checkbox" id="dnd-en"><span class="tk"></span></label></div>
             <div class="gs-row"><span>主动发送爱心标识</span><label class="toggle"><input type="checkbox" id="as-badge"><span class="tk"></span></label></div>
+          </div>
+          <div class="gs-title">让对方继续说</div>
+          <div class="set-group glass">
+            <div class="gs-row"><span>按正常回复时间</span><label class="toggle"><input type="checkbox" id="cs-normal"><span class="tk"></span></label></div>
+            <div class="gs-row"><span>点顶部昵称触发</span><label class="toggle"><input type="checkbox" id="cs-trigger-name"><span class="tk"></span></label></div>
+            <div class="gs-row"><span>底部聊天栏按钮触发</span><label class="toggle"><input type="checkbox" id="cs-trigger-bar"><span class="tk"></span></label></div>
           </div>
         </div>
         <div class="gs-panel" data-rpanel="mail" hidden>
@@ -6268,6 +6295,9 @@ color: var(--muted);
         <div class="chat-draft-items" id="chat-draft-items"></div>
       </div>
       <div class="chat-input-row">
+        <button class="ch-input-btn" id="chat-continue-btn" title="让对方继续说" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/><path d="M9 11h6M9 14h4"/></svg>
+        </button>
         <button class="ch-input-btn" id="chat-more-btn" title="更多功能">
           <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
         </button>
@@ -11260,6 +11290,7 @@ renderDraft();
 try { if (input) input.textContent = ''; } catch (e) {}
 try { updateChatPartnerName(); } catch (e) {}
 try { fillAvatar('chat-user-av', 'avatar-user'); fillAvatar('chat-partner-av', 'avatar-partner'); } catch (e) {}
+try { if (window.applyContinueSayUI) window.applyContinueSayUI(); } catch (e) {}
 } catch (e) {}
 });
 const LS_SNAP_LIMIT = 2 * 1024 * 1024;
@@ -12591,7 +12622,7 @@ return renderMsg(rec);
 }
 function addIn(text, opts) {
 opts = opts || {};
-if (!opts.special && window.playSfx) window.playSfx('in');
+if (!opts.special && !opts.silent && window.playSfx) window.playSfx('in');
 return addRec({ side: 'in', text: text, initiative: opts.initiative, special: opts.special, quote: opts.quote, type: opts.type, img: opts.img, parts: opts.parts, askQuestion: opts.askQuestion, askStatus: opts.askStatus, choiceQuestion: opts.choiceQuestion, choiceOptions: opts.choiceOptions, choicePref: opts.choicePref, choiceCat: opts.choiceCat, choiceStatus: opts.choiceStatus, choiceAnswer: opts.choiceAnswer, choiceReply: opts.choiceReply, choiceMatch: opts.choiceMatch, curiousQuestion: opts.curiousQuestion, curiousQuick: opts.curiousQuick, curiousReplies: opts.curiousReplies, curiousFollowup: opts.curiousFollowup, curiousQid: opts.curiousQid, curiousCat: opts.curiousCat, curiousStatus: opts.curiousStatus, curiousAnswer: opts.curiousAnswer, curiousReply: opts.curiousReply, roastText: opts.roastText, roastCat: opts.roastCat, roastStatus: opts.roastStatus, roastAnswer: opts.roastAnswer, roastReply: opts.roastReply, rpAmount: opts.rpAmount, rpWish: opts.rpWish, rpStatus: opts.rpStatus, rpTs: opts.rpTs, rpCover: opts.rpCover });
 }
 function addOut(text) {
@@ -12847,7 +12878,7 @@ setTimeout(() => {
 if (!sameCid()) return;
 hideTyping();
 const q = (wantQuote && i === 0) ? lastMineText : null;
-replyOnce(c, q);
+replyOnce(c, q, i > 0);
 if (i < count - 1) showTyping();
 if (i === count - 1) {
 setTimeout(() => { if (!sameCid()) return; if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
@@ -12856,11 +12887,11 @@ setTimeout(() => { if (!sameCid()) return; if (window.maybeMusicRequest) window.
 }
 }, delay);
 }
-function replyOnce(c, quote) {
+function replyOnce(c, quote, silent) {
 const myCid = window.__activeCid || 'default';
 const sameCid = () => (window.__activeCid || 'default') === myCid;
 const rep = genOneReply(c);
-const m = addIn(rep.text, { quote: quote, qside: 'out', type: rep.type, parts: rep.parts });
+const m = addIn(rep.text, { quote: quote, qside: 'out', type: rep.type, parts: rep.parts, silent: silent });
 const _favProbMsg = (window.favCfg ? window.favCfg().taMsg : 30);
 if (lastMineText && Math.random() * 100 < _favProbMsg) {
 const fav = getFav();
@@ -12919,19 +12950,48 @@ window.continueChat = function () {
 const myCid = window.__activeCid || 'default';
 const sameCid = () => (window.__activeCid || 'default') === myCid;
 const c = cfg();
+let delay, count;
+if (c['cs-normal'] === 1) {
+const rsMin = Math.max(1, Number(c['rs-min']) || 1);
+const rsMax = Math.max(rsMin, Number(c['rs-max']) || rsMin);
+delay = (rsMin + Math.random() * (rsMax - rsMin)) * 1000;
+const rpMin = Math.max(1, Number(c['reply-min']) || 1);
+const rpMax = Math.max(rpMin, Number(c['reply-max']) || 2);
+count = randInt(rpMin, rpMax);
+} else {
+delay = randInt(300, 1000); count = 1;
+}
 showTyping();
 setTimeout(() => {
 if (!sameCid()) { hideTyping(); return; }
 hideTyping();
-replyOnce(c, null);
-setTimeout(() => { if (!sameCid()) return; if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
-}, 500);
+for (let i = 0; i < count; i++) {
+setTimeout(() => {
+if (!sameCid()) return;
+hideTyping();
+replyOnce(c, null, i > 0);
+if (i < count - 1) showTyping();
+if (i === count - 1) setTimeout(() => { if (!sameCid()) return; if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
+}, i * randInt(1200, 2800));
+}
+}, delay);
 };
 if (pname) {
 pname.addEventListener('click', () => {
-if (window.continueChat) window.continueChat();
+const c = cfg();
+if (c['cs-trigger-name'] === 1 && window.continueChat) window.continueChat();
 });
 }
+const csBtn = document.getElementById('chat-continue-btn');
+if (csBtn) csBtn.addEventListener('click', () => { if (window.continueChat) window.continueChat(); });
+window.applyContinueSayUI = function () {
+try {
+const c = cfg();
+if (pname) pname.title = c['cs-trigger-name'] === 1 ? '点击让对方继续说' : '';
+if (csBtn) csBtn.style.display = c['cs-trigger-bar'] === 1 ? '' : 'none';
+} catch (e) {}
+};
+window.applyContinueSayUI();
 const pAv = document.getElementById('chat-partner-av');
 if (pAv) {
 pAv.addEventListener('click', (e) => {
@@ -13033,7 +13093,7 @@ for (let i = 0; i < count; i++) {
 setTimeout(() => {
 hideTyping();
 const am = autoMsg();
-const m = addIn(am.text, { type: am.type, initiative: true });
+const m = addIn(am.text, { type: am.type, initiative: true, silent: i > 0 });
 if (hit(c['rc-prob'])) {
 setTimeout(() => {
 retractMsg(m, 'in');
@@ -13101,10 +13161,10 @@ phonePage.hidden = false;
 }
 });
 }
-const csBtn = document.getElementById('chat-settings-btn');
+const csOpenBtn = document.getElementById('chat-settings-btn');
 const csPage = document.getElementById('page-chat-settings');
-if (csBtn && csPage) {
-csBtn.addEventListener('click', () => {
+if (csOpenBtn && csPage) {
+csOpenBtn.addEventListener('click', () => {
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 csPage.hidden = false;
 });
@@ -13226,11 +13286,11 @@ let pokeCurGroup = '__preset';  // 当前选中分组（'__preset' = 预设）
 const pokeTabsRow = document.createElement('div');
 pokeTabsRow.className = 'poke-tabs-row';
 const pokeTabTa = document.createElement('button');
-pokeTabTa.className = 'emoji-tab sel';
+pokeTabTa.className = 'poke-tab sel poke-tab-ta';
 pokeTabTa.type = 'button';
 pokeTabTa.dataset.ptab = 'ta';
 const pokeTabMine = document.createElement('button');
-pokeTabMine.className = 'emoji-tab';
+pokeTabMine.className = 'poke-tab poke-tab-mine';
 pokeTabMine.type = 'button';
 pokeTabMine.dataset.ptab = 'mine';
 pokeTabsRow.appendChild(pokeTabTa);
@@ -13342,21 +13402,20 @@ return (n === '我' ? '我的' : n + ' 的') + '拍一拍';
 }
 function pokeTabGroups(kind) {
 const out = [];
-const presets = (POKE_PRESETS[kind] || []).slice();
-out.push({ key: '__preset', label: '预设', cards: presets });
-(pokeUserGroups[kind] || []).forEach(g => {
-if (!Array.isArray(g) || !Array.isArray(g[1]) || !g[0]) return;
-out.push({ key: g[0], label: g[0], cards: g[1].slice(), user: true });
-});
+if (kind === 'ta') {
 let legacy = [];
 try { legacy = (window.getPokeGroups && window.getPokeGroups()) || []; } catch (e) {}
 legacy.forEach(g => {
-if (!Array.isArray(g) || !Array.isArray(g[1])) return;
-const cards = g[1].filter(c => pokeKindOf(c) === kind);
-if (!cards.length) return;
-const exist = out.find(x => x.key === g[0]);
-if (exist) exist.cards = exist.cards.concat(cards);
-else out.push({ key: g[0], label: g[0], cards });
+if (!Array.isArray(g) || !Array.isArray(g[1]) || !g[0]) return;
+out.push({ key: g[0], label: g[0], cards: g[1].slice() });
+});
+return out;
+}
+const presets = (POKE_PRESETS.mine || []).slice();
+out.push({ key: '__preset', label: '预设', cards: presets });
+(pokeUserGroups.mine || []).forEach(g => {
+if (!Array.isArray(g) || !Array.isArray(g[1]) || !g[0]) return;
+out.push({ key: g[0], label: g[0], cards: g[1].slice(), user: true });
 });
 return out;
 }
@@ -13391,18 +13450,24 @@ pokeTabTa.textContent = pokeTabLabel('ta');
 pokeTabMine.textContent = pokeTabLabel('mine');
 pokeTabTa.classList.toggle('sel', pokeMode === 'ta');
 pokeTabMine.classList.toggle('sel', pokeMode === 'mine');
-pokeInput.placeholder = pokeMode === 'ta' ? '输入拍一拍文字，如：弹了一下我的额头' : '输入拍一拍文字，如：拍了拍你的脸蛋';
+if (pokeToolsRow) pokeToolsRow.hidden = pokeMode !== 'mine';
+if (pokeInputRow) pokeInputRow.hidden = pokeMode !== 'mine';
+pokeInput.placeholder = '输入拍一拍文字，如：拍了拍你的脸蛋';
 const groups = pokeTabGroups(pokeMode);
 renderPokeGroupsBar(groups);
 if (!pokeList) return;
 pokeList.innerHTML = '';
 if (!groups.length) {
-pokeList.innerHTML = '<div class="cc-empty">暂无拍一拍字卡<br>点击「＋ 新增拍一拍」添加，或直接输入拍一拍文字</div>';
+pokeList.innerHTML = pokeMode === 'ta'
+? '<div class="cc-empty">暂无拍一拍字卡<br>请到 自定义聊天字卡 → 拍一拍 添加</div>'
+: '<div class="cc-empty">暂无拍一拍字卡<br>点击「＋ 新增拍一拍」添加，或直接输入拍一拍文字</div>';
 return;
 }
 const cur = groups.find(g => g.key === pokeCurGroup) || groups[0];
 if (!cur.cards.length) {
-pokeList.innerHTML = '<div class="cc-empty">该分组暂无拍一拍<br>点击「＋ 新增拍一拍」添加到该分组</div>';
+pokeList.innerHTML = pokeMode === 'ta'
+? '<div class="cc-empty">该分组暂无拍一拍字卡<br>请到 自定义聊天字卡 → 拍一拍 添加</div>'
+: '<div class="cc-empty">该分组暂无拍一拍<br>点击「＋ 新增拍一拍」添加到该分组</div>';
 return;
 }
 cur.cards.forEach(c => pokeList.appendChild(pokeCardEl(c)));
@@ -13435,13 +13500,11 @@ toast('已新建分组「' + v + '」');
 });
 pokeAddBtn.addEventListener('click', (e) => {
 e.stopPropagation();
-const kind = pokeMode;
+const kind = pokeMode; // 工具行仅在我的拍一拍显示，kind 恒为 'mine'
 const groups = pokeUserGroups[kind];
 let target = groups.find(g => g[0] === pokeCurGroup) || groups[0];
 if (!target) { target = ['我的新增', []]; groups.push(target); }
-const hint = kind === 'ta'
-? '（将添加到「' + target[0] + '」，作为「' + (store.get('lbl-partner') || 'TA') + '」的拍一拍）'
-: '（将添加到「' + target[0] + '」，作为你的拍一拍）';
+const hint = '（将添加到「' + target[0] + '」，作为你的拍一拍）';
 window.openModal('新增拍一拍' + hint, '', (v) => {
 v = (v || '').trim();
 if (!v) { toast('请输入拍一拍文字'); return; }
@@ -13705,7 +13768,7 @@ function rpCollectFeedback() {
 const myCid = window.__activeCid || 'default';
 const r = Math.random();
 if (r < 0.5) {
-setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; addIn(rpThanksMsg(), {}); }, randInt(600, 1800));
+setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; addIn(rpThanksMsg(), { silent: true }); }, randInt(600, 1800));
 } else if (r < 0.8) {
 setTimeout(() => {
 if ((window.__activeCid || 'default') !== myCid) return;
@@ -17796,7 +17859,8 @@ const DEFAULTS = {
 'fd-min-interval': 1, 'fd-max-interval': 720,
 'fd-min-cards-post': 4, 'fd-max-cards-post': 15,
 'fd-post-kaomoji': 10, 'fd-post-emoji': 10, 'fd-post-sticker': 30, 'fd-post-image': 30,
-'call-incoming': 15, 'call-pickup': 70, 'call-busy': 15, 'call-reject': 15, 'call-hangup': 2
+'call-incoming': 15, 'call-pickup': 70, 'call-busy': 15, 'call-reject': 15, 'call-hangup': 2,
+'cs-normal': 0, 'cs-trigger-name': 1, 'cs-trigger-bar': 0
 };
 function getCfg() {
 const out = {};
@@ -17837,7 +17901,7 @@ val.value = str;
 val.setAttribute('value', str);
 }
 });
-['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
+['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en', 'cs-normal', 'cs-trigger-name', 'cs-trigger-bar'].forEach(k => {
 const el = document.getElementById(k);
 if (el) el.checked = cfg[k] === 1;
 });
@@ -17909,10 +17973,15 @@ try { val.blur(); } catch (err) {}
 }
 });
 });
-['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
+['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en', 'cs-normal', 'cs-trigger-name', 'cs-trigger-bar'].forEach(k => {
 const el = document.getElementById(k);
 if (el) {
-el.addEventListener('change', () => window.saveReplyCfg(k, el.checked ? 1 : 0));
+el.addEventListener('change', () => {
+window.saveReplyCfg(k, el.checked ? 1 : 0);
+if (k === 'cs-trigger-name' || k === 'cs-trigger-bar') {
+try { if (window.applyContinueSayUI) window.applyContinueSayUI(); } catch (e) {}
+}
+});
 }
 });
 const asEnEl = document.getElementById('as-en');
@@ -17950,7 +18019,7 @@ v = Math.min(max, Math.max(min, v));
 window.saveReplyCfg(k, v);
 }
 });
-['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
+['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en', 'cs-normal', 'cs-trigger-name', 'cs-trigger-bar'].forEach(k => {
 const el = document.getElementById(k);
 if (el) window.saveReplyCfg(k, el.checked ? 1 : 0);
 });
@@ -21823,10 +21892,46 @@ html += '<div class="div-mini' + (cards.length === 1 ? ' div-mini-single' : '') 
 html += '</div>';
 html += '<div class="div-summary">' + summary + '</div>';
 if (question) html += '<div class="div-question-q">问：' + String(question).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
-html += '<button class="div-send-btn" id="div-send-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>把占卜结果发给 ' + (partnerName2() || 'TA') + '</button>';
+html += '<div class="div-result-actions">';
+html += '<button class="div-send-btn" id="div-send-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>发给 ' + (partnerName2() || 'TA') + '</button>';
+html += '<button class="div-copy-btn" id="div-copy-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>复制结果</button>';
+html += '</div>';
 r.innerHTML = html;
 const sendBtn = document.getElementById('div-send-btn');
 if (sendBtn) sendBtn.addEventListener('click', () => sendToChat(m, cards, summary, question));
+const copyBtn = document.getElementById('div-copy-btn');
+if (copyBtn) copyBtn.addEventListener('click', () => copyResultText(buildResultText(m, cards, summary, question)));
+}
+function buildResultText(m, cards, summary, question) {
+const modeTxt = m === 'tarot' ? '塔罗' : '雷诺曼';
+let text = '占卜 · ' + modeTxt + ' ' + cards.length + ' 张';
+if (question) text += '（问：' + question + '）';
+text += '\n';
+const labels = (MODE_LABELS[m] && MODE_LABELS[m][cards.length]) || [];
+cards.forEach((c, i) => {
+text += (i + 1) + '. ' + (labels[i] || ('位置' + (i + 1))) + ' · ' + c.name + (c.rev ? '（逆）' : '') + '：' + c.meaning + '\n';
+});
+text += '综合：' + String(summary || '').replace(/^综合[:：]/, '');
+return text;
+}
+function copyResultText(text) {
+if (navigator.clipboard && navigator.clipboard.writeText) {
+navigator.clipboard.writeText(text).then(() => toast('已复制到剪贴板')).catch(() => copyFallback(text));
+} else {
+copyFallback(text);
+}
+}
+function copyFallback(text) {
+const ta = document.createElement('textarea');
+ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+document.body.appendChild(ta); ta.select();
+try { document.execCommand('copy'); toast('已复制到剪贴板'); } catch (e) { toast('复制失败，请长按手动复制'); }
+document.body.removeChild(ta);
+}
+function sendToChat(m, cards, summary, question) {
+const text = buildResultText(m, cards, summary, question);
+if (window.chatSendMsg) { window.chatSendMsg(text); toast('已发送给 ' + (partnerName2() || 'TA')); }
+else toast('请先进入聊天页');
 }
 function sendToChat(m, cards, summary, question) {
 const modeTxt = m === 'tarot' ? '塔罗' : '雷诺曼';
@@ -29755,7 +29860,7 @@ if (loadSettings().replyToChat) {
 const replyText = type === 'typeb' && options
 ? '【帮我决定】' + question + '\n选项：\n' + options.map((o, i) => (i + 1) + '. ' + o).join('\n') + '\n→ ' + result
 : '【帮我决定】' + question + ' → ' + result;
-if (window.chatAddIn) window.chatAddIn(replyText, { enter: true });
+if (window.chatAddIn) window.chatAddIn(replyText, { enter: true, silent: true });
 }
 toast('帮我决定已完成');
 }, thinkTime * 1000);
@@ -30095,7 +30200,7 @@ const pool = draw ? POOLS.draw : (playerWin ? POOLS.player_win : POOLS.opponent_
 const reply = pool[Math.floor(Math.random() * pool.length)];
 setTimeout(() => {
 try {
-if (window.chatAddIn) window.chatAddIn(reply);
+if (window.chatAddIn) window.chatAddIn(reply, { silent: true });
 else if (window.chatSendMsg) window.chatSendMsg(reply);
 } catch (e) {}
 }, 700);

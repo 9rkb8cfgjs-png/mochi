@@ -477,10 +477,46 @@
     html += '</div>';
     html += '<div class="div-summary">' + summary + '</div>';
     if (question) html += '<div class="div-question-q">问：' + String(question).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
-    html += '<button class="div-send-btn" id="div-send-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>把占卜结果发给 ' + (partnerName2() || 'TA') + '</button>';
+    html += '<div class="div-result-actions">';
+    html += '<button class="div-send-btn" id="div-send-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>发给 ' + (partnerName2() || 'TA') + '</button>';
+    html += '<button class="div-copy-btn" id="div-copy-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>复制结果</button>';
+    html += '</div>';
     r.innerHTML = html;
     const sendBtn = document.getElementById('div-send-btn');
     if (sendBtn) sendBtn.addEventListener('click', () => sendToChat(m, cards, summary, question));
+    const copyBtn = document.getElementById('div-copy-btn');
+    if (copyBtn) copyBtn.addEventListener('click', () => copyResultText(buildResultText(m, cards, summary, question)));
+  }
+  function buildResultText(m, cards, summary, question) {
+    const modeTxt = m === 'tarot' ? '塔罗' : '雷诺曼';
+    let text = '占卜 · ' + modeTxt + ' ' + cards.length + ' 张';
+    if (question) text += '（问：' + question + '）';
+    text += '\n';
+    const labels = (MODE_LABELS[m] && MODE_LABELS[m][cards.length]) || [];
+    cards.forEach((c, i) => {
+      text += (i + 1) + '. ' + (labels[i] || ('位置' + (i + 1))) + ' · ' + c.name + (c.rev ? '（逆）' : '') + '：' + c.meaning + '\n';
+    });
+    text += '综合：' + String(summary || '').replace(/^综合[:：]/, '');
+    return text;
+  }
+  function copyResultText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => toast('已复制到剪贴板')).catch(() => copyFallback(text));
+    } else {
+      copyFallback(text);
+    }
+  }
+  function copyFallback(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('已复制到剪贴板'); } catch (e) { toast('复制失败，请长按手动复制'); }
+    document.body.removeChild(ta);
+  }
+  function sendToChat(m, cards, summary, question) {
+    const text = buildResultText(m, cards, summary, question);
+    if (window.chatSendMsg) { window.chatSendMsg(text); toast('已发送给 ' + (partnerName2() || 'TA')); }
+    else toast('请先进入聊天页');
   }
   function sendToChat(m, cards, summary, question) {
     const modeTxt = m === 'tarot' ? '塔罗' : '雷诺曼';

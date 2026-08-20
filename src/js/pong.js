@@ -404,7 +404,7 @@
       const reply = pool[Math.floor(Math.random() * pool.length)];
       setTimeout(() => {
         try {
-          if (window.chatAddIn) window.chatAddIn(reply);
+          if (window.chatAddIn) window.chatAddIn(reply, { silent: true });
           else if (window.chatSendMsg) window.chatSendMsg(reply);
         } catch (e) {}
       }, 700);

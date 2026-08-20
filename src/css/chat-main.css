@@ -586,13 +586,28 @@
   cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
 .poke-input-go:active { opacity:.85; }
-/* 拍一拍卡片：联系人/我方 双 tab 行（复用 .emoji-tab）+ 新增按钮（v3.7.x） */
+/* 拍一拍卡片：联系人/我方 双 tab 行（独立 .poke-tab——样式同 .emoji-tab 但类名独立，
+   避免表情包面板全局 .emoji-tab 监听劫持拍一拍 tab 点击）（v3.7.x） */
 .poke-tabs-row {
   display:flex; gap:6px; margin-bottom:10px; flex-shrink:0;
 }
-.poke-tabs-row .emoji-tab {
+.poke-tabs-row .poke-tab {
   flex:1; min-width:0; padding:9px 6px; font-size:12px; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis;
+  border-radius:11px; border:1px solid rgba(0,0,0,.1);
+  background:rgba(255,255,255,.92); color:#666; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.poke-tabs-row .poke-tab.sel {
+  background:var(--ink); color:var(--card-bg, #fff); border-color:var(--ink); font-weight:800;
+}
+/* 拍一拍双 tab 颜色区分（v3.7.x）：联系人的=浅色描边（对方气泡风），我的=深色填充（我方气泡风） */
+.poke-tabs-row .poke-tab.poke-tab-ta.sel {
+  background:transparent; color:var(--ink); border-color:var(--ink);
+  border-width:1.5px; font-weight:800;
+}
+.poke-tabs-row .poke-tab.poke-tab-mine.sel {
+  background:var(--ink); color:var(--card-bg, #fff); border-color:var(--ink); font-weight:800;
 }
 .poke-add-btn {
   flex:0 0 auto; padding:9px 12px; border-radius:11px;

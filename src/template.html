@@ -1245,6 +1245,12 @@
             <div class="gs-row"><span>免打扰（弱化主动发送）</span><label class="toggle"><input type="checkbox" id="dnd-en"><span class="tk"></span></label></div>
             <div class="gs-row"><span>主动发送爱心标识</span><label class="toggle"><input type="checkbox" id="as-badge"><span class="tk"></span></label></div>
           </div>
+          <div class="gs-title">让对方继续说</div>
+          <div class="set-group glass">
+            <div class="gs-row"><span>按正常回复时间</span><label class="toggle"><input type="checkbox" id="cs-normal"><span class="tk"></span></label></div>
+            <div class="gs-row"><span>点顶部昵称触发</span><label class="toggle"><input type="checkbox" id="cs-trigger-name"><span class="tk"></span></label></div>
+            <div class="gs-row"><span>底部聊天栏按钮触发</span><label class="toggle"><input type="checkbox" id="cs-trigger-bar"><span class="tk"></span></label></div>
+          </div>
         </div>
         <div class="gs-panel" data-rpanel="mail" hidden>
           <div class="gs-title">信件内容</div>
@@ -2179,6 +2185,9 @@
         <div class="chat-draft-items" id="chat-draft-items"></div>
       </div>
       <div class="chat-input-row">
+        <button class="ch-input-btn" id="chat-continue-btn" title="让对方继续说" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/><path d="M9 11h6M9 14h4"/></svg>
+        </button>
         <button class="ch-input-btn" id="chat-more-btn" title="更多功能">
           <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
         </button>

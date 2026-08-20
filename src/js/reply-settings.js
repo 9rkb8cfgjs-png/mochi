@@ -46,7 +46,10 @@
     // 10 分钟累计约 13%，通话时长大幅改善
     // v3.6.x：来电默认 8% → 15%——原来只靠独立定时器每 60 秒掷一次、首次检查还延迟 2-5 分钟，
     // 默认设置下用户会以为 TA 从不来电；已改为「TA 回复/主动发消息后按概率来电」+ 定时器兜底
-    'call-incoming': 15, 'call-pickup': 70, 'call-busy': 15, 'call-reject': 15, 'call-hangup': 2
+    'call-incoming': 15, 'call-pickup': 70, 'call-busy': 15, 'call-reject': 15, 'call-hangup': 2,
+    // v3.7.x：让对方继续说——cs-normal(0=理解回复快速回1条, 1=按正常回复时间设置)；
+    // cs-trigger-name(顶部昵称触发) / cs-trigger-bar(底部聊天栏按钮触发)，两个独立开关可同时开
+    'cs-normal': 0, 'cs-trigger-name': 1, 'cs-trigger-bar': 0
   };
 
   function getCfg() {
@@ -106,7 +109,7 @@
       }
     });
     // 开关
-    ['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
+    ['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en', 'cs-normal', 'cs-trigger-name', 'cs-trigger-bar'].forEach(k => {
       const el = document.getElementById(k);
       if (el) el.checked = cfg[k] === 1;
     });
@@ -193,10 +196,15 @@
     });
   });
   // 开关交互
-  ['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
+  ['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en', 'cs-normal', 'cs-trigger-name', 'cs-trigger-bar'].forEach(k => {
     const el = document.getElementById(k);
     if (el) {
-      el.addEventListener('change', () => window.saveReplyCfg(k, el.checked ? 1 : 0));
+      el.addEventListener('change', () => {
+        window.saveReplyCfg(k, el.checked ? 1 : 0);
+        if (k === 'cs-trigger-name' || k === 'cs-trigger-bar') {
+          try { if (window.applyContinueSayUI) window.applyContinueSayUI(); } catch (e) {}
+        }
+      });
     }
   });
   // v3.5.101：关闭「主动发送」时明确提示（否则 TA 永不主动发消息且无任何提醒）
@@ -240,7 +248,7 @@
             window.saveReplyCfg(k, v);
           }
         });
-        ['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en'].forEach(k => {
+        ['py-en', 'as-en', 'dnd-en', 'as-badge', 'ml-kaomoji-en', 'ml-emoji-en', 'ml-sticker-en', 'cs-normal', 'cs-trigger-name', 'cs-trigger-bar'].forEach(k => {
           const el = document.getElementById(k);
           if (el) window.saveReplyCfg(k, el.checked ? 1 : 0);
         });

@@ -259,7 +259,7 @@
         const replyText = type === 'typeb' && options
           ? '【帮我决定】' + question + '\n选项：\n' + options.map((o, i) => (i + 1) + '. ' + o).join('\n') + '\n→ ' + result
           : '【帮我决定】' + question + ' → ' + result;
-        if (window.chatAddIn) window.chatAddIn(replyText, { enter: true });
+        if (window.chatAddIn) window.chatAddIn(replyText, { enter: true, silent: true });
       }
       toast('帮我决定已完成');
     }, thinkTime * 1000);
