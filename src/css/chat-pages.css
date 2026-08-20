@@ -1038,6 +1038,16 @@
   display:flex; align-items:center; justify-content:center;
 }
 .ta-del:active { background:rgba(224,85,85,.15); color:#e05555; }
+/* v3.7.x：查岗字卡——移动分组按钮 + 编辑触发 + 分组拖动 */
+.ta-mv {
+  width:26px; height:26px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(0,0,0,.05); color:#666; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.ta-mv:active { background:rgba(0,0,0,.1); }
+.tc-qtext[data-edit] { cursor:pointer; }
+.tc-qtext[data-edit]:hover { color:var(--muted); }
+.mg-block.mg-dragging { opacity:.4; }
 .ta-add { display:flex; gap:8px; margin-top:8px; }
 .ta-add input {
   flex:1; min-width:0; border:1px solid rgba(0,0,0,.1); border-radius:10px;

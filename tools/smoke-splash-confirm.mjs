@@ -105,9 +105,10 @@ check('数据就绪后可点击进入', await evalJs("(function(){return !docume
 
 await evalJs("(function(){document.getElementById('splash-enter').click();return true;})()");
 await sleep(400);
-const st1 = await evalJs("(function(){var c=document.getElementById('splash-confirm');var s=document.getElementById('splash');var btn=c.querySelector('#splash-confirm-ok');var card=c.querySelector('.splash-confirm-card');var br=btn.getBoundingClientRect(), cr=card.getBoundingClientRect();return JSON.stringify({confirmVisible:!c.hidden,confirmText:(c.querySelector('.splash-confirm-text')||{}).textContent||'',btnText:btn.textContent.trim(),btnFits:br.left>=cr.left-1&&br.right<=cr.right+1,splashStillThere:!s.classList.contains('hide')});})()") || '{}';
+const st1 = await evalJs("(function(){var c=document.getElementById('splash-confirm');var s=document.getElementById('splash');var btn=c.querySelector('#splash-confirm-ok');var card=c.querySelector('.splash-confirm-card');var top=c.querySelector('.splash-confirm-top');var br=btn.getBoundingClientRect(), cr=card.getBoundingClientRect();return JSON.stringify({confirmVisible:!c.hidden,confirmText:(c.querySelector('.splash-confirm-text')||{}).textContent||'',topText:(top||{}).textContent||'',btnText:btn.textContent.trim(),btnFits:br.left>=cr.left-1&&br.right<=cr.right+1,splashStillThere:!s.classList.contains('hide')});})()") || '{}';
 const st1j = JSON.parse(st1);
 check('点进入后确认层出现', st1j.confirmVisible === true);
+check('顶部必填提示为「【报修必填】机型 + 浏览器，缺一不回。」', st1j.topText.indexOf('机型 + 浏览器') >= 0 && st1j.topText.indexOf('缺一不回') >= 0, st1j.topText);
 check('确认层含报修说明文案', (st1j.confirmText || '').indexOf('报修') >= 0 && (st1j.confirmText || '').indexOf('手机型号') >= 0);
 check('按钮文案为「确认我已知晓，我已知道如何报修设备bug」', st1j.btnText === '确认我已知晓，我已知道如何报修设备bug', st1j.btnText);
 check('按钮不超出确认卡片', st1j.btnFits === true);

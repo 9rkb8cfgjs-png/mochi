@@ -389,16 +389,35 @@
   function syncFsClass() {
     document.documentElement.classList.toggle('fs-active', isFullscreen());
   }
+  // v3.7.x：当前是否为 PWA 安装态（standalone / display_override fullscreen 直启）——
+  // 安装态切后台退出全屏是系统行为，需自动恢复；浏览器标签态用户退出全屏是主动操作，
+  // 必须尊重（否则退出后被强制重入，Chrome 的「退出全屏」提示条反复弹出，无法正常使用）
+  function fsInPwa() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches);
+    } catch (e) { return false; }
+  }
+  function handleFsExit() {
+    stopFsMonitor();
+    // 浏览器标签模式下，用户通过系统 UI（下滑/提示条/Esc）退出全屏 = 主动放弃全屏：
+    // 清掉持久化标记，切后台回来 / 重新聚焦不再强制重入（原设计「不覆盖用户意图」
+    // 只适用于 PWA 安装态，浏览器标签态会造成全屏退出后又被拉回的死循环）
+    if (!fsInPwa()) {
+      try { store.set(FS_KEY, '0'); } catch (e) {}
+      try { store.set(FB_KEY, '0'); } catch (e) {}
+      try { document.documentElement.classList.remove('fs-css-active'); } catch (e) {}
+    }
+  }
   // 全屏态变化时同步开关 + 输入框属性 + fs-active 类；
   // v3.6.x：进入全屏即启动方向监视（cover 掉「enterFs 时全屏过渡未完成、锁屏请求
   // 过早被拒」的时序窗口），退出全屏停止监视
   document.addEventListener('fullscreenchange', () => {
     syncToggle(false); applyFsInputHacks(); syncFsClass();
-    if (isFullscreen()) startFsMonitor(); else stopFsMonitor();
+    if (isFullscreen()) startFsMonitor(); else handleFsExit();
   });
   document.addEventListener('webkitfullscreenchange', () => {
     syncToggle(false); applyFsInputHacks(); syncFsClass();
-    if (isFullscreen()) startFsMonitor(); else stopFsMonitor();
+    if (isFullscreen()) startFsMonitor(); else handleFsExit();
   });
   // v3.6.x：全屏/兜底激活期间系统方向被外力改横（手机横放/自动旋转）→ 锁回竖屏
   document.addEventListener('orientationchange', () => {
@@ -437,6 +456,12 @@
     enterFs();
   }
   function reenterFs() {
+    // v3.7.x：浏览器标签模式不自动重入全屏——每次打开页面就弹「退出全屏」提示条，
+    // 用户无法正常使用；仅 PWA 安装态（standalone/fullscreen 直启）才自动恢复
+    if (!fsInPwa()) {
+      try { store.set(FS_KEY, '0'); } catch (e) {}
+      return;
+    }
     // v3.6.x：上次走的是 CSS 兜底（浏览器转横屏）→ 直接恢复兜底，不再请求原生全屏
     if (store.get(FB_KEY) === '1') { applyFsCss(true); return; }
     // v3.6.x：Via / 无锁 API 的浏览器原生全屏必横屏，恢复时同样直接走兜底

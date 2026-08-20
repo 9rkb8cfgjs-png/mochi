@@ -594,8 +594,9 @@ if (ckRefresh) {
     // 自定义分组区块（置顶，与系统预设隔开）
     groups.forEach(g => {
       const arr = custom.filter(x => x.grp === g.id);
-      html += '<div class="cal-card glass mg-block">' +
-        '<div class="cal-card-title mg-title"><span class="mg-name">' + escCk(g.name) + '</span><span class="mg-cnt">(' + arr.length + ')</span>' +
+      html += '<div class="cal-card glass mg-block" data-gid="' + escCk(g.id) + '">' +
+        '<div class="cal-card-title mg-title"><button class="mg-handle" data-gid="' + escCk(g.id) + '" title="拖动排序"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></button>' +
+        '<span class="mg-name">' + escCk(g.name) + '</span><span class="mg-cnt">(' + arr.length + ')</span>' +
         '<span class="mg-ops"><button class="mg-op" data-g="' + escCk(g.id) + '" data-op="rn" title="重命名">✎</button><button class="mg-op" data-g="' + escCk(g.id) + '" data-op="rm" title="删除分组">✕</button></span></div>' +
         (arr.length ? arr.map(x => ckMineItemHtml(x, custom.indexOf(x))).join('') : '<div class="ta-empty">这个分组还没有内容</div>') +
         '</div>';
@@ -616,10 +617,49 @@ if (ckRefresh) {
         toast('已删除');
       });
     });
+    // v3.7.x：点击字卡内容编辑
+    listEl.querySelectorAll('.tc-qtext[data-edit]').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = Number(el.dataset.edit);
+        const l = ckItems(ckTab);
+        const item = l[idx];
+        if (!item || !window.openModal) return;
+        window.openModal('编辑字卡', item.t, (v) => {
+          const val = String(v == null ? '' : v).trim();
+          if (!val) { toast('内容不能为空'); return; }
+          if (val === item.t) return;
+          if (l.some((x, xi) => xi !== idx && x.t === val)) { toast('已有相同内容'); return; }
+          l[idx].t = val;
+          ckSaveItems(ckTab, l);
+          renderCkMineList();
+          toast('已更新');
+        });
+      });
+    });
+    // v3.7.x：移动字卡到其他分组
+    listEl.querySelectorAll('.ta-mv').forEach(b => {
+      b.addEventListener('click', () => {
+        const idx = Number(b.dataset.idx);
+        const l = ckItems(ckTab);
+        const item = l[idx];
+        if (!item || !window.openModal) return;
+        const groups = ckGroups(ckTab);
+        const opts = [{ label: '未分组', value: '' }].concat(groups.map(g => ({ label: g.name, value: g.id })));
+        window.openModal('移动到分组', '', (v) => {
+          if (v == null) return;
+          l[idx].grp = v || '';
+          ckSaveItems(ckTab, l);
+          renderCkMineList();
+          const tgt = v ? (groups.find(g => g.id === v) || {}).name : '未分组';
+          toast('已移动到「' + tgt + '」');
+        }, { pills: opts, pill: item.grp || '', noInput: true });
+      });
+    });
     bindCkGroupOps();
   }
   function ckMineItemHtml(x, idx) {
-    return '<div class="tc-qrow"><div class="tc-qmain"><div class="tc-qtext">' + escCk(x.t) + '</div></div>' +
+    return '<div class="tc-qrow"><div class="tc-qmain"><div class="tc-qtext" data-edit="' + idx + '">' + escCk(x.t) + '</div></div>' +
+      '<button class="ta-mv" data-idx="' + idx + '" title="移动分组"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M3 7h13a4 4 0 014 4v0a4 4 0 01-4 4H7"/><path d="M7 11l-4 4 4 4"/></svg></button>' +
       '<button class="ta-del" data-idx="' + idx + '">✕</button></div>';
   }
   // 查岗 分组管理事件（新建 / 重命名 / 删除，按当前分类独立）
@@ -668,6 +708,79 @@ if (ckRefresh) {
             toast('已删除分组「' + g.name + '」');
           });
         }
+      });
+    });
+    // v3.7.x：分组拖动排序（手柄 ≡ 触发，克隆标题行跟随手指 + 蓝色指示线）
+    wrap.querySelectorAll('.mg-handle').forEach(b => {
+      if (b.__bound) return;
+      b.__bound = true;
+      b.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0 && e.pointerType === 'mouse') return;
+        const gid = b.dataset.gid;
+        const blocks0 = Array.from(wrap.querySelectorAll('.mg-block:not(.mg-ungrouped)'));
+        const block = blocks0.find(bl => bl.dataset.gid === gid);
+        if (!block) return;
+        const title = block.querySelector('.mg-title');
+        const rect = title.getBoundingClientRect();
+        const offsetY = e.clientY - rect.top;
+        const clone = title.cloneNode(true);
+        clone.classList.add('mg-drag-clone');
+        clone.style.position = 'fixed';
+        clone.style.left = rect.left + 'px';
+        clone.style.top = rect.top + 'px';
+        clone.style.width = rect.width + 'px';
+        clone.style.margin = '0';
+        clone.style.zIndex = '1000';
+        clone.style.pointerEvents = 'none';
+        document.body.appendChild(clone);
+        block.classList.add('mg-dragging');
+        let dropIdx = blocks0.indexOf(block);
+        const onMove = (ev) => {
+          ev.preventDefault();
+          clone.style.top = (ev.clientY - offsetY) + 'px';
+          const blocks2 = Array.from(wrap.querySelectorAll('.mg-block:not(.mg-ungrouped)'));
+          dropIdx = blocks2.length;
+          for (let i = 0; i < blocks2.length; i++) {
+            if (blocks2[i] === block) continue;
+            const r = blocks2[i].getBoundingClientRect();
+            if (ev.clientY < r.top + r.height / 2) { dropIdx = i; break; }
+          }
+          wrap.querySelectorAll('.mg-drop-line').forEach(el => el.remove());
+          const line = document.createElement('div');
+          line.className = 'mg-drop-line';
+          if (dropIdx >= blocks2.length) {
+            const last = blocks2[blocks2.length - 1];
+            if (last && last.nextSibling) wrap.insertBefore(line, last.nextSibling);
+            else wrap.appendChild(line);
+          } else {
+            wrap.insertBefore(line, blocks2[dropIdx]);
+          }
+        };
+        const onUp = () => {
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', onUp);
+          document.removeEventListener('pointercancel', onUp);
+          clone.remove();
+          block.classList.remove('mg-dragging');
+          wrap.querySelectorAll('.mg-drop-line').forEach(el => el.remove());
+          const blocks2 = Array.from(wrap.querySelectorAll('.mg-block:not(.mg-ungrouped)'));
+          const curIdx = blocks2.findIndex(bl => bl.dataset.gid === gid);
+          if (curIdx < 0 || dropIdx === curIdx || dropIdx === curIdx + 1) return;
+          const groups = ckGroups(ckTab);
+          let target = dropIdx < curIdx ? dropIdx : dropIdx - 1;
+          if (target < 0) target = 0;
+          if (target > groups.length - 1) target = groups.length - 1;
+          if (target === curIdx) return;
+          const [moved] = groups.splice(curIdx, 1);
+          groups.splice(target, 0, moved);
+          ckSaveGroups(ckTab, groups);
+          renderCkMineList();
+          toast('分组已移动');
+        };
+        document.addEventListener('pointermove', onMove, { passive: false });
+        document.addEventListener('pointerup', onUp);
+        document.addEventListener('pointercancel', onUp);
+        e.preventDefault();
       });
     });
   }

@@ -133,6 +133,11 @@ html { margin:0; padding:0; }
   font-size:15px; font-weight:800; color:var(--ink); text-align:center;
   margin-bottom:12px; letter-spacing:.5px;
 }
+/* v3.7.x：报修必填提示（顶部红色加粗，与开屏公告 sub 同风格） */
+.splash-confirm-top {
+  font-size:13px; font-weight:800; color:#c0392b; text-align:center;
+  margin-bottom:10px; letter-spacing:.5px;
+}
 .splash-confirm-text { font-size:12px; line-height:1.7; color:var(--soft-ink); text-align:left; }
 .splash-confirm-text p { margin:0 0 8px; }
 .splash-confirm-text p:last-child { margin-bottom:0; }
