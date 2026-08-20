@@ -110,6 +110,7 @@ const st1j = JSON.parse(st1);
 check('点进入后确认层出现', st1j.confirmVisible === true);
 check('顶部必填提示为「【报修必填】机型 + 浏览器，缺一不回。」', st1j.topText.indexOf('机型 + 浏览器') >= 0 && st1j.topText.indexOf('缺一不回') >= 0, st1j.topText);
 check('确认层含报修说明文案', (st1j.confirmText || '').indexOf('报修') >= 0 && (st1j.confirmText || '').indexOf('手机型号') >= 0);
+check('文案含「后台消息堆的非常多」提醒', (st1j.confirmText || '').indexOf('后台的消息堆的非常多') >= 0 && (st1j.confirmText || '').indexOf('无效沟通') >= 0);
 check('按钮文案为「确认我已知晓，我已知道如何报修设备bug」', st1j.btnText === '确认我已知晓，我已知道如何报修设备bug', st1j.btnText);
 check('按钮不超出确认卡片', st1j.btnFits === true);
 check('确认层出现时开屏未关闭', st1j.splashStillThere === true);
