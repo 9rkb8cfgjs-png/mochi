@@ -6,8 +6,8 @@
 // 会一直显示「正在安装」永不完成（WebAPK 安装要经 SW 拉 start_url/图标）。
 // 现在每个请求最多等 NETWORK_TIMEOUT 毫秒，超时立即回退缓存（没缓存则快速
 // 失败），SW 最迟约 10 秒内必然激活，安装/加载都不再无限挂起。
-const CACHE = 'mochi-mt18k6vk';
-const BUILD_INFO = '部署于 2026-08-20 16:05';
+const CACHE = 'mochi-mt18rgpm';
+const BUILD_INFO = '部署于 2026-08-20 16:11';
 const PRECACHE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png'];
 const NETWORK_TIMEOUT = 8000; // 网络请求等待上限（毫秒）
 
