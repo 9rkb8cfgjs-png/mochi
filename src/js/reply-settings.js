@@ -89,7 +89,7 @@
   function syncUI() {
     const cfg = getCfg();
     // stepper 数值
-    document.querySelectorAll('.stepper').forEach(st => {
+    document.querySelectorAll('#page-reply-settings .stepper, #page-call-settings .stepper').forEach(st => {
       const k = st.dataset.k;
       // v3.6.x：固定选 input——转换后页面里 .stp-val 会先匹配到 ce-box(DIV，继承了
       // stp-val 类)，给 DIV 写 value 只产生 expando/attribute 不影响显示，还会污染
@@ -116,7 +116,7 @@
   }
 
   // stepper 交互
-  document.querySelectorAll('.stepper').forEach(st => {
+  document.querySelectorAll('#page-reply-settings .stepper, #page-call-settings .stepper').forEach(st => {
     const k = st.dataset.k;
     // v3.6.x：data-min/max 缺失时兜底默认值，避免 NaN 写进存储（± 按钮失效、显示 NaN）
     const intAttr = (name, def) => { const v = parseInt(st.getAttribute(name), 10); return Number.isNaN(v) ? def : v; };
@@ -143,7 +143,7 @@
   // 之前用「readonly + 点击解除」方案，解除后变成可聚焦的原生 input，
   // 手机 Chrome 对该 input 聚焦仍弹「自动填充」白条；ce-box 不是表单字段，
   // 可输入数字且不弹白条。移除 readonly 让转换器正常转换（非 iOS 手机端）。
-  document.querySelectorAll('.stepper .stp-val').forEach(val => {
+  document.querySelectorAll('#page-reply-settings .stepper .stp-val, #page-call-settings .stepper .stp-val').forEach(val => {
     const st = val.closest('.stepper');
     if (!st) return;
     const k = st.dataset.k;
@@ -233,7 +233,7 @@
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
       try {
-        document.querySelectorAll('.stepper').forEach(st => {
+        document.querySelectorAll('#page-reply-settings .stepper, #page-call-settings .stepper').forEach(st => {
           const k = st.dataset.k;
           // 同 syncUI：固定选 input.stp-val，避免转换后误读到 ce-box DIV 的过期 expando
           const val = st.querySelector('input.stp-val');

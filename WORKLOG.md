@@ -9,6 +9,13 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（用户反馈「收藏页右上角没有收藏设置按钮，无法调整联系人自动收藏概率」）
+- [本会话·完成]（**已构建，verify 10/10 + 收藏设置专项 5/5 通过；未提交/未推送，等待部署确认**）：
+  - 排查结论：功能已在 src + 本地构建产物里完整存在（`fav-settings.js` + `#page-fav-settings` 弹层 + 4 个概率 stepper），但**从未推送到 GitHub（origin/main 落后本地 8 个提交，线上部署停在 17:42）**——用户看不到按钮的原因是部署未执行，不是功能缺失。
+  - 修复 bug：`src/js/reply-settings.js` 的 stepper 全局绑定 `document.querySelectorAll('.stepper')` 会连带绑定收藏设置页的 stepper——点一次 `+` 会先被 reply-settings 处理器 +5（写进 `reply-ta-msg` 错位键）再被 fav-settings 处理器再 +5（实际每次 +10）。已把 4 处全局查询收窄为 `#page-reply-settings .stepper, #page-call-settings .stepper`（通话设置 stepper 本来就依赖该全局绑定，不能误收），收藏/回复/通话三处 stepper 均验证 +5 一次、只写各自存储。
+  - 注：`fav-settings.js` 是对方新模块，本次仅改了我方 `reply-settings.js` 一处（跨文件联动，需对方知悉）；另发现 `tabs.js` 的 FULL_PAGES 缺 `page-fav-settings`（收藏设置页会残留底部 tabbar/状态栏，属对方文件，**需要对方处理**）。
+  - 待办：确认后由构建者统一 commit + push（提交时带上本次 reply-settings 修复 + 对方 fav-settings 模块及既有未提交改动）。
+
 ### 2026-08-20（用户要求「自定义聊天字卡里导出数据，需点击后弹窗选择导出的分类和里面的具体分组」）
 - [本会话·完成]（**已构建 verify 10/10 + CDP 导出弹层专项 19/19，已提交**）：
   - `src/template.html`：新增导出选择弹层 `#cc-export-mask`（复用 tc-mask/tc-panel 居中弹窗 + mg-head 头部），内部分类区 `#ce-cats` / 分组区 `#ce-grps` / 汇总 `#ce-summary` / 导出按钮 `#ce-do`。

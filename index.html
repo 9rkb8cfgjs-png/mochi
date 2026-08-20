@@ -4164,7 +4164,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787226923119">Mochi 字卡传讯 v3.6.168 · 部署于 2026-08-20 19:55</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787227384056">Mochi 字卡传讯 v3.6.169 · 部署于 2026-08-20 20:03</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4933,7 +4933,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.168</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.169</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -17890,7 +17890,7 @@ if (el) el.hidden = false;
 }
 function syncUI() {
 const cfg = getCfg();
-document.querySelectorAll('.stepper').forEach(st => {
+document.querySelectorAll('#page-reply-settings .stepper, #page-call-settings .stepper').forEach(st => {
 const k = st.dataset.k;
 const val = st.querySelector('input.stp-val');
 if (val) {
@@ -17906,7 +17906,7 @@ const el = document.getElementById(k);
 if (el) el.checked = cfg[k] === 1;
 });
 }
-document.querySelectorAll('.stepper').forEach(st => {
+document.querySelectorAll('#page-reply-settings .stepper, #page-call-settings .stepper').forEach(st => {
 const k = st.dataset.k;
 const intAttr = (name, def) => { const v = parseInt(st.getAttribute(name), 10); return Number.isNaN(v) ? def : v; };
 const min = intAttr('data-min', 0);
@@ -17925,7 +17925,7 @@ const nv = Math.min(max, cur + step);
 val.value = fmt(nv); window.saveReplyCfg(k, val.value);
 });
 });
-document.querySelectorAll('.stepper .stp-val').forEach(val => {
+document.querySelectorAll('#page-reply-settings .stepper .stp-val, #page-call-settings .stepper .stp-val').forEach(val => {
 const st = val.closest('.stepper');
 if (!st) return;
 const k = st.dataset.k;
@@ -18006,7 +18006,7 @@ const saveBtn = document.getElementById('reply-save-btn');
 if (saveBtn) {
 saveBtn.addEventListener('click', () => {
 try {
-document.querySelectorAll('.stepper').forEach(st => {
+document.querySelectorAll('#page-reply-settings .stepper, #page-call-settings .stepper').forEach(st => {
 const k = st.dataset.k;
 const val = st.querySelector('input.stp-val');
 if (k && val) {
