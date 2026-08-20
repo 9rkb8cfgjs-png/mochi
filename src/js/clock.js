@@ -45,6 +45,17 @@
   const ready = () => !!(window.__mochiDataReady);
   const enterEl = document.getElementById('splash-enter');
   const loadingEl = document.getElementById('splash-loading');
+  // v3.7.x：点「点击进入」后先弹「关于 bug 报修」确认层，点【我已知晓】才关闭进入。
+  //   只在公告可见时弹（notice.json 隐藏公告 → 直接进入，不弹确认层）。
+  //   开屏 z-index(999) 高于全局 openModal(90)，故确认层做在开屏内部。
+  const confirmEl = document.getElementById('splash-confirm');
+  const confirmOk = document.getElementById('splash-confirm-ok');
+  const noticeEl = document.getElementById('splash-notice');
+  const hasNotice = () => {
+    if (!noticeEl) return false;
+    if (noticeEl.style.display === 'none') return false; // notice.json 隐藏公告
+    return true;
+  };
   function updateEnterState() {
     const ok = ready();
     if (enterEl) enterEl.hidden = !ok;
@@ -53,18 +64,30 @@
   const enter = () => {
     if (splash.classList.contains('hide')) return;
     if (!ready()) return; // 数据未就绪：禁止进入
+    if (confirmEl && hasNotice()) { confirmEl.hidden = false; return; } // 先弹确认层
     hide();
   };
   updateEnterState();
   if (enterEl) enterEl.addEventListener('click', (e) => { e.stopPropagation(); enter(); });
   splash.addEventListener('click', enter);
+  if (confirmEl) {
+    // 确认层内点击不冒泡到 splash（避免误触触发 enter 重弹）
+    confirmEl.addEventListener('click', (e) => { e.stopPropagation(); });
+    if (confirmOk) {
+      confirmOk.addEventListener('click', (e) => {
+        e.stopPropagation();
+        confirmEl.hidden = true;
+        hide();
+      });
+    }
+  }
   // 数据回填完成 → 显示按钮（事件 + 轮询双保险：空数据场景只置标志不派发事件）
   document.addEventListener('mochi-restore-done', updateEnterState);
   const readyPoll = setInterval(() => {
     if (ready()) { clearInterval(readyPoll); updateEnterState(); }
   }, 300);
   // 20 秒保险丝：极端异常下自动进入（idbRestore 自身 12 秒必置就绪，正常不触发）
-  setTimeout(hide, 20000);
+  setTimeout(() => { if (ready()) enter(); else hide(); }, 20000);
 })();
 
 // ===== 开屏公告远程化：notice.json 在线覆盖公告文案 =====

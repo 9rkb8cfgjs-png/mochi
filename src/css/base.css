@@ -112,6 +112,37 @@ html { margin:0; padding:0; }
   margin-top:18px; font-size:12px; color:var(--hint-ink); letter-spacing:1px;
 }
 .splash-loading[hidden] { display:none; }
+/* v3.7.x：开屏「关于 bug 报修」确认层——点进入后整屏覆盖，点【我已知晓】才进入页面。
+   与 .splash 同底色（纯色盖住开屏内容），卡片风格与开屏公告一致 */
+.splash-confirm {
+  position:absolute; inset:0; z-index:5;
+  background:var(--card-bg);
+  display:flex; align-items:center; justify-content:center;
+  padding:24px 20px;
+}
+.splash-confirm[hidden] { display:none; }
+.splash-confirm-card {
+  width:min(300px, 100%); max-height:100%;
+  overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none;
+  background:var(--card-bg); border:1px solid var(--card-border);
+  border-radius:16px; padding:18px 18px 16px;
+  box-shadow:0 6px 20px rgba(0,0,0,.05);
+}
+.splash-confirm-card::-webkit-scrollbar { display:none; }
+.splash-confirm-title {
+  font-size:15px; font-weight:800; color:var(--ink); text-align:center;
+  margin-bottom:12px; letter-spacing:.5px;
+}
+.splash-confirm-text { font-size:12px; line-height:1.7; color:var(--soft-ink); text-align:left; }
+.splash-confirm-text p { margin:0 0 8px; }
+.splash-confirm-text p:last-child { margin-bottom:0; }
+.splash-confirm-btn {
+  display:block; margin:16px auto 0; padding:10px 36px; width:fit-content;
+  background:var(--btn-bg); color:var(--btn-ink); font-size:13px; font-weight:700;
+  border-radius:99px; letter-spacing:1px; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; user-select:none;
+}
+.splash-confirm-btn:active { opacity:.75; }
 @keyframes splash-pop {
   0% { transform:scale(.8); opacity:0; }
   100% { transform:scale(1); opacity:1; }

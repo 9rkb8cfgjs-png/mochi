@@ -190,6 +190,8 @@
     if (!saveTimer && !msgs.length && !chatDbReady) {
       try { msgs = JSON.parse(store.get('chat-msgs') || '[]'); } catch (e) { msgs = []; }
       if (!Array.isArray(msgs)) msgs = [];
+      // v3.7.x：LS 快照载入后先同步一次——TA 引用/收藏用的 lastMineText 不能为空
+      try { syncLastMineText(); } catch (e) {}
     }
     migrateLegacyMediaMsgs();
     // v3.5.119：每次进入聊天页都以 IndexedDB 为权威读一次并合并——
@@ -206,6 +208,7 @@
           if (v === undefined || v === null) {
             // IDB 无权威数据：若 localStorage 还有老版本数据，迁入 IDB 并清掉 LS 拋留
             chatDbReady = true;
+            try { syncLastMineText(); } catch (e) {}
             const lsRaw = store.get('chat-msgs');
             if (lsRaw) {
               try {
@@ -278,6 +281,8 @@
             // 条数不一致（IDB 快照与内存不是同一批消息）→ 索引已失效，清空会话改动标记
             if (merged.length !== curArr.length) sessionChangedIdx.clear();
             migrateLegacyMediaMsgs();
+            // v3.7.x：IDB 权威合并完成后再同步一次 lastMineText（此时才是完整历史）
+            try { syncLastMineText(); } catch (e) {}
             // v3.6.x：IDB 权威合并后再次还原乱码图标——同步部分的还原会被这里的
             // IDB 快照合并覆盖，必须对合并结果再还原一次并计入 changed，才会
             // 写回 IDB 并重渲染，历史乱码消息才能彻底修复
@@ -2002,7 +2007,6 @@ function partialRetractMsg(msgEl, side) {
         performPoke();
         return;
       }
-      const quote = hit(c['quote-prob']) ? (lastMineText || '…') : null;
       // 回复条数（每条消息独立生成内容）
       // v3.6.x：设置页最小/最大可被调反（min>max），randInt 会得负区间导致 TA 应回的
       // 消息静默消失——此处兜底保证至少 1 条
@@ -2012,7 +2016,11 @@ function partialRetractMsg(msgEl, side) {
       for (let i = 0; i < count; i++) {
         setTimeout(() => {
           hideTyping();
-          replyOnce(c, quote);
+          // v3.7.x：修复「TA 连环引用同一条消息」——原实现把上面的 quote 在循环外算一次，
+          // 连发 N 条时 N 条全部带上同一个引用块（且同一轮 30% 命中与否全军覆没）。
+          // 改为每条回复独立掷骰 + 独立取值：命中才带引用、未命中普通回复，不再连环引用。
+          const q = hit(c['quote-prob']) ? (lastMineText || null) : null;
+          replyOnce(c, q);
           // 还有下一条时继续显示「正在输入」
           if (i < count - 1) showTyping();
           // 最后一条回复完成后：音乐 TA 可能请求一起听歌（延后 2 秒）

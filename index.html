@@ -113,6 +113,35 @@ border-radius:99px; letter-spacing:1px; cursor:pointer;
 margin-top:18px; font-size:12px; color:var(--hint-ink); letter-spacing:1px;
 }
 .splash-loading[hidden] { display:none; }
+.splash-confirm {
+position:absolute; inset:0; z-index:5;
+background:var(--card-bg);
+display:flex; align-items:center; justify-content:center;
+padding:24px 20px;
+}
+.splash-confirm[hidden] { display:none; }
+.splash-confirm-card {
+width:min(300px, 100%); max-height:100%;
+overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none;
+background:var(--card-bg); border:1px solid var(--card-border);
+border-radius:16px; padding:18px 18px 16px;
+box-shadow:0 6px 20px rgba(0,0,0,.05);
+}
+.splash-confirm-card::-webkit-scrollbar { display:none; }
+.splash-confirm-title {
+font-size:15px; font-weight:800; color:var(--ink); text-align:center;
+margin-bottom:12px; letter-spacing:.5px;
+}
+.splash-confirm-text { font-size:12px; line-height:1.7; color:var(--soft-ink); text-align:left; }
+.splash-confirm-text p { margin:0 0 8px; }
+.splash-confirm-text p:last-child { margin-bottom:0; }
+.splash-confirm-btn {
+display:block; margin:16px auto 0; padding:10px 36px; width:fit-content;
+background:var(--btn-bg); color:var(--btn-ink); font-size:13px; font-weight:700;
+border-radius:99px; letter-spacing:1px; cursor:pointer;
+-webkit-tap-highlight-color:transparent; user-select:none;
+}
+.splash-confirm-btn:active { opacity:.75; }
 @keyframes splash-pop {
 0% { transform:scale(.8); opacity:0; }
 100% { transform:scale(1); opacity:1; }
@@ -3977,11 +4006,25 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787202949865">Mochi 字卡传讯 v3.6.140 · 部署于 2026-08-20 13:15</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787203200439">Mochi 字卡传讯 v3.6.141 · 部署于 2026-08-20 13:20</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
       <div class="splash-enter" id="splash-enter" hidden>点击进入</div>
+    </div>
+    <!-- v3.7.x：点「点击进入」后先弹「关于 bug 报修」确认层，点【我已知晓】才关闭进入——
+         开屏 z-index(999) 高于全局弹窗 modal-mask(90)，所以在开屏内做独立确认层，
+         内容为内测 bug 报修须知（写死兜底，报修要求是固定文案，不随公告远程化） -->
+    <div class="splash-confirm" id="splash-confirm" hidden>
+      <div class="splash-confirm-card">
+        <div class="splash-confirm-title">关于 bug 报修</div>
+        <div class="splash-confirm-text">
+          <p>mochi 字卡还在内测，一直在更新，有些问题不是代码本身的原因，而是只在特定机型 / 浏览器上出现，所以需要报修——我自己的手机上是正常的，你不报修、我测不出来就修不了。</p>
+          <p>报修时请说清楚：① 手机型号（如小米13、iPhone 14）；② 浏览器（手机自带浏览器 / Chrome / 微信等）；③ 具体是什么情况。</p>
+          <p>光说「用不了」「点不动」是不够的。不同手机和浏览器表现本来就不一样，有的问题是特定设备才触发，不是我开发造成的。说清楚我才能复现、才能修。</p>
+        </div>
+        <div class="splash-confirm-btn" id="splash-confirm-ok">我已知晓</div>
+      </div>
     </div>
   </div>
   <div class="phone">
@@ -4720,7 +4763,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.140</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.141</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -7274,6 +7317,14 @@ setTimeout(() => { if (splash.parentNode) splash.parentNode.removeChild(splash);
 const ready = () => !!(window.__mochiDataReady);
 const enterEl = document.getElementById('splash-enter');
 const loadingEl = document.getElementById('splash-loading');
+const confirmEl = document.getElementById('splash-confirm');
+const confirmOk = document.getElementById('splash-confirm-ok');
+const noticeEl = document.getElementById('splash-notice');
+const hasNotice = () => {
+if (!noticeEl) return false;
+if (noticeEl.style.display === 'none') return false; // notice.json 隐藏公告
+return true;
+};
 function updateEnterState() {
 const ok = ready();
 if (enterEl) enterEl.hidden = !ok;
@@ -7282,16 +7333,27 @@ if (loadingEl) loadingEl.hidden = ok;
 const enter = () => {
 if (splash.classList.contains('hide')) return;
 if (!ready()) return; // 数据未就绪：禁止进入
+if (confirmEl && hasNotice()) { confirmEl.hidden = false; return; } // 先弹确认层
 hide();
 };
 updateEnterState();
 if (enterEl) enterEl.addEventListener('click', (e) => { e.stopPropagation(); enter(); });
 splash.addEventListener('click', enter);
+if (confirmEl) {
+confirmEl.addEventListener('click', (e) => { e.stopPropagation(); });
+if (confirmOk) {
+confirmOk.addEventListener('click', (e) => {
+e.stopPropagation();
+confirmEl.hidden = true;
+hide();
+});
+}
+}
 document.addEventListener('mochi-restore-done', updateEnterState);
 const readyPoll = setInterval(() => {
 if (ready()) { clearInterval(readyPoll); updateEnterState(); }
 }, 300);
-setTimeout(hide, 20000);
+setTimeout(() => { if (ready()) enter(); else hide(); }, 20000);
 })();
 (function () {
 const notice = document.getElementById('splash-notice');
@@ -11063,6 +11125,7 @@ armReadyFuse();
 if (!saveTimer && !msgs.length && !chatDbReady) {
 try { msgs = JSON.parse(store.get('chat-msgs') || '[]'); } catch (e) { msgs = []; }
 if (!Array.isArray(msgs)) msgs = [];
+try { syncLastMineText(); } catch (e) {}
 }
 migrateLegacyMediaMsgs();
 try {
@@ -11072,6 +11135,7 @@ window.idbGet(myPrefix + ':chat-msgs').then(v => {
 if (window.activePrefix() !== myPrefix) return;
 if (v === undefined || v === null) {
 chatDbReady = true;
+try { syncLastMineText(); } catch (e) {}
 const lsRaw = store.get('chat-msgs');
 if (lsRaw) {
 try {
@@ -11120,6 +11184,7 @@ changed = msgs.some(m => m && (m.img === '' || m.voice === ''));
 msgs = merged;
 if (merged.length !== curArr.length) sessionChangedIdx.clear();
 migrateLegacyMediaMsgs();
+try { syncLastMineText(); } catch (e) {}
 if (restoreEscapedPokeIcons()) changed = true;
 pendingLocal = null;
 chatDbReady = true;
@@ -12510,14 +12575,14 @@ if (hit(c['touch-prob'])) {
 performPoke();
 return;
 }
-const quote = hit(c['quote-prob']) ? (lastMineText || '…') : null;
 const rpMin = Math.max(1, Number(c['reply-min']) || 1);
 const rpMax = Math.max(rpMin, Number(c['reply-max']) || 2);
 const count = randInt(rpMin, rpMax);
 for (let i = 0; i < count; i++) {
 setTimeout(() => {
 hideTyping();
-replyOnce(c, quote);
+const q = hit(c['quote-prob']) ? (lastMineText || null) : null;
+replyOnce(c, q);
 if (i < count - 1) showTyping();
 if (i === count - 1) {
 setTimeout(() => { if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
@@ -28146,10 +28211,27 @@ if (home) home.hidden = false;
 });
 }
 renderCheckinCards();
+function todayMemoText() { return store.get('memo-' + dayStr(new Date())) || legacyToday('memo', 'memo-history'); }
+function todayMoodText() { return store.get('today-mood-' + dayStr(new Date())) || legacyToday('today-mood', 'mood-history'); }
+function legacyToday(curKey, histKey) {
+try {
+const list = JSON.parse(store.get(histKey) || '[]');
+if (list.length && list[0].ts &&
+new Date(list[0].ts).toDateString() === new Date().toDateString()) {
+const legacy = store.get(curKey);
+if (legacy) {
+const ds = dayStr(new Date());
+store.set(curKey + '-' + ds, legacy);
+try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + curKey + '-' + ds, legacy); } catch (e) {}
+return legacy;
+}
+}
+} catch (e) {}
+return '';
+}
 const memoEl = document.getElementById('memo-text');
 if (memoEl) {
-const saved = store.get('memo');
-if (saved) memoEl.textContent = saved;
+memoEl.textContent = todayMemoText() || '点这里记一句话';
 memoEl.addEventListener('click', () => {
 if (window.openModal) {
 window.openModal('今日备忘', memoEl.textContent === '点这里记一句话' ? '' : memoEl.textContent, (v) => {
@@ -28167,8 +28249,7 @@ try { if (window.idbSet) window.idbSet(window.activePrefix() + ':memo-' + ds, va
 }
 const moodEl = document.getElementById('today-mood-text');
 if (moodEl) {
-const saved = store.get('today-mood');
-if (saved) moodEl.textContent = saved;
+moodEl.textContent = todayMoodText() || '点一下选心情';
 moodEl.addEventListener('click', () => {
 if (window.openModal) {
 const moods = ['开心', '平静', '想你', '忙碌', '困', '充实', '温柔'];
@@ -28181,7 +28262,7 @@ const ds = dayStr(new Date());
 store.set('today-mood-' + ds, val);
 try { if (window.idbSet) window.idbSet(window.activePrefix() + ':today-mood-' + ds, val); } catch (e) {}
 }
-}, { pills: moods.map(m => ({ label: m, value: m })), pill: store.get('today-mood') || '' });
+}, { pills: moods.map(m => ({ label: m, value: m })), pill: todayMoodText() || '' });
 }
 });
 }
@@ -28242,18 +28323,30 @@ document.addEventListener('contact-switched', function () {
 try {
 const memoEl2 = document.getElementById('memo-text');
 if (memoEl2) {
-const v = store.get('memo');
-memoEl2.textContent = v || '点这里记一句话';
+memoEl2.textContent = todayMemoText() || '点这里记一句话';
 }
 const moodEl2 = document.getElementById('today-mood-text');
 if (moodEl2) {
-const v = store.get('today-mood');
-moodEl2.textContent = v || '';
+moodEl2.textContent = todayMoodText() || '点一下选心情';
 }
 const ckPanel = document.getElementById('ck-panel');
 if (ckPanel) ckPanel.hidden = true;
 } catch (e) {}
 });
+(function () {
+let lastDay = dayStr(new Date());
+setInterval(function () {
+try {
+const now = dayStr(new Date());
+if (now === lastDay) return;
+lastDay = now;
+const m = document.getElementById('memo-text');
+if (m) m.textContent = todayMemoText() || '点这里记一句话';
+const md = document.getElementById('today-mood-text');
+if (md) md.textContent = todayMoodText() || '点一下选心情';
+} catch (e) {}
+}, 30000);
+})();
 })();
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {

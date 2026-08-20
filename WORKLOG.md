@@ -9,6 +9,15 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（用户需求「公告点击进入后新增弹窗，需点【我已知晓】关闭」）
+- [AI-B·完成]（**已构建 verify 10/10 + 确认层专项冒烟 9/9，随本次提交**）：`src/js/clock.js` `src/template.html` `src/css/base.css`（均 AI-B 域）。
+  - 需求：开屏「点击进入」后先弹「关于 bug 报修」确认层（内测报修须知：报修需附手机型号/浏览器/具体现象），点【我已知晓】才关闭并进入页面。
+  - 实现：开屏内部新增 `#splash-confirm` 确认层（开屏 z-index 999 > 全局 modal-mask 90，故不用 openModal 而做在开屏内）；`enter()` 改为先检查公告可见（`hasNotice()`：notice.json 隐藏公告时跳过确认层直接进入）→ 显示确认层；点【我已知晓】→ `confirmEl.hidden=true` + `hide()` 进入。确认层内点击 stopPropagation，不会误触 splash 重弹。20s 保险丝改为 `ready()?enter():hide()`（就绪也先弹确认层）。
+  - 文案：写死在 template（报修要求是固定须知，不随 notice.json 远程化）。
+  - 验证：verify 10/10；专项冒烟 9/9（就绪可进入/点进入弹确认层/含报修文案/开屏未关/点已知晓关闭+进入/点文字不误关/公告隐藏时不弹直接进入）。
+  - 本次构建统一包含对方已保存改动：`chat.js`（LS 快照+IDB 合并后同步 lastMineText、TA 回复独立掷骰不再连环引用同一条消息）、`p2-features.js`（备忘/心情按天显示 + 跨天自动刷新 + 老数据迁移）。
+  - 新增 `tools/smoke-splash-confirm.mjs` 专项测试（保留供回归）。
+
 ### 2026-08-20（用户反馈「OPPO Reno6 5G · Edge：朋友圈评论发不出去；联系人的评论看不到」）
 - [AI-A·完成]（**已随本会话统一构建 verify 10/10 + CDP 端到端验证**）：`src/js/feed.js`。
   - 根因：`mobile-adapt.js` 在安卓把 `<textarea>`（`#feed-comment-input` 评论框、`#feed-input` 发布框）转成 ce-box（contenteditable 转换框）——OPPO Edge 对 ce-box 聚焦/输入失效（与回复设置 stp-val 同源，WORKLOG 2026-08 OPPO Edge 记录）：打不出字，点发送时 `submitComment` 读到空内容静默返回 → 「评论发不出去」；用户互动链路断裂 → 也看不到 TA 的评论/回应。

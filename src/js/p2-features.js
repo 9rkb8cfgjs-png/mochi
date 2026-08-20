@@ -795,10 +795,34 @@ if (ckRefresh) {
 
   // ================= 桌面第二页补充：今日备忘 / 今天的心情 / 本周日常 =================
   // 备忘/心情保存时写入历史（主页展示全部记录）
+  // v3.7.x：备忘/心情按「天」显示——读当日快照（memo-YYYY-MM-DD / today-mood-YYYY-MM-DD），
+  // 当天没写过就显示占位，第二天自动重新开始（前一天内容留在历史里，可点本周日常查看）。
+  // 兼容：老版本只存固定键 memo/today-mood，无当日快照时视为「今天还没写」，不再把旧内容
+  // 一直挂在桌面上（这正是"备忘/心情不每天刷新"的根因）。
+  function todayMemoText() { return store.get('memo-' + dayStr(new Date())) || legacyToday('memo', 'memo-history'); }
+  function todayMoodText() { return store.get('today-mood-' + dayStr(new Date())) || legacyToday('today-mood', 'mood-history'); }
+  // v3.7.x 兼容升级：老版本把备忘/心情存在固定键（无日期）。当天历史第一条记录是今天写的
+  // → 把固定键内容迁移成今日快照（老内容留在桌面、不丢），否则视为「今天还没写」。
+  // 只迁移一次（迁移后已有快照，直接返回），无副作用。
+  function legacyToday(curKey, histKey) {
+    try {
+      const list = JSON.parse(store.get(histKey) || '[]');
+      if (list.length && list[0].ts &&
+          new Date(list[0].ts).toDateString() === new Date().toDateString()) {
+        const legacy = store.get(curKey);
+        if (legacy) {
+          const ds = dayStr(new Date());
+          store.set(curKey + '-' + ds, legacy);
+          try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + curKey + '-' + ds, legacy); } catch (e) {}
+          return legacy;
+        }
+      }
+    } catch (e) {}
+    return '';
+  }
   const memoEl = document.getElementById('memo-text');
   if (memoEl) {
-    const saved = store.get('memo');
-    if (saved) memoEl.textContent = saved;
+    memoEl.textContent = todayMemoText() || '点这里记一句话';
     memoEl.addEventListener('click', () => {
       if (window.openModal) {
         window.openModal('今日备忘', memoEl.textContent === '点这里记一句话' ? '' : memoEl.textContent, (v) => {
@@ -806,7 +830,7 @@ if (ckRefresh) {
           if (val) {
             memoEl.textContent = val; store.set('memo', val); pushHist('memo-history', val);
             try { if (window.idbSet) window.idbSet(window.activePrefix() + ':memo', val); } catch (e) {}
-            // v3.7.x：补写按日期快照，供本周日常点击其他日期查看当日备忘
+            // v3.7.x：补写按日期快照，供本周日常点击其他日期查看当日备忘（桌面显示也读它）
             const ds = dayStr(new Date());
             store.set('memo-' + ds, val);
             try { if (window.idbSet) window.idbSet(window.activePrefix() + ':memo-' + ds, val); } catch (e) {}
@@ -817,8 +841,7 @@ if (ckRefresh) {
   }
   const moodEl = document.getElementById('today-mood-text');
   if (moodEl) {
-    const saved = store.get('today-mood');
-    if (saved) moodEl.textContent = saved;
+    moodEl.textContent = todayMoodText() || '点一下选心情';
     moodEl.addEventListener('click', () => {
       if (window.openModal) {
         const moods = ['开心', '平静', '想你', '忙碌', '困', '充实', '温柔'];
@@ -827,12 +850,12 @@ if (ckRefresh) {
           if (val) {
             moodEl.textContent = val; store.set('today-mood', val); pushHist('mood-history', val);
             try { if (window.idbSet) window.idbSet(window.activePrefix() + ':today-mood', val); } catch (e) {}
-            // v3.7.x：补写按日期快照，供本周日常点击其他日期查看当日心情
+            // v3.7.x：补写按日期快照，供本周日常点击其他日期查看当日心情（桌面显示也读它）
             const ds = dayStr(new Date());
             store.set('today-mood-' + ds, val);
             try { if (window.idbSet) window.idbSet(window.activePrefix() + ':today-mood-' + ds, val); } catch (e) {}
           }
-        }, { pills: moods.map(m => ({ label: m, value: m })), pill: store.get('today-mood') || '' });
+        }, { pills: moods.map(m => ({ label: m, value: m })), pill: todayMoodText() || '' });
       }
     });
   }
@@ -900,17 +923,31 @@ if (ckRefresh) {
     try {
       const memoEl2 = document.getElementById('memo-text');
       if (memoEl2) {
-        const v = store.get('memo');
-        memoEl2.textContent = v || '点这里记一句话';
+        memoEl2.textContent = todayMemoText() || '点这里记一句话';
       }
       const moodEl2 = document.getElementById('today-mood-text');
       if (moodEl2) {
-        const v = store.get('today-mood');
-        moodEl2.textContent = v || '';
+        moodEl2.textContent = todayMoodText() || '点一下选心情';
       }
       // v3.7.x：关闭查岗半框——否则切换后仍浮在新桌面显示旧桌面日常（数据串桌面）
       const ckPanel = document.getElementById('ck-panel');
       if (ckPanel) ckPanel.hidden = true;
     } catch (e) {}
   });
+  // v3.7.x：跨天自动刷新——页面一直开着跨过午夜时，备忘/心情应显示新一天的空状态
+  //（桌面其余按日内容（本周日常/倒计时）本身随日期重渲染，备忘/心情是持久化文本需手动刷）
+  (function () {
+    let lastDay = dayStr(new Date());
+    setInterval(function () {
+      try {
+        const now = dayStr(new Date());
+        if (now === lastDay) return;
+        lastDay = now;
+        const m = document.getElementById('memo-text');
+        if (m) m.textContent = todayMemoText() || '点这里记一句话';
+        const md = document.getElementById('today-mood-text');
+        if (md) md.textContent = todayMoodText() || '点一下选心情';
+      } catch (e) {}
+    }, 30000);
+  })();
 })();
