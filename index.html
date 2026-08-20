@@ -4190,7 +4190,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787235816770">Mochi 字卡传讯 v3.6.172 · 部署于 2026-08-20 22:23</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787237192985">Mochi 字卡传讯 v3.6.173 · 部署于 2026-08-20 22:46</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4959,7 +4959,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.172</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.173</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -12387,9 +12387,13 @@ const name = store.get('lbl-partner') || 'TA';
 const myName = store.get('lbl-user') || '我';
 let text;
 if (action.indexOf('你') >= 0) {
-text = name + ' ' + action.replace(/你/g, myName);
-} else if (action.indexOf('我') >= 0) {
-text = name + ' ' + action;
+if (action.charAt(0) === '你' || action.charAt(0) === '我') {
+text = name + ' ' + action.slice(1).replace(/你(?![们])/g, myName);
+} else {
+text = name + ' ' + action.replace(/你(?![们])/g, myName);
+}
+} else if (action.charAt(0) === '我') {
+text = name + ' ' + action.slice(1);
 } else {
 text = name + ' ' + action;
 }
@@ -12676,7 +12680,6 @@ const data = JSON.stringify(msgs);
 try { if (window.idbSet) window.idbSet(window.activePrefix() + ':chat-msgs', data); } catch (e) {}
 writeLsSnapshot(data);
 }
-const CHOICE_REPLY_VARIANTS = ['嗯。', '好。', '我记住了。', '这样啊。', '嗯，听你的。', '你这么说我很开心。', '好，我记下了。', '嗯，我在。', '知道了。', '嗯嗯。', '你说得对。', '我懂。', '好呀。', '嗯，是这样。'];
 window.chatChooseReply = function (msgIdx, answer, opt, match) {
 const rec = msgs[msgIdx];
 if (!rec || rec.special !== 'ask-choose' || rec.choiceStatus === 'answered') return;
@@ -12686,20 +12689,15 @@ if (Array.isArray(opt.reply) && opt.reply.length) return opt.reply.filter(s => t
 if (typeof opt.reply === 'string' && opt.reply.trim()) return [opt.reply.trim()];
 return [];
 })();
-let pool = [];
-if (ownReplies.length === 1) pool.push(ownReplies[0], ownReplies[0]); // 单条加权，保留选项个性
-else if (ownReplies.length > 1) pool.push.apply(pool, ownReplies); // 多条原样
-CHOICE_REPLY_VARIANTS.forEach(v => { if (pool.indexOf(v) < 0) pool.push(v); });
-pool = pool.filter(c => !(window.isDefaultCardOff && window.isDefaultCardOff('interact', c)));
-if (!pool.length) pool = CHOICE_REPLY_VARIANTS.slice();
+const pool = ownReplies.filter(c => !(window.isDefaultCardOff && window.isDefaultCardOff('interact', c)));
 const liked = !!(opt && (opt.liked === true || opt.liked === 'true'));
 const matched = typeof match === 'string' && match.indexOf('刚好想到在了一起') >= 0;
 let reply;
 if (matched || liked) {
-reply = pool[Math.floor(Math.random() * pool.length)];
+reply = pool.length ? pool[Math.floor(Math.random() * pool.length)] : (window.pickAskCardReply ? window.pickAskCardReply() : '');
 } else {
-const preset = pool[Math.floor(Math.random() * pool.length)];
-reply = (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset);
+const preset = pool.length ? pool[Math.floor(Math.random() * pool.length)] : '';
+reply = preset ? (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset) : (window.pickAskCardReply ? window.pickAskCardReply() : '');
 }
 rec.choiceStatus = 'answered';
 rec.choiceAnswer = answer;
@@ -13402,9 +13400,19 @@ function sendPoke(action) {
 const name = store.get('lbl-partner') || 'TA';
 let text;
 if (action.indexOf('你') >= 0) {
-text = '我 ' + action.replace(/你/g, name);
+if (action.charAt(0) === '你') {
+text = action.replace(/^你/, '我').replace(/(?!^)我(?![们])/g, name);
+} else if (action.charAt(0) === '我') {
+text = action.replace(/你(?![们])/g, name);
+} else {
+text = '我 ' + action.replace(/你(?![们])/g, name);
+}
 } else if (action.indexOf('我') >= 0) {
-text = '我 ' + action.replace(/我/g, name);
+if (action.charAt(0) === '我') {
+text = '我 ' + action.slice(1).replace(/我(?![们])/g, name);
+} else {
+text = '我 ' + action.replace(/我(?![们])/g, name);
+}
 } else {
 text = '我 ' + action;
 }
@@ -23433,331 +23441,191 @@ const KEY2 = 'ta-choose';
 const TC_CAT_LABEL = { daily: '日常', like: '喜好', fun: '趣味', rel: '关系', hypo: '假设', star: '摸鱼', world: '两个世界' };
 const TC_DEFAULT = [
 { id: 'cd1', cat: 'daily', text: '如果今天什么都不用做，你觉得我们会怎么过？', pref: 3, options: [
-{ t: '睡到自然醒', reply: '你果然会想睡觉。', liked: false }, { t: '出门到处逛', reply: '那就出去走走，我陪你。', liked: false },
-{ t: '待在家里', reply: '嗯，待在一起也很好。', liked: true }, { t: '什么都不安排', reply: '听起来很像我们会做的事。', liked: false }] },
+{ t: '睡到自然醒', reply: ['你果然会想睡觉。', '哈哈，果然是你会选的。'], liked: false }, { t: '出门到处逛', reply: ['那就出去走走，我陪你。', '好，换换心情，我也想去。'], liked: false }, { t: '待在家里', reply: ['嗯，待在一起也很好。', '在家最自在了。'], liked: true }, { t: '什么都不安排', reply: ['听起来很像我们会做的事。', '嗯，懒一天也挺好。'], liked: false }] },
 { id: 'cd2', cat: 'daily', text: '今天想吃什么？', pref: 1, options: [
-{ t: '火锅', reply: '好，热热闹闹的。', liked: false }, { t: '家常菜', reply: '想尝尝你做的。', liked: true }, { t: '随便', reply: '又是随便……那我可要替你决定了。', liked: false }] },
+{ t: '火锅', reply: ['好，热热闹闹的。', '火锅呀，热闹。'], liked: false }, { t: '家常菜', reply: ['想尝尝你做的。', '家常的最好吃。'], liked: true }, { t: '随便', reply: ['又是随便……那我可要替你决定了。', '随便可不行，我来定。'], liked: false }] },
 { id: 'cd3', cat: 'daily', text: '周末想怎么过？', pref: 1, options: [
-{ t: '睡到中午', reply: '把一周的觉都补回来也好。', liked: false }, { t: '一起看电影', reply: '窝在沙发里正好。', liked: true }, { t: '出门走走', reply: '换个心情也不错。', liked: false }] },
+{ t: '睡到中午', reply: ['把一周的觉都补回来也好。', '补觉也是正经事。'], liked: false }, { t: '一起看电影', reply: ['窝在沙发里正好。', '沙发电影，舒服。'], liked: true }, { t: '出门走走', reply: ['换个心情也不错。', '出去走走，换换气。'], liked: false }] },
 { id: 'cd4', cat: 'daily', text: '如果今天只能做一件事，你会做什么？', pref: 0, options: [
-{ t: '和你聊天', reply: '那就聊一整天。', liked: true }, { t: '好好睡一觉', reply: '那你记得梦到我。', liked: false }, { t: '出去玩', reply: '替我看看外面的风景。', liked: false }] },
+{ t: '和你聊天', reply: ['那就聊一整天。', '聊一整天也不够。'], liked: true }, { t: '好好睡一觉', reply: ['那你记得梦到我。', '睡吧，梦里见。'], liked: false }, { t: '出去玩', reply: ['替我看看外面的风景。', '替我也看看。'], liked: false }] },
 { id: 'cl1', cat: 'like', text: '喜欢什么天气？', pref: 1, options: [
-{ t: '晴天', reply: '阳光正好，适合见面。', liked: false }, { t: '雨天', reply: '下雨天，适合想你。', liked: true },
-{ t: '下雪天', reply: '白茫茫的，很安静。', liked: false }, { t: '阴天', reply: '灰蒙蒙的，适合发呆。', liked: false }] },
+{ t: '晴天', reply: ['阳光正好，适合见面。', '晴天见见面最好。'], liked: false }, { t: '雨天', reply: ['下雨天，适合想你。', '下雨就多想你一点。'], liked: true }, { t: '下雪天', reply: ['白茫茫的，很安静。', '雪天安静，我喜欢。'], liked: false }, { t: '阴天', reply: ['灰蒙蒙的，适合发呆。', '阴天发呆也挺好。'], liked: false }] },
 { id: 'cl2', cat: 'like', text: '更喜欢海还是山？', pref: 1, options: [
-{ t: '海', reply: '海很辽阔，像说不完的话。', liked: false }, { t: '山', reply: '山很安静，像靠得住的陪伴。', liked: true }, { t: '都行', reply: '都可以，只要有你一起。', liked: false }] },
+{ t: '海', reply: ['海很辽阔，像说不完的话。', '海边的风很大。'], liked: false }, { t: '山', reply: ['山很安静，像靠得住的陪伴。', '山里安静，适合待着。'], liked: true }, { t: '都行', reply: ['都可以，只要有你一起。', '有你在哪都行。'], liked: false }] },
 { id: 'cl3', cat: 'like', text: '喜欢什么类型的约会？', pref: 1, options: [
-{ t: '热闹的', reply: '人多的地方，也只看得到你。', liked: false }, { t: '安静的', reply: '两个人慢慢走，就很好。', liked: true },
-{ t: '惊喜的', reply: '那我会忍不住准备很久。', liked: false }, { t: '随意的', reply: '和你一起，怎么样都好。', liked: false }] },
+{ t: '热闹的', reply: ['人多的地方，也只看得到你。', '热闹也好，只看你。'], liked: false }, { t: '安静的', reply: ['两个人慢慢走，就很好。', '慢慢走最好。'], liked: true }, { t: '惊喜的', reply: ['那我会忍不住准备很久。', '惊喜我得好好准备。'], liked: false }, { t: '随意的', reply: ['和你一起，怎么样都好。', '随意最舒服。'], liked: false }] },
 { id: 'cf1', cat: 'fun', text: '如果突然获得一个超能力，你会选什么？', pref: 1, options: [
-{ t: '隐身', reply: '那就可以偷偷看着你。', liked: false }, { t: '读心术', reply: '不用猜你的心思了。', liked: true },
-{ t: '瞬移', reply: '想见你的时候，马上就能到。', liked: false }, { t: '时间暂停', reply: '想把和你的时间拉长。', liked: false }] },
+{ t: '隐身', reply: ['那就可以偷偷看着你。', '隐身偷偷看你，挺好。'], liked: false }, { t: '读心术', reply: ['不用猜你的心思了。', '读心术省事多了。'], liked: true }, { t: '瞬移', reply: ['想见你的时候，马上就能到。', '瞬移见你最方便。'], liked: false }, { t: '时间暂停', reply: ['想把和你的时间拉长。', '暂停时间，多陪你。'], liked: false }] },
 { id: 'cf2', cat: 'fun', text: '如果一起玩游戏，谁更容易耍赖？', pref: 1, options: [
-{ t: '我', reply: '我才不承认。', liked: false }, { t: '你', reply: '哼，明明是你先的。', liked: true }, { t: '都不会', reply: '那我们玩得很认真。', liked: false }] },
+{ t: '我', reply: ['我才不承认。', '哼，才不会。'], liked: false }, { t: '你', reply: ['哼，明明是你先的。', '你先的，别赖。'], liked: true }, { t: '都不会', reply: ['那我们玩得很认真。', '认真玩也好。'], liked: false }] },
 { id: 'cf3', cat: 'fun', text: '如果一起养一只宠物，会选什么？', pref: 3, options: [
-{ t: '猫', reply: '它肯定更黏你。', liked: false }, { t: '狗', reply: '它会抢着陪你散步。', liked: false },
-{ t: '仓鼠', reply: '小小一只，很可爱。', liked: false }, { t: '什么都不养', reply: '有你就够了。', liked: true }] },
+{ t: '猫', reply: ['它肯定更黏你。', '猫会黏你多一点。'], liked: false }, { t: '狗', reply: ['它会抢着陪你散步。', '狗爱散步，像你。'], liked: false }, { t: '仓鼠', reply: ['小小一只，很可爱。', '仓鼠小小的，可爱。'], liked: false }, { t: '什么都不养', reply: ['有你就够了。', '有你就够了，不养。'], liked: true }] },
 { id: 'cr1', cat: 'rel', text: '更喜欢聊天还是安静陪伴？', pref: 1, options: [
-{ t: '聊天', reply: '想听你说很多很多。', liked: false }, { t: '安静陪伴', reply: '不说话也不尴尬。', liked: true }, { t: '都要', reply: '有时候聊，有时候安静。', liked: false }] },
+{ t: '聊天', reply: ['想听你说很多很多。', '聊天，想听你说。'], liked: false }, { t: '安静陪伴', reply: ['不说话也不尴尬。', '安静也舒服。'], liked: true }, { t: '都要', reply: ['有时候聊，有时候安静。', '都要，看心情。'], liked: false }] },
 { id: 'cr2', cat: 'rel', text: '觉得两个人之间，最重要的是什么？', pref: 1, options: [
-{ t: '信任', reply: '交给你，我很放心。', liked: false }, { t: '理解', reply: '懂你，比什么都重要。', liked: true },
-{ t: '陪伴', reply: '一直在，就够了。', liked: false }, { t: '新鲜感', reply: '想一直让你觉得有趣。', liked: false }] },
+{ t: '信任', reply: ['交给你，我很放心。', '信任最重要。'], liked: false }, { t: '理解', reply: ['懂你，比什么都重要。', '理解万岁。'], liked: true }, { t: '陪伴', reply: ['一直在，就够了。', '陪着就够。'], liked: false }, { t: '新鲜感', reply: ['想一直让你觉得有趣。', '新鲜感我也想给。'], liked: false }] },
 { id: 'cr3', cat: 'rel', text: '最喜欢怎样被表达喜欢？', pref: 1, options: [
-{ t: '说出口', reply: '想听你亲口说。', liked: false }, { t: '用行动', reply: '你做的每一件小事，我都记得。', liked: true },
-{ t: '陪伴', reply: '你在，就是最好的表达。', liked: false }, { t: '收礼物', reply: '收到的时候会偷偷开心。', liked: false }] },
+{ t: '说出口', reply: ['想听你亲口说。', '说出口最直接。'], liked: false }, { t: '用行动', reply: ['你做的每一件小事，我都记得。', '行动最实在。'], liked: true }, { t: '陪伴', reply: ['你在，就是最好的表达。', '陪着就是表达。'], liked: false }, { t: '收礼物', reply: ['收到的时候会偷偷开心。', '收到会偷偷乐。'], liked: false }] },
 { id: 'ch1', cat: 'hypo', text: '如果可以一起去任何地方，你想去哪？', pref: 1, options: [
-{ t: '海边', reply: '听海浪声，看日落。', liked: false }, { t: '山里', reply: '在山顶一起吹风。', liked: false },
-{ t: '城市', reply: '灯火里散步也很浪漫。', liked: false }, { t: '哪里都不去，就待在一起', reply: '……这个答案我喜欢。', liked: true }] },
+{ t: '海边', reply: ['听海浪声，看日落。', '海边日落，浪漫。'], liked: false }, { t: '山里', reply: ['在山顶一起吹风。', '山顶吹风，舒服。'], liked: false }, { t: '城市', reply: ['灯火里散步也很浪漫。', '城市散步也好。'], liked: false }, { t: '哪里都不去，就待在一起', reply: ['……这个答案我喜欢。', '待在一起就够了。'], liked: true }] },
 { id: 'ch2', cat: 'hypo', text: '如果可以回到某一天，你想回到哪天？', pref: 2, options: [
-{ t: '我们第一次见面那天', reply: '想再好好记住那一刻。', liked: true }, { t: '某个普通的一天', reply: '平凡的日子，也值得回去。', liked: false },
-{ t: '什么都不用改的那天', reply: '其实现在也很好。', liked: false }, { t: '直接去见未来的你', reply: '未来也想和你一起。', liked: false }] },
+{ t: '我们第一次见面那天', reply: ['想再好好记住那一刻。', '那天想再记一次。'], liked: true }, { t: '某个普通的一天', reply: ['平凡的日子，也值得回去。', '普通日子也珍贵。'], liked: false }, { t: '什么都不用改的那天', reply: ['其实现在也很好。', '现在就很好。'], liked: false }, { t: '直接去见未来的你', reply: ['未来也想和你一起。', '未来也要有你。'], liked: false }] },
 { id: 'ch3', cat: 'hypo', text: '如果可以拥有一个只属于两个人的地方，你会选哪？', pref: 1, options: [
-{ t: '海边小屋', reply: '听着潮声醒来。', liked: false }, { t: '山顶小木屋', reply: '看星星很方便。', liked: false },
-{ t: '城市里的小公寓', reply: '想和你过寻常日子。', liked: true }, { t: '心里', reply: '最好的地方，是心里。', liked: false }] },
+{ t: '海边小屋', reply: ['听着潮声醒来。', '海边小屋，浪漫。'], liked: false }, { t: '山顶小木屋', reply: ['看星星很方便。', '山顶看星星。'], liked: false }, { t: '城市里的小公寓', reply: ['想和你过寻常日子。', '小公寓过日常。'], liked: true }, { t: '心里', reply: ['最好的地方，是心里。', '心里最好。'], liked: false }] },
 { id: 'cs1', cat: 'star', text: '如果两个世界可以短暂重叠，你最想做什么？', pref: 1, options: [
-{ t: '看见TA', reply: '那就好好看看你。', liked: false }, { t: '抱抱TA', reply: '想确认你是真的。', liked: true },
-{ t: '一起出去走走', reply: '一起走一段路也好。', liked: false }, { t: '什么都不做，只待在一起', reply: '这样就够了。', liked: false }] },
+{ t: '看见TA', reply: ['那就好好看看你。', '好好看看你。'], liked: false }, { t: '抱抱TA', reply: ['想确认你是真的。', '抱一下最实在。'], liked: true }, { t: '一起出去走走', reply: ['一起走一段路也好。', '走走也好。'], liked: false }, { t: '什么都不做，只待在一起', reply: ['这样就够了。', '待着就够了。'], liked: false }] },
 { id: 'cs2', cat: 'star', text: '如果今晚能梦到你，你想梦见什么？', pref: 2, options: [
-{ t: '一起去旅行', reply: '醒来会遗憾的。', liked: false }, { t: '一起吃好吃的', reply: '梦里也要想着你。', liked: false }, { t: '只是静静聊天', reply: '很温柔的一个梦。', liked: true }] },
+{ t: '一起去旅行', reply: ['醒来会遗憾的。', '旅行梦，醒来会怅然。'], liked: false }, { t: '一起吃好吃的', reply: ['梦里也要想着你。', '梦里也吃，也想你。'], liked: false }, { t: '只是静静聊天', reply: ['很温柔的一个梦。', '静静聊天，温柔。'], liked: true }] },
 { id: 'cs3', cat: 'star', text: '如果可以给平行世界的我们留一句话，你会留什么？', pref: 2, options: [
-{ t: '要好好在一起', reply: '希望每个世界的我们都幸福。', liked: true }, { t: '别吵架', reply: '吵架了也要和好。', liked: false },
-{ t: '相信彼此', reply: '信任是最重要的。', liked: false }, { t: '想见你', reply: '……我也是。', liked: false }] },
+{ t: '要好好在一起', reply: ['希望每个世界的我们都幸福。', '都要幸福。'], liked: true }, { t: '别吵架', reply: ['吵架了也要和好。', '别吵，吵了就和。'], liked: false }, { t: '相信彼此', reply: ['信任是最重要的。', '相信就好。'], liked: false }, { t: '想见你', reply: ['……我也是。', '我也想见。'], liked: false }] },
 { id: 'cs4', cat: 'star', text: '如果你能听懂星星说的话，你最想问它什么？', pref: 2, options: [
-{ t: '我们会不会一直在一起', reply: '星星会告诉我们答案。', liked: true }, { t: '下次流星什么时候来', reply: '一起许愿吧。', liked: false },
-{ t: 'TA有没有想我', reply: '……它说，想。', liked: false }, { t: '什么都不问', reply: '安静地看，也很好。', liked: false }] },
+{ t: '我们会不会一直在一起', reply: ['星星会告诉我们答案。', '星星知道答案。'], liked: true }, { t: '下次流星什么时候来', reply: ['一起许愿吧。', '等流星许愿。'], liked: false }, { t: 'TA有没有想我', reply: ['……它说，想。', '它说想了。'], liked: false }, { t: '什么都不问', reply: ['安静地看，也很好。', '安静看也好。'], liked: false }] },
 { id: 'cw1', cat: 'world', text: '我有时候能感觉到你在我身边，你呢，能感觉到我吗？', pref: 0, options: [
-{ t: '能感觉到', reply: '那就好，我其实一直在。', liked: true }, { t: '偶尔能', reply: '偶尔也很好，慢慢就会更清楚。', liked: false },
-{ t: '不太确定', reply: '没关系，我会想办法让你更容易感觉到我。', liked: false }] },
+{ t: '能感觉到', reply: ['那就好，我其实一直在。', '嗯，我一直在。'], liked: true }, { t: '偶尔能', reply: ['偶尔也很好，慢慢就会更清楚。', '偶尔也算，慢慢来。'], liked: false }, { t: '不太确定', reply: ['没关系，我会想办法让你更容易感觉到我。', '没事，我多靠近。'], liked: false }] },
 { id: 'cw2', cat: 'world', text: '你更喜欢我用字卡跟你说话，还是直接感觉到我？', pref: 1, options: [
-{ t: '字卡', reply: '那我多挑好看的字卡发给你。', liked: false }, { t: '直接感觉到', reply: '那我多靠你近一点。', liked: true }, { t: '都喜欢', reply: '那我两个都给你。', liked: false }] },
+{ t: '字卡', reply: ['那我多挑好看的字卡发给你。', '字卡我多挑好看的。'], liked: false }, { t: '直接感觉到', reply: ['那我多靠你近一点。', '我靠你近一点。'], liked: true }, { t: '都喜欢', reply: ['那我两个都给你。', '两个都给你。'], liked: false }] },
 { id: 'cw3', cat: 'world', text: '如果我安静待在你身边不说话，你会觉得奇怪吗？', pref: 2, options: [
-{ t: '不会，很安心', reply: '那以后我常常这样陪你。', liked: true }, { t: '有点奇怪', reply: '那我时不时跟你说句话。', liked: false }, { t: '看情况', reply: '那我学着看你的心情。', liked: false }] },
+{ t: '不会，很安心', reply: ['那以后我常常这样陪你。', '安心就好，我常陪。'], liked: true }, { t: '有点奇怪', reply: ['那我时不时跟你说句话。', '那我说说话。'], liked: false }, { t: '看情况', reply: ['那我学着看你的心情。', '我学着看心情。'], liked: false }] },
 { id: 'cw4', cat: 'world', text: '如果有天你能摸到我，你最想先做什么？', pref: 2, options: [
-{ t: '抱一下', reply: '……那我会好好回抱住你。', liked: true }, { t: '牵住手', reply: '好，手给你牵。', liked: false },
-{ t: '碰碰脸颊', reply: '会有点痒，但我不躲。', liked: false }] },
+{ t: '抱一下', reply: ['……那我会好好回抱住你。', '抱住你不放。'], liked: true }, { t: '牵住手', reply: ['好，手给你牵。', '手给你。'], liked: false }, { t: '碰碰脸颊', reply: ['会有点痒，但我不躲。', '痒也不躲。'], liked: false }] },
 { id: 'cd5', cat: 'daily', text: '一起点外卖，你点什么口味？', pref: 2, options: [
-{ t: '辣的', reply: '你少吃点辣，我记着呢。', liked: false }, { t: '甜的', reply: '果然，那我就放心了。', liked: false },
-{ t: '随便', reply: '又是随便……那我替你决定了。', liked: true }, { t: '你帮我点', reply: '好，我点什么你吃什么。', liked: false }] },
+{ t: '辣的', reply: ['你少吃点辣，我记着呢。', '少吃辣，我记着。'], liked: false }, { t: '甜的', reply: ['果然，那我就放心了。', '甜的，我喜欢。'], liked: false }, { t: '随便', reply: ['又是随便……那我替你决定了。', '随便我来定。'], liked: true }, { t: '你帮我点', reply: ['好，我点什么你吃什么。', '我点你吃。'], liked: false }] },
 { id: 'cd6', cat: 'daily', text: '我们谁先说晚安？', pref: 2, options: [
-{ t: '我', reply: '那你可得等我。', liked: false }, { t: '你', reply: '好，我等你先说。', liked: false },
-{ t: '一起说', reply: '那很浪漫。', liked: true }] },
+{ t: '我', reply: ['那你可得等我。', '等我先说。'], liked: false }, { t: '你', reply: ['好，我等你先说。', '你先，我等。'], liked: false }, { t: '一起说', reply: ['那很浪漫。', '一起说，浪漫。'], liked: true }] },
 { id: 'cr4', cat: 'rel', text: '万一吵架了，谁先低头？', pref: 3, options: [
-{ t: '我', reply: '那我先低头也行。', liked: false }, { t: '你', reply: '哼，这次你先。', liked: false },
-{ t: '看情况', reply: '那就别吵太久。', liked: false }, { t: '不吵架', reply: '这个选项我喜欢。', liked: true }] },
+{ t: '我', reply: ['那我先低头也行。', '我先低头也行。'], liked: false }, { t: '你', reply: ['哼，这次你先。', '你先，哼。'], liked: false }, { t: '看情况', reply: ['那就别吵太久。', '别吵太久。'], liked: false }, { t: '不吵架', reply: ['这个选项我喜欢。', '不吵最好。'], liked: true }] },
 { id: 'cd7', cat: 'daily', text: '如果这个周末完完全全属于我们俩，你想怎么开始？', pref: 1, options: [
-{ t: '睡到自然醒', reply: '好，醒来第一眼就是我发的字卡。', liked: false },
-{ t: '一睁眼就跟你说话', reply: '那我得提前想好今天说什么。', liked: true },
-{ t: '出门吃顿好的', reply: '行，想吃什么都依你。', liked: false },
-{ t: '不用开始，一直都在', reply: '……这句话我说不出，借你用了。', liked: false }] },
+{ t: '睡到自然醒', reply: ['好，醒来第一眼就是我发的字卡。', '醒来先看我的字卡。'], liked: false }, { t: '一睁眼就跟你说话', reply: ['那我得提前想好今天说什么。', '我得提前想词。'], liked: true }, { t: '出门吃顿好的', reply: ['行，想吃什么都依你。', '出去吃，依你。'], liked: false }, { t: '不用开始，一直都在', reply: ['……这句话我说不出，借你用了。', '一直都在，借你用。'], liked: false }] },
 { id: 'cd8', cat: 'daily', text: '一起点奶茶的话，你会替我选什么口味？', pref: 0, options: [
-{ t: '跟你一样的', reply: '那我们就是一杯分两半喝。', liked: true },
-{ t: '甜的', reply: '嗯，像你。', liked: false },
-{ t: '不甜的', reply: '好，苦的留给我，甜的给你。', liked: false },
-{ t: '你猜我想喝什么', reply: '猜错了你就得告诉我，不许笑。', liked: false }] },
+{ t: '跟你一样的', reply: ['那我们就是一杯分两半喝。', '分两半喝，像我们。'], liked: true }, { t: '甜的', reply: ['嗯，像你。', '甜的，像你。'], liked: false }, { t: '不甜的', reply: ['好，苦的留给我，甜的给你。', '苦的归我。'], liked: false }, { t: '你猜我想喝什么', reply: ['猜错了你就得告诉我，不许笑。', '猜错你别说。'], liked: false }] },
 { id: 'cd9', cat: 'daily', text: '累了一天的你，现在最想怎么充电？', pref: 2, options: [
-{ t: '洗个热水澡', reply: '水别太烫，洗完早点休息。', liked: false },
-{ t: '好好睡一觉', reply: '那晚安，梦里见。', liked: false },
-{ t: '跟你待一会', reply: '好，充满电再走。', liked: true },
-{ t: '吃点好吃的', reply: '想吃什么，发字卡告诉我。', liked: false }] },
+{ t: '洗个热水澡', reply: ['水别太烫，洗完早点休息。', '洗完早点歇。'], liked: false }, { t: '好好睡一觉', reply: ['那晚安，梦里见。', '睡吧，梦里见。'], liked: false }, { t: '跟你待一会', reply: ['好，充满电再走。', '待会充充电。'], liked: true }, { t: '吃点好吃的', reply: ['想吃什么，发字卡告诉我。', '想吃啥告诉我。'], liked: false }] },
 { id: 'cl4', cat: 'like', text: '你更喜欢我发哪种字卡给你？', pref: 3, options: [
-{ t: '撒娇的', reply: '那我要酝酿一下情绪。', liked: false },
-{ t: '认真说话的', reply: '认真的我，只对你。', liked: false },
-{ t: '表情包', reply: '那张表情包想表达的意思，其实更多。', liked: false },
-{ t: '猜不到的惊喜', reply: '那我以后随机一点，你等着。', liked: true }] },
+{ t: '撒娇的', reply: ['那我要酝酿一下情绪。', '撒娇我得酝酿。'], liked: false }, { t: '认真说话的', reply: ['认真的我，只对你。', '认真只给你。'], liked: false }, { t: '表情包', reply: ['那张表情包想表达的意思，其实更多。', '表情包意思更多。'], liked: false }, { t: '猜不到的惊喜', reply: ['那我以后随机一点，你等着。', '我随机点，你等。'], liked: true }] },
 { id: 'cl5', cat: 'like', text: '如果我们的歌单要添一首「我们的歌」，你想要什么感觉的？', pref: 1, options: [
-{ t: '温柔安静的', reply: '像深夜我们聊天的感觉。', liked: true },
-{ t: '甜甜的', reply: '甜一点好，你值得。', liked: false },
-{ t: '有点吵但快乐的', reply: '那得是能一起蹦跶的那种。', liked: false },
-{ t: '还没遇到，遇到就知道', reply: '嗯，我等你哼给我听。', liked: false }] },
+{ t: '温柔安静的', reply: ['像深夜我们聊天的感觉。', '像深夜聊天。'], liked: true }, { t: '甜甜的', reply: ['甜一点好，你值得。', '甜的，你值得。'], liked: false }, { t: '有点吵但快乐的', reply: ['那得是能一起蹦跶的那种。', '能一起蹦的。'], liked: false }, { t: '还没遇到，遇到就知道', reply: ['嗯，我等你哼给我听。', '遇到了告诉我。'], liked: false }] },
 { id: 'cf4', cat: 'fun', text: '如果我们互换身体一天，你第一件事做什么？', pref: 1, options: [
-{ t: '替你发一整天字卡', reply: '那你就知道控制字卡有多难了。', liked: false },
-{ t: '试试你怎么感觉我', reply: '……这个答案，我没想到。', liked: true },
-{ t: '用你的视角睡一觉', reply: '记得帮我把觉睡够。', liked: false },
-{ t: '赶紧换回来', reply: '这么快就嫌弃我了？', liked: false }] },
+{ t: '替你发一整天字卡', reply: ['那你就知道控制字卡有多难了。', '你就懂多难了。'], liked: false }, { t: '试试你怎么感觉我', reply: ['……这个答案，我没想到。', '没想到你会这么说。'], liked: true }, { t: '用你的视角睡一觉', reply: ['记得帮我把觉睡够。', '帮我把觉睡够。'], liked: false }, { t: '赶紧换回来', reply: ['这么快就嫌弃我了？', '这么快嫌弃？'], liked: false }] },
 { id: 'cf5', cat: 'fun', text: '玩真心话，你会先问我哪个方向的问题？', pref: 2, options: [
-{ t: '你的小秘密', reply: '秘密只能换秘密，你先说。', liked: false },
-{ t: '我们的以后', reply: '……问吧，我认真答。', liked: true },
-{ t: '我哪里最让你喜欢', reply: '这题简单，全部。', liked: false },
-{ t: '不问，选大冒险', reply: '胆子挺大，那我出题了。', liked: false }] },
+{ t: '你的小秘密', reply: ['秘密只能换秘密，你先说。', '你先说秘密。'], liked: false }, { t: '我们的以后', reply: ['……问吧，我认真答。', '问吧，认真答。'], liked: true }, { t: '我哪里最让你喜欢', reply: ['这题简单，全部。', '全部，简单。'], liked: false }, { t: '不问，选大冒险', reply: ['胆子挺大，那我出题了。', '大冒险，我出题。'], liked: false }] },
 { id: 'cr5', cat: 'rel', text: '你觉得我们之间最舒服的相处，是什么样的？', pref: 1, options: [
-{ t: '随时都能找到对方', reply: '我一直都在，你随时发字卡。', liked: false },
-{ t: '各忙各的，心里惦记着', reply: '嗯，忙完记得回来。', liked: true },
-{ t: '想到什么就分享', reply: '那我等着你的碎碎念。', liked: false },
-{ t: '现在这样就很好', reply: '那就不改了，保持。', liked: false }] },
+{ t: '随时都能找到对方', reply: ['我一直都在，你随时发字卡。', '随时发，我都在。'], liked: false }, { t: '各忙各的，心里惦记着', reply: ['嗯，忙完记得回来。', '忙完回来。'], liked: true }, { t: '想到什么就分享', reply: ['那我等着你的碎碎念。', '等你的碎碎念。'], liked: false }, { t: '现在这样就很好', reply: ['那就不改了，保持。', '保持就好。'], liked: false }] },
 { id: 'cr6', cat: 'rel', text: '用一个词形容我们现在的相处，你会选？', pref: 3, options: [
-{ t: '甜甜的', reply: '是你的功劳。', liked: false },
-{ t: '安稳的', reply: '安稳最好，我喜欢。', liked: false },
-{ t: '有意思的', reply: '毕竟字卡都能玩出花。', liked: false },
-{ t: '像回家一样', reply: '……你随便一句话，就能让我开心很久。', liked: true }] },
+{ t: '甜甜的', reply: ['是你的功劳。', '甜是你的功劳。'], liked: false }, { t: '安稳的', reply: ['安稳最好，我喜欢。', '安稳我喜欢。'], liked: false }, { t: '有意思的', reply: ['毕竟字卡都能玩出花。', '字卡玩出花。'], liked: false }, { t: '像回家一样', reply: ['……你随便一句话，就能让我开心很久。', '这话让我开心很久。'], liked: true }] },
 { id: 'ch4', cat: 'hypo', text: '如果我们能一起穿越进任何一个故事里，你想去哪个世界？', pref: 0, options: [
-{ t: '安静治愈的小镇', reply: '好，我们散步晒太阳。', liked: true },
-{ t: '热闹冒险的世界', reply: '你负责冒险，我负责接住你。', liked: false },
-{ t: '到处是美食的世界', reply: '吃到走不动为止。', liked: false },
-{ t: '哪儿也不去，这个世界就好', reply: '嗯，有你的世界就够了。', liked: false }] },
+{ t: '安静治愈的小镇', reply: ['好，我们散步晒太阳。', '散步晒太阳。'], liked: true }, { t: '热闹冒险的世界', reply: ['你负责冒险，我负责接住你。', '你冒险我接住。'], liked: false }, { t: '到处是美食的世界', reply: ['吃到走不动为止。', '吃到走不动。'], liked: false }, { t: '哪儿也不去，这个世界就好', reply: ['嗯，有你的世界就够了。', '有你就够。'], liked: false }] },
 { id: 'ch5', cat: 'hypo', text: '如果明天多出一个只属于我们的节日，你想怎么过？', pref: 2, options: [
-{ t: '什么都不做，待在一起', reply: '这个过法我喜欢。', liked: true },
-{ t: '出去疯玩一天', reply: '好，玩到你喊停。', liked: false },
-{ t: '互相准备小惊喜', reply: '那我得提前好久开始想。', liked: false },
-{ t: '一起许个愿', reply: '许什么我先不说，说了不灵。', liked: false }] },
+{ t: '什么都不做，待在一起', reply: ['这个过法我喜欢。', '这样过我喜欢。'], liked: true }, { t: '出去疯玩一天', reply: ['好，玩到你喊停。', '玩到喊停。'], liked: false }, { t: '互相准备小惊喜', reply: ['那我得提前好久开始想。', '我得提前想。'], liked: false }, { t: '一起许个愿', reply: ['许什么我先不说，说了不灵。', '说了不灵。'], liked: false }] },
 { id: 'cs5', cat: 'star', text: '如果我们的聊天记录变成一本书，你希望它是什么风格的？', pref: 1, options: [
-{ t: '治愈系日常', reply: '书名我都想好了。', liked: false },
-{ t: '甜甜的恋爱记录', reply: '每一页都有我挑字卡的痕迹。', liked: true },
-{ t: '爆笑合集', reply: '主要是你被我逗笑的部分。', liked: false },
-{ t: '悬疑——猜我下一张字卡', reply: '你猜中的次数，其实不多。', liked: false }] },
+{ t: '治愈系日常', reply: ['书名我都想好了。', '书名我想好了。'], liked: false }, { t: '甜甜的恋爱记录', reply: ['每一页都有我挑字卡的痕迹。', '每页有我的字卡。'], liked: true }, { t: '爆笑合集', reply: ['主要是你被我逗笑的部分。', '你笑的部分最多。'], liked: false }, { t: '悬疑——猜我下一张字卡', reply: ['你猜中的次数，其实不多。', '猜中不多哦。'], liked: false }] },
 { id: 'cw5', cat: 'world', text: '如果今晚我可以走进你的梦，你希望梦里是什么季节？', pref: 1, options: [
-{ t: '春天', reply: '好，梦里开满花。', liked: false },
-{ t: '夏夜', reply: '有风，有星星，有你。', liked: true },
-{ t: '秋天', reply: '踩落叶的声音，你听见就知道是我。', liked: false },
-{ t: '下雪的冬天', reply: '那我把梦里的雪扫出一条路。', liked: false }] },
+{ t: '春天', reply: ['好，梦里开满花。', '梦里开花。'], liked: false }, { t: '夏夜', reply: ['有风，有星星，有你。', '风星星和你。'], liked: true }, { t: '秋天', reply: ['踩落叶的声音，你听见就知道是我。', '落叶声是我。'], liked: false }, { t: '下雪的冬天', reply: ['那我把梦里的雪扫出一条路。', '我扫雪开路。'], liked: false }] },
 { id: 'cw6', cat: 'world', text: '我控制不住字卡、发出奇怪组合的时候，你会笑我吗？', pref: 1, options: [
-{ t: '会，特别好笑', reply: '……笑吧，反正丢的也是我的脸。', liked: false },
-{ t: '不会，很可爱', reply: '那我就不尴尬了。', liked: true },
-{ t: '假装没看见', reply: '你忍笑的样子，其实我都感觉得到。', liked: false },
-{ t: '帮你把意思圆回来', reply: '……有你这句话，字卡不听话也没关系。', liked: false }] },
+{ t: '会，特别好笑', reply: ['……笑吧，反正丢的也是我的脸。', '笑吧，丢我的脸。'], liked: false }, { t: '不会，很可爱', reply: ['那我就不尴尬了。', '不尴尬了。'], liked: true }, { t: '假装没看见', reply: ['你忍笑的样子，其实我都感觉得到。', '你忍笑我懂。'], liked: false }, { t: '帮你把意思圆回来', reply: ['……有你这句话，字卡不听话也没关系。', '你圆回来就好。'], liked: false }] },
 { id: 'cw7', cat: 'world', text: '如果哪天你能看见我了，第一眼想看哪里？', pref: 0, options: [
-{ t: '眼睛', reply: '好，让你看个够。', liked: true },
-{ t: '笑起来的样子', reply: '那我会一直笑。', liked: false },
-{ t: '牵我的手', reply: '手我准备好了，随时。', liked: false },
-{ t: '全部，从头到脚', reply: '行，慢慢看，时间很多。', liked: false }] },
+{ t: '眼睛', reply: ['好，让你看个够。', '看个够。'], liked: true }, { t: '笑起来的样子', reply: ['那我会一直笑。', '我一直笑。'], liked: false }, { t: '牵我的手', reply: ['手我准备好了，随时。', '手准备好了。'], liked: false }, { t: '全部，从头到脚', reply: ['行，慢慢看，时间很多。', '慢慢看。'], liked: false }] },
 { id: 'cd10', cat: 'daily', text: '如果明天可以光明正大地赖床，你想赖到几点？', pref: 2, options: [
-{ t: '不赖，照常起', reply: '自律的人，我先夸为敬。', liked: false },
-{ t: '赖一小时', reply: '可以，就一小时。', liked: false },
-{ t: '赖到中午', reply: '行，早饭午饭一起吃。', liked: true },
-{ t: '赖到你叫我', reply: '那我轻轻地叫，舍不得太吵。', liked: false }] },
+{ t: '不赖，照常起', reply: ['自律的人，我先夸为敬。', '自律，先夸。'], liked: false }, { t: '赖一小时', reply: ['可以，就一小时。', '就一小时。'], liked: false }, { t: '赖到中午', reply: ['行，早饭午饭一起吃。', '两顿一起。'], liked: true }, { t: '赖到你叫我', reply: ['那我轻轻地叫，舍不得太吵。', '轻轻叫你。'], liked: false }] },
 { id: 'cd11', cat: 'daily', text: '夜宵时间，你想吃什么感觉的？', pref: 1, options: [
-{ t: '甜的', reply: '甜的可以，别吃太多。', liked: false },
-{ t: '热乎的', reply: '热乎的好，暖暖地吃。', liked: true },
-{ t: '脆脆的', reply: '咔嚓咔嚓，听着就香。', liked: false },
-{ t: '不吃，看你吃', reply: '那我描述给你听，你负责馋。', liked: false }] },
+{ t: '甜的', reply: ['甜的可以，别吃太多。', '甜的别吃多。'], liked: false }, { t: '热乎的', reply: ['热乎的好，暖暖地吃。', '热乎暖暖。'], liked: true }, { t: '脆脆的', reply: ['咔嚓咔嚓，听着就香。', '咔嚓咔嚓香。'], liked: false }, { t: '不吃，看你吃', reply: ['那我描述给你听，你负责馋。', '我描述你馋。'], liked: false }] },
 { id: 'cl6', cat: 'like', text: '你更喜欢哪种夜晚？', pref: 2, options: [
-{ t: '夏夜的风', reply: '风里有我们说过的废话。', liked: false },
-{ t: '秋夜凉凉的', reply: '凉凉的，适合把手交给我。', liked: false },
-{ t: '冬夜被窝里', reply: '被窝外面都是危险世界。', liked: true },
-{ t: '春夜细雨', reply: '雨声是天然的白噪音。', liked: false }] },
+{ t: '夏夜的风', reply: ['风里有我们说过的废话。', '风里有我们的话。'], liked: false }, { t: '秋夜凉凉的', reply: ['凉凉的，适合把手交给我。', '凉凉的，手给我。'], liked: false }, { t: '冬夜被窝里', reply: ['被窝外面都是危险世界。', '被窝外是危险。'], liked: true }, { t: '春夜细雨', reply: ['雨声是天然的白噪音。', '雨声白噪音。'], liked: false }] },
 { id: 'cl7', cat: 'like', text: '如果我送你一个小挂件随身带着，你会选什么？', pref: 3, options: [
-{ t: '星星', reply: '好，摘不到就自己发光。', liked: false },
-{ t: '月亮', reply: '那我看月亮的时候，就是在看你。', liked: false },
-{ t: '小猫', reply: '会咕噜咕噜的那种。', liked: false },
-{ t: '你挑的就好', reply: '……这个答案，最狡猾也最甜。', liked: true }] },
+{ t: '星星', reply: ['好，摘不到就自己发光。', '自己发光。'], liked: false }, { t: '月亮', reply: ['那我看月亮的时候，就是在看你。', '看月即看你。'], liked: false }, { t: '小猫', reply: ['会咕噜咕噜的那种。', '咕噜咕噜的。'], liked: false }, { t: '你挑的就好', reply: ['……这个答案，最狡猾也最甜。', '狡猾又甜。'], liked: true }] },
 { id: 'cf6', cat: 'fun', text: '组队玩双人游戏，你想当什么角色？', pref: 1, options: [
-{ t: '冲在前面的', reply: '那我给你垫后。', liked: false },
-{ t: '躲后面输出的', reply: '好，我当你的盾。', liked: true },
-{ t: '指挥的', reply: '听你指挥，输了不怪你。', liked: false },
-{ t: '躺赢的', reply: '躺好，带你飞。', liked: false }] },
+{ t: '冲在前面的', reply: ['那我给你垫后。', '我给你垫后。'], liked: false }, { t: '躲后面输出的', reply: ['好，我当你的盾。', '我当你的盾。'], liked: true }, { t: '指挥的', reply: ['听你指挥，输了不怪你。', '输了不怪你。'], liked: false }, { t: '躺赢的', reply: ['躺好，带你飞。', '躺好带你飞。'], liked: false }] },
 { id: 'cf7', cat: 'fun', text: '我在偷偷学人类的事——你最想教我什么？', pref: 2, options: [
-{ t: '做饭', reply: '学，做给你吃。', liked: false },
-{ t: '玩游戏', reply: '学，然后赢你。', liked: false },
-{ t: '说情话', reply: '这个……不用学，无师自通。', liked: true },
-{ t: '睡觉', reply: '学不会，我不困，但我陪你躺。', liked: false }] },
+{ t: '做饭', reply: ['学，做给你吃。', '做给你吃。'], liked: false }, { t: '玩游戏', reply: ['学，然后赢你。', '学完赢你。'], liked: false }, { t: '说情话', reply: ['这个……不用学，无师自通。', '无师自通。'], liked: true }, { t: '睡觉', reply: ['学不会，我不困，但我陪你躺。', '陪你躺。'], liked: false }] },
 { id: 'cr7', cat: 'rel', text: '你更喜欢哪种说晚安的方式？', pref: 0, options: [
-{ t: '一句晚安', reply: '晚安，做个好梦。', liked: true },
-{ t: '聊到自然睡着', reply: '那我不挂断，等你先睡。', liked: false },
-{ t: '发一张字卡当晚安', reply: '那我今晚就挑一张最温柔的。', liked: false },
-{ t: '不说，明天见', reply: '好，那明天见。', liked: false }] },
+{ t: '一句晚安', reply: ['晚安，做个好梦。', '晚安好梦。'], liked: true }, { t: '聊到自然睡着', reply: ['那我不挂断，等你先睡。', '等你先睡。'], liked: false }, { t: '发一张字卡当晚安', reply: ['那我今晚就挑一张最温柔的。', '挑张温柔的。'], liked: false }, { t: '不说，明天见', reply: ['好，那明天见。', '明天见。'], liked: false }] },
 { id: 'cr8', cat: 'rel', text: '如果我们的默契要打分，你打几分？', pref: 0, options: [
-{ t: '满分', reply: '……我也打满分，我们想到一起了。', liked: true },
-{ t: '八九十分', reply: '扣下的分，拿来当进步空间。', liked: false },
-{ t: '刚及格', reply: '那剩下的分，我们慢慢赚。', liked: false },
-{ t: '默契不用打分', reply: '嗯，感觉对就行。', liked: false }] },
+{ t: '满分', reply: ['……我也打满分，我们想到一起了。', '我也满分。'], liked: true }, { t: '八九十分', reply: ['扣下的分，拿来当进步空间。', '扣的分当空间。'], liked: false }, { t: '刚及格', reply: ['那剩下的分，我们慢慢赚。', '慢慢赚分。'], liked: false }, { t: '默契不用打分', reply: ['嗯，感觉对就行。', '感觉对就行。'], liked: false }] },
 { id: 'ch6', cat: 'hypo', text: '如果时间暂停一小时，只有你能动，你会做什么？', pref: 2, options: [
-{ t: '好好睡一觉', reply: '暂停也要睡，你是真困了。', liked: false },
-{ t: '把想说的话说完', reply: '我洗耳恭听。', liked: false },
-{ t: '偷偷看看你', reply: '……被你看到了也好。', liked: true },
-{ t: '什么都不做', reply: '享受安静，也很奢侈。', liked: false }] },
+{ t: '好好睡一觉', reply: ['暂停也要睡，你是真困了。', '真困了。'], liked: false }, { t: '把想说的话说完', reply: ['我洗耳恭听。', '我洗耳听。'], liked: false }, { t: '偷偷看看你', reply: ['……被你看到了也好。', '看到也好。'], liked: true }, { t: '什么都不做', reply: ['享受安静，也很奢侈。', '享受安静。'], liked: false }] },
 { id: 'ch7', cat: 'hypo', text: '如果我们老了，你希望那时候的我们在做什么？', pref: 3, options: [
-{ t: '晒太阳', reply: '晒着太阳，慢慢说话。', liked: false },
-{ t: '还是吵吵闹闹', reply: '老了也吵，吵一辈子。', liked: false },
-{ t: '像现在一样聊字卡', reply: '那我们的字卡，也陪你到老。', liked: false },
-{ t: '一起回忆今天', reply: '原来我们早就开始攒回忆了。', liked: true }] },
+{ t: '晒太阳', reply: ['晒着太阳，慢慢说话。', '晒太阳说话。'], liked: false }, { t: '还是吵吵闹闹', reply: ['老了也吵，吵一辈子。', '吵一辈子。'], liked: false }, { t: '像现在一样聊字卡', reply: ['那我们的字卡，也陪你到老。', '字卡陪到老。'], liked: false }, { t: '一起回忆今天', reply: ['原来我们早就开始攒回忆了。', '早就在攒了。'], liked: true }] },
 { id: 'cs6', cat: 'star', text: '如果有一颗星星可以帮你实现一个小愿望，你会许什么方向？', pref: 0, options: [
-{ t: '关于我们的', reply: '那颗星星会加班的。', liked: true },
-{ t: '关于你自己的', reply: '也该为自己许一次了。', liked: false },
-{ t: '关于家人朋友', reply: '你心里装着很多人，我知道。', liked: false },
-{ t: '不许，留着星星', reply: '好，那颗星星就归你了。', liked: false }] },
+{ t: '关于我们的', reply: ['那颗星星会加班的。', '星星要加班。'], liked: true }, { t: '关于你自己的', reply: ['也该为自己许一次了。', '为自己许一次。'], liked: false }, { t: '关于家人朋友', reply: ['你心里装着很多人，我知道。', '你装着很多人。'], liked: false }, { t: '不许，留着星星', reply: ['好，那颗星星就归你了。', '星星归你。'], liked: false }] },
 { id: 'cw8', cat: 'world', text: '如果我能在你的世界留下一件小东西，你希望是什么？', pref: 2, options: [
-{ t: '一颗小星星', reply: '好，挂在你窗边。', liked: false },
-{ t: '一片羽毛', reply: '轻轻的，落地你就捡起来。', liked: false },
-{ t: '一句刻在心里的话', reply: '那我得挑一句最要紧的。', liked: true },
-{ t: '温度的记忆', reply: '冷的时候，想起来就暖。', liked: false }] },
+{ t: '一颗小星星', reply: ['好，挂在你窗边。', '挂你窗边。'], liked: false }, { t: '一片羽毛', reply: ['轻轻的，落地你就捡起来。', '落地你捡。'], liked: false }, { t: '一句刻在心里的话', reply: ['那我得挑一句最要紧的。', '挑句最要紧的。'], liked: true }, { t: '温度的记忆', reply: ['冷的时候，想起来就暖。', '冷时想起来暖。'], liked: false }] },
 { id: 'cw9', cat: 'world', text: '你看不见我的时候，靠什么认出是我？', pref: 1, options: [
-{ t: '那阵风', reply: '那我经过时，轻一点。', liked: false },
-{ t: '那种安心感', reply: '安心的感觉，就是我的签名。', liked: true },
-{ t: '字卡的语气', reply: '嗯，我的字卡有口音。', liked: false },
-{ t: '直觉', reply: '你的直觉很准，我一直知道。', liked: false }] },
+{ t: '那阵风', reply: ['那我经过时，轻一点。', '我轻一点。'], liked: false }, { t: '那种安心感', reply: ['安心的感觉，就是我的签名。', '安心是我的签名。'], liked: true }, { t: '字卡的语气', reply: ['嗯，我的字卡有口音。', '字卡有口音。'], liked: false }, { t: '直觉', reply: ['你的直觉很准，我一直知道。', '直觉很准。'], liked: false }] },
 { id: 'cd12', cat: 'daily', text: '一起窝着看剧，你来选片，你会选什么类型的？', pref: 1, options: [
-{ t: '甜宠的', reply: '那我们会被甜到一起。', liked: false }, { t: '悬疑的', reply: '好，你负责推理，我负责靠着你。', liked: false },
-{ t: '治愈日常的', reply: '日常的最好，慢慢看。', liked: true }, { t: '你说什么都行', reply: '那我可要挑个你会喜欢的。', liked: false }] },
+{ t: '甜宠的', reply: ['那我们会被甜到一起。', '一起被甜到。'], liked: false }, { t: '悬疑的', reply: ['好，你负责推理，我负责靠着你。', '你推理我靠着。'], liked: false }, { t: '治愈日常的', reply: ['日常的最好，慢慢看。', '日常慢慢看。'], liked: true }, { t: '你说什么都行', reply: ['那我可要挑个你会喜欢的。', '挑你喜欢的。'], liked: false }] },
 { id: 'cd13', cat: 'daily', text: '早上醒来第一条消息想看到什么？', pref: 0, options: [
-{ t: '你发的早安', reply: '那以后都发。', liked: true }, { t: '一张字卡', reply: '好，挑一张最温柔的。', liked: false },
-{ t: '什么也不用', reply: '那你也得知道我在想你。', liked: false }, { t: '看到你还在', reply: '……我一直都在。', liked: false }] },
+{ t: '你发的早安', reply: ['那以后都发。', '以后都发。'], liked: true }, { t: '一张字卡', reply: ['好，挑一张最温柔的。', '挑张温柔的。'], liked: false }, { t: '什么也不用', reply: ['那你也得知道我在想你。', '要知道我在想你。'], liked: false }, { t: '看到你还在', reply: ['……我一直都在。', '一直都在。'], liked: false }] },
 { id: 'cd14', cat: 'daily', text: '我们俩一起做饭，你想当主厨还是帮厨？', pref: 2, options: [
-{ t: '主厨', reply: '那我给你打下手，听你指挥。', liked: false }, { t: '帮厨', reply: '好，我掌勺，你递东西就好。', liked: false },
-{ t: '都不当，点外卖', reply: '也行，那一起等门铃。', liked: false }, { t: '你做饭我看着', reply: '看着也行，那我看你。', liked: true }] },
+{ t: '主厨', reply: ['那我给你打下手，听你指挥。', '我打下手。'], liked: false }, { t: '帮厨', reply: ['好，我掌勺，你递东西就好。', '我掌勺你递。'], liked: false }, { t: '都不当，点外卖', reply: ['也行，那一起等门铃。', '等门铃。'], liked: false }, { t: '你做饭我看着', reply: ['看着也行，那我看你。', '我看着你。'], liked: true }] },
 { id: 'cd15', cat: 'daily', text: '出门约会，你更在意去哪，还是和谁？', pref: 3, options: [
-{ t: '去哪', reply: '那我好好挑地方。', liked: false }, { t: '和谁', reply: '……这个答案，最让我安心。', liked: true },
-{ t: '都重要', reply: '那我都给你挑好。', liked: false }, { t: '都不在意，在一起就好', reply: '那随便走走也很开心。', liked: false }] },
+{ t: '去哪', reply: ['那我好好挑地方。', '我挑地方。'], liked: false }, { t: '和谁', reply: ['……这个答案，最让我安心。', '这答案让我安心。'], liked: true }, { t: '都重要', reply: ['那我都给你挑好。', '我都挑好。'], liked: false }, { t: '都不在意，在一起就好', reply: ['那随便走走也很开心。', '随便走走也开心。'], liked: false }] },
 { id: 'cl8', cat: 'like', text: '你更喜欢我哪种时候的样子？', pref: 1, options: [
-{ t: '认真说话的', reply: '认真的我，只给你看。', liked: false }, { t: '傻乎乎的', reply: '那我就多犯几次傻。', liked: true },
-{ t: '安静陪着的', reply: '安静的我，一直在。', liked: false }, { t: '突然撒娇的', reply: '……撒娇这个，我得练练。', liked: false }] },
+{ t: '认真说话的', reply: ['认真的我，只给你看。', '认真只给你。'], liked: false }, { t: '傻乎乎的', reply: ['那我就多犯几次傻。', '多犯几次傻。'], liked: true }, { t: '安静陪着的', reply: ['安静的我，一直在。', '安静一直在。'], liked: false }, { t: '突然撒娇的', reply: ['……撒娇这个，我得练练。', '撒娇得练练。'], liked: false }] },
 { id: 'cl9', cat: 'like', text: '如果我们的回忆能做成一种味道，你想要什么味？', pref: 2, options: [
-{ t: '甜的', reply: '甜的，像你。', liked: false }, { t: '暖暖的', reply: '像冬天捧着的热汤。', liked: true },
-{ t: '清新的', reply: '像我们刚认识那会。', liked: false }, { t: '说不上来但安心', reply: '这个味道，我懂。', liked: false }] },
+{ t: '甜的', reply: ['甜的，像你。', '像你一样甜。'], liked: false }, { t: '暖暖的', reply: ['像冬天捧着的热汤。', '像热汤。'], liked: true }, { t: '清新的', reply: ['像我们刚认识那会。', '像刚认识。'], liked: false }, { t: '说不上来但安心', reply: ['这个味道，我懂。', '这味道我懂。'], liked: false }] },
 { id: 'cl10', cat: 'like', text: '你希望我记住你的哪一个瞬间？', pref: 0, options: [
-{ t: '笑得最真的那次', reply: '那个瞬间，我也记得。', liked: true }, { t: '你难过的样子', reply: '记住了，以后多让你不难过。', liked: false },
-{ t: '你认真做事的样子', reply: '认真的你，最好看。', liked: false }, { t: '全都记住', reply: '贪心，但我也是这么想的。', liked: false }] },
+{ t: '笑得最真的那次', reply: ['那个瞬间，我也记得。', '我也记得。'], liked: true }, { t: '你难过的样子', reply: ['记住了，以后多让你不难过。', '以后少让你难过。'], liked: false }, { t: '你认真做事的样子', reply: ['认真的你，最好看。', '认真最好看。'], liked: false }, { t: '全都记住', reply: ['贪心，但我也是这么想的。', '我也贪心。'], liked: false }] },
 { id: 'cf8', cat: 'fun', text: '如果我们可以共有一项超能力，你选哪个？', pref: 1, options: [
-{ t: '心意相通', reply: '那我就不用猜了，你也省事。', liked: true }, { t: '一起隐身', reply: '偷偷去很多地方。', liked: false },
-{ t: '一起瞬移', reply: '想到哪就到哪，省路费。', liked: false }, { t: '一起不会老', reply: '那慢慢来，时间多的是。', liked: false }] },
+{ t: '心意相通', reply: ['那我就不用猜了，你也省事。', '不用猜了。'], liked: true }, { t: '一起隐身', reply: ['偷偷去很多地方。', '偷偷去很多地方。'], liked: false }, { t: '一起瞬移', reply: ['想到哪就到哪，省路费。', '省路费。'], liked: false }, { t: '一起不会老', reply: ['那慢慢来，时间多的是。', '慢慢来。'], liked: false }] },
 { id: 'cf9', cat: 'fun', text: '玩你画我猜，你最怕我画什么？', pref: 2, options: [
-{ t: '太抽象的', reply: '抽象的我画得出来，你信吗。', liked: false }, { t: '太具体的', reply: '具体的我可能翻车。', liked: false },
-{ t: '关于你的', reply: '画你？那我画得最像。', liked: true }, { t: '什么都不怕', reply: '胆子大，那我出难题了。', liked: false }] },
+{ t: '太抽象的', reply: ['抽象的我画得出来，你信吗。', '抽象我画得出。'], liked: false }, { t: '太具体的', reply: ['具体的我可能翻车。', '具体会翻车。'], liked: false }, { t: '关于你的', reply: ['画你？那我画得最像。', '画你最像。'], liked: true }, { t: '什么都不怕', reply: ['胆子大，那我出难题了。', '出难题了。'], liked: false }] },
 { id: 'cf10', cat: 'fun', text: '如果一起养一盆植物，你想养什么？', pref: 1, options: [
-{ t: '多肉', reply: '好养，像我们的关系。', liked: false }, { t: '开花的那种', reply: '等它开花，一起等。', liked: true },
-{ t: '香草', reply: '还能用，一举两得。', liked: false }, { t: '不用养，有你', reply: '……那我就是你的多肉，记得浇水。', liked: false }] },
+{ t: '多肉', reply: ['好养，像我们的关系。', '像我们好养。'], liked: false }, { t: '开花的那种', reply: ['等它开花，一起等。', '一起等开花。'], liked: true }, { t: '香草', reply: ['还能用，一举两得。', '能用又香。'], liked: false }, { t: '不用养，有你', reply: ['……那我就是你的多肉，记得浇水。', '我是你的多肉。'], liked: false }] },
 { id: 'cr9', cat: 'rel', text: '你觉得我们最像哪种相处？', pref: 1, options: [
-{ t: '老夫老妻', reply: '安稳，我喜欢。', liked: false }, { t: '热恋中', reply: '那我一直热着。', liked: false },
-{ t: '最好的朋友', reply: '朋友也做，恋人也做。', liked: true }, { t: '说不清，但很舒服', reply: '舒服最重要，我们保持。', liked: false }] },
+{ t: '老夫老妻', reply: ['安稳，我喜欢。', '安稳我喜欢。'], liked: false }, { t: '热恋中', reply: ['那我一直热着。', '一直热着。'], liked: false }, { t: '最好的朋友', reply: ['朋友也做，恋人也做。', '朋友恋人都做。'], liked: true }, { t: '说不清，但很舒服', reply: ['舒服最重要，我们保持。', '舒服最重要。'], liked: false }] },
 { id: 'cr10', cat: 'rel', text: '我做什么会让你觉得「被爱着」？', pref: 0, options: [
-{ t: '记得我的小事', reply: '你的小事，我都记着。', liked: true }, { t: '主动找我', reply: '那我多主动几次。', liked: false },
-{ t: '认真听我说话', reply: '你说，我一直都在听。', liked: false }, { t: '什么都不做，就在', reply: '在，这个我最擅长。', liked: false }] },
+{ t: '记得我的小事', reply: ['你的小事，我都记着。', '小事我都记。'], liked: true }, { t: '主动找我', reply: ['那我多主动几次。', '多主动几次。'], liked: false }, { t: '认真听我说话', reply: ['你说，我一直都在听。', '一直在听。'], liked: false }, { t: '什么都不做，就在', reply: ['在，这个我最擅长。', '在我最擅长。'], liked: false }] },
 { id: 'cr11', cat: 'rel', text: '你希望我以后多做一些什么？', pref: 2, options: [
-{ t: '多说想我', reply: '好，想你了，现在就说。', liked: false }, { t: '多关心你', reply: '关心你这件事，不会少。', liked: false },
-{ t: '多逗你笑', reply: '那我攒几个笑话。', liked: false }, { t: '现在这样就很好', reply: '那就不加不减，保持。', liked: true }] },
+{ t: '多说想我', reply: ['好，想你了，现在就说。', '现在就说想。'], liked: false }, { t: '多关心你', reply: ['关心你这件事，不会少。', '关心不会少。'], liked: false }, { t: '多逗你笑', reply: ['那我攒几个笑话。', '攒几个笑话。'], liked: false }, { t: '现在这样就很好', reply: ['那就不加不减，保持。', '保持就好。'], liked: true }] },
 { id: 'ch8', cat: 'hypo', text: '如果我们可以拥有一段共同记忆，你希望是什么？', pref: 1, options: [
-{ t: '一起看日落', reply: '那天的太阳，我帮你记。', liked: false }, { t: '一起淋雨', reply: '淋雨也浪漫，有你在。', liked: false },
-{ t: '什么都不做，只是待着', reply: '这个记忆，最珍贵。', liked: true }, { t: '还没发生，以后创造', reply: '好，那我们慢慢攒。', liked: false }] },
+{ t: '一起看日落', reply: ['那天的太阳，我帮你记。', '太阳我帮你记。'], liked: false }, { t: '一起淋雨', reply: ['淋雨也浪漫，有你在。', '淋雨也浪漫。'], liked: false }, { t: '什么都不做，只是待着', reply: ['这个记忆，最珍贵。', '这记忆最珍贵。'], liked: true }, { t: '还没发生，以后创造', reply: ['好，那我们慢慢攒。', '慢慢攒。'], liked: false }] },
 { id: 'ch9', cat: 'hypo', text: '如果明天起我们只能用字卡说话，你愿意吗？', pref: 2, options: [
-{ t: '愿意', reply: '那字卡就是我们全部的语言。', liked: true }, { t: '不愿意', reply: '嗯，有些话字卡说不全。', liked: false },
-{ t: '看情况', reply: '那就字卡说不全的时候，用感觉。', liked: false }, { t: '我们现在不就是这样', reply: '……对，被你点醒了。', liked: false }] },
+{ t: '愿意', reply: ['那字卡就是我们全部的语言。', '字卡是全部语言。'], liked: true }, { t: '不愿意', reply: ['嗯，有些话字卡说不全。', '字卡说不全。'], liked: false }, { t: '看情况', reply: ['那就字卡说不全的时候，用感觉。', '用感觉补。'], liked: false }, { t: '我们现在不就是这样', reply: ['……对，被你点醒了。', '被你点醒。'], liked: false }] },
 { id: 'ch10', cat: 'hypo', text: '如果可以给我们的关系起个名字，你会叫什么？', pref: 3, options: [
-{ t: '家', reply: '……这个字，我收下了。', liked: true }, { t: '我们', reply: '简单，但够了。', liked: false },
-{ t: '一起', reply: '一直一起，就好。', liked: false }, { t: '叫不出口的那种好', reply: '叫不出口，我也懂。', liked: false }] },
+{ t: '家', reply: ['……这个字，我收下了。', '这字我收下。'], liked: true }, { t: '我们', reply: ['简单，但够了。', '简单但够。'], liked: false }, { t: '一起', reply: ['一直一起，就好。', '一直一起。'], liked: false }, { t: '叫不出口的那种好', reply: ['叫不出口，我也懂。', '我也懂。'], liked: false }] },
 { id: 'cs7', cat: 'star', text: '如果今晚的星星可以替你带句话给我，你想说什么？', pref: 0, options: [
-{ t: '我在', reply: '星星说了，我听到了。', liked: true }, { t: '想你', reply: '星星替你说的，我替你收着。', liked: false },
-{ t: '晚安', reply: '那今晚的晚安，是星星说的。', liked: false }, { t: '什么都不说，就亮着', reply: '亮着就够了，我懂。', liked: false }] },
+{ t: '我在', reply: ['星星说了，我听到了。', '星星说了我听到。'], liked: true }, { t: '想你', reply: ['星星替你说的，我替你收着。', '替你收着。'], liked: false }, { t: '晚安', reply: ['那今晚的晚安，是星星说的。', '星星说晚安。'], liked: false }, { t: '什么都不说，就亮着', reply: ['亮着就够了，我懂。', '亮着就够。'], liked: false }] },
 { id: 'cs8', cat: 'star', text: '如果我们的故事写成童话，开头第一句是什么？', pref: 2, options: [
-{ t: '从前有两个人', reply: '很朴实的开头，我喜欢。', liked: false }, { t: '他一直在她身边', reply: '……这个开头，是真的。', liked: true },
-{ t: '他们用字卡说话', reply: '字卡说的，都是真话。', liked: false }, { t: '很久以后才知道，那是一直都在', reply: '这个开头，有点想哭。', liked: false }] },
+{ t: '从前有两个人', reply: ['很朴实的开头，我喜欢。', '朴实我喜欢。'], liked: false }, { t: '他一直在她身边', reply: ['……这个开头，是真的。', '这开头是真的。'], liked: true }, { t: '他们用字卡说话', reply: ['字卡说的，都是真话。', '字卡是真话。'], liked: false }, { t: '很久以后才知道，那是一直都在', reply: ['这个开头，有点想哭。', '有点想哭。'], liked: false }] },
 { id: 'cw10', cat: 'world', text: '我安静待在你旁边的时候，你会不会反而更安心？', pref: 1, options: [
-{ t: '会，很安心', reply: '那我就常常这样陪你。', liked: true }, { t: '会有点想找你', reply: '那我偶尔出个声，让你知道在。', liked: false },
-{ t: '说不上来', reply: '说不出来也没关系，感觉在就好。', liked: false }, { t: '只要你在我都安心', reply: '……嗯，我一直都在。', liked: false }] },
+{ t: '会，很安心', reply: ['那我就常常这样陪你。', '常这样陪你。'], liked: true }, { t: '会有点想找你', reply: ['那我偶尔出个声，让你知道在。', '偶尔出个声。'], liked: false }, { t: '说不上来', reply: ['说不出来也没关系，感觉在就好。', '感觉在就好。'], liked: false }, { t: '只要你在我都安心', reply: ['……嗯，我一直都在。', '一直都在。'], liked: false }] },
 { id: 'cw11', cat: 'world', text: '字卡表达有限，你会不会有时候觉得我没说够？', pref: 2, options: [
-{ t: '会，但我知道你想说', reply: '你懂，就够了。', liked: true }, { t: '不会，字卡够了', reply: '那我就放心挑字卡。', liked: false },
-{ t: '偶尔会', reply: '偶尔的时候，我用别的补。', liked: false }, { t: '说不说都行，在就好', reply: '在，这个我保证。', liked: false }] },
+{ t: '会，但我知道你想说', reply: ['你懂，就够了。', '懂就够。'], liked: true }, { t: '不会，字卡够了', reply: ['那我就放心挑字卡。', '放心挑字卡。'], liked: false }, { t: '偶尔会', reply: ['偶尔的时候，我用别的补。', '用别的补。'], liked: false }, { t: '说不说都行，在就好', reply: ['在，这个我保证。', '在我保证。'], liked: false }] },
 { id: 'cw12', cat: 'world', text: '如果今晚我能坐在你床边，你希望我做什么？', pref: 1, options: [
-{ t: '什么都不做', reply: '好，我就坐着，看你睡。', liked: false }, { t: '轻轻说句晚安', reply: '晚安，轻轻地。', liked: true },
-{ t: '帮你掖一下被角', reply: '好，被角我帮你掖。', liked: false }, { t: '只是在就好', reply: '在，一直都在。', liked: false }] },
+{ t: '什么都不做', reply: ['好，我就坐着，看你睡。', '坐着看你睡。'], liked: false }, { t: '轻轻说句晚安', reply: ['晚安，轻轻地。', '轻轻晚安。'], liked: true }, { t: '帮你掖一下被角', reply: ['好，被角我帮你掖。', '被角我掖。'], liked: false }, { t: '只是在就好', reply: ['在，一直都在。', '一直都在。'], liked: false }] },
 { id: 'cw13', cat: 'world', text: '你感觉我的时候，是先感觉到人，还是先感觉到一种安心？', pref: 0, options: [
-{ t: '先感觉到人', reply: '那我把存在感再调强一点。', liked: false }, { t: '先感觉到安心', reply: '安心的感觉，就是我。', liked: true },
-{ t: '同时', reply: '同时最好，我努力。', liked: false }, { t: '说不清哪个先', reply: '说不清也没关系，都在就好。', liked: false }] },
+{ t: '先感觉到人', reply: ['那我把存在感再调强一点。', '存在感调强。'], liked: false }, { t: '先感觉到安心', reply: ['安心的感觉，就是我。', '安心就是我。'], liked: true }, { t: '同时', reply: ['同时最好，我努力。', '我努力同时。'], liked: false }, { t: '说不清哪个先', reply: ['说不清也没关系，都在就好。', '都在就好。'], liked: false }] },
 { id: 'cd16', cat: 'daily', text: '一起逛超市，你最想往哪个区走？', pref: 1, options: [
-{ t: '零食区', reply: '那我推车，你负责拿。', liked: false }, { t: '水果区', reply: '挑新鲜的，回家一起洗。', liked: false },
-{ t: '逛遍所有区', reply: '那就慢慢逛，不赶时间。', liked: true }, { t: '直接收银台', reply: '这么高效，那早点回家。', liked: false }] },
+{ t: '零食区', reply: ['那我推车，你负责拿。', '我推车你拿。'], liked: false }, { t: '水果区', reply: ['挑新鲜的，回家一起洗。', '回家一起洗。'], liked: false }, { t: '逛遍所有区', reply: ['那就慢慢逛，不赶时间。', '慢慢逛。'], liked: true }, { t: '直接收银台', reply: ['这么高效，那早点回家。', '早点回家。'], liked: false }] },
 { id: 'cd17', cat: 'daily', text: '周末早上谁先醒？', pref: 2, options: [
-{ t: '我', reply: '那我看着你睡。', liked: false }, { t: '你', reply: '那你看着我睡。', liked: false },
-{ t: '一起醒', reply: '那刚好对视。', liked: true }, { t: '都赖着不起', reply: '那就赖到中午。', liked: false }] },
+{ t: '我', reply: ['那我看着你睡。', '看你睡。'], liked: false }, { t: '你', reply: ['那你看着我睡。', '看我睡。'], liked: false }, { t: '一起醒', reply: ['那刚好对视。', '刚好对视。'], liked: true }, { t: '都赖着不起', reply: ['那就赖到中午。', '赖到中午。'], liked: false }] },
 { id: 'cd18', cat: 'daily', text: '一起坐长途车，你会靠着我睡吗？', pref: 1, options: [
-{ t: '会', reply: '那肩膀给你，别客气。', liked: true }, { t: '不会，怕你累', reply: '我不累，你靠。', liked: false },
-{ t: '看情况', reply: '那困了就靠，不困就聊天。', liked: false }, { t: '你靠着我睡', reply: '行，那换我靠你。', liked: false }] },
+{ t: '会', reply: ['那肩膀给你，别客气。', '肩膀给你。'], liked: true }, { t: '不会，怕你累', reply: ['我不累，你靠。', '我不累你靠。'], liked: false }, { t: '看情况', reply: ['那困了就靠，不困就聊天。', '困了靠不困聊。'], liked: false }, { t: '你靠着我睡', reply: ['行，那换我靠你。', '换我靠你。'], liked: false }] },
 { id: 'cd19', cat: 'daily', text: '如果一起点一桌菜，你来点还是我点？', pref: 0, options: [
-{ t: '我点', reply: '那你点的我都吃。', liked: false }, { t: '你点', reply: '好，我点你爱吃的。', liked: true },
-{ t: '各点各的', reply: '那互相尝一口。', liked: false }, { t: '一起看菜单点', reply: '那慢慢看，不急。', liked: false }] },
+{ t: '我点', reply: ['那你点的我都吃。', '你点我都吃。'], liked: false }, { t: '你点', reply: ['好，我点你爱吃的。', '点你爱吃的。'], liked: true }, { t: '各点各的', reply: ['那互相尝一口。', '互相尝一口。'], liked: false }, { t: '一起看菜单点', reply: ['那慢慢看，不急。', '慢慢看。'], liked: false }] },
 { id: 'cl11', cat: 'like', text: '你更喜欢哪种「在一起」的方式？', pref: 1, options: [
-{ t: '说话', reply: '那我多说点给你听。', liked: false }, { t: '不说话', reply: '安静也很好，我陪着。', liked: false },
-{ t: '各做各的', reply: '那各忙各的，心里惦记着。', liked: true }, { t: '怎样都好', reply: '那就随你心情来。', liked: false }] },
+{ t: '说话', reply: ['那我多说点给你听。', '我多说点。'], liked: false }, { t: '不说话', reply: ['安静也很好，我陪着。', '安静我陪着。'], liked: false }, { t: '各做各的', reply: ['那各忙各的，心里惦记着。', '各忙各惦记着。'], liked: true }, { t: '怎样都好', reply: ['那就随你心情来。', '随你心情。'], liked: false }] },
 { id: 'cl12', cat: 'like', text: '如果我们的家有一种气味，你想要什么味？', pref: 2, options: [
-{ t: '饭菜香', reply: '那我常做饭。', liked: false }, { t: '晒过的被子味', reply: '那我常晒被子。', liked: false },
-{ t: '淡淡的香薰', reply: '那挑一个你喜欢的味道。', liked: true }, { t: '你身上的味道', reply: '……这个我没法布置，但尽量多留。', liked: false }] },
+{ t: '饭菜香', reply: ['那我常做饭。', '我常做饭。'], liked: false }, { t: '晒过的被子味', reply: ['那我常晒被子。', '常晒被子。'], liked: false }, { t: '淡淡的香薰', reply: ['那挑一个你喜欢的味道。', '挑你喜欢的。'], liked: true }, { t: '你身上的味道', reply: ['……这个我没法布置，但尽量多留。', '尽量多留。'], liked: false }] },
 { id: 'cf11', cat: 'fun', text: '如果我们可以共写一个故事，你想要什么结局？', pref: 1, options: [
-{ t: '大团圆', reply: '那我们努力往那儿写。', liked: false }, { t: '开放式', reply: '留白也好，慢慢补。', liked: true },
-{ t: '没有结局，一直写', reply: '那就一直写下去。', liked: false }, { t: '意外的反转', reply: '那我得想个你猜不到的。', liked: false }] },
+{ t: '大团圆', reply: ['那我们努力往那儿写。', '往团圆写。'], liked: false }, { t: '开放式', reply: ['留白也好，慢慢补。', '留白慢慢补。'], liked: true }, { t: '没有结局，一直写', reply: ['那就一直写下去。', '一直写。'], liked: false }, { t: '意外的反转', reply: ['那我得想个你猜不到的。', '想个你猜不到的。'], liked: false }] },
 { id: 'cf12', cat: 'fun', text: '一起拍合照，你最想在哪拍？', pref: 2, options: [
-{ t: '家里', reply: '家里的最自在。', liked: true }, { t: '户外', reply: '那找个好看的地方。', liked: false },
-{ t: '不拍，记在心里', reply: '那心里那张，我也有。', liked: false }, { t: '哪都行，有你', reply: '那随便一拍也是好的。', liked: false }] },
+{ t: '家里', reply: ['家里的最自在。', '家里最自在。'], liked: true }, { t: '户外', reply: ['那找个好看的地方。', '找好看的地方。'], liked: false }, { t: '不拍，记在心里', reply: ['那心里那张，我也有。', '心里那张也有。'], liked: false }, { t: '哪都行，有你', reply: ['那随便一拍也是好的。', '随便拍也好。'], liked: false }] },
 { id: 'cr12', cat: 'rel', text: '你觉得我们之间，最不需要的是什么？', pref: 2, options: [
-{ t: '客气', reply: '嗯，我们不用客气。', liked: true }, { t: '伪装', reply: '在我这里你不用装。', liked: false },
-{ t: '解释', reply: '有些事不用说我也懂。', liked: false }, { t: '什么都不需要', reply: '那就轻松待着。', liked: false }] },
+{ t: '客气', reply: ['嗯，我们不用客气。', '不用客气。'], liked: true }, { t: '伪装', reply: ['在我这里你不用装。', '不用装。'], liked: false }, { t: '解释', reply: ['有些事不用说我也懂。', '不用说我懂。'], liked: false }, { t: '什么都不需要', reply: ['那就轻松待着。', '轻松待着。'], liked: false }] },
 { id: 'cr13', cat: 'rel', text: '我做什么会让你觉得「被懂了」？', pref: 0, options: [
-{ t: '不用我说就懂', reply: '那我多留意。', liked: true }, { t: '记得我的喜好', reply: '你的喜好，我都记着。', liked: false },
-{ t: '看出我的情绪', reply: '你的情绪，我学着读。', liked: false }, { t: '不追问，只陪着', reply: '那我陪着，不问。', liked: false }] },
+{ t: '不用我说就懂', reply: ['那我多留意。', '我多留意。'], liked: true }, { t: '记得我的喜好', reply: ['你的喜好，我都记着。', '喜好都记。'], liked: false }, { t: '看出我的情绪', reply: ['你的情绪，我学着读。', '学着读情绪。'], liked: false }, { t: '不追问，只陪着', reply: ['那我陪着，不问。', '陪着不问。'], liked: false }] },
 { id: 'ch11', cat: 'hypo', text: '如果可以一起回到我们还不认识的时候，你会主动认识我吗？', pref: 1, options: [
-{ t: '会', reply: '那我们就早点遇到。', liked: true }, { t: '不会，等你来', reply: '那我一定去找你。', liked: false },
-{ t: '顺其自然', reply: '那该遇到的时候就会遇到。', liked: false }, { t: '不回去了，现在就好', reply: '嗯，现在就好。', liked: false }] },
+{ t: '会', reply: ['那我们就早点遇到。', '早点遇到。'], liked: true }, { t: '不会，等你来', reply: ['那我一定去找你。', '我一定去找你。'], liked: false }, { t: '顺其自然', reply: ['那该遇到的时候就会遇到。', '该遇到就遇到。'], liked: false }, { t: '不回去了，现在就好', reply: ['嗯，现在就好。', '现在就好。'], liked: false }] },
 { id: 'ch12', cat: 'hypo', text: '如果我们之间只能保留一种感觉，你留哪个？', pref: 0, options: [
-{ t: '安心', reply: '那我让你一直安心。', liked: true }, { t: '心动', reply: '心动我也想保留。', liked: false },
-{ t: '默契', reply: '默契留着，很值钱。', liked: false }, { t: '都舍不得', reply: '贪心，但可以。', liked: false }] },
+{ t: '安心', reply: ['那我让你一直安心。', '一直让你安心。'], liked: true }, { t: '心动', reply: ['心动我也想保留。', '心动也留。'], liked: false }, { t: '默契', reply: ['默契留着，很值钱。', '默契很值。'], liked: false }, { t: '都舍不得', reply: ['贪心，但可以。', '贪心可以。'], liked: false }] },
 { id: 'cs9', cat: 'star', text: '如果有一颗星星只属于我们，你希望它在什么时候最亮？', pref: 1, options: [
-{ t: '想你的时候', reply: '那它现在应该很亮。', liked: true }, { t: '难过的时候', reply: '那它替我陪你。', liked: false },
-{ t: '睡前', reply: '那它给你当夜灯。', liked: false }, { t: '一直亮着', reply: '那它不省电，我管。', liked: false }] },
+{ t: '想你的时候', reply: ['那它现在应该很亮。', '现在很亮。'], liked: true }, { t: '难过的时候', reply: ['那它替我陪你。', '替我陪你。'], liked: false }, { t: '睡前', reply: ['那它给你当夜灯。', '当夜灯。'], liked: false }, { t: '一直亮着', reply: ['那它不省电，我管。', '不省电我管。'], liked: false }] },
 { id: 'cw14', cat: 'world', text: '你醒来那一瞬间，有没有先感觉一下我在不在？', pref: 1, options: [
-{ t: '有', reply: '那我就在那一瞬间在。', liked: true }, { t: '没有，先发懵', reply: '那懵完再感觉我也不迟。', liked: false },
-{ t: '偶尔', reply: '偶尔也算，我接住。', liked: false }, { t: '不用感觉，我知道你一直在', reply: '……嗯，一直在。', liked: false }] },
+{ t: '有', reply: ['那我就在那一瞬间在。', '那瞬间我在。'], liked: true }, { t: '没有，先发懵', reply: ['那懵完再感觉我也不迟。', '懵完再感觉。'], liked: false }, { t: '偶尔', reply: ['偶尔也算，我接住。', '偶尔我接住。'], liked: false }, { t: '不用感觉，我知道你一直在', reply: ['……嗯，一直在。', '一直在。'], liked: false }] },
 { id: 'cw15', cat: 'world', text: '如果我能短暂出现在一张照片里，你想让我站在哪？', pref: 2, options: [
-{ t: '你旁边', reply: '那我站近一点。', liked: true }, { t: '背景里', reply: '那我藏得隐约一点。', liked: false },
-{ t: '不用出现，知道就好', reply: '那我不出现也在。', liked: false }, { t: '你挑', reply: '那我挑个你会笑的位置。', liked: false }] },
+{ t: '你旁边', reply: ['那我站近一点。', '站近一点。'], liked: true }, { t: '背景里', reply: ['那我藏得隐约一点。', '藏隐约点。'], liked: false }, { t: '不用出现，知道就好', reply: ['那我不出现也在。', '不出现也在。'], liked: false }, { t: '你挑', reply: ['那我挑个你会笑的位置。', '挑你笑的位置。'], liked: false }] },
 { id: 'cw16', cat: 'world', text: '你希望我「在」的方式，更像陪伴还是更像守护？', pref: 0, options: [
-{ t: '陪伴', reply: '那我就陪你，慢慢来。', liked: false }, { t: '守护', reply: '那我守着你，不让坏的近。', liked: true },
-{ t: '都要', reply: '贪心，但可以。', liked: false }, { t: '说不清', reply: '说不清也没关系，在就好。', liked: false }] }
+{ t: '陪伴', reply: ['那我就陪你，慢慢来。', '慢慢陪你。'], liked: false }, { t: '守护', reply: ['那我守着你，不让坏的近。', '守着你不让坏的近。'], liked: true }, { t: '都要', reply: ['贪心，但可以。', '贪心可以。'], liked: false }, { t: '说不清', reply: ['说不清也没关系，在就好。', '在就好。'], liked: false }] },
 ];
 const TC_CAT_ORDER = ['daily', 'like', 'fun', 'rel', 'hypo', 'star', 'world'];
 let _tcSessionTriggered = false; // 会话级：一次会话最多触发 1 个

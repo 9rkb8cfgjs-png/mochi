@@ -1396,15 +1396,21 @@
     }
     const name = store.get('lbl-partner') || 'TA';
     const myName = store.get('lbl-user') || '我';
-    // 显示：联系人昵称 + 字卡
-    // 字卡分三类：含"你"（如"戳了戳你的脸蛋"→换我的称呼）、含"我"（如"弹了一下我的额头"，
-    //   原文已以"我"为对象，直接拼接即可）、两者都不含（如"闷闷垂头"→直接拼接，不再追加称呼——
-    //   v3.7.x 修复：中性自述类字卡追加"我"会变成「景元 闷闷垂头 我」）
+    // 显示：联系人昵称 + 字卡（v3.7.x 全格式处理）
+    // 含"你"：如"拍了拍你"→"拍了拍我"；若卡面以"你/我"作主语（如"你拍了拍我的头"/
+    //   "我拍了拍你的头"），主语=联系人，去掉后其余"你"换我的称呼
+    // 含"我"（目标，如"拍了拍我的头"）或中性（如"闷闷垂头"）：直接拼接
+    // 卡面以"我"作主语（如"我拍了拍"）：主语=联系人，去掉后其余原样
+    // "你们/我们" 整体不替换（/你(?![们])/ 保护）
     let text;
     if (action.indexOf('你') >= 0) {
-      text = name + ' ' + action.replace(/你/g, myName);
-    } else if (action.indexOf('我') >= 0) {
-      text = name + ' ' + action;
+      if (action.charAt(0) === '你' || action.charAt(0) === '我') {
+        text = name + ' ' + action.slice(1).replace(/你(?![们])/g, myName);
+      } else {
+        text = name + ' ' + action.replace(/你(?![们])/g, myName);
+      }
+    } else if (action.charAt(0) === '我') {
+      text = name + ' ' + action.slice(1);
     } else {
       text = name + ' ' + action;
     }
@@ -1824,37 +1830,31 @@
   // v3.7.x：TA的小问题 通用回应变体池——选项 reply 为单条字符串时合并此池随机抽取，
   // 让"选同一答案"不再每次固定回复（用户诉求：增加联系人回应自由度）。
   // 选项 reply 为数组时直接用数组（用户在管理页自填多条），不叠加变体池。
-  const CHOICE_REPLY_VARIANTS = ['嗯。', '好。', '我记住了。', '这样啊。', '嗯，听你的。', '你这么说我很开心。', '好，我记下了。', '嗯，我在。', '知道了。', '嗯嗯。', '你说得对。', '我懂。', '好呀。', '嗯，是这样。'];
   window.chatChooseReply = function (msgIdx, answer, opt, match) {
     // v3.6.x：不再调用 loadMsgs()——该函数是异步读 IDB，其合并回调会在同步代码
     // 执行完后用【旧 IDB 数据】全量重渲染，把刚更新为 answered 的卡片刷回未作答。
     // 这些函数只由用户在聊天页点卡片/弹窗触发，此时 msgs 已加载且为最新。
     const rec = msgs[msgIdx];
     if (!rec || rec.special !== 'ask-choose' || rec.choiceStatus === 'answered') return;
-    // v3.7.x：选项 reply 支持多条（数组）——随机抽；单条字符串合并变体池；空则纯变体池
+    // v3.7.x：选项 reply 支持多条（数组）——随机抽；空则纯字卡库
     const ownReplies = (function () {
       if (!opt) return [];
       if (Array.isArray(opt.reply) && opt.reply.length) return opt.reply.filter(s => typeof s === 'string' && s.trim()).map(s => s.trim());
       if (typeof opt.reply === 'string' && opt.reply.trim()) return [opt.reply.trim()];
       return [];
     })();
-    let pool = [];
-    if (ownReplies.length === 1) pool.push(ownReplies[0], ownReplies[0]); // 单条加权，保留选项个性
-    else if (ownReplies.length > 1) pool.push.apply(pool, ownReplies); // 多条原样
-    CHOICE_REPLY_VARIANTS.forEach(v => { if (pool.indexOf(v) < 0) pool.push(v); });
     // v3.7.x：用户已在「系统预设字卡 → 互动回应」关闭的话术不参与抽取
-    pool = pool.filter(c => !(window.isDefaultCardOff && window.isDefaultCardOff('interact', c)));
-    if (!pool.length) pool = CHOICE_REPLY_VARIANTS.slice();
+    const pool = ownReplies.filter(c => !(window.isDefaultCardOff && window.isDefaultCardOff('interact', c)));
     const liked = !!(opt && (opt.liked === true || opt.liked === 'true'));
     const matched = typeof match === 'string' && match.indexOf('刚好想到在了一起') >= 0;
     let reply;
     if (matched || liked) {
-      // 默契命中/心仪答案：从合并池随机抽（不再 100% 固定单条），不混字卡库保持仪式感
-      reply = pool[Math.floor(Math.random() * pool.length)];
+      // 默契命中/心仪答案：从该选项的 reply 池随机抽（多条才自由），池空则字卡库
+      reply = pool.length ? pool[Math.floor(Math.random() * pool.length)] : (window.pickAskCardReply ? window.pickAskCardReply() : '');
     } else {
-      // 未命中：从合并池随机抽一条作预设，再 90%预设/10%字卡库 混合
-      const preset = pool[Math.floor(Math.random() * pool.length)];
-      reply = (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset);
+      // 未命中：从该选项的 reply 池随机抽一条作预设，再 90%预设/10%字卡库 混合；池空则纯字卡库
+      const preset = pool.length ? pool[Math.floor(Math.random() * pool.length)] : '';
+      reply = preset ? (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset) : (window.pickAskCardReply ? window.pickAskCardReply() : '');
     }
     rec.choiceStatus = 'answered';
     rec.choiceAnswer = answer;
@@ -2697,18 +2697,31 @@ function partialRetractMsg(msgEl, side) {
     pokeCard.insertBefore(pokeGroupsBar, pokeList);
     pokeCard.insertBefore(pokeInputRow, pokeList);
   }
-  // 发送一次拍一拍（触发联系人回复）
+  // 发送一次拍一拍（触发联系人回复）（v3.7.x 全格式处理）
   function sendPoke(action) {
     const name = store.get('lbl-partner') || 'TA';
     let text;
     if (action.indexOf('你') >= 0) {
-      // 字卡含"你"：替换成联系人昵称，如"戳了戳你的脸蛋"→"我 戳了戳TA的脸蛋"
-      text = '我 ' + action.replace(/你/g, name);
+      if (action.charAt(0) === '你') {
+        // 卡面以"你"作主语（如"你拍了拍我的头"）：我方发送翻转视角 你→我(主语)、我→联系人(目标)
+        text = action.replace(/^你/, '我').replace(/(?!^)我(?![们])/g, name);
+      } else if (action.charAt(0) === '我') {
+        // 卡面以"我"作主语且含"你"（如"我拍了拍你的头"）：我=我(主语)、你=联系人(目标)
+        text = action.replace(/你(?![们])/g, name);
+      } else {
+        // 你=被拍对象（"拍了拍你"→"拍了拍TA"）；"你们"整体不替换
+        text = '我 ' + action.replace(/你(?![们])/g, name);
+      }
     } else if (action.indexOf('我') >= 0) {
-      // 字卡含"我"（如"弹了一下我的额头"）："我"指被拍对象，替换成联系人昵称，如"我 弹了一下TA的额头"
-      text = '我 ' + action.replace(/我/g, name);
+      if (action.charAt(0) === '我') {
+        // 卡面以"我"作主语（如"我拍了拍"）：主语保留，其余"我"(目标)换联系人
+        text = '我 ' + action.slice(1).replace(/我(?![们])/g, name);
+      } else {
+        // "我"指被拍对象（"弹了一下我的额头"→"弹了一下TA的额头"）；"我们"整体不替换
+        text = '我 ' + action.replace(/我(?![们])/g, name);
+      }
     } else {
-      // 字卡不含"你/我"：直接"我 + 字卡"，不再末尾补联系人昵称（v3.7.x 修复：
+      // 中性字卡：直接"我 + 字卡"，不再末尾补联系人昵称（v3.7.x 修复：
       // 中性自述类字卡如"闷闷垂头"补昵称会变成「我 闷闷垂头 景元」）
       text = '我 ' + action;
     }
