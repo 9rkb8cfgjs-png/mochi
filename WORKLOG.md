@@ -785,3 +785,12 @@
   - **新建分组**：工具行「＋ 新建分组」（openModal 命名，防重名，建后自动选中）+「＋ 新增拍一拍」（添加到当前用户分组，无用户分组时自动建「我的新增」）。
   - 数据改**分组存储** `poke-groups-ta`/`poke-groups-mine`（[[分组名,[字卡]],...]，仿 my-emoji-groups，LS+IDB 双写）；老版本扁平 `poke-user-*` 自动迁移为「我的新增」分组。performPoke 自动拍一拍池 pokeAllCards() 同步读分组。
   - 验证：CDP 9/9——分组栏/工具行渲染、旧字卡按人称归类进对应分组 chips、老扁平数据迁移、新建分组+自动选中、添加进当前分组、点卡片发送「我 拍联系人」、刷新后分组持久化；verify 10/10。
+- [本会话] 移除默认歌单 2 首内置种子歌（用户需求「歌单里默认歌曲的 2 首歌删掉」）：
+  - **根因**：loadAll 有「首次补种」+「种子歌自愈」逻辑——自愈每轮 loadAll 检查 neteaseId 2613048732/27538343 缺失就自动补回，删了必复活。
+  - **修复**（music-player.js）：删除首次补种块（原往默认歌单放 Moonlit Dream/Baby）；删除自愈块，替换为**升级迁移**——loadAll 自动删除 id 以 `sm_seed_` 开头的歌（用户自导入的同名歌 id 不同不受影响），并清理 IDB 残留 music-file:sm_seed_*；再次刷新不再复活。全新数据不再预置任何歌曲（默认歌单保留为空歌单）。
+  - 保留（无害，仅对用户自导入同名歌生效）：url 规范、已知元数据识别、播放兜底旋律。
+  - 验证：tools/verify-music-no-seed.mjs（新增）5/5 + verify-music-filter.mjs 15/15（适配空库：筛选条空库隐藏）+ history-cover 8/8 + 布局 10/10。构建产物已更新，未提交。
+- [本会话] 去电挂断后音乐不自动恢复 bugfix（用户反馈「接通联系人电话后打断音乐，挂断后没恢复」）：
+  - **根因**（call.js）：去电 placeCall 拨出时漏调 musicHoldForCall(true)，callHoldPlaying 未记录为 true；挂断 endCall 调 musicHoldForCall(false) 时 callHoldPlaying 为 false，不触发恢复播放。来电 incomingCall 有此调用故正常。
+  - **修复**：placeCall 的 closeImageOverlay() 后补 `if (window.musicHoldForCall) window.musicHoldForCall(true)`，与来电对齐——拨出即暂停音乐+隐藏悬浮小框，挂断后自动恢复。
+  - 验证：布局 verify 10/10。构建产物已更新。

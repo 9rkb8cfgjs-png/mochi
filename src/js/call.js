@@ -430,6 +430,8 @@
     // 否则「挂断后 3 秒内重拨」会让上一次的随机结果套到新通话上
     const callRef = currentCall;
     closeImageOverlay();
+    // v3.6.x：去电同样暂停音乐 + 隐藏悬浮小框（与来电一致），挂断后才能自动恢复播放
+    if (window.musicHoldForCall) window.musicHoldForCall(true);
     shownAv = null;
     syncCallAv();
     if (nameEl) nameEl.textContent = name;
