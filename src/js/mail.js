@@ -34,10 +34,13 @@
   // 切到其它联系人桌面后 loadSnap/writeSnap 仍读写 default 桌面的快照：
   // 非 default 桌面信箱主键为空时兜底读到 default 桌面的信 → 串桌面 +
   // 「同一封信在谁桌面就显示谁的名字」（信箱是每桌面隔离数据，快照必须按桌面分开）
-  function snapKey() { return window.activePrefix() + ':' + SNAP_KEY; }
-  function loadSnap() {
+  // v3.7.x 多联系人来信：cid 指定该联系人桌面（后台遍历来信用），undefined 表示当前激活桌面
+  function csFor(cid) { return cid ? window.storeFor(cid) : store; }
+  function prefixFor(cid) { return cid ? ('xy-home-v2:' + cid) : window.activePrefix(); }
+  function snapKey(cid) { return prefixFor(cid) + ':' + SNAP_KEY; }
+  function loadSnap(cid) {
     try {
-      const v = localStorage.getItem(snapKey());
+      const v = localStorage.getItem(snapKey(cid));
       if (v) { const a = JSON.parse(v); if (Array.isArray(a)) return a; }
     } catch (e) {}
     return [];
@@ -52,18 +55,21 @@
     if (c.partnerReply) { c.partnerReply = Object.assign({}, c.partnerReply); c.partnerReply.content = strip(c.partnerReply.content); }
     return c;
   }
-  function writeSnap(list) {
-    if (!list || !list.length) { try { localStorage.removeItem(snapKey()); } catch (e) {} return; }
-    try { const snap = JSON.stringify(list.map(stripLetterImg)); if (snap.length <= LS_BIG_LIMIT) localStorage.setItem(snapKey(), snap); } catch (e) {}
+  function writeSnap(list, cid) {
+    if (!list || !list.length) { try { localStorage.removeItem(snapKey(cid)); } catch (e) {} return; }
+    try { const snap = JSON.stringify(list.map(stripLetterImg)); if (snap.length <= LS_BIG_LIMIT) localStorage.setItem(snapKey(cid), snap); } catch (e) {}
   }
-  function load() {
+  function load(cid) {
+    const cs = csFor(cid);
     let list = [];
-    const raw = store.get(KEY);
+    const raw = cs.get(KEY);
     if (raw !== null) { try { list = JSON.parse(raw); } catch (e) { list = []; } }
     // v3.7.x：主键缺失兜底——大列表只进 IDB（Edge 丢 IDB / LS 被清）时读剥图快照，
     //   文本+标题+时间保留；IDB 存活时模块底部 idbGet 会随后用完整数据重渲染
-    if (!list.length) { try { const v = loadSnap(); if (v.length) list = v; } catch (e) {} }
-    if (!mailDbReady && mailPending && mailPending.length) {
+    if (!list.length) { try { const v = loadSnap(cid); if (v.length) list = v; } catch (e) {} }
+    // v3.7.x：暂存合并仅对当前桌面（cid undefined）生效——mailPending 是当前桌面
+    //   contact-switched 时的暂存，后台遍历其它 cid 时不并入（避免串桌面）
+    if (!cid && !mailDbReady && mailPending && mailPending.length) {
       const map = {};
       list.forEach(x => { if (x && x.id) map[x.id] = x; });
       mailPending.forEach(x => { if (x && x.id) map[x.id] = x; });
@@ -84,10 +90,18 @@
   // 权威未从 IDB 读回前，save 只暂存内存、绝不落盘。
   let mailDbReady = false;
   let mailPending = null;
-  function save(list) {
-    if (!mailDbReady) { try { mailPending = (list || []).slice(); } catch (e) {} return; }
-    store.set(KEY, JSON.stringify(list));
-    writeSnap(list);
+  function save(list, cid) {
+    // v3.7.x：cid undefined = 当前桌面，走 mailDbReady 门槛（防启动早期 save([]) 覆盖 IDB）；
+    //   cid 指定 = 后台遍历该联系人来信，直接写（maybeIncomingLetterFor 已确认该桌面
+    //   load 非空才 unshift，不会用 [新信] 覆盖 IDB 旧信）
+    // v3.7.x：未就绪时除暂存内存外立即写剥图快照（对齐 chat.js 同场景的 LS 快照兜底）——
+    //   原实现只进 mailPending 内存、保险丝(15s)触发前页面被杀/重载则来信整封丢失，
+    //   而聊天通知已持久化 → 用户看到「联系人来信」信箱却是空的（iQOO Neo5 SE +
+    //   QQ浏览器 X5 IDB 挂起实测）。快照仅文本兜底，IDB 权威读回后 mailMergeFromIdb
+    //   按 id 合并恢复完整数据（含图片），不破坏权威防护（主键 store.set 仍等就绪）。
+    if (!cid && !mailDbReady) { try { mailPending = (list || []).slice(); } catch (e) {} writeSnap(list, cid); return; }
+    csFor(cid).set(KEY, JSON.stringify(list));
+    writeSnap(list, cid);
   }
 
   // v3.5.99：桌面「信箱」图标未读角标——有新来信（未读）时显示数字，进入信箱或打开信件后清除
@@ -265,40 +279,82 @@
   // 到期由 checkPendingReply 落地为 partnerReply；刷新/重开页面不丢（旧逻辑用内存
   // setTimeout，刷新即丢失，回信永远收不到）。
   const REPLY_PENDING_KEY = 'mail-reply-pending';
-  function replyPendingLoad() {
-    try { const v = JSON.parse(store.get(REPLY_PENDING_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+  function replyPendingLoad(cid) {
+    try { const v = JSON.parse(csFor(cid).get(REPLY_PENDING_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
   }
-  function replyPendingSave(arr) { try { store.set(REPLY_PENDING_KEY, JSON.stringify(arr)); } catch (e) {} }
+  function replyPendingSave(arr, cid) { try { csFor(cid).set(REPLY_PENDING_KEY, JSON.stringify(arr)); } catch (e) {} }
+  // v3.7.x：信件系统消息写入「信件所属桌面」的聊天——与 feed.js notifyFeedPostToChat
+  //   同模式：当前桌面走内存链路（chatAddSystem 实时渲染）；非当前桌面直接写该桌面
+  //   IDB 聊天记录 + LS 快照（该桌面 msgs 在 contact-switched 时重置，下次进入由 loadMsgs 读回）
+  function notifyMailToChat(cid, text) {
+    const cur = window.__activeCid || 'default';
+    if (cid === cur) {
+      if (window.chatAddSystem) window.chatAddSystem(text);
+      return;
+    }
+    const prefix = 'xy-home-v2:' + cid;
+    try {
+      if (window.idbGet && window.idbSet) {
+        window.idbGet(prefix + ':chat-msgs').then(v => {
+          let arr = [];
+          try { arr = Array.isArray(v) ? v : JSON.parse(v || '[]'); } catch (e) { arr = []; }
+          if (!Array.isArray(arr)) arr = [];
+          arr.push({ side: 'in', special: 'poke', text: text, ts: Date.now() });
+          try { window.idbSet(prefix + ':chat-msgs', JSON.stringify(arr)); } catch (e) {}
+          try { localStorage.setItem(prefix + ':chat-msgs', JSON.stringify(arr)); } catch (e) {}
+        }).catch(() => {});
+      }
+    } catch (e) {}
+  }
+  // 该联系人桌面的 TA 昵称（lbl-partner，回退 contacts.name，再回退 'TA'）
+  function partnerNameFor(cid) {
+    try {
+      const cs = csFor(cid);
+      const v = cs.get('lbl-partner');
+      if (v) return v;
+      if (window.getContacts) {
+        const c = window.getContacts().find(x => x.id === cid);
+        if (c && c.name) return c.name;
+      }
+    } catch (e) {}
+    return 'TA';
+  }
   // 检查到期回信计划并落地（启动时 + 每分钟 tick 调用）
-  function checkPendingReply() {
+  // v3.7.x：改为遍历各联系人——原实现单定时器用 store（当前激活桌面），回信计划
+  //   读写当前桌面，用户在 A 桌面时 B 的回信计划永远不落地。改为每个联系人独立
+  //   checkPendingReplyFor(cid)，用 csFor(cid) 读写各自命名空间。
+  function checkPendingReplyFor(cid) {
     try {
       const now = Date.now();
-      const pending = replyPendingLoad();
+      const pending = replyPendingLoad(cid);
       if (!pending.length) return;
-      const name = partnerName();
+      const name = partnerNameFor(cid);
       const rest = [];
       let changed = false;
       pending.forEach(p => {
         if (!p || !p.id) { changed = true; return; }
-        const list = load();
+        const list = load(cid);
         const idx = list.findIndex(x => x.id === p.id);
         if (idx < 0) { changed = true; return; }          // 信件已不存在 → 丢弃计划
         if (list[idx].partnerReply) { changed = true; return; } // 已有 TA 回信 → 丢弃计划
         if (p.due > now) { rest.push(p); return; }        // 未到期 → 保留
         // 到期：落地 TA 回信
         list[idx].partnerReply = { content: p.content, tm: now };
-        save(list);
-        if (window.chatAddSystem) window.chatAddSystem(name + ' 给你回了信');
-        // v3.5.107：TA 回信且不在信箱页 → 前台桌面弹窗（点击进信箱）
-        if (window.showDeskPopup && !mailPageVisible()) {
+        save(list, cid);
+        notifyMailToChat(cid, name + ' 给你回了信');
+        // v3.5.107：TA 回信且不在信箱页 → 前台桌面弹窗（仅当前激活桌面才弹，用户能看到）
+        if (cid === (window.__activeCid || 'default') && window.showDeskPopup && !mailPageVisible()) {
           window.showDeskPopup({ name: '信箱', text: '给你回了一封信：' + p.content, onClick: openMailPage });
         }
         changed = true;
       });
-      if (changed) replyPendingSave(rest);
-      render();
-      updateBadge();
+      if (changed) replyPendingSave(rest, cid);
+      if (cid === (window.__activeCid || 'default')) { render(); updateBadge(); }
     } catch (e) {}
+  }
+  function checkPendingReply() {
+    const list = (window.getContacts && window.getContacts()) || [{ id: 'default' }];
+    list.forEach(c => checkPendingReplyFor(c.id));
   }
   // 渲染列表
   function render() {
@@ -392,8 +448,8 @@
   // v3.6.x：用户未添加自定义字卡时（内置预设已移除）用系统默认字卡补池——
   //   否则信件只能从 5 条固定文案里抽，内容单一且条数上限超过池子时爆重复
   // v3.7.x：补池受「信箱使用」场景开关控制（默认字卡-设置页可关闭）
-  function mailCardPool() {
-    const custom = (window.getCustomCards && window.getCustomCards()) || [];
+  function mailCardPool(cid) {
+    const custom = cid ? (window.getCustomCardsFor ? window.getCustomCardsFor(cid) : []) : ((window.getCustomCards && window.getCustomCards()) || []);
     const text = [], kaomoji = [], emoji = [];
     const pushDefault = () => {
       try {
@@ -432,13 +488,13 @@
       text: text,
       kaomoji: kaomoji,
       emoji: emoji,
-      sticker: (window.getMediaCards && window.getMediaCards('sticker')) || [],
-      image: (window.getMediaCards && window.getMediaCards('image')) || []
+      sticker: cid ? (window.getMediaCardsFor ? window.getMediaCardsFor(cid, 'sticker') : []) : ((window.getMediaCards && window.getMediaCards('sticker')) || []),
+      image: cid ? (window.getMediaCardsFor ? window.getMediaCardsFor(cid, 'image') : []) : ((window.getMediaCards && window.getMediaCards('image')) || [])
     };
   }
   // TA 写信内容：多个字卡（空格分隔）+ 概率加颜文字/emoji/表情包
-  function taLetterContent(cfg) {
-    const pool = mailCardPool();
+  function taLetterContent(cfg, cid) {
+    const pool = mailCardPool(cid);
     const words = pool.text.length ? pool.text : TA_LETTERS;
     // v3.6.x：条数在「最少/最多字卡条数」之间随机；上限不超过池子大小——
     // 移除自定义字卡内置预设后用户没添加字卡时 words 回退为固定文案，
@@ -456,60 +512,68 @@
     if (cfg.stickerEn && st.length && Math.random() * 100 < 20) t += ' ' + st[Math.floor(Math.random() * st.length)];
     return t;
   }
-  function letterLast() { const v = parseInt(store.get('mail-letter-last'), 10); return isNaN(v) ? 0 : v; }
-  function letterNext() { const v = parseFloat(store.get('mail-letter-next')); return isNaN(v) ? 0 : v; }
+  function letterLast(cid) { const v = parseInt(csFor(cid).get('mail-letter-last'), 10); return isNaN(v) ? 0 : v; }
+  function letterNext(cid) { const v = parseFloat(csFor(cid).get('mail-letter-next')); return isNaN(v) ? 0 : v; }
   // v3.6.x：每日来信计数（按自然日）——mail-letter-day 存 { d:'日期', n:当天来信数 }
   function letterDayKey() {
     const d = new Date();
     return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
   }
-  function letterDayCount() {
+  function letterDayCount(cid) {
     try {
-      const r = JSON.parse(store.get('mail-letter-day') || 'null');
+      const r = JSON.parse(csFor(cid).get('mail-letter-day') || 'null');
       return r && r.d === letterDayKey() ? Number(r.n) || 0 : 0;
     } catch (e) { return 0; }
   }
-  function letterDayAdd() {
-    const n = letterDayCount() + 1;
-    try { store.set('mail-letter-day', JSON.stringify({ d: letterDayKey(), n: n })); } catch (e) {}
+  function letterDayAdd(cid) {
+    const n = letterDayCount(cid) + 1;
+    try { csFor(cid).set('mail-letter-day', JSON.stringify({ d: letterDayKey(), n: n })); } catch (e) {}
     return n;
   }
-  function maybeIncomingLetter() {
+  // v3.7.x：单联系人的 TA 来信——用该联系人自己的字卡 + 写到该联系人命名空间。
+  //   原实现 maybeIncomingLetter 单定时器用 store（当前激活桌面），用户在 default
+  //   桌面时所有联系人的来信都写到 default 命名空间 → 串桌面（default 桌面堆所有
+  //   联系人的信，切到其它桌面看不到自己的信）。改为遍历各联系人，每个独立写各自
+  //   命名空间，互不串。前台弹窗仅当前激活桌面才弹（用户能看到），非当前桌面走
+  //   notifyMailToChat 写该桌面聊天系统消息（下次切到该桌面可见）。
+  function maybeIncomingLetterFor(cid) {
     try {
-      // v3.5.141：后台也来信——来信写入信箱 + 桌面弹窗联动（页面隐藏时由
-      // showDeskPopup → bgNotifyCheck 发系统通知「信箱：给你寄来了一封信」）
+      const cs = csFor(cid);
       const now = Date.now();
       const cfg = mailCfg();
-      let last = letterLast(), next = letterNext();
+      let last = letterLast(cid), next = letterNext(cid);
       if (last > now || last < 0 || isNaN(last)) { last = 0; next = 0; }
-      // 星言机制：最短/最长写信时间（分钟）内随机一次间隔，间隔到点后每分钟掷一次概率，命中才来信
       if ((now - last) / 60000 < next) return;
-      // v3.6.x：每天最多来信（封）——达上限后当天不再来信（30 分钟后重试，跨天自动清零）
       const dailyMax = cfg.dailyMax > 0 ? cfg.dailyMax : 3;
-      if (letterDayCount() >= dailyMax) {
-        store.set('mail-letter-last', String(now));
-        store.set('mail-letter-next', String(30));
+      if (letterDayCount(cid) >= dailyMax) {
+        cs.set('mail-letter-last', String(now));
+        cs.set('mail-letter-next', String(30));
         return;
       }
-      // 未命中：不重置间隔，下一轮 tick 继续掷（概率真实生效，不会出现"等 8 小时再掷一次"）
       if (Math.random() * 100 >= cfg.writeProb) return;
-      const name = partnerName();
-      const content = taLetterContent(cfg);
-      const letter = { id: 'l_' + Date.now(), type: 'received', tt: TITLES[Math.floor(Math.random() * TITLES.length)], content: content, tm: Date.now() };
-      const list = load();
+      const name = partnerNameFor(cid);
+      const content = taLetterContent(cfg, cid);
+      const letter = { id: 'l_' + Date.now() + '_' + cid, type: 'received', tt: TITLES[Math.floor(Math.random() * TITLES.length)], content: content, tm: Date.now() };
+      const list = load(cid);
       list.unshift(letter);
-      save(list);
-      store.set('mail-letter-last', String(now));
-      store.set('mail-letter-next', String(cfg.writeMin + Math.random() * Math.max(1, cfg.writeMax - cfg.writeMin)));
-      letterDayAdd();
-      if (window.chatAddSystem) window.chatAddSystem('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>' + name + ' 给你寄来了一封信');
-      updateBadge();
-      render();
-      // v3.5.107：TA 来信且不在信箱页 → 前台桌面弹窗（点击进信箱）
-      if (window.showDeskPopup && !mailPageVisible()) {
-        window.showDeskPopup({ name: '信箱', text: '给你寄来了一封信：' + content, onClick: openMailPage });
+      save(list, cid);
+      cs.set('mail-letter-last', String(now));
+      cs.set('mail-letter-next', String(cfg.writeMin + Math.random() * Math.max(1, cfg.writeMax - cfg.writeMin)));
+      letterDayAdd(cid);
+      notifyMailToChat(cid, '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>' + name + ' 给你寄来了一封信');
+      // 前台弹窗 + 角标刷新仅当前激活桌面（用户能看到）；非当前桌面下次切回时 load 自然显示
+      if (cid === (window.__activeCid || 'default')) {
+        updateBadge();
+        render();
+        if (window.showDeskPopup && !mailPageVisible()) {
+          window.showDeskPopup({ name: '信箱', text: '给你寄来了一封信：' + content, onClick: openMailPage });
+        }
       }
     } catch (e) {}
+  }
+  function maybeIncomingLetter() {
+    const list = (window.getContacts && window.getContacts()) || [{ id: 'default' }];
+    list.forEach(c => maybeIncomingLetterFor(c.id));
   }
   setTimeout(() => {
     setInterval(() => { maybeIncomingLetter(); checkPendingReply(); }, 60000);

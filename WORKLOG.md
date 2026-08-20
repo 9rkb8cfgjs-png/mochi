@@ -9,6 +9,32 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（用户反馈 iOS Safari 多角色四个问题·本会话修复）
+- [AI-A·完成]（**已构建 verify 10/10，未提交**）：`src/js/chat.js` `mail.js` `feed.js`（AI-A 域）、`src/js/contacts.js`（AI-B 域，代改 renameContact 同步 lbl-partner，若需调整请留话）。
+  - **① 切桌面再切回消息消失**：`chat.js` loadMsgs 合并原规则 localNew 只保留本地比 IDB 末条 ts 更新的消息，若 IDB 缺旧消息（写入失败/竞态），本地旧消息 ts < idbLastTs 被 filter 掉 → 丢消息。改为按指纹（ts+text+side+img）取并集，不限 ts，merged 按 ts 排序。聊天只增不改，取并集不会加回已删消息。
+  - **② 聊天顶部栏显示"系统默认"非角色名**：`chat.js` 原只在模块加载时读一次 lbl-partner，切换联系人后从不刷新；window.renderChatHeader 从未定义。改为 updateChatPartnerName()（读 lbl-partner，缺失回退 contacts.name，再回退 'TA'），contact-switched 时调用并刷新头像，挂 window.renderChatHeader。`contacts.js` renameContact 改名后同步写该联系人 lbl-partner（仅当为空或等于旧 contacts.name 时，避免覆盖设置页单独设的 TA 昵称）。
+  - **③ 信箱数据串桌面**：`mail.js` 原来信/回信单定时器用 store（当前激活桌面），用户在 default 桌面时所有联系人的来信都写到 default → 串桌面。改为 maybeIncomingLetterFor(cid)/checkPendingReplyFor(cid) 遍历各联系人用 storeFor(cid) 读写各自命名空间；load/save 等全部加 cid 参数。来信系统消息走 notifyMailToChat(cid)（当前桌面 chatAddSystem，非当前桌面直接写该桌面 IDB 聊天+LS）。前台弹窗仅当前激活桌面才弹。
+  - **④ 朋友圈统一显示"TA"**：`feed.js` taFeedNameFor/taAvFor 原 owner==='default' 时回退 partnerName()（当前激活桌面）——从 default 桌面打开朋友圈时所有动态都显示 default 的 TA 名字。改为始终按 owner 桌面取（含 default），owner 桌面 lbl-partner 空时回退该联系人注册名，再回退 'TA'/''。
+  - 验证：node --check 全过；verify 10/10。本次构建同时包含工作区已保存的 music-player.js/pong.js 改动。
+
+
+### 2026-08-20（用户反馈「iOS Safari：音乐导入网易云歌单无反应，只显示一首，无法播放」）
+- [AI-A·完成]（**已构建 verify 10/10 + 音乐专项 8/8，未提交**）：`src/js/music-player.js`（AI-A 域）。
+  - 根因1（播放）：`resolveNeteaseDirectUrl` 用 XHR `responseURL` 解析 meting 302 拿 CDN 直链——iOS Safari 上 XHR `responseURL` 对跨域 302 不返回最终 URL（只返回原始请求 URL），导致 `retryWithHttpsUrl` 拿不到 CDN 直链、回退到 meting URL 重试无意义。
+  - 根因2（歌单导入"无反应"）：`fetchNeteasePlaylist` 每源超时 10 秒，5 源全挂时用户等 50 秒才看到"歌单导入失败"——iOS Safari 上 meting API 不可达/超时时体感"无反应"。
+  - 修复1：`resolveNeteaseDirectUrl` 改用 `fetch`——`response.url` 跟随重定向后返回最终 URL（iOS Safari 15.4+ 支持），收到响应头即 `abort` body 不下载音频。fetch 拿到 https CDN 直链后直接播放，不经 meting 302。
+  - 修复2：`retryWithHttpsUrl` 增加备用播放源——meting API 不可达（直链为空）时，用网易云官方外链 `music.163.com/song/media/outer/url?id=xxx`（`<audio>` 不走 CORS，直接跟随 302 到 CDN mp3 播放）。
+  - 修复3：歌单导入超时 10 秒→7 秒，让备用源（i-meto 镜像）更快被尝试。
+  - 修复4：播放失败提示补充"或该歌曲为VIP付费歌曲"，帮助用户区分原因。
+  - 验证：无头 Chrome 8/8（歌单导入 200 首 / 播放进度推进 / fetch 拿 https CDN 直链 / 官方外链 audio 播放成功 有时长）；verify 10/10。临时脚本已删。
+
+### 2026-08-20（用户反馈「iQOO Neo5 SE · QQ浏览器：聊天显示联系人来信，点信箱却看不到信」）
+- [本会话·完成]（**已改 src，未构建未提交，请构建者执行 `node build.mjs` 后随本次统一提交**）：`src/js/mail.js`（AI-A 域）+ 新增 `tools/smoke-mail-qq.mjs`（回归脚本，保留）。
+  - 根因：mail.js 与 chat.js 在 IDB 未就绪时的持久化策略不对称——QQ浏览器 X5 的 IndexedDB 打开可能挂起（`indexedDB.open` 永不回调），`mailDbReady` 保持 false；此时 `save()` 只把来信存进内存 `mailPending`、完全不落盘（原 `if (!mailDbReady) { mailPending=...; return; }`），而 chat.js 同场景 `saveMsgs()` 会立即写 LS 快照。于是来信的聊天系统通知「给你寄来了一封信」重载后仍在，信箱整封丢失（保险丝 15s 触发前页面被 X5 后台冻结/杀进程/重载即丢）。
+  - 修复：`save(list, cid)` 在 `!cid && !mailDbReady` 分支补 `writeSnap(list, cid)`——立即写剥图 LS 快照（文本+标题+时间，≤200KB），与 chat.js 同策略；IDB 权威读回后 `mailMergeFromIdb` 按 id 合并恢复完整数据（含图片），不破坏 v3.5.120 权威防护（主键 `store.set` 仍等就绪，不会被空列表覆盖 IDB）。
+  - 验证：`node --check` 通过；`node tools/smoke-mail-qq.mjs` 4/4（X5 挂起 IDB 场景：来信产生→本会话可见→保险丝前重载→聊天通知存活+信箱可见）；`REPRO_NORMAL=1` 正常 IDB 路径 4/4 回归通过。
+  - ⚠️ 并行会话（对方）正在同文件重构多联系人来信（`save/load/writeSnap/letter*` 加 `cid` 参数、`checkPendingReplyFor`、`maybeIncomingLetterFor`），本改动与其兼容（改动点在其新 `save(list, cid)` 内部，用其新 `writeSnap(list, cid)`）；构建前请确认对方 mail.js 已保存完整。
+
 ### 2026-08-20（聊天搜索记录新增按日期查询）
 - [本会话·完成]（**已构建 verify 10/10 + 日期搜索专项 CDP 18/18，已随对方提交 492be69 入库**——提交信息未列本功能但内容已含）：用户要求聊天更多→搜索聊天记录支持按日期查询。
   - 实现：搜索半框关键词栏下新增「开始日期 至 结束日期 + 清除」行（`<input type="date">`，安卓端 native picker 不受 ce-box 转换影响）；`runChatSearch()` 支持 仅关键词 / 仅开始日期 / 日期范围 / 单日 / 日期+关键词组合 五种查询；结束日期含当天 24 点（本地时区解析，避免 `new Date('YYYY-MM-DD')` UTC 偏移）；结果时间改 `fmtSearchTime`（MM-DD HH:MM，跨天搜索可分辨）；日期 change 自动搜索、清除按钮重置；无关键词无日期时提示「输入关键词，或选择日期范围搜索聊天记录」；空结果按条件给不同提示。
@@ -657,3 +683,12 @@
 
 ### 2026-08-20
 - [本会话] 完成（用户反馈「拍一拍人称有问题：用自定义拍一拍字卡【弹了一下我的额头】会显示成【联系人昵称弹了一下我的额头 我】」）：`src/js/chat.js` performPoke + sendPoke。根因：拍一拍字卡分三类（含"你"如"戳了戳你的脸蛋"、含"我"如"弹了一下我的额头"、都不含如"戳一戳"），原代码只分「含你」/「不含你」两支——performPoke 不含"你"时一律末尾追加我的称呼 →「联系人昵称 弹了一下我的额头 我」多出个"我"；sendPoke 不含"你"时一律 `'我 '+字卡+' '+联系人昵称` →「我 弹了一下我的额头 TA」读成自己拍自己。修复：中间加「含我」分支——performPoke 直接「联系人昵称 + 字卡原文」（不再追加"我"）；sendPoke 把字卡里的"我"替换成联系人昵称（"弹了一下我的额头"→"我 弹了一下TA的额头"）。默认字卡（拍了拍你/戳了戳你的脸蛋/戳一戳）输出不变。node --check 通过 + 逻辑单测 6 字卡×2 方向全部正确。**已构建待提交**（构建时工作区干净、无对方在途改动）。
+
+### 2026-08-20
+- [本会话] 完成（用户要求「拍一拍页面像表情包一样分两类：联系人昵称的拍一拍 + 我的昵称的拍一拍，可新增预设拍一拍」——**已构建 verify 10/10 + CDP 实测 7/7（含刷新持久化），待提交**）：`src/js/chat.js` + `src/css/chat-main.css`。
+  - 拍一拍面板改为双 tab（复用表情包 .emoji-tab 样式，JS 注入 #poke-card）：
+    - Tab1「<联系人昵称> 的拍一拍」：内置预设（拍了拍我/戳了戳我的脸蛋/弹了一下我的额头/揉了揉我的头发/捏了捏我的脸颊/拍了拍我的肩膀）+ 用户新增。点卡片/输入 → 联系人拍我（显示"联系人昵称 + 字卡"，新增 performPokeWith，含 你→我的称呼 转换 + 联系人随后回复一条，节奏同 sendPoke）。
+    - Tab2「我的拍一拍」：内置预设（拍了拍你/戳了戳你的脸蛋/弹了一下你的额头/揉了揉你的头发/捏了捏你的脸颊/拍了拍你的肩膀）+ 用户新增。点卡片 → sendPoke（我拍联系人）原行为。
+  - 新增数据：`poke-user-ta`/`poke-user-mine`（每桌面独立，LS+IDB 双写，键带 activePrefix 命名空间，IDB 内容多时恢复覆盖）；面板「＋ 新增」按钮 openModal 输入加入当前 tab 池；自定义输入行按当前 tab 方向发送；tab 记忆 `poke-tab`（每桌面）；contact-switched 重载池+关面板。
+  - 旧字卡库【拍一拍】自定义字卡仍兼容：按人称自动归类（含"你"→我的tab；含"我"→联系人的tab；中性→我的tab）显示为「自定义」小节；performPoke（联系人自动拍一拍）字卡池改为 pokeAllCards()（预设+新增+旧自定义），不再只读 getPokeCards()。
+  - 已 node --check 通过。⚠️ 并行会话正在改 mail.js/music-player.js/pong.js/chat.js（未提交），本次构建已一并带上，提交信息注明双方范围。

@@ -62,6 +62,9 @@
         renderDraft();
       } catch (e) {}
       try { if (input) input.textContent = ''; } catch (e) {}
+      // v3.7.x：切换联系人后刷新顶部栏名字 + 双方头像（原实现从不刷新，顶部栏停留在旧联系人名字）
+      try { updateChatPartnerName(); } catch (e) {}
+      try { fillAvatar('chat-user-av', 'avatar-user'); fillAvatar('chat-partner-av', 'avatar-partner'); } catch (e) {}
     } catch (e) {}
   });
   // v3.6.x：localStorage 兜底快照——聊天记录权威数据只存 IndexedDB（几千条带图
@@ -235,18 +238,18 @@
           try {
             const idbArr = typeof v === 'string' ? JSON.parse(v) : v;
             if (!Array.isArray(idbArr)) { chatDbReady = true; return; }
-            const idbLastTs = idbArr.length ? (idbArr[idbArr.length - 1].ts || 0) : 0;
-            // 本地（暂存/当前内存）中比 IDB 最后一条更新的消息（启动瞬间注入的日常/查岗等）追加在末尾
-            // v3.5.123：同 ts 的本地消息也保留（Date.now() 偶发与 IDB 末条同毫秒），
-            // 用内容指纹去重防止与 IDB 已有消息重复
-            const localNew = (pendingLocal || msgs || []).filter(m => {
-              if (!m) return false;
-              if (m.ts > idbLastTs) return true;
-              if (m.ts < idbLastTs) return false;
-              const sig = JSON.stringify({ t: m.text, s: m.side, i: m.img ? m.img.length : 0 });
-              return !idbArr.some(x => x && x.text === m.text && x.side === m.side && JSON.stringify({ t: x.text, s: x.side, i: x.img ? x.img.length : 0 }) === sig);
-            });
-            const merged = idbArr.concat(localNew);
+            // v3.7.x 修复（用户反馈"切换桌面再切回，12点前的消息消失"）：
+            //   原合并 localNew 只保留本地比 IDB 末条 ts 更新的消息（m.ts > idbLastTs），
+            //   若 IDB 缺旧消息（写入失败/竞态导致 IDB 只有部分新消息，旧消息只在
+            //   LS 快照/内存），本地旧消息 ts < idbLastTs 被 filter 掉，merged = idbArr
+            //   不含旧消息 → 丢消息。改为按指纹取并集：localNew = 本地中 IDB 没有的
+            //   （按 ts+text+side+img 指纹去重），不限 ts；merged 按 ts 排序。
+            //   聊天消息只增不改（撤回/编辑打标记不删数组），取并集不会把已删消息加回。
+            const sigOf = (m) => { try { return JSON.stringify({ t: m && m.text, s: m && m.side, ts: m && m.ts, i: m && m.img ? m.img.length : 0 }); } catch (e) { return ''; } };
+            const idbSigs = new Set();
+            idbArr.forEach(x => { if (x) idbSigs.add(sigOf(x)); });
+            const localNew = (pendingLocal || msgs || []).filter(m => m && !idbSigs.has(sigOf(m)));
+            const merged = idbArr.concat(localNew).sort((a, b) => ((a && a.ts || 0) - (b && b.ts || 0)));
             // v3.6.x：防止过期快照把刚作答的卡片刷回未作答——
             // 用户点卡片作答后 saveMsgsNow 已把「已作答」状态写入 IDB；但若本次
             // idbGet 的快照早于那次写盘（低端机/大聊天记录读取慢，或其它模块
@@ -436,11 +439,27 @@
   } catch (e) {}
 
   // 顶部标题 = 联系人的昵称
+  // v3.7.x 修复（用户反馈"切换联系人后聊天顶部栏仍显示旧名/系统默认，不显示设置的角色名"）：
+  //   原实现只在模块加载时读一次 lbl-partner 写入 #chat-partner-name，切换联系人后
+  //   从不刷新；contacts.js refreshActiveContactUI 调的 window.renderChatHeader 也
+  //   从未被定义（空检查永远跳过）。改为抽 updateChatPartnerName()，读 lbl-partner，
+  //   缺失回退当前联系人的注册名（联系人管理里设的名字，如"Z"），再回退 'TA'；
+  //   contact-switched 时调用，并挂 window.renderChatHeader 供 contacts.js 切换后刷新。
   const pname = document.getElementById('chat-partner-name');
-  if (pname) {
+  function updateChatPartnerName() {
+    if (!pname) return;
     const saved = store.get('lbl-partner');
-    if (saved) pname.textContent = saved;
+    if (saved) { pname.textContent = saved; return; }
+    try {
+      if (window.getContacts) {
+        const c = window.getContacts().find(x => x.id === (window.__activeCid || 'default'));
+        if (c && c.name) { pname.textContent = c.name; return; }
+      }
+    } catch (e) {}
+    pname.textContent = 'TA';
   }
+  updateChatPartnerName();
+  window.renderChatHeader = updateChatPartnerName;
 
   // ---- 联系人「正在输入」状态 ----
   // typing 行位于消息区与输入栏之间（不悬浮、不覆盖消息）。
@@ -1323,7 +1342,7 @@
       if (d && d.type === 'poke') action = d.text;
     }
     if (!action) {
-      const cards = (window.getPokeCards && window.getPokeCards()) || [];
+      const cards = pokeAllCards();
       action = cards.length ? pick(cards) : '拍了拍你';
     }
     const name = store.get('lbl-partner') || 'TA';
@@ -2396,15 +2415,116 @@ function partialRetractMsg(msgEl, side) {
       }
     });
   }
-  // 我方拍一拍：聊天页内浮层卡片（展示分组/字卡，点击使用）
+  // 我方拍一拍：聊天页内浮层卡片（联系人昵称 / 我的昵称 双 tab，仿表情包面板）
+  // v3.7.x：内置预设拍一拍 + 用户新增（每桌面独立）+ 字卡库【拍一拍】旧自定义字卡
+  //   （按人称自动归类进两个 tab），点卡片按 tab 方向发出
   const pokeCard = document.getElementById('poke-card');
   const pokeList = document.getElementById('poke-list');
   const pokeClose = document.getElementById('poke-card-close');
   const pokeName = document.getElementById('poke-partner-name');
-  // 拍一拍分组切换栏（chips 复用 .emoji-g-chip 样式）+ 自定义文字输入行
+  // 内置预设拍一拍：ta=联系人昵称视角（联系人拍我），mine=我的昵称视角（我拍联系人）
+  const POKE_PRESETS = {
+    ta: ['拍了拍我', '戳了戳我的脸蛋', '弹了一下我的额头', '揉了揉我的头发', '捏了捏我的脸颊', '拍了拍我的肩膀'],
+    mine: ['拍了拍你', '戳了戳你的脸蛋', '弹了一下你的额头', '揉了揉你的头发', '捏了捏你的脸颊', '拍了拍你的肩膀']
+  };
+  // 用户新增拍一拍（每桌面独立，localStorage + IndexedDB 双写，键带命名空间）
+  function pokeUserKey(kind) { return window.activePrefix() + ':poke-user-' + kind; }
+  function pokeUserLoad(kind) {
+    try {
+      const v = JSON.parse(store.get('poke-user-' + kind) || 'null');
+      if (Array.isArray(v)) return v.filter(x => typeof x === 'string' && x.trim());
+    } catch (e) {}
+    return [];
+  }
+  function pokeUserSave(kind) {
+    try {
+      const data = JSON.stringify(userPoke[kind]);
+      store.set('poke-user-' + kind, data);
+      if (window.idbSet) window.idbSet(pokeUserKey(kind), data);
+    } catch (e) {}
+  }
+  const userPoke = { ta: pokeUserLoad('ta'), mine: pokeUserLoad('mine') };
+  // IDB 恢复（配额满不丢；内容更多优先）
+  (function () {
+    if (!window.idbGet) return;
+    ['ta', 'mine'].forEach(kind => {
+      window.idbGet(pokeUserKey(kind)).then(v => {
+        if (!v) return;
+        try {
+          const arr = JSON.parse(v);
+          if (Array.isArray(arr) && arr.length > userPoke[kind].length) userPoke[kind] = arr;
+        } catch (e) {}
+      }).catch(() => {});
+    });
+  })();
+  // 字卡人称归类：含"你"→我方视角（我拍TA）；含"我"→联系人视角（TA拍我）；都不含→我方视角
+  function pokeKindOf(card) {
+    if (typeof card !== 'string') return 'mine';
+    if (card.indexOf('你') >= 0) return 'mine';
+    if (card.indexOf('我') >= 0) return 'ta';
+    return 'mine';
+  }
+  // 全部拍一拍字卡（联系人自动拍一拍用）：预设 + 用户新增 + 字卡库【拍一拍】旧自定义
+  function pokeAllCards() {
+    const out = [];
+    (POKE_PRESETS.ta || []).forEach(x => out.push(x));
+    (POKE_PRESETS.mine || []).forEach(x => out.push(x));
+    (userPoke.ta || []).forEach(x => out.push(x));
+    (userPoke.mine || []).forEach(x => out.push(x));
+    try { ((window.getPokeCards && window.getPokeCards()) || []).forEach(x => out.push(x)); } catch (e) {}
+    return out;
+  }
+  // 联系人拍我（「联系人昵称的拍一拍」tab 点卡片/输入后发出，显示"联系人昵称 + 字卡"）
+  function performPokeWith(action) {
+    if (!action) return;
+    const name = store.get('lbl-partner') || 'TA';
+    const myName = store.get('lbl-user') || '我';
+    let text;
+    if (action.indexOf('你') >= 0) {
+      text = name + ' ' + action.replace(/你/g, myName);
+    } else if (action.indexOf('我') >= 0) {
+      text = name + ' ' + action;
+    } else {
+      text = name + ' ' + action + ' ' + myName;
+    }
+    addRec({ side: 'in', text: text, special: 'poke' });
+    if (window.logFish) window.logFish();
+    // 联系人拍我后接着回复一条（节奏与 sendPoke 一致）
+    setTimeout(() => {
+      const c2 = cfg();
+      if (hit(c2['rn-prob'])) { addIn('', { special: 'read' }); return; }
+      showTyping();
+      setTimeout(() => {
+        hideTyping();
+        if (hit(c2['touch-prob'])) { performPoke(); return; }
+        const r = genOneReply(c2);
+        const m2 = addIn(r.text, { type: r.type });
+        if (hit(c2['rc-prob'])) {
+          setTimeout(() => { retractMsg(m2, 'in'); }, 900);
+        }
+      }, randInt(800, 2000));
+    }, randInt(600, 1200));
+  }
+  // 拍一拍双 tab（复用表情包 .emoji-tabs/.emoji-tab 样式）+ 新增按钮 + 自定义文字输入行
   // v3.6.x：JS 注入到 poke-card（模板只放静态头/列表锚点，这里与 renderPokeCard 同步）
-  const pokeGroupsBar = document.createElement('div');
-  pokeGroupsBar.className = 'poke-groups';
+  let pokeMode = 'ta'; // 当前 tab：ta=联系人的拍一拍 / mine=我的拍一拍
+  const pokeTabsRow = document.createElement('div');
+  pokeTabsRow.className = 'poke-tabs-row';
+  const pokeTabTa = document.createElement('button');
+  pokeTabTa.className = 'emoji-tab sel';
+  pokeTabTa.type = 'button';
+  pokeTabTa.dataset.ptab = 'ta';
+  const pokeTabMine = document.createElement('button');
+  pokeTabMine.className = 'emoji-tab';
+  pokeTabMine.type = 'button';
+  pokeTabMine.dataset.ptab = 'mine';
+  const pokeAddBtn = document.createElement('button');
+  pokeAddBtn.className = 'poke-add-btn';
+  pokeAddBtn.type = 'button';
+  pokeAddBtn.textContent = '＋ 新增';
+  pokeTabsRow.appendChild(pokeTabTa);
+  pokeTabsRow.appendChild(pokeTabMine);
+  pokeTabsRow.appendChild(pokeAddBtn);
   const pokeInputRow = document.createElement('div');
   pokeInputRow.className = 'poke-input-row';
   const pokeInput = document.createElement('input');
@@ -2422,7 +2542,7 @@ function partialRetractMsg(msgEl, side) {
   function doPokeInput() {
     const v = (pokeInput && pokeInput.value || '').trim();
     if (!v) { toast('先输入拍一拍文字'); return; }
-    sendPoke(v);
+    if (pokeMode === 'ta') performPokeWith(v); else sendPoke(v);
     if (pokeInput) pokeInput.value = '';
     closePokeCard();
   }
@@ -2439,7 +2559,7 @@ function partialRetractMsg(msgEl, side) {
   pokeInputRow.appendChild(pokeInput);
   pokeInputRow.appendChild(pokeInputGo);
   if (pokeCard) {
-    pokeCard.insertBefore(pokeGroupsBar, pokeList);
+    pokeCard.insertBefore(pokeTabsRow, pokeList);
     pokeCard.insertBefore(pokeInputRow, pokeList);
   }
   // 发送一次拍一拍（触发联系人回复）
@@ -2477,54 +2597,103 @@ function partialRetractMsg(msgEl, side) {
       }, randInt(800, 2000));
     }, randInt(600, 1200));
   }
-  let pokeCurGroup = ''; // 当前选中的拍一拍分组（'' = 未选，自动落到第一个分组）
-  function renderPokeGroupsBar(groups) {
-    if (!pokeGroupsBar) return;
-    pokeGroupsBar.innerHTML = '';
-    const mk = (label, val) => {
-      const c = document.createElement('span');
-      c.className = 'emoji-g-chip' + (pokeCurGroup === val ? ' sel' : '');
-      c.textContent = label;
-      c.addEventListener('click', (e) => {
-        e.stopPropagation();
-        pokeCurGroup = val;
-        renderPokeCard();
-      });
-      pokeGroupsBar.appendChild(c);
-    };
-    groups.forEach(g => { if (g[1] && g[1].length) mk(g[0] + g[1].length, g[0]); });
+  // 记住最后打开的 tab（每桌面独立）
+  function savePokePref() { try { store.set('poke-tab', pokeMode); } catch (e) {} }
+  (function () {
+    try {
+      const p = store.get('poke-tab');
+      if (p === 'mine') pokeMode = 'mine';
+    } catch (e) {}
+  })();
+  function pokeTabLabel(kind) {
+    if (kind === 'ta') {
+      const n = store.get('lbl-partner') || 'TA';
+      return n + ' 的拍一拍';
+    }
+    const n = store.get('lbl-user') || '我';
+    return (n === '我' ? '我的' : n + ' 的') + '拍一拍';
+  }
+  function pokeSectionLabel(t) {
+    const s = document.createElement('div');
+    s.className = 'poke-sec-label';
+    s.textContent = t;
+    return s;
+  }
+  function pokeCardEl(c, kind) {
+    const d = document.createElement('div');
+    d.className = 'cc-item glass';
+    d.innerHTML = '<div class="cc-txt"><div class="t">' + c + '</div></div>';
+    d.addEventListener('click', () => {
+      if (kind === 'ta') performPokeWith(c); else sendPoke(c);
+      closePokeCard();
+    });
+    return d;
   }
   function renderPokeCard() {
     const name = store.get('lbl-partner') || 'TA';
     if (pokeName) pokeName.textContent = name;
-    const groups = (window.getPokeGroups && window.getPokeGroups()) || [];
-    // 选中分组无效或未选 → 落到第一个分组（不再有"全部"分类）
-    if (groups.length && (!pokeCurGroup || !groups.some(g => g[0] === pokeCurGroup))) {
-      pokeCurGroup = groups[0][0];
-    }
-    renderPokeGroupsBar(groups);
+    pokeTabTa.textContent = pokeTabLabel('ta');
+    pokeTabMine.textContent = pokeTabLabel('mine');
+    pokeTabTa.classList.toggle('sel', pokeMode === 'ta');
+    pokeTabMine.classList.toggle('sel', pokeMode === 'mine');
+    pokeInput.placeholder = pokeMode === 'ta' ? '输入拍一拍文字，如：弹了一下我的额头' : '输入拍一拍文字，如：拍了拍你的脸蛋';
     if (!pokeList) return;
     pokeList.innerHTML = '';
-    if (!groups.length) {
-      pokeList.innerHTML = '<div class="cc-empty">暂无拍一拍字卡<br>请到 自定义聊天字卡 → 拍一拍 添加<br><span style="font-size:11px;color:var(--muted)">也可以直接在上方输入拍一拍文字</span></div>';
+    const presets = (POKE_PRESETS[pokeMode] || []).slice();
+    const users = (userPoke[pokeMode] || []).slice();
+    let extra = [];
+    try { extra = ((window.getPokeCards && window.getPokeCards()) || []).filter(c => pokeKindOf(c) === pokeMode); } catch (e) {}
+    if (!presets.length && !users.length && !extra.length) {
+      pokeList.innerHTML = '<div class="cc-empty">暂无拍一拍字卡<br>点击上方「＋ 新增」添加，或直接输入拍一拍文字</div>';
       return;
     }
-    const shown = pokeCurGroup ? groups.filter(g => g[0] === pokeCurGroup) : groups;
-    // v3.7.x：顶部已有分组切换栏，字卡列表里不再重复显示分组标题，直接平铺字卡
-    shown.forEach(([gname, arr]) => {
-      if (!arr.length) return;
-      arr.forEach(c => {
-        const d = document.createElement('div');
-        d.className = 'cc-item glass';
-        d.innerHTML = '<div class="cc-txt"><div class="t">' + c + '</div></div>';
-        d.addEventListener('click', () => { sendPoke(c); closePokeCard(); });
-        pokeList.appendChild(d);
-      });
-    });
+    if (presets.length) {
+      pokeList.appendChild(pokeSectionLabel('预设'));
+      presets.forEach(c => pokeList.appendChild(pokeCardEl(c, pokeMode)));
+    }
+    if (users.length || extra.length) {
+      // 与预设同文案的旧字卡不再重复显示（stripBuiltins 只处理内置分组，跨分组同名不剔）
+      const ps = new Set(presets);
+      const custom = [];
+      users.forEach(c => { if (!ps.has(c)) custom.push(c); });
+      extra.forEach(c => { if (!ps.has(c)) custom.push(c); });
+      if (custom.length) {
+        pokeList.appendChild(pokeSectionLabel('自定义'));
+        custom.forEach(c => pokeList.appendChild(pokeCardEl(c, pokeMode)));
+      }
+    }
   }
   function closePokeCard() {
     if (pokeCard) pokeCard.hidden = true;
   }
+  pokeTabTa.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (pokeMode !== 'ta') { pokeMode = 'ta'; savePokePref(); renderPokeCard(); }
+  });
+  pokeTabMine.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (pokeMode !== 'mine') { pokeMode = 'mine'; savePokePref(); renderPokeCard(); }
+  });
+  pokeAddBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const cur = pokeMode;
+    const hint = cur === 'ta'
+      ? '（将作为「' + (store.get('lbl-partner') || 'TA') + '」的拍一拍，如：弹了一下我的额头）'
+      : '（将作为你的拍一拍，如：拍了拍你的脸蛋）';
+    window.openModal('新增拍一拍' + hint, '', (v) => {
+      v = (v || '').trim();
+      if (!v) { toast('请输入拍一拍文字'); return; }
+      userPoke[cur].push(v);
+      pokeUserSave(cur);
+      renderPokeCard();
+      toast('已添加拍一拍');
+    });
+  });
+  // 切换联系人桌面：重载该桌面的新增拍一拍 + 关闭面板
+  document.addEventListener('contact-switched', function () {
+    try { userPoke.ta = pokeUserLoad('ta'); userPoke.mine = pokeUserLoad('mine'); } catch (e) {}
+    try { if (pokeCard) pokeCard.hidden = true; } catch (e) {}
+  });
   const morePoke = document.getElementById('more-poke');
   if (morePoke) {
     morePoke.addEventListener('click', (e) => {
@@ -3818,6 +3987,8 @@ function partialRetractMsg(msgEl, side) {
     if (morePanel) morePanel.hidden = true;
     closeIme(); // v3.5.116：收起输入法，面板不被键盘遮挡
     if (pokeInput) pokeInput.value = '';
+    // v3.7.x：按当前桌面记忆的 tab 打开
+    try { const p = store.get('poke-tab'); if (p === 'mine') pokeMode = 'mine'; else if (p === 'ta') pokeMode = 'ta'; } catch (e) {}
     renderPokeCard();
   }
   // 点击卡片外部关闭

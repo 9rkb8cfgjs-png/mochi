@@ -171,8 +171,8 @@
   // ---- TA AI 决策（每次 AI 更新调用） ----
   function opponentAI(s, now) {
     const b = s.ball, o = s.opponent, p = s.params;
-    const taX = W - PADDLE_GAP - PADDLE_W;
-    const ballToTa = b.vx > 0;   // 球正在向 TA 移动
+    const taX = PADDLE_GAP + PADDLE_W;
+    const ballToTa = b.vx < 0;   // 球正在向 TA（左）移动
 
     // 危险状态提高 AI 更新频率（已在调用方处理，这里专注决策）
     let targetY = o.y;           // 默认保持
@@ -196,7 +196,7 @@
         const r = Math.random();
         const beh = p.beh;
         // ① 提前移动：球较远 + 轨迹明确
-        const dist = taX - b.x;
+        const dist = b.x - taX;
         if (dist > 180 && behCanTrigger(s, 'early', now) && r < beh.early) {
           behTrigger(s, 'early', now, 600 + Math.random() * 400);
         }
@@ -262,17 +262,17 @@
   // ---- 球与挡板碰撞 ----
   function checkPaddle(s) {
     const b = s.ball;
-    // 玩家挡板（左）
-    const px = PADDLE_GAP + PADDLE_W;
-    if (b.vx < 0 && b.x - BALL_R <= px && b.x - BALL_R >= PADDLE_GAP - 4 && b.y >= s.player.y && b.y <= s.player.y + PADDLE_H) {
-      b.x = px + BALL_R;
-      bouncePaddle(s, s.player, true);
-    }
-    // TA 挡板（右）
-    const tx = W - PADDLE_GAP - PADDLE_W;
-    if (b.vx > 0 && b.x + BALL_R >= tx && b.x + BALL_R <= W - PADDLE_GAP + 4 && b.y >= s.opponent.y && b.y <= s.opponent.y + PADDLE_H) {
-      b.x = tx - BALL_R;
+    // TA 挡板（左）
+    const tx = PADDLE_GAP + PADDLE_W;
+    if (b.vx < 0 && b.x - BALL_R <= tx && b.x - BALL_R >= PADDLE_GAP - 4 && b.y >= s.opponent.y && b.y <= s.opponent.y + PADDLE_H) {
+      b.x = tx + BALL_R;
       bouncePaddle(s, s.opponent, false);
+    }
+    // 玩家挡板（右）
+    const px = W - PADDLE_GAP - PADDLE_W;
+    if (b.vx > 0 && b.x + BALL_R >= px && b.x + BALL_R <= W - PADDLE_GAP + 4 && b.y >= s.player.y && b.y <= s.player.y + PADDLE_H) {
+      b.x = px - BALL_R;
+      bouncePaddle(s, s.player, true);
     }
   }
 
@@ -285,7 +285,7 @@
     const newSpeed = Math.min(MAX_SPEED, INIT_SPEED + s.rallyHits * SPEED_INC);
     b.speed = newSpeed;
     const ang = hit * (Math.PI / 3.2);   // 最大约 56°
-    b.vx = (isPlayer ? 1 : -1) * Math.cos(ang) * newSpeed;
+    b.vx = (isPlayer ? -1 : 1) * Math.cos(ang) * newSpeed;
     b.vy = Math.sin(ang) * newSpeed;
     s.flashPaddle = 1;
     sfxPaddle();
@@ -324,7 +324,7 @@
 
     // TA AI 更新频率：危险状态（球向 TA 且较近）提高频率
     const b = s.ball;
-    const danger = b.vx > 0 && (W - PADDLE_GAP - PADDLE_W - b.x) < 220;
+    const danger = b.vx < 0 && (b.x - PADDLE_GAP - PADDLE_W) < 220;
     const aiInterval = danger ? 50 : 110;
     if (now >= s.opponent.aiNextAt) {
       opponentAI(s, now);
@@ -344,16 +344,16 @@
     checkPaddle(s);
 
     // 得分判定
-    if (b.x + BALL_R < 0) {
-      // 球越过左边界 → TA 得分
+    if (b.x - BALL_R > W) {
+      // 球越过右边界 → TA 得分
       s.opponentScore++;
       s.opponentStreak++; s.playerStreak = 0;
       s.maxOpponentStreak = Math.max(s.maxOpponentStreak, s.opponentStreak);
       s.totalRounds++;
       s.beh.consecCatch = 0;
       onScore(s, now, 'opponent');
-    } else if (b.x - BALL_R > W) {
-      // 球越过右边界 → 玩家得分
+    } else if (b.x + BALL_R < 0) {
+      // 球越过左边界 → 玩家得分
       s.playerScore++;
       s.playerStreak++; s.opponentStreak = 0;
       s.maxPlayerStreak = Math.max(s.maxPlayerStreak, s.playerStreak);
@@ -424,11 +424,11 @@
     ctx.setLineDash([6, 8]);
     ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
     ctx.setLineDash([]);
-    // 挡板
-    ctx.fillStyle = s.flashPaddle > 0 ? '#7fd1ff' : '#e8eefc';
-    ctx.fillRect(PADDLE_GAP, s.player.y, PADDLE_W, PADDLE_H);
+    // 挡板：TA 在左（橙色），玩家在右（蓝色）
     ctx.fillStyle = s.flashPaddle > 0 ? '#ffb38a' : '#e8eefc';
-    ctx.fillRect(W - PADDLE_GAP - PADDLE_W, s.opponent.y, PADDLE_W, PADDLE_H);
+    ctx.fillRect(PADDLE_GAP, s.opponent.y, PADDLE_W, PADDLE_H);
+    ctx.fillStyle = s.flashPaddle > 0 ? '#7fd1ff' : '#e8eefc';
+    ctx.fillRect(W - PADDLE_GAP - PADDLE_W, s.player.y, PADDLE_W, PADDLE_H);
     // 球（碰墙时轻微闪烁）
     const b = s.ball;
     ctx.fillStyle = s.flashWall > 0 ? '#ffe08a' : '#ffffff';

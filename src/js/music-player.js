@@ -474,7 +474,7 @@
       const src = sources[idx++];
       let controller;
       try { controller = new AbortController(); } catch (e) { controller = null; }
-      const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 10000);
+      const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 7000);
       fetch(src.url, controller ? { signal: controller.signal } : undefined)
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
         .then(txt => {
@@ -1454,7 +1454,7 @@
   // 现场合成内置示例旋律并直接播放（不改歌曲数据，外链/本地数据都保留）
   function playDemoFor(m, seedIdx) {
     genDemoAudio(seedIdx).then(d => {
-      if (!d) { toast('播放失败：网络链接可能已失效'); demoFallbackBusy = false; return; }
+      if (!d) { toast('播放失败：网络链接可能已失效，或该歌曲为VIP付费歌曲'); demoFallbackBusy = false; return; }
       try { window.idbSet(window.activePrefix() + ':music-file:' + m.id, d); } catch (e) {}
       demoFallbackBusy = false;
       if (currentId !== m.id) return;
@@ -1571,7 +1571,7 @@
           toast('外链播放失败，已改用内置示例旋律');
           playDemoFor(m, idx);
         } else if (idx < 0) {
-          toast('播放失败：网络链接可能已失效');
+          toast('播放失败：网络链接可能已失效，或该歌曲为VIP付费歌曲');
           try { audio.pause(); } catch (e) {}
           try { syncPlayIcons(false); } catch (e) {}
         }
@@ -1587,30 +1587,37 @@
   function neteaseMetingUrl(id) {
     return 'https://api.injahow.cn/meting/?type=url&id=' + encodeURIComponent(String(id));
   }
-  // v3.6.x：用 XHR 解析 meting URL 的 302 跳转，拿到最终 CDN 直链 URL
-  //（xhr.responseURL 跟随重定向后的最终 URL，跨域也可读），把 http: 修正为 https:
-  // 避免混合内容拦截。XHR 只读到头信息就 abort，不下载音频 body
+  // v3.6.x：解析 meting URL 的 302 跳转，拿到最终 CDN 直链 URL，把 http: 修正为 https:
+  // 避免混合内容拦截。
+  // v3.9.x：改用 fetch（response.url 跟随重定向后的最终 URL）——iOS Safari 上
+  // XHR 的 responseURL 对跨域 302 不返回最终 URL（只返回原始请求 URL），导致
+  // retryWithHttpsUrl 拿不到 CDN 直链、回退到 meting URL 重试无意义。fetch 的
+  // response.url 在所有现代浏览器（含 iOS Safari 15.4+）都正确返回最终 URL。
+  // fetch 收到响应头即 resolve，立即 abort body 不下载音频。
   function resolveNeteaseDirectUrl(m, cb) {
     try {
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', neteaseMetingUrl(m.neteaseId), true);
-      let done = false;
-      const finish = function () {
-        if (done) return;
-        done = true;
-        let finalUrl = (xhr.responseURL || '').replace(/^http:/i, 'https:');
-        cb(finalUrl || null);
-      };
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState >= 2) { try { xhr.abort(); } catch (e) {} finish(); }
-      };
-      xhr.onerror = finish;
-      xhr.ontimeout = finish;
-      xhr.timeout = 8000;
-      xhr.send();
+      let controller;
+      try { controller = new AbortController(); } catch (e) { controller = null; }
+      const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 8000);
+      fetch(neteaseMetingUrl(m.neteaseId), controller ? { signal: controller.signal } : undefined)
+        .then(function (r) {
+          clearTimeout(timer);
+          var finalUrl = (r.url || '').replace(/^http:/i, 'https:');
+          try { controller && controller.abort(); } catch (e) {}
+          try { r.body && r.body.cancel && r.body.cancel(); } catch (e) {}
+          cb(finalUrl || null);
+        })
+        .catch(function () { clearTimeout(timer); cb(null); });
     } catch (e) { cb(null); }
   }
   let httpsRetrying = false;
+  // v3.9.x：网易云官方外链——meting API 不可达时的备用播放方案。
+  // https://music.163.com/song/media/outer/url?id=xxx 302 → CDN mp3
+  // <audio> 标签不走 CORS，可直接设 src 播放（fetch 因 302 无 CORS 头会失败）。
+  // 注意：302 目标是 http CDN，HTTPS 页面下可能被混合内容拦截——作为 meting 不可达时的最后兜底。
+  function neteaseOuterUrl(id) {
+    return 'https://music.163.com/song/media/outer/url?id=' + encodeURIComponent(String(id));
+  }
   function retryWithHttpsUrl(m) {
     // v3.6.x：每首歌最多重试一次（_httpsRetried 内存标记）——防止 meting 直链也失败时
     // onerror/停滞守卫反复触发 → 无限拉取
@@ -1624,16 +1631,29 @@
     teardownAudio();
     // v3.6.x：先解析 meting URL 的 302 拿最终 CDN 直链，修正 http→https，
     // 再用直链播放（而非直接用 meting URL——和 m.url 相同的重试无意义）
+    // v3.9.x：meting API 不可达（直链为空）时，用网易云官方外链作为备用
+    // 播放源（<audio> 不走 CORS，能请求官方外链；302 到 CDN mp3 直接播放）
     resolveNeteaseDirectUrl(m, function (directUrl) {
+      if (directUrl) {
+        httpsRetrying = false;
+        if (currentId !== m.id) { demoFallbackOrError(m); return; }
+        audio = new Audio();
+        try { audio.referrerPolicy = 'no-referrer'; } catch (e) {}
+        audio.src = directUrl;
+        startPlayback(m);
+        return;
+      }
+      // meting API 失败 → 尝试网易云官方外链（<audio> 直接跟随 302 播放）
       httpsRetrying = false;
       if (currentId !== m.id) { demoFallbackOrError(m); return; }
       audio = new Audio();
       try { audio.referrerPolicy = 'no-referrer'; } catch (e) {}
-      audio.src = directUrl || neteaseMetingUrl(m.neteaseId);
+      audio.src = neteaseOuterUrl(m.neteaseId);
       startPlayback(m);
     });
     return true;
   }
+
   function demoFallbackOrError(m) {
     const idx = seedIdxOf(m);
     if (idx >= 0 && !demoFallbackBusy) {
@@ -1643,7 +1663,7 @@
       return;
     }
     if (idx >= 0) return; // 兜底合成/播放进行中，静默等待结果
-    toast('播放失败：网络链接可能已失效');
+    toast('播放失败：网络链接可能已失效，或该歌曲为VIP付费歌曲');
   }
   // v3.9.x：onended 兜底——网易云 meting 外链某些流不触发 ended 事件（duration=Infinity
   // 或 chunked 流无 Content-Length），导致自动下一首/循环/随机全失效，只能手动切歌。

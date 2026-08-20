@@ -66,12 +66,15 @@
   function myAv() { return window.activeStore().get('avatar-user') || ''; }
   // v3.7.x：跨桌面——TA 身份按「动态所属桌面(owner)」取头像/昵称快照回退，
   // 朋友圈全局共享后，联系人2的动态在联系人1桌面必须显示联系人2的头像
+  // v3.7.x 修复（用户反馈"朋友圈统一显示 TA"）：原实现 owner==='default' 时 s=null，
+  //   回退 partnerAv()/partnerName()（当前激活桌面）——从 default 桌面打开朋友圈时
+  //   所有动态都显示 default 桌面的 TA 头像/昵称，而非各动态所属桌面的。改为始终
+  //   按 owner 桌面取（含 default），owner 桌面没设过才回退 'TA'/''，绝不串到当前桌面。
   function taAvFor(owner) {
     try {
-      const s = owner && owner !== 'default' ? window.storeFor(owner) : null;
-      let v = '';
-      if (s) v = s.get('feed-ta-avatar') || s.get('avatar-partner') || '';
-      if (!v) v = partnerAv();
+      const o = owner || 'default';
+      const s = window.storeFor(o);
+      let v = s.get('feed-ta-avatar') || s.get('avatar-partner') || '';
       if (v && typeof v === 'string' && v.length > 500 * 1024) return '';
       return v || '';
     } catch (e) { return ''; }
@@ -79,10 +82,17 @@
   // v3.7.x：跨桌面——TA 昵称同样按动态所属桌面取（旧数据缺 authorName/taName 快照时的回退）
   function taFeedNameFor(owner) {
     try {
-      const s = owner && owner !== 'default' ? window.storeFor(owner) : null;
-      const v = s ? (s.get('feed-ta-name') || s.get('lbl-partner') || '') : '';
-      return v || partnerName();
-    } catch (e) { return partnerName(); }
+      const o = owner || 'default';
+      const s = window.storeFor(o);
+      const v = s.get('feed-ta-name') || s.get('lbl-partner') || '';
+      if (v) return v;
+      // 回退：该联系人的注册名（联系人管理里设的名字），避免 lbl-partner 空时显示"TA"
+      if (window.getContacts) {
+        const c = window.getContacts().find(x => x.id === o);
+        if (c && c.name) return c.name;
+      }
+      return 'TA';
+    } catch (e) { return 'TA'; }
   }
   // ===== 多联系人：发布者身份快照（owner=联系人cid，role=me/ta） =====
   function activeMe() {

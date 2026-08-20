@@ -1421,6 +1421,23 @@ background:var(--ink); color:#fff; font-size:13px; font-weight:700;
 cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
 .poke-input-go:active { opacity:.85; }
+.poke-tabs-row {
+display:flex; gap:6px; margin-bottom:10px; flex-shrink:0;
+}
+.poke-tabs-row .emoji-tab {
+flex:1; min-width:0; padding:9px 6px; font-size:12px; white-space:nowrap;
+overflow:hidden; text-overflow:ellipsis;
+}
+.poke-add-btn {
+flex:0 0 auto; padding:9px 12px; border-radius:11px;
+border:1px dashed rgba(0,0,0,.25); background:rgba(255,255,255,.92);
+color:#666; font-size:13px; font-weight:700; cursor:pointer;
+font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.poke-add-btn:active { opacity:.85; }
+.poke-sec-label {
+font-size:11px; color:var(--muted); padding:8px 2px 4px; flex-shrink:0;
+}
 .emoji-card {
 position:fixed; top:auto; bottom:calc(96px + env(safe-area-inset-bottom, 0px)); left:18px; right:18px;
 height:auto; max-height:55%;
@@ -4066,7 +4083,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787208241882">Mochi 字卡传讯 v3.6.147 · 部署于 2026-08-20 14:44</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787209520553">Mochi 字卡传讯 v3.6.148 · 部署于 2026-08-20 15:05</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4827,7 +4844,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.147</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.148</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -7123,7 +7140,16 @@ return id;
 };
 window.renameContact = function (id, name) {
 const list = getContacts(); const c = list.find(x => x.id === id);
-if (c) { c.name = name || c.name; regStore().set('contacts', JSON.stringify(list)); }
+if (c) {
+const oldName = c.name;
+c.name = name || c.name;
+regStore().set('contacts', JSON.stringify(list));
+try {
+const s = window.xyStore(G + ':' + id);
+const cur = s.get('lbl-partner');
+if (!cur || cur === oldName) s.set('lbl-partner', c.name);
+} catch (e) {}
+}
 };
 window.deleteContact = function (id) {
 if (id === 'default') return false;
@@ -11100,6 +11126,8 @@ draftImgs = [];
 renderDraft();
 } catch (e) {}
 try { if (input) input.textContent = ''; } catch (e) {}
+try { updateChatPartnerName(); } catch (e) {}
+try { fillAvatar('chat-user-av', 'avatar-user'); fillAvatar('chat-partner-av', 'avatar-partner'); } catch (e) {}
 } catch (e) {}
 });
 const LS_SNAP_LIMIT = 2 * 1024 * 1024;
@@ -11228,15 +11256,11 @@ return;
 try {
 const idbArr = typeof v === 'string' ? JSON.parse(v) : v;
 if (!Array.isArray(idbArr)) { chatDbReady = true; return; }
-const idbLastTs = idbArr.length ? (idbArr[idbArr.length - 1].ts || 0) : 0;
-const localNew = (pendingLocal || msgs || []).filter(m => {
-if (!m) return false;
-if (m.ts > idbLastTs) return true;
-if (m.ts < idbLastTs) return false;
-const sig = JSON.stringify({ t: m.text, s: m.side, i: m.img ? m.img.length : 0 });
-return !idbArr.some(x => x && x.text === m.text && x.side === m.side && JSON.stringify({ t: x.text, s: x.side, i: x.img ? x.img.length : 0 }) === sig);
-});
-const merged = idbArr.concat(localNew);
+const sigOf = (m) => { try { return JSON.stringify({ t: m && m.text, s: m && m.side, ts: m && m.ts, i: m && m.img ? m.img.length : 0 }); } catch (e) { return ''; } };
+const idbSigs = new Set();
+idbArr.forEach(x => { if (x) idbSigs.add(sigOf(x)); });
+const localNew = (pendingLocal || msgs || []).filter(m => m && !idbSigs.has(sigOf(m)));
+const merged = idbArr.concat(localNew).sort((a, b) => ((a && a.ts || 0) - (b && b.ts || 0)));
 const curArr = pendingLocal || msgs || [];
 if (merged.length === curArr.length) {
 curArr.forEach((m, i) => {
@@ -11365,10 +11389,20 @@ fillAvatar('chat-partner-av', 'avatar-partner');
 });
 } catch (e) {}
 const pname = document.getElementById('chat-partner-name');
-if (pname) {
+function updateChatPartnerName() {
+if (!pname) return;
 const saved = store.get('lbl-partner');
-if (saved) pname.textContent = saved;
+if (saved) { pname.textContent = saved; return; }
+try {
+if (window.getContacts) {
+const c = window.getContacts().find(x => x.id === (window.__activeCid || 'default'));
+if (c && c.name) { pname.textContent = c.name; return; }
 }
+} catch (e) {}
+pname.textContent = 'TA';
+}
+updateChatPartnerName();
+window.renderChatHeader = updateChatPartnerName;
 const typingEl = document.getElementById('chat-typing');
 let typingOn = false;
 function chatVisible() {
@@ -12129,7 +12163,7 @@ const d = (window.getDefaultCards && window.getDefaultCards()) || null;
 if (d && d.type === 'poke') action = d.text;
 }
 if (!action) {
-const cards = (window.getPokeCards && window.getPokeCards()) || [];
+const cards = pokeAllCards();
 action = cards.length ? pick(cards) : '拍了拍你';
 }
 const name = store.get('lbl-partner') || 'TA';
@@ -12957,8 +12991,100 @@ const pokeCard = document.getElementById('poke-card');
 const pokeList = document.getElementById('poke-list');
 const pokeClose = document.getElementById('poke-card-close');
 const pokeName = document.getElementById('poke-partner-name');
-const pokeGroupsBar = document.createElement('div');
-pokeGroupsBar.className = 'poke-groups';
+const POKE_PRESETS = {
+ta: ['拍了拍我', '戳了戳我的脸蛋', '弹了一下我的额头', '揉了揉我的头发', '捏了捏我的脸颊', '拍了拍我的肩膀'],
+mine: ['拍了拍你', '戳了戳你的脸蛋', '弹了一下你的额头', '揉了揉你的头发', '捏了捏你的脸颊', '拍了拍你的肩膀']
+};
+function pokeUserKey(kind) { return window.activePrefix() + ':poke-user-' + kind; }
+function pokeUserLoad(kind) {
+try {
+const v = JSON.parse(store.get('poke-user-' + kind) || 'null');
+if (Array.isArray(v)) return v.filter(x => typeof x === 'string' && x.trim());
+} catch (e) {}
+return [];
+}
+function pokeUserSave(kind) {
+try {
+const data = JSON.stringify(userPoke[kind]);
+store.set('poke-user-' + kind, data);
+if (window.idbSet) window.idbSet(pokeUserKey(kind), data);
+} catch (e) {}
+}
+const userPoke = { ta: pokeUserLoad('ta'), mine: pokeUserLoad('mine') };
+(function () {
+if (!window.idbGet) return;
+['ta', 'mine'].forEach(kind => {
+window.idbGet(pokeUserKey(kind)).then(v => {
+if (!v) return;
+try {
+const arr = JSON.parse(v);
+if (Array.isArray(arr) && arr.length > userPoke[kind].length) userPoke[kind] = arr;
+} catch (e) {}
+}).catch(() => {});
+});
+})();
+function pokeKindOf(card) {
+if (typeof card !== 'string') return 'mine';
+if (card.indexOf('你') >= 0) return 'mine';
+if (card.indexOf('我') >= 0) return 'ta';
+return 'mine';
+}
+function pokeAllCards() {
+const out = [];
+(POKE_PRESETS.ta || []).forEach(x => out.push(x));
+(POKE_PRESETS.mine || []).forEach(x => out.push(x));
+(userPoke.ta || []).forEach(x => out.push(x));
+(userPoke.mine || []).forEach(x => out.push(x));
+try { ((window.getPokeCards && window.getPokeCards()) || []).forEach(x => out.push(x)); } catch (e) {}
+return out;
+}
+function performPokeWith(action) {
+if (!action) return;
+const name = store.get('lbl-partner') || 'TA';
+const myName = store.get('lbl-user') || '我';
+let text;
+if (action.indexOf('你') >= 0) {
+text = name + ' ' + action.replace(/你/g, myName);
+} else if (action.indexOf('我') >= 0) {
+text = name + ' ' + action;
+} else {
+text = name + ' ' + action + ' ' + myName;
+}
+addRec({ side: 'in', text: text, special: 'poke' });
+if (window.logFish) window.logFish();
+setTimeout(() => {
+const c2 = cfg();
+if (hit(c2['rn-prob'])) { addIn('', { special: 'read' }); return; }
+showTyping();
+setTimeout(() => {
+hideTyping();
+if (hit(c2['touch-prob'])) { performPoke(); return; }
+const r = genOneReply(c2);
+const m2 = addIn(r.text, { type: r.type });
+if (hit(c2['rc-prob'])) {
+setTimeout(() => { retractMsg(m2, 'in'); }, 900);
+}
+}, randInt(800, 2000));
+}, randInt(600, 1200));
+}
+let pokeMode = 'ta'; // 当前 tab：ta=联系人的拍一拍 / mine=我的拍一拍
+const pokeTabsRow = document.createElement('div');
+pokeTabsRow.className = 'poke-tabs-row';
+const pokeTabTa = document.createElement('button');
+pokeTabTa.className = 'emoji-tab sel';
+pokeTabTa.type = 'button';
+pokeTabTa.dataset.ptab = 'ta';
+const pokeTabMine = document.createElement('button');
+pokeTabMine.className = 'emoji-tab';
+pokeTabMine.type = 'button';
+pokeTabMine.dataset.ptab = 'mine';
+const pokeAddBtn = document.createElement('button');
+pokeAddBtn.className = 'poke-add-btn';
+pokeAddBtn.type = 'button';
+pokeAddBtn.textContent = '＋ 新增';
+pokeTabsRow.appendChild(pokeTabTa);
+pokeTabsRow.appendChild(pokeTabMine);
+pokeTabsRow.appendChild(pokeAddBtn);
 const pokeInputRow = document.createElement('div');
 pokeInputRow.className = 'poke-input-row';
 const pokeInput = document.createElement('input');
@@ -12976,7 +13102,7 @@ pokeInputGo.textContent = '拍一拍';
 function doPokeInput() {
 const v = (pokeInput && pokeInput.value || '').trim();
 if (!v) { toast('先输入拍一拍文字'); return; }
-sendPoke(v);
+if (pokeMode === 'ta') performPokeWith(v); else sendPoke(v);
 if (pokeInput) pokeInput.value = '';
 closePokeCard();
 }
@@ -12993,7 +13119,7 @@ doPokeInput();
 pokeInputRow.appendChild(pokeInput);
 pokeInputRow.appendChild(pokeInputGo);
 if (pokeCard) {
-pokeCard.insertBefore(pokeGroupsBar, pokeList);
+pokeCard.insertBefore(pokeTabsRow, pokeList);
 pokeCard.insertBefore(pokeInputRow, pokeList);
 }
 function sendPoke(action) {
@@ -13026,52 +13152,100 @@ setTimeout(() => { retractMsg(m2, 'in'); }, 900);
 }, randInt(800, 2000));
 }, randInt(600, 1200));
 }
-let pokeCurGroup = ''; // 当前选中的拍一拍分组（'' = 未选，自动落到第一个分组）
-function renderPokeGroupsBar(groups) {
-if (!pokeGroupsBar) return;
-pokeGroupsBar.innerHTML = '';
-const mk = (label, val) => {
-const c = document.createElement('span');
-c.className = 'emoji-g-chip' + (pokeCurGroup === val ? ' sel' : '');
-c.textContent = label;
-c.addEventListener('click', (e) => {
-e.stopPropagation();
-pokeCurGroup = val;
-renderPokeCard();
+function savePokePref() { try { store.set('poke-tab', pokeMode); } catch (e) {} }
+(function () {
+try {
+const p = store.get('poke-tab');
+if (p === 'mine') pokeMode = 'mine';
+} catch (e) {}
+})();
+function pokeTabLabel(kind) {
+if (kind === 'ta') {
+const n = store.get('lbl-partner') || 'TA';
+return n + ' 的拍一拍';
+}
+const n = store.get('lbl-user') || '我';
+return (n === '我' ? '我的' : n + ' 的') + '拍一拍';
+}
+function pokeSectionLabel(t) {
+const s = document.createElement('div');
+s.className = 'poke-sec-label';
+s.textContent = t;
+return s;
+}
+function pokeCardEl(c, kind) {
+const d = document.createElement('div');
+d.className = 'cc-item glass';
+d.innerHTML = '<div class="cc-txt"><div class="t">' + c + '</div></div>';
+d.addEventListener('click', () => {
+if (kind === 'ta') performPokeWith(c); else sendPoke(c);
+closePokeCard();
 });
-pokeGroupsBar.appendChild(c);
-};
-groups.forEach(g => { if (g[1] && g[1].length) mk(g[0] + g[1].length, g[0]); });
+return d;
 }
 function renderPokeCard() {
 const name = store.get('lbl-partner') || 'TA';
 if (pokeName) pokeName.textContent = name;
-const groups = (window.getPokeGroups && window.getPokeGroups()) || [];
-if (groups.length && (!pokeCurGroup || !groups.some(g => g[0] === pokeCurGroup))) {
-pokeCurGroup = groups[0][0];
-}
-renderPokeGroupsBar(groups);
+pokeTabTa.textContent = pokeTabLabel('ta');
+pokeTabMine.textContent = pokeTabLabel('mine');
+pokeTabTa.classList.toggle('sel', pokeMode === 'ta');
+pokeTabMine.classList.toggle('sel', pokeMode === 'mine');
+pokeInput.placeholder = pokeMode === 'ta' ? '输入拍一拍文字，如：弹了一下我的额头' : '输入拍一拍文字，如：拍了拍你的脸蛋';
 if (!pokeList) return;
 pokeList.innerHTML = '';
-if (!groups.length) {
-pokeList.innerHTML = '<div class="cc-empty">暂无拍一拍字卡<br>请到 自定义聊天字卡 → 拍一拍 添加<br><span style="font-size:11px;color:var(--muted)">也可以直接在上方输入拍一拍文字</span></div>';
+const presets = (POKE_PRESETS[pokeMode] || []).slice();
+const users = (userPoke[pokeMode] || []).slice();
+let extra = [];
+try { extra = ((window.getPokeCards && window.getPokeCards()) || []).filter(c => pokeKindOf(c) === pokeMode); } catch (e) {}
+if (!presets.length && !users.length && !extra.length) {
+pokeList.innerHTML = '<div class="cc-empty">暂无拍一拍字卡<br>点击上方「＋ 新增」添加，或直接输入拍一拍文字</div>';
 return;
 }
-const shown = pokeCurGroup ? groups.filter(g => g[0] === pokeCurGroup) : groups;
-shown.forEach(([gname, arr]) => {
-if (!arr.length) return;
-arr.forEach(c => {
-const d = document.createElement('div');
-d.className = 'cc-item glass';
-d.innerHTML = '<div class="cc-txt"><div class="t">' + c + '</div></div>';
-d.addEventListener('click', () => { sendPoke(c); closePokeCard(); });
-pokeList.appendChild(d);
-});
-});
+if (presets.length) {
+pokeList.appendChild(pokeSectionLabel('预设'));
+presets.forEach(c => pokeList.appendChild(pokeCardEl(c, pokeMode)));
+}
+if (users.length || extra.length) {
+const ps = new Set(presets);
+const custom = [];
+users.forEach(c => { if (!ps.has(c)) custom.push(c); });
+extra.forEach(c => { if (!ps.has(c)) custom.push(c); });
+if (custom.length) {
+pokeList.appendChild(pokeSectionLabel('自定义'));
+custom.forEach(c => pokeList.appendChild(pokeCardEl(c, pokeMode)));
+}
+}
 }
 function closePokeCard() {
 if (pokeCard) pokeCard.hidden = true;
 }
+pokeTabTa.addEventListener('click', (e) => {
+e.stopPropagation();
+if (pokeMode !== 'ta') { pokeMode = 'ta'; savePokePref(); renderPokeCard(); }
+});
+pokeTabMine.addEventListener('click', (e) => {
+e.stopPropagation();
+if (pokeMode !== 'mine') { pokeMode = 'mine'; savePokePref(); renderPokeCard(); }
+});
+pokeAddBtn.addEventListener('click', (e) => {
+e.stopPropagation();
+const cur = pokeMode;
+const hint = cur === 'ta'
+? '（将作为「' + (store.get('lbl-partner') || 'TA') + '」的拍一拍，如：弹了一下我的额头）'
+: '（将作为你的拍一拍，如：拍了拍你的脸蛋）';
+window.openModal('新增拍一拍' + hint, '', (v) => {
+v = (v || '').trim();
+if (!v) { toast('请输入拍一拍文字'); return; }
+userPoke[cur].push(v);
+pokeUserSave(cur);
+renderPokeCard();
+toast('已添加拍一拍');
+});
+});
+document.addEventListener('contact-switched', function () {
+try { userPoke.ta = pokeUserLoad('ta'); userPoke.mine = pokeUserLoad('mine'); } catch (e) {}
+try { if (pokeCard) pokeCard.hidden = true; } catch (e) {}
+});
 const morePoke = document.getElementById('more-poke');
 if (morePoke) {
 morePoke.addEventListener('click', (e) => {
@@ -14256,6 +14430,7 @@ pokeCard.hidden = false;
 if (morePanel) morePanel.hidden = true;
 closeIme(); // v3.5.116：收起输入法，面板不被键盘遮挡
 if (pokeInput) pokeInput.value = '';
+try { const p = store.get('poke-tab'); if (p === 'mine') pokeMode = 'mine'; else if (p === 'ta') pokeMode = 'ta'; } catch (e) {}
 renderPokeCard();
 }
 document.addEventListener('click', (e) => {
@@ -18339,7 +18514,7 @@ if (idx >= sources.length) { cb(null); return; }
 const src = sources[idx++];
 let controller;
 try { controller = new AbortController(); } catch (e) { controller = null; }
-const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 10000);
+const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 7000);
 fetch(src.url, controller ? { signal: controller.signal } : undefined)
 .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
 .then(txt => {
@@ -19220,7 +19395,7 @@ return -1;
 let demoFallbackBusy = false; // 防止外链失败 → demo 失败 → 再走 demo 的递归
 function playDemoFor(m, seedIdx) {
 genDemoAudio(seedIdx).then(d => {
-if (!d) { toast('播放失败：网络链接可能已失效'); demoFallbackBusy = false; return; }
+if (!d) { toast('播放失败：网络链接可能已失效，或该歌曲为VIP付费歌曲'); demoFallbackBusy = false; return; }
 try { window.idbSet(window.activePrefix() + ':music-file:' + m.id, d); } catch (e) {}
 demoFallbackBusy = false;
 if (currentId !== m.id) return;
@@ -19317,7 +19492,7 @@ demoFallbackBusy = true;
 toast('外链播放失败，已改用内置示例旋律');
 playDemoFor(m, idx);
 } else if (idx < 0) {
-toast('播放失败：网络链接可能已失效');
+toast('播放失败：网络链接可能已失效，或该歌曲为VIP付费歌曲');
 try { audio.pause(); } catch (e) {}
 try { syncPlayIcons(false); } catch (e) {}
 }
@@ -19329,25 +19504,24 @@ return 'https://api.injahow.cn/meting/?type=url&id=' + encodeURIComponent(String
 }
 function resolveNeteaseDirectUrl(m, cb) {
 try {
-const xhr = new XMLHttpRequest();
-xhr.open('GET', neteaseMetingUrl(m.neteaseId), true);
-let done = false;
-const finish = function () {
-if (done) return;
-done = true;
-let finalUrl = (xhr.responseURL || '').replace(/^http:/i, 'https:');
+let controller;
+try { controller = new AbortController(); } catch (e) { controller = null; }
+const timer = setTimeout(() => { try { controller && controller.abort(); } catch (e) {} }, 8000);
+fetch(neteaseMetingUrl(m.neteaseId), controller ? { signal: controller.signal } : undefined)
+.then(function (r) {
+clearTimeout(timer);
+var finalUrl = (r.url || '').replace(/^http:/i, 'https:');
+try { controller && controller.abort(); } catch (e) {}
+try { r.body && r.body.cancel && r.body.cancel(); } catch (e) {}
 cb(finalUrl || null);
-};
-xhr.onreadystatechange = function () {
-if (xhr.readyState >= 2) { try { xhr.abort(); } catch (e) {} finish(); }
-};
-xhr.onerror = finish;
-xhr.ontimeout = finish;
-xhr.timeout = 8000;
-xhr.send();
+})
+.catch(function () { clearTimeout(timer); cb(null); });
 } catch (e) { cb(null); }
 }
 let httpsRetrying = false;
+function neteaseOuterUrl(id) {
+return 'https://music.163.com/song/media/outer/url?id=' + encodeURIComponent(String(id));
+}
 function retryWithHttpsUrl(m) {
 if (httpsRetrying || !m || !m.neteaseId || m._httpsRetried) return false;
 m._httpsRetried = true;
@@ -19358,11 +19532,20 @@ if (audio) { audio.onerror = null; audio.onended = null; audio.onloadedmetadata 
 } catch (e) {}
 teardownAudio();
 resolveNeteaseDirectUrl(m, function (directUrl) {
+if (directUrl) {
 httpsRetrying = false;
 if (currentId !== m.id) { demoFallbackOrError(m); return; }
 audio = new Audio();
 try { audio.referrerPolicy = 'no-referrer'; } catch (e) {}
-audio.src = directUrl || neteaseMetingUrl(m.neteaseId);
+audio.src = directUrl;
+startPlayback(m);
+return;
+}
+httpsRetrying = false;
+if (currentId !== m.id) { demoFallbackOrError(m); return; }
+audio = new Audio();
+try { audio.referrerPolicy = 'no-referrer'; } catch (e) {}
+audio.src = neteaseOuterUrl(m.neteaseId);
 startPlayback(m);
 });
 return true;
@@ -19376,7 +19559,7 @@ playDemoFor(m, idx);
 return;
 }
 if (idx >= 0) return; // 兜底合成/播放进行中，静默等待结果
-toast('播放失败：网络链接可能已失效');
+toast('播放失败：网络链接可能已失效，或该歌曲为VIP付费歌曲');
 }
 let endedHandled = false;
 function handleEnded() {
@@ -25517,10 +25700,12 @@ t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
 clearTimeout(t._timer);
 t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
 }
-function snapKey() { return window.activePrefix() + ':' + SNAP_KEY; }
-function loadSnap() {
+function csFor(cid) { return cid ? window.storeFor(cid) : store; }
+function prefixFor(cid) { return cid ? ('xy-home-v2:' + cid) : window.activePrefix(); }
+function snapKey(cid) { return prefixFor(cid) + ':' + SNAP_KEY; }
+function loadSnap(cid) {
 try {
-const v = localStorage.getItem(snapKey());
+const v = localStorage.getItem(snapKey(cid));
 if (v) { const a = JSON.parse(v); if (Array.isArray(a)) return a; }
 } catch (e) {}
 return [];
@@ -25534,16 +25719,17 @@ if (c.myReply) { c.myReply = Object.assign({}, c.myReply); c.myReply.content = s
 if (c.partnerReply) { c.partnerReply = Object.assign({}, c.partnerReply); c.partnerReply.content = strip(c.partnerReply.content); }
 return c;
 }
-function writeSnap(list) {
-if (!list || !list.length) { try { localStorage.removeItem(snapKey()); } catch (e) {} return; }
-try { const snap = JSON.stringify(list.map(stripLetterImg)); if (snap.length <= LS_BIG_LIMIT) localStorage.setItem(snapKey(), snap); } catch (e) {}
+function writeSnap(list, cid) {
+if (!list || !list.length) { try { localStorage.removeItem(snapKey(cid)); } catch (e) {} return; }
+try { const snap = JSON.stringify(list.map(stripLetterImg)); if (snap.length <= LS_BIG_LIMIT) localStorage.setItem(snapKey(cid), snap); } catch (e) {}
 }
-function load() {
+function load(cid) {
+const cs = csFor(cid);
 let list = [];
-const raw = store.get(KEY);
+const raw = cs.get(KEY);
 if (raw !== null) { try { list = JSON.parse(raw); } catch (e) { list = []; } }
-if (!list.length) { try { const v = loadSnap(); if (v.length) list = v; } catch (e) {} }
-if (!mailDbReady && mailPending && mailPending.length) {
+if (!list.length) { try { const v = loadSnap(cid); if (v.length) list = v; } catch (e) {} }
+if (!cid && !mailDbReady && mailPending && mailPending.length) {
 const map = {};
 list.forEach(x => { if (x && x.id) map[x.id] = x; });
 mailPending.forEach(x => { if (x && x.id) map[x.id] = x; });
@@ -25559,10 +25745,10 @@ return Object.keys(map).map(k => map[k]).sort((x, y) => (y.tm || 0) - (x.tm || 0
 }
 let mailDbReady = false;
 let mailPending = null;
-function save(list) {
-if (!mailDbReady) { try { mailPending = (list || []).slice(); } catch (e) {} return; }
-store.set(KEY, JSON.stringify(list));
-writeSnap(list);
+function save(list, cid) {
+if (!cid && !mailDbReady) { try { mailPending = (list || []).slice(); } catch (e) {} writeSnap(list, cid); return; }
+csFor(cid).set(KEY, JSON.stringify(list));
+writeSnap(list, cid);
 }
 function updateBadge() {
 const badge = document.getElementById('mail-badge');
@@ -25714,37 +25900,72 @@ setTimeout(() => toast('TA 收藏了你的回信'), 1200);
 }
 }
 const REPLY_PENDING_KEY = 'mail-reply-pending';
-function replyPendingLoad() {
-try { const v = JSON.parse(store.get(REPLY_PENDING_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+function replyPendingLoad(cid) {
+try { const v = JSON.parse(csFor(cid).get(REPLY_PENDING_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
 }
-function replyPendingSave(arr) { try { store.set(REPLY_PENDING_KEY, JSON.stringify(arr)); } catch (e) {} }
-function checkPendingReply() {
+function replyPendingSave(arr, cid) { try { csFor(cid).set(REPLY_PENDING_KEY, JSON.stringify(arr)); } catch (e) {} }
+function notifyMailToChat(cid, text) {
+const cur = window.__activeCid || 'default';
+if (cid === cur) {
+if (window.chatAddSystem) window.chatAddSystem(text);
+return;
+}
+const prefix = 'xy-home-v2:' + cid;
+try {
+if (window.idbGet && window.idbSet) {
+window.idbGet(prefix + ':chat-msgs').then(v => {
+let arr = [];
+try { arr = Array.isArray(v) ? v : JSON.parse(v || '[]'); } catch (e) { arr = []; }
+if (!Array.isArray(arr)) arr = [];
+arr.push({ side: 'in', special: 'poke', text: text, ts: Date.now() });
+try { window.idbSet(prefix + ':chat-msgs', JSON.stringify(arr)); } catch (e) {}
+try { localStorage.setItem(prefix + ':chat-msgs', JSON.stringify(arr)); } catch (e) {}
+}).catch(() => {});
+}
+} catch (e) {}
+}
+function partnerNameFor(cid) {
+try {
+const cs = csFor(cid);
+const v = cs.get('lbl-partner');
+if (v) return v;
+if (window.getContacts) {
+const c = window.getContacts().find(x => x.id === cid);
+if (c && c.name) return c.name;
+}
+} catch (e) {}
+return 'TA';
+}
+function checkPendingReplyFor(cid) {
 try {
 const now = Date.now();
-const pending = replyPendingLoad();
+const pending = replyPendingLoad(cid);
 if (!pending.length) return;
-const name = partnerName();
+const name = partnerNameFor(cid);
 const rest = [];
 let changed = false;
 pending.forEach(p => {
 if (!p || !p.id) { changed = true; return; }
-const list = load();
+const list = load(cid);
 const idx = list.findIndex(x => x.id === p.id);
 if (idx < 0) { changed = true; return; }          // 信件已不存在 → 丢弃计划
 if (list[idx].partnerReply) { changed = true; return; } // 已有 TA 回信 → 丢弃计划
 if (p.due > now) { rest.push(p); return; }        // 未到期 → 保留
 list[idx].partnerReply = { content: p.content, tm: now };
-save(list);
-if (window.chatAddSystem) window.chatAddSystem(name + ' 给你回了信');
-if (window.showDeskPopup && !mailPageVisible()) {
+save(list, cid);
+notifyMailToChat(cid, name + ' 给你回了信');
+if (cid === (window.__activeCid || 'default') && window.showDeskPopup && !mailPageVisible()) {
 window.showDeskPopup({ name: '信箱', text: '给你回了一封信：' + p.content, onClick: openMailPage });
 }
 changed = true;
 });
-if (changed) replyPendingSave(rest);
-render();
-updateBadge();
+if (changed) replyPendingSave(rest, cid);
+if (cid === (window.__activeCid || 'default')) { render(); updateBadge(); }
 } catch (e) {}
+}
+function checkPendingReply() {
+const list = (window.getContacts && window.getContacts()) || [{ id: 'default' }];
+list.forEach(c => checkPendingReplyFor(c.id));
 }
 function render() {
 const list = load().slice().sort((a, b) => b.tm - a.tm);
@@ -25822,8 +26043,8 @@ emojiEn: c['ml-emoji-en'] !== undefined ? c['ml-emoji-en'] : 1,
 stickerEn: c['ml-sticker-en'] !== undefined ? c['ml-sticker-en'] : 1
 };
 }
-function mailCardPool() {
-const custom = (window.getCustomCards && window.getCustomCards()) || [];
+function mailCardPool(cid) {
+const custom = cid ? (window.getCustomCardsFor ? window.getCustomCardsFor(cid) : []) : ((window.getCustomCards && window.getCustomCards()) || []);
 const text = [], kaomoji = [], emoji = [];
 const pushDefault = () => {
 try {
@@ -25860,12 +26081,12 @@ return {
 text: text,
 kaomoji: kaomoji,
 emoji: emoji,
-sticker: (window.getMediaCards && window.getMediaCards('sticker')) || [],
-image: (window.getMediaCards && window.getMediaCards('image')) || []
+sticker: cid ? (window.getMediaCardsFor ? window.getMediaCardsFor(cid, 'sticker') : []) : ((window.getMediaCards && window.getMediaCards('sticker')) || []),
+image: cid ? (window.getMediaCardsFor ? window.getMediaCardsFor(cid, 'image') : []) : ((window.getMediaCards && window.getMediaCards('image')) || [])
 };
 }
-function taLetterContent(cfg) {
-const pool = mailCardPool();
+function taLetterContent(cfg, cid) {
+const pool = mailCardPool(cid);
 const words = pool.text.length ? pool.text : TA_LETTERS;
 const maxN = Math.max(1, words.length);
 const wantMin = Math.min(Math.max(1, cfg.minCards || 1), maxN);
@@ -25880,53 +26101,60 @@ const st = pool.sticker.concat(pool.image);
 if (cfg.stickerEn && st.length && Math.random() * 100 < 20) t += ' ' + st[Math.floor(Math.random() * st.length)];
 return t;
 }
-function letterLast() { const v = parseInt(store.get('mail-letter-last'), 10); return isNaN(v) ? 0 : v; }
-function letterNext() { const v = parseFloat(store.get('mail-letter-next')); return isNaN(v) ? 0 : v; }
+function letterLast(cid) { const v = parseInt(csFor(cid).get('mail-letter-last'), 10); return isNaN(v) ? 0 : v; }
+function letterNext(cid) { const v = parseFloat(csFor(cid).get('mail-letter-next')); return isNaN(v) ? 0 : v; }
 function letterDayKey() {
 const d = new Date();
 return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
 }
-function letterDayCount() {
+function letterDayCount(cid) {
 try {
-const r = JSON.parse(store.get('mail-letter-day') || 'null');
+const r = JSON.parse(csFor(cid).get('mail-letter-day') || 'null');
 return r && r.d === letterDayKey() ? Number(r.n) || 0 : 0;
 } catch (e) { return 0; }
 }
-function letterDayAdd() {
-const n = letterDayCount() + 1;
-try { store.set('mail-letter-day', JSON.stringify({ d: letterDayKey(), n: n })); } catch (e) {}
+function letterDayAdd(cid) {
+const n = letterDayCount(cid) + 1;
+try { csFor(cid).set('mail-letter-day', JSON.stringify({ d: letterDayKey(), n: n })); } catch (e) {}
 return n;
 }
-function maybeIncomingLetter() {
+function maybeIncomingLetterFor(cid) {
 try {
+const cs = csFor(cid);
 const now = Date.now();
 const cfg = mailCfg();
-let last = letterLast(), next = letterNext();
+let last = letterLast(cid), next = letterNext(cid);
 if (last > now || last < 0 || isNaN(last)) { last = 0; next = 0; }
 if ((now - last) / 60000 < next) return;
 const dailyMax = cfg.dailyMax > 0 ? cfg.dailyMax : 3;
-if (letterDayCount() >= dailyMax) {
-store.set('mail-letter-last', String(now));
-store.set('mail-letter-next', String(30));
+if (letterDayCount(cid) >= dailyMax) {
+cs.set('mail-letter-last', String(now));
+cs.set('mail-letter-next', String(30));
 return;
 }
 if (Math.random() * 100 >= cfg.writeProb) return;
-const name = partnerName();
-const content = taLetterContent(cfg);
-const letter = { id: 'l_' + Date.now(), type: 'received', tt: TITLES[Math.floor(Math.random() * TITLES.length)], content: content, tm: Date.now() };
-const list = load();
+const name = partnerNameFor(cid);
+const content = taLetterContent(cfg, cid);
+const letter = { id: 'l_' + Date.now() + '_' + cid, type: 'received', tt: TITLES[Math.floor(Math.random() * TITLES.length)], content: content, tm: Date.now() };
+const list = load(cid);
 list.unshift(letter);
-save(list);
-store.set('mail-letter-last', String(now));
-store.set('mail-letter-next', String(cfg.writeMin + Math.random() * Math.max(1, cfg.writeMax - cfg.writeMin)));
-letterDayAdd();
-if (window.chatAddSystem) window.chatAddSystem('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>' + name + ' 给你寄来了一封信');
+save(list, cid);
+cs.set('mail-letter-last', String(now));
+cs.set('mail-letter-next', String(cfg.writeMin + Math.random() * Math.max(1, cfg.writeMax - cfg.writeMin)));
+letterDayAdd(cid);
+notifyMailToChat(cid, '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>' + name + ' 给你寄来了一封信');
+if (cid === (window.__activeCid || 'default')) {
 updateBadge();
 render();
 if (window.showDeskPopup && !mailPageVisible()) {
 window.showDeskPopup({ name: '信箱', text: '给你寄来了一封信：' + content, onClick: openMailPage });
 }
+}
 } catch (e) {}
+}
+function maybeIncomingLetter() {
+const list = (window.getContacts && window.getContacts()) || [{ id: 'default' }];
+list.forEach(c => maybeIncomingLetterFor(c.id));
 }
 setTimeout(() => {
 setInterval(() => { maybeIncomingLetter(); checkPendingReply(); }, 60000);
@@ -26303,20 +26531,25 @@ function myName() { return window.activeStore().get('lbl-user') || '我'; }
 function myAv() { return window.activeStore().get('avatar-user') || ''; }
 function taAvFor(owner) {
 try {
-const s = owner && owner !== 'default' ? window.storeFor(owner) : null;
-let v = '';
-if (s) v = s.get('feed-ta-avatar') || s.get('avatar-partner') || '';
-if (!v) v = partnerAv();
+const o = owner || 'default';
+const s = window.storeFor(o);
+let v = s.get('feed-ta-avatar') || s.get('avatar-partner') || '';
 if (v && typeof v === 'string' && v.length > 500 * 1024) return '';
 return v || '';
 } catch (e) { return ''; }
 }
 function taFeedNameFor(owner) {
 try {
-const s = owner && owner !== 'default' ? window.storeFor(owner) : null;
-const v = s ? (s.get('feed-ta-name') || s.get('lbl-partner') || '') : '';
-return v || partnerName();
-} catch (e) { return partnerName(); }
+const o = owner || 'default';
+const s = window.storeFor(o);
+const v = s.get('feed-ta-name') || s.get('lbl-partner') || '';
+if (v) return v;
+if (window.getContacts) {
+const c = window.getContacts().find(x => x.id === o);
+if (c && c.name) return c.name;
+}
+return 'TA';
+} catch (e) { return 'TA'; }
 }
 function activeMe() {
 const s = window.activeStore();
@@ -28999,8 +29232,8 @@ return s.beh.active;
 }
 function opponentAI(s, now) {
 const b = s.ball, o = s.opponent, p = s.params;
-const taX = W - PADDLE_GAP - PADDLE_W;
-const ballToTa = b.vx > 0;   // 球正在向 TA 移动
+const taX = PADDLE_GAP + PADDLE_W;
+const ballToTa = b.vx < 0;   // 球正在向 TA（左）移动
 let targetY = o.y;           // 默认保持
 if (!ballToTa) {
 const act = behActive(s, now);
@@ -29016,7 +29249,7 @@ const act = behActive(s, now);
 if (!act) {
 const r = Math.random();
 const beh = p.beh;
-const dist = taX - b.x;
+const dist = b.x - taX;
 if (dist > 180 && behCanTrigger(s, 'early', now) && r < beh.early) {
 behTrigger(s, 'early', now, 600 + Math.random() * 400);
 }
@@ -29064,15 +29297,15 @@ paddle.y = Math.max(0, Math.min(H - PADDLE_H, paddle.y));
 }
 function checkPaddle(s) {
 const b = s.ball;
-const px = PADDLE_GAP + PADDLE_W;
-if (b.vx < 0 && b.x - BALL_R <= px && b.x - BALL_R >= PADDLE_GAP - 4 && b.y >= s.player.y && b.y <= s.player.y + PADDLE_H) {
-b.x = px + BALL_R;
-bouncePaddle(s, s.player, true);
-}
-const tx = W - PADDLE_GAP - PADDLE_W;
-if (b.vx > 0 && b.x + BALL_R >= tx && b.x + BALL_R <= W - PADDLE_GAP + 4 && b.y >= s.opponent.y && b.y <= s.opponent.y + PADDLE_H) {
-b.x = tx - BALL_R;
+const tx = PADDLE_GAP + PADDLE_W;
+if (b.vx < 0 && b.x - BALL_R <= tx && b.x - BALL_R >= PADDLE_GAP - 4 && b.y >= s.opponent.y && b.y <= s.opponent.y + PADDLE_H) {
+b.x = tx + BALL_R;
 bouncePaddle(s, s.opponent, false);
+}
+const px = W - PADDLE_GAP - PADDLE_W;
+if (b.vx > 0 && b.x + BALL_R >= px && b.x + BALL_R <= W - PADDLE_GAP + 4 && b.y >= s.player.y && b.y <= s.player.y + PADDLE_H) {
+b.x = px - BALL_R;
+bouncePaddle(s, s.player, true);
 }
 }
 function bouncePaddle(s, paddle, isPlayer) {
@@ -29082,7 +29315,7 @@ s.rallyHits++;
 const newSpeed = Math.min(MAX_SPEED, INIT_SPEED + s.rallyHits * SPEED_INC);
 b.speed = newSpeed;
 const ang = hit * (Math.PI / 3.2);   // 最大约 56°
-b.vx = (isPlayer ? 1 : -1) * Math.cos(ang) * newSpeed;
+b.vx = (isPlayer ? -1 : 1) * Math.cos(ang) * newSpeed;
 b.vy = Math.sin(ang) * newSpeed;
 s.flashPaddle = 1;
 sfxPaddle();
@@ -29110,7 +29343,7 @@ return;
 if (s.status !== 'rally') return;
 movePaddle(s.player, s.player.targetY, PLAYER_MAX_SPEED);
 const b = s.ball;
-const danger = b.vx > 0 && (W - PADDLE_GAP - PADDLE_W - b.x) < 220;
+const danger = b.vx < 0 && (b.x - PADDLE_GAP - PADDLE_W) < 220;
 const aiInterval = danger ? 50 : 110;
 if (now >= s.opponent.aiNextAt) {
 opponentAI(s, now);
@@ -29121,14 +29354,14 @@ b.x += b.vx; b.y += b.vy;
 if (b.y - BALL_R < 0) { b.y = BALL_R; b.vy = -b.vy; s.flashWall = 1; sfxWall(); }
 if (b.y + BALL_R > H) { b.y = H - BALL_R; b.vy = -b.vy; s.flashWall = 1; sfxWall(); }
 checkPaddle(s);
-if (b.x + BALL_R < 0) {
+if (b.x - BALL_R > W) {
 s.opponentScore++;
 s.opponentStreak++; s.playerStreak = 0;
 s.maxOpponentStreak = Math.max(s.maxOpponentStreak, s.opponentStreak);
 s.totalRounds++;
 s.beh.consecCatch = 0;
 onScore(s, now, 'opponent');
-} else if (b.x - BALL_R > W) {
+} else if (b.x + BALL_R < 0) {
 s.playerScore++;
 s.playerStreak++; s.opponentStreak = 0;
 s.maxPlayerStreak = Math.max(s.maxPlayerStreak, s.playerStreak);
@@ -29188,10 +29421,10 @@ ctx.lineWidth = 2;
 ctx.setLineDash([6, 8]);
 ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
 ctx.setLineDash([]);
-ctx.fillStyle = s.flashPaddle > 0 ? '#7fd1ff' : '#e8eefc';
-ctx.fillRect(PADDLE_GAP, s.player.y, PADDLE_W, PADDLE_H);
 ctx.fillStyle = s.flashPaddle > 0 ? '#ffb38a' : '#e8eefc';
-ctx.fillRect(W - PADDLE_GAP - PADDLE_W, s.opponent.y, PADDLE_W, PADDLE_H);
+ctx.fillRect(PADDLE_GAP, s.opponent.y, PADDLE_W, PADDLE_H);
+ctx.fillStyle = s.flashPaddle > 0 ? '#7fd1ff' : '#e8eefc';
+ctx.fillRect(W - PADDLE_GAP - PADDLE_W, s.player.y, PADDLE_W, PADDLE_H);
 const b = s.ball;
 ctx.fillStyle = s.flashWall > 0 ? '#ffe08a' : '#ffffff';
 ctx.beginPath(); ctx.arc(b.x, b.y, BALL_R, 0, Math.PI * 2); ctx.fill();

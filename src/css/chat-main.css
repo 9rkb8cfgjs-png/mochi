@@ -588,6 +588,25 @@
   cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
 .poke-input-go:active { opacity:.85; }
+/* 拍一拍卡片：联系人/我方 双 tab 行（复用 .emoji-tab）+ 新增按钮（v3.7.x） */
+.poke-tabs-row {
+  display:flex; gap:6px; margin-bottom:10px; flex-shrink:0;
+}
+.poke-tabs-row .emoji-tab {
+  flex:1; min-width:0; padding:9px 6px; font-size:12px; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis;
+}
+.poke-add-btn {
+  flex:0 0 auto; padding:9px 12px; border-radius:11px;
+  border:1px dashed rgba(0,0,0,.25); background:rgba(255,255,255,.92);
+  color:#666; font-size:13px; font-weight:700; cursor:pointer;
+  font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.poke-add-btn:active { opacity:.85; }
+/* 拍一拍列表：预设/自定义 小节标题 */
+.poke-sec-label {
+  font-size:11px; color:var(--muted); padding:8px 2px 4px; flex-shrink:0;
+}
 /* 表情包面板：底部半框，露出顶部聊天消息，高度随内容自适应（最多半屏，空态紧凑）
    v3.5.110：bottom 加 safe-area，全面屏全屏模式下与输入栏同步上移，不错位 */
 .emoji-card {

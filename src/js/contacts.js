@@ -104,7 +104,20 @@
   };
   window.renameContact = function (id, name) {
     const list = getContacts(); const c = list.find(x => x.id === id);
-    if (c) { c.name = name || c.name; regStore().set('contacts', JSON.stringify(list)); }
+    if (c) {
+      const oldName = c.name;
+      c.name = name || c.name;
+      regStore().set('contacts', JSON.stringify(list));
+      // v3.7.x：同步更新该联系人的 TA 昵称（lbl-partner）——聊天顶部栏/信件/朋友圈/
+      //   通话/日历等都读 lbl-partner，联系人管理改名后应同步生效到这些地方。仅在
+      //   该联系人 lbl-partner 为空或等于旧 contacts.name 时同步，避免覆盖用户在
+      //   设置页单独设过的 TA 昵称。default 联系人走 xyStore(default 命名空间)。
+      try {
+        const s = window.xyStore(G + ':' + id);
+        const cur = s.get('lbl-partner');
+        if (!cur || cur === oldName) s.set('lbl-partner', c.name);
+      } catch (e) {}
+    }
   };
   window.deleteContact = function (id) {
     if (id === 'default') return false;
