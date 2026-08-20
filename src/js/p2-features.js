@@ -991,7 +991,8 @@ if (ckRefresh) {
       const ds = dayStr(d);
       return '<div class="week-day' + (i === todayIdx ? ' today' : '') + '" data-date="' + ds + '"' + (i === todayIdx ? '' : ' role="button"') + '><b>' + (i === todayIdx ? '今' : n) + '</b>' + d.getDate() + '</div>';
     }).join('');
-    // v3.7.x：点击其他日期查看当日留言/备忘/心情等内容（今天保持原状，数据已在桌面展示）
+    // v3.7.x：点击其他日期查看当日备忘与我们的心情（今天保持原状，数据已在桌面展示；
+    // TA 的当日内容/留言归日历页查看，本周日常只保留属于我们自己的备忘与心情）
     weekEl.addEventListener('click', (ev) => {
       const cell = ev.target.closest('.week-day');
       if (!cell || cell.classList.contains('today')) return;
@@ -1004,33 +1005,34 @@ if (ckRefresh) {
       const dd = new Date(+parts[0], +parts[1] - 1, +parts[2]);
       const wdNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
       const dateLabel = (+parts[1]) + ' 月 ' + (+parts[2]) + ' 日（' + wdNames[dd.getDay()] + '）';
-      const entry = window.calGetDayEntry ? window.calGetDayEntry(ds) : null;
-      const myMsg = window.calGetMyMessage ? window.calGetMyMessage(ds) : '';
-      const memo = store.get('memo-' + ds) || '';
-      const mood = store.get('today-mood-' + ds) || '';
+      // v3.7.x bugfix：未来日期不生成不读取内容，只显示空态提示，避免"超前显示"
+      const n2 = new Date();
+      const isFuture = dd > new Date(n2.getFullYear(), n2.getMonth(), n2.getDate());
+      // 备忘/心情：按日快照缺失时回退查当天历史（v3.7.x 之前老版本只存历史列表，
+      // 没有 memo-YYYY-MM-DD / today-mood-YYYY-MM-DD 快照，直接读会显示"没有记录"）
+      const histOnDay = function (histKey) {
+        try {
+          const list = JSON.parse(store.get(histKey) || '[]');
+          const t = dd.toDateString();
+          return list.filter(x => x && x.ts && new Date(x.ts).toDateString() === t)
+            .map(x => x.text).filter(Boolean);
+        } catch (e) { return []; }
+      };
+      const memo = isFuture ? '' : (store.get('memo-' + ds) || histOnDay('memo-history').join('；'));
+      const mood = isFuture ? '' : (store.get('today-mood-' + ds) || histOnDay('mood-history').join('；'));
       const lines = [];
       lines.push(dateLabel);
       lines.push('');
-      if (entry) {
-        lines.push('【今日心情】' + entry.mood + '（' + entry.cat + '）');
-        lines.push(entry.desc);
-        lines.push('【TA 正在】' + entry.activity);
-        lines.push('');
-        lines.push('【TA 留言】');
-        lines.push(entry.message);
+      if (isFuture) {
+        lines.push('（未来的日子还没有内容，等到了那一天再来看吧）');
       } else {
-        lines.push('（这一天没有日历记录）');
+        lines.push('【今日备忘】');
+        lines.push(memo || '（这一天没有备忘）');
+        lines.push('');
+        lines.push('【今天的心情】');
+        lines.push(mood || '（这一天没有记录心情）');
       }
-      lines.push('');
-      lines.push('【我的留言】');
-      lines.push(myMsg || '（这一天没有留下留言）');
-      lines.push('');
-      lines.push('【备忘】');
-      lines.push(memo || '（这一天没有备忘）');
-      lines.push('');
-      lines.push('【心情】');
-      lines.push(mood || '（这一天没有记录心情）');
-      window.openModal(ds + ' 当日内容', '', () => {}, { noInput: true, staticText: lines.join('\n') });
+      window.openModal(ds + ' 当日备忘与心情', '', () => {}, { noInput: true, staticText: lines.join('\n') });
     });
   }
 

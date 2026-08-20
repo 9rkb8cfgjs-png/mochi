@@ -1,6 +1,8 @@
 // ===== 功能：日历（按星言日历逻辑复刻） =====
 // 每日生成：今日心情（分类/描述）+ TA 正在做什么 + TA 留言（从字卡池随机拼）
 // 每次首次打开日历触发 TA 留言弹窗；美化毛玻璃、无 emoji、矢量图标
+// v3.7.x：月历日期可点击自选——选中日期后上方卡片显示该日内容（当天心情/TA正在/TA留言/我的留言），
+//   任意日期首次访问自动生成当日内容并落盘（cal-YYYY-MM-DD）；我的留言仅今天可编辑。
 (function () {
   const uid = window.activePrefix();
   const store = window.activeStore();
@@ -80,10 +82,25 @@
     return sel.join('  ');
   }
 
-  // 生成或获取某一日数据（按日期持久化，首次访问该日期时生成并落盘）
+// 生成或获取某一日数据（按日期持久化，首次访问该日期时生成并落盘）
   // v3.7.x：抽出 getDayEntry 供「本周日常点击其他日期查看当日内容」复用，
-  //   任意日期首次访问都会生成 TA 心情/正在做/留言并保存（历史日期也补齐）。
+  //   任意日期首次访问都会生成 TA 心情/正在/留言并保存（历史日期也补齐）。
+  // v3.7.x bugfix：未来日期不读不写不生成——本周日常点击未来日期会现场随机生成
+  //   TA 内容并落盘（"超前显示"），且会污染该日期当天真实的首次生成。
+  //   已误生成的未来数据同步清理（LS remove + IDB delete），否则到点当天会被回填复用。
   function getDayEntry(dateStr) {
+    if (!dateStr) return null;
+    const p0 = dateStr.split('-');
+    const d0 = new Date(+p0[0], +p0[1] - 1, +p0[2]);
+    const n0 = new Date();
+    if (d0 > new Date(n0.getFullYear(), n0.getMonth(), n0.getDate())) {
+      try {
+        const k = 'cal-' + dateStr;
+        if (store.get(k)) store.remove(k);
+        if (window.idbDelete) window.idbDelete(window.activePrefix() + ':' + k);
+      } catch (e) {}
+      return null;
+    }
     const key = 'cal-' + dateStr;
     let entry = null;
     try { entry = JSON.parse(store.get(key) || 'null'); } catch (e) {}
@@ -114,13 +131,15 @@
   window.calGetMyMessage = function (ds) { return store.get('cal-my-' + ds) || ''; };
 
   // v3.6.x：多桌面——切换联系人后清掉本会话缓存（calCache 只按日期缓存、不区分
-  // 桌面，残留会导致新桌面显示旧桌面的「今日数据」）；viewY/viewM 同步复位到当前月
+  // 桌面，残留会导致新桌面显示旧桌面的「今日数据」）；viewY/viewM/selDate 同步复位到当前月/今天
   document.addEventListener('contact-switched', function () {
-    try { calCache = null; viewY = 0; viewM = -1; } catch (e) {}
+    try { calCache = null; viewY = 0; viewM = -1; selDate = todayStr(); } catch (e) {}
   });
 
   // 渲染月历（可切换月份）
   let viewY = 0, viewM = -1; // 0=当前月
+  // v3.7.x：点选日期查看当日内容——selDate 为当前查看的日期，默认今天
+  let selDate = todayStr();
   function renderGrid() {
     const grid = document.getElementById('cal-grid');
     if (!grid) return;
@@ -137,9 +156,22 @@
     for (let i = 0; i < startWd; i++) html += '<span class="cal-cell blank"></span>';
     for (let d = 1; d <= days; d++) {
       const isToday = d === now.getDate() && y === now.getFullYear() && m === now.getMonth();
-      html += '<span class="cal-cell' + (isToday ? ' today' : '') + '">' + d + '</span>';
+      const ds = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      html += '<span class="cal-cell' + (isToday ? ' today' : '') + (ds === selDate ? ' sel' : '') + '" data-date="' + ds + '">' + d + '</span>';
     }
     grid.innerHTML = html;
+  }
+  // v3.7.x：点击日期自选 → 显示该日内容（当日心情 / TA 正在 / TA 留言 / 我的留言）
+  const calGridEl = document.getElementById('cal-grid');
+  if (calGridEl) {
+    calGridEl.addEventListener('click', (ev) => {
+      const cell = ev.target.closest('.cal-cell');
+      if (!cell || cell.classList.contains('blank')) return;
+      const ds = cell.getAttribute('data-date');
+      if (!ds || ds === selDate) return;
+      selDate = ds;
+      render();
+    });
   }
   // 月份前进/后退
   const calPrev = document.getElementById('cal-prev');
@@ -147,7 +179,7 @@
   const calNext = document.getElementById('cal-next');
   if (calNext) calNext.addEventListener('click', () => { viewM++; if (viewM > 11) { viewM = 0; viewY++; } renderGrid(); });
 
-  // ---- 我的留言（可编辑）----
+  // ---- 我的留言（仅今天可编辑）----
   function getMyMessage() {
     const v = store.get('cal-my-' + todayStr());
     return v || '';
@@ -155,26 +187,33 @@
   function renderMyMessage() {
     const el = document.getElementById('cal-my-message');
     if (!el) return;
-    const msg = getMyMessage();
-    el.textContent = msg || '今天想说点什么...';
+    const msg = store.get('cal-my-' + selDate);
+    el.textContent = msg || (selDate === todayStr() ? '今天想说点什么...' : '这一天没有留下留言');
+    const btn = document.getElementById('cal-edit-btn');
+    if (btn) btn.hidden = selDate !== todayStr();
   }
 
   function render() {
-    const e = getToday();
+    const parts = selDate.split('-');
+    const dd = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+    const n2 = new Date();
+    // v3.7.x：未来日期不生成不读取内容，只显示空态提示（与本周日常一致），避免"超前显示"
+    const isFuture = dd > new Date(n2.getFullYear(), n2.getMonth(), n2.getDate());
+    const e = isFuture ? null : getDayEntry(selDate);
     const dateEl = document.getElementById('cal-today-date');
-    if (dateEl) dateEl.textContent = e.date;
+    if (dateEl) dateEl.textContent = e ? e.date : selDate;
     const catEl = document.getElementById('cal-mood-cat');
-    if (catEl) catEl.textContent = e.cat;
+    if (catEl) catEl.textContent = e ? e.cat : '未到来';
     const icoEl = document.getElementById('cal-mood-ico');
-    if (icoEl) icoEl.innerHTML = MOOD_ICONS[e.cat] || MOOD_ICONS['平静'];
+    if (icoEl) icoEl.innerHTML = MOOD_ICONS[e ? e.cat : '平静'] || MOOD_ICONS['平静'];
     const nameEl = document.getElementById('cal-mood-name');
-    if (nameEl) nameEl.textContent = e.mood;
+    if (nameEl) nameEl.textContent = e ? e.mood : '未来';
     const descEl = document.getElementById('cal-mood-desc');
-    if (descEl) descEl.textContent = e.desc;
+    if (descEl) descEl.textContent = e ? e.desc : '这一天还没有内容，等到了那一天再来看吧';
     const actEl = document.getElementById('cal-activity');
-    if (actEl) actEl.textContent = e.activity;
+    if (actEl) actEl.textContent = e ? e.activity : '—';
     const msgEl = document.getElementById('cal-message');
-    if (msgEl) msgEl.textContent = e.message;
+    if (msgEl) msgEl.textContent = e ? e.message : '这一天还没有留言';
     renderMyMessage();
     renderGrid();
   }
@@ -187,8 +226,9 @@
       if (editing) return;
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       page.hidden = false;
-      // 每次进入回到本月
+      // 每次进入回到本月、回到今天
       viewM = -1;
+      selDate = todayStr();
       render();
     });
   }
@@ -235,6 +275,7 @@
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       page.hidden = false;
       viewM = -1;
+      selDate = todayStr();
       render();
     }
     function hideGreetBanner() {

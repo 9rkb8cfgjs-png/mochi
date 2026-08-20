@@ -560,6 +560,10 @@
 }
 .cal-grid .cal-cell.today { background:var(--ink); color:#fff; font-weight:700; }
 .cal-grid .cal-cell.blank { background:transparent; }
+/* v3.7.x：日期可点击自选——非今天日期选中后填充高亮，点击有反馈 */
+.cal-grid .cal-cell:not(.blank) { cursor:pointer; }
+.cal-grid .cal-cell:not(.blank):active { background:rgba(0,0,0,.10); }
+.cal-grid .cal-cell.sel { background:var(--ink); color:#fff; font-weight:700; }
 
 /* 我的留言 */
 .cal-mine { font-style:normal; }
@@ -571,6 +575,7 @@
 }
 .cal-edit-btn:active { background:rgba(255,255,255,.6); }
 .cal-edit-btn svg { width:14px; height:14px; }
+.cal-edit-btn[hidden] { display:none; }
 
 /* 占卜页 */
 .div-scroll { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; padding:0 18px; }

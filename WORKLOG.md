@@ -9,6 +9,34 @@
 - 开工前先读这个文件 + `git status` + 相关文件 `LastWriteTime`。
 - 旧记录随手清理，保留最近几条即可（这是协作笔记，不是发布日志）。
 
+### 2026-08-20（用户需求「我的拍一拍里新增的字卡无法修改/删除，写错写重复没法处理」）
+- [本会话·完成]（**已构建 verify 10/10 + 拍一拍编辑删除专项 15/15，未提交**，请构建者统一 commit+push）：`src/js/chat.js` + `src/css/chat-main.css`（均 AI-A 域）+ `src/css/dark.css`（AI-B 域代改 3 行按钮深色样式，请知悉）+ 新增 `tools/smoke-poke-edit.mjs`（回归脚本，保留）。
+  - **修改**：我的拍一拍·用户分组每张字卡右侧新增 ✎ 按钮，点击弹 `openModal` 修改框（预填原文字），保存后写回对应分组（`pokeUserGroups.mine` → LS+IDB 双写），同分组查重「该分组已有相同的拍一拍」。
+  - **删除**：每张字卡右侧 ✕ 按钮，点击弹确认框（noInput+staticText 展示被删字卡内容），确认后从分组移除并持久化。
+  - **只读保持**：预设分组（`__preset`）与联系人 tab 不显示按钮（仅 `pokeMode==='mine' && cur.user && key!=='__preset'` 的字卡可编辑）。
+  - 验证：无头 Chrome 15/15——用户分组 2 卡带按钮/预设 6 卡无按钮/修改预填+生效+持久化/删除确认含内容+生效+持久化/空内容修改拦截/无 JS 异常。⚠️ 本次构建统一包含对方已保存改动（chat.js reply 数组变体等），未提交。
+
+### 2026-08-20（用户需求「日历日期可点击自选查看当日内容；本周日常只显示今日备忘+我们的心情」）
+- [AI-A·完成]（**已构建 verify 10/10 + 日历点选专项 15/15 + 对方本周日常冒烟 11/11 全过，未提交**，请构建者统一 commit+push）：`src/js/calendar.js` `src/js/p2-features.js` `src/css/chat-pages.css`（均 AI-A 域）+ `src/css/dark.css`（AI-B 域代改 1 行，请知悉）+ 新增 `tools/smoke-cal-select.mjs`（回归脚本，保留）。
+  - **日历页日期自选**：`#cal-grid` 日期格加 `data-date` + `.sel` 选中态（非今天日期选中后填充高亮，点击有 :active 反馈），点击任意日期 → 上方卡片显示该日内容（当日心情/TA 正在/TA 留言/我的留言）；我的留言仅今天可编辑（其他日期隐藏编辑按钮，空态「这一天没有留下留言」）；未来日期沿用对方 getDayEntry 空态守卫（不生成不读取，显示「这一天还没有内容，等到了那一天再来看吧」）；进入日历页/切联系人/今日留言横幅进日历页时复位到今天。
+  - **本周日常简化**：点击其他日期弹窗只保留【今日备忘】【今天的心情】两项（TA 心情/TA 正在/TA 留言/我的留言移出，归日历页查看），保留对方未来日期守卫与历史快照回退逻辑，弹窗标题改「当日备忘与心情」。
+  - ⚠️ 协作说明：本人改动与对方 21:55 的本周日常修复（历史回退/未来守卫）不冲突——对方构建（21:55:04 index.html）已包含本人全部改动；双方冒烟互测通过。dark.css 代改 1 行（`.cal-grid .cal-cell.sel`），请 AI-B 知悉。
+
+### 2026-08-20（用户反馈「本周日常点击没有完整显示，8/18 记录的心情点开看不到；点 8/22 超前显示内容」）
+- [本会话·完成]（**已构建 verify 10/10 + 专项冒烟 11/11，未提交，请构建者统一 commit+push**）：`src/js/calendar.js` + `src/js/p2-features.js`（均 AI-A 域）+ 新增 `tools/smoke-week-day.mjs`（回归脚本，保留）。
+  - **根因 1（8/18 心情看不到）**：v3.7.x 才新增按日快照键（`today-mood-YYYY-MM-DD` / `memo-YYYY-MM-DD`），8/18 记录时线上版本只存历史列表（`mood-history`/`memo-history`），点击查看只读快照键 → 显示「没有记录心情」。修复：`p2-features.js` 点击查看时快照缺失回退查当天历史（按 ts 归属日过滤，多条合并展示）。
+  - **根因 2（点 8/22 超前显示）**：`calGetDayEntry` 对未来日期也现场随机生成 TA 心情/正在/留言并落盘（`cal-2026-08-22`），弹窗显示预生成内容。修复：`calendar.js` `getDayEntry` 未来日期一律不读不写不生成并返回 null，且清理此前已误生成的未来数据（LS remove + IDB delete，防到点当天被回填）；`p2-features.js` 未来日期不调 calGetDayEntry，弹窗显示「（未来的日子还没有内容，等到了那一天再来看吧）」。
+  - 验证：CDP 冒烟 11/11（本周 7 天 data-date 正确 / 8/18 历史回退显示两条心情+备忘 / 8/22 空态提示且不显示 TA 内容且不落盘 / 8/16 空态+日历记录正常生成 / 点今天不弹窗 / 无 JS 异常）；verify 10/10。
+  - ⚠️ 本次构建统一包含工作区已保存的他人改动（base.css/fullscreen.js iOS 全屏、chat.js、chat-pages.css、dark.css、bg-keep.js、mobile-adapt.js、pwa.js、default-cards-data.js、ta-ask.js、template.html），未提交，待确认。
+
+### 2026-08-20（用户反馈「iOS 添加到桌面全屏模式点不动，页面下面有白边，不是真的全屏」）
+- [本会话·完成]（**已改 src，未构建未提交**，请构建者执行 `node build.mjs`）：⚠️ **代改 AI-B 域文件**（`fullscreen.js` + `base.css`），请 AI-B 知悉并复核。
+  - 根因：iOS PWA standalone（添加到主屏幕）+ `apple-mobile-web-app-status-bar-style: black-translucent` 下，`.phone` 的 `height:100dvh`（base.css:208）**不包含系统状态栏高度**——`100dvh` 基于"动态可视区"，standalone 下可视区从系统状态栏下方开始，但 `black-translucent` 让内容从 y=0 开始。结果 `.phone` 从 y=0 开始、高度缺一个状态栏，底部留出状态栏高度的白边；底部 tabbar/输入栏随 .phone 底部上移到屏幕底部上方，用户点屏幕底部点不到 tabbar → "下面有白边、点不动、不是真的全屏"。`100vh` 在 standalone+black-translucent 下包含状态栏（占满物理屏幕）。
+  - 修复 1（`src/js/fullscreen.js:31`）：检测 `inIosStandalone`，给 `<html>` 加类 `ios-pwa-standalone`（AI-B 域，代改）。
+  - 修复 2（`src/css/base.css:236`）：`.ios-pwa-standalone .phone { height:100vh }` 覆盖 100dvh，占满全屏（AI-B 域，代改）。
+  - 键盘适配不受影响：iOS 键盘弹起时 `mobile-adapt.js` syncIosKb 把 `.phone` height 设为 `vv.height`（inline 覆盖 CSS），收起清 inline style 回落 100vh。安卓 PWA standalone 不加该类，仍用 100dvh（安卓 standalone 下 100dvh 含状态栏无白边）。
+  - 验证：`node --check` fullscreen.js 通过；功能未构建未验证，需构建后 **iOS 真机测试**（添加到桌面 → 检查底部无白边 + tabbar 可点 + 键盘弹起输入栏停靠键盘上方）。
+
 ### 2026-08-20（用户反馈「聊天默认字卡页 iOS 端打开很困难，非常卡」）
 - [AI-A·完成]（**已改 src，未构建未提交**，请构建者执行 `node build.mjs` 后随下次统一提交）：`src/js/default-cards.js` + `src/css/chat-pages.css`（均 AI-A 域）。
   - 根因：`main` 分类 **4621 张字卡 / 274 个分组**，`render()` 一次性同步构建全部 DOM（每卡 = div + innerHTML + querySelector + addEventListener），iOS Safari 主线程长阻塞数百毫秒到数秒、低端机白屏；叠加 `.glass` 的 `box-shadow` × 4621 触发大量 paint、`.cc-item` 的 `transform` transition 让每卡成合成层候选；搜索 `input` 每键一次全量重建。
@@ -842,3 +870,9 @@
     2. 兜底循环首次即 return：原 for 循环 `return caches.match(...)` 只查 keys[0] 漏掉其余 cache。改为 reduce 顺序遍历所有 cache，命中即返回。
   - 验证：node --check 通过。功能未构建未验证，需构建后无头 verify + iOS 真机测试（无头无法验证 iOS PWA 切回白屏）。
   - ⚠️ 工作区另有 AI-A 进行中改动（default-cards.js + chat-pages.css 未构建），本次 sw.js 改动未含在内，构建时需 AI-A 确认已保存完整。
+
+### 2026-08-20
+- [本会话] 完成（用户反馈「联系人发送的拍一拍【景元 闷闷垂头 我】应为【景元 闷闷垂头】；联系人的拍一拍里不用显示新建分组/新增拍一拍」——**已构建 verify 10/10 + CDP 实测 6 项，待提交**）：`src/js/chat.js` + `src/css/chat-main.css`。
+  - **中性字卡不再追加称呼**：performPoke/sendPoke 的「不含你/我」分支改为「主语 + 字卡」（原末尾补称呼 →「景元 闷闷垂头 我」/「我 闷闷垂头 景元」）；含"你"/含"我"分支不变。
+  - **工具行/输入行视觉隐藏根因**：上一轮已设 `pokeToolsRow.hidden` 但**没生效**——`.poke-tools{display:flex}` 会覆盖 hidden 属性（UA 默认 display:none 被显式 display 覆盖），表情包面板有 `.emoji-tools[hidden]{display:none}` 兜底而我漏了。修复：补 `.poke-tools[hidden], .poke-input-row[hidden]{display:none}`。此前 CDP 断言只查了 hidden 属性没查 computed display，是漏网原因。
+  - 验证：CDP——ta tab 工具行/输入行 computed display:none、mine tab 可见；点「闷闷垂头」显示「我 闷闷垂头」；15 轮 TA 回拍零「景元 xxx 我」、「景元 闷闷垂头」出现 9 次；verify 10/10。

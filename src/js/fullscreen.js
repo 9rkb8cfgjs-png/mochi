@@ -23,11 +23,19 @@
   // v3.6.x：CSS 兜底全屏持久化 key——上次走兜底（浏览器转横屏）则恢复时不再请求原生全屏
   const FB_KEY = 'fullscreen-fallback';
   // v3.6.x：iOS 检测（与 mobile-adapt.js 同一判断）+ 主屏幕打开检测
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  // v3.7.x：加 Android 排除——OPPO/Via/夸克等浏览器可把 UA 伪装成 iPhone，
+  //   导致安卓机进 iOS 分支（弹"iOS 全屏说明"且不开真全屏）。UA 同时含 Android
+  //   关键字时按安卓处理（多数 UA 切换不彻底，会保留 Android 标识）
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+    && !/android/i.test(navigator.userAgent) && !window.MSStream;
   const inIosStandalone = isIOS && (
     window.navigator.standalone === true ||
     (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
   );
+  // v3.7.x：标记 iOS PWA standalone 供 CSS 适配——standalone + black-translucent 下
+  // 100dvh 不包含系统状态栏，.phone 底部留白、底部 tabbar/输入栏上移点不到
+  //（base.css 用 100vh 覆盖占满全屏）
+  if (inIosStandalone) document.documentElement.classList.add('ios-pwa-standalone');
   // v3.6.x：Via 浏览器（UA 特征）——实测其 WebView 禁用了方向锁（lock 无效），
   // 网页全屏必转横屏、退出后也不自动回竖屏。对这种浏览器直接不碰原生全屏，
   // 走 CSS 兜底保持竖屏；真全屏引导用 Via 自带的全屏模式（竖屏沉浸）

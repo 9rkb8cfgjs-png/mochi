@@ -233,6 +233,19 @@ html { margin:0; padding:0; }
   }
 }
 
+/* v3.7.x：iOS PWA standalone（添加到主屏幕）+ black-translucent 下，100dvh 不包含
+   系统状态栏高度——.phone 从 y=0 开始但 height 缺一个状态栏，底部留白、tabbar/
+   输入栏上移点不到（用户反馈"下面有白边、点不动、不是真的全屏"）。改用 100vh
+  （standalone+black-translucent 下 100vh 包含状态栏）占满全屏。键盘弹起由
+   mobile-adapt.js syncIosKb 覆盖为 vv.height，收起清 inline style 回落 100vh。
+   ios-pwa-standalone 类由 fullscreen.js 检测 inIosStandalone 添加；安卓 PWA
+   standalone 不加该类，仍用 100dvh（安卓 standalone 下 100dvh 含状态栏无白边）。
+   v3.7.x：补 html.tablet.ios-pwa-standalone 提特异性到 (0,3,1)——html.tablet .phone
+  （下方第 363 行）特异性 (0,2,1) 会压过单写 .ios-pwa-standalone .phone (0,2,0)，
+   iPad PWA standalone 仍白边；补一条覆盖 iPad */
+.ios-pwa-standalone .phone,
+html.tablet.ios-pwa-standalone .phone { height:100vh; }
+
 /* ===== v3.5.105：手机端（安卓 / iOS）适配 =====
    只影响真实手机窄屏，桌面模拟器外壳不受影响 */
 

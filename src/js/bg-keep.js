@@ -266,8 +266,13 @@
   //   否则 iOS 不支持 / 权限被拒时开关显示"开"但实际无效，误导用户
   function requestNotifyPermission(cb, failCb) {
     if (!('Notification' in window)) {
-      // iOS Safari 网页版不支持 Notification API（装到主屏幕的 PWA 也不支持本地通知）
-      toast('iPhone 网页版不支持系统通知\n请安装到主屏幕后由系统接管');
+      // v3.7.x：按平台区分文案——安卓阉割 WebView（OPPO 自带/Via 等）也无 Notification API，
+      //   原文案硬编码"iPhone"对安卓用户很困惑。iOS 仍引导装主屏（iOS PWA 也不支持本地通知）
+      const _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+        && !/android/i.test(navigator.userAgent) && !window.MSStream;
+      toast(_isIOS
+        ? 'iPhone 网页版不支持系统通知\n请安装到主屏幕后由系统接管'
+        : '当前浏览器不支持系统通知\n请改用 Chrome/Edge，或添加到主屏幕后由系统接管');
       if (failCb) failCb();
       return;
     }

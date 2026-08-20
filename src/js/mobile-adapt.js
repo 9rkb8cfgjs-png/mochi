@@ -20,7 +20,9 @@
   try {
     const ua = String(navigator.userAgent || '');
     const plat = String(navigator.platform || '');
-    isTablet = /iPad/i.test(ua) || plat === 'iPad' ||
+    // v3.7.x：/iPad/ 分支加 Android 排除——UA 伪装成 iPad 的安卓窄屏机（OPPO/Via 等）
+    //   会被误判为平板走手机全屏布局，内容整屏拉宽。真 iPad 不含 Android 关键字，安全
+    isTablet = (/iPad/i.test(ua) || plat === 'iPad') && !/android/i.test(ua) ||
       ((plat === 'MacIntel' || /Macintosh/i.test(ua)) && navigator.maxTouchPoints > 1 && 'ontouchstart' in window);
   } catch (e) {}
   if (isTablet) { try { document.documentElement.classList.add('tablet'); } catch (e) {} }
@@ -29,7 +31,9 @@
   if (!isMobile && !isTablet) return;
 
   // v3.6.x：iOS 检测——iOS Safari 上不启用 contenteditable 转换器（见下方 ceConvert 说明）
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  // v3.7.x：加 Android 排除——UA 伪装成 iPhone 的安卓浏览器（OPPO/Via/夸克等）不应进 iOS 分支
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+    && !/android/i.test(navigator.userAgent) && !window.MSStream;
 
   // iOS Safari：禁止双指/捏合手势缩放（配合 viewport 锁定，双保险）
   document.addEventListener('gesturestart', function (e) { e.preventDefault(); });

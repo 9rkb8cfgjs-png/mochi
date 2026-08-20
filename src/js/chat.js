@@ -700,8 +700,17 @@
       (rec.askOptions || []).forEach(o => {
         const row = document.createElement('div');
         row.className = 'ip-opt-row' + (String(o.t || '') === chosen ? ' sel' : '');
+        // v3.7.x：reply 支持数组（多条）——展示"回应1 等3条"，单条原样
+        let replyTxt = '';
+        if (Array.isArray(o.reply) && o.reply.length) {
+          const arr = o.reply.filter(s => typeof s === 'string' && s.trim()).map(s => s.trim());
+          if (arr.length === 1) replyTxt = arr[0];
+          else if (arr.length > 1) replyTxt = arr[0] + ' 等' + arr.length + '条';
+        } else if (typeof o.reply === 'string' && o.reply.trim()) {
+          replyTxt = o.reply.trim();
+        }
         row.innerHTML = '<span class="ip-opt-t">' + escTxt(String(o.t || '')) + '</span>' +
-          ((o.reply && String(o.reply).trim()) ? '<span class="ip-opt-reply">' + escTxt(String(o.reply)) + '</span>' : '');
+          (replyTxt ? '<span class="ip-opt-reply">' + escTxt(replyTxt) + '</span>' : '');
         wrap.appendChild(row);
       });
       card.appendChild(wrap);
@@ -743,7 +752,7 @@
         b.className = 'ip-opt';
         b.textContent = String(o.t || '');
         b.addEventListener('click', () => {
-          if (window.chatAskReply) window.chatAskReply(idx, String(o.t || ''), String(o.reply || ''));
+          if (window.chatAskReply) window.chatAskReply(idx, String(o.t || ''), o.reply);
           if (window.logFish) window.logFish();
         });
         wrap.appendChild(b);
@@ -1389,14 +1398,15 @@
     const myName = store.get('lbl-user') || '我';
     // 显示：联系人昵称 + 字卡
     // 字卡分三类：含"你"（如"戳了戳你的脸蛋"→换我的称呼）、含"我"（如"弹了一下我的额头"，
-    //   原文已以"我"为对象，直接拼接即可）、两者都不含（如"戳一戳"→末尾补我的称呼）
+    //   原文已以"我"为对象，直接拼接即可）、两者都不含（如"闷闷垂头"→直接拼接，不再追加称呼——
+    //   v3.7.x 修复：中性自述类字卡追加"我"会变成「景元 闷闷垂头 我」）
     let text;
     if (action.indexOf('你') >= 0) {
       text = name + ' ' + action.replace(/你/g, myName);
     } else if (action.indexOf('我') >= 0) {
       text = name + ' ' + action;
     } else {
-      text = name + ' ' + action + ' ' + myName;
+      text = name + ' ' + action;
     }
     addIn(text, { special: 'poke' });
   }
@@ -1811,24 +1821,40 @@
   // 回答 TA 的小问题（选择题）：更新记录 + 插入"我的选择"和 TA 回应
   // v3.7.x：第三参由「预设回应字符串」改为「选项对象 opt」——默契命中（选到TA心里想的/
   // TA喜欢的答案）时保留选项预设回应作为高光；未命中时预设回应 + 字卡库自定义字卡混合随机
+  // v3.7.x：TA的小问题 通用回应变体池——选项 reply 为单条字符串时合并此池随机抽取，
+  // 让"选同一答案"不再每次固定回复（用户诉求：增加联系人回应自由度）。
+  // 选项 reply 为数组时直接用数组（用户在管理页自填多条），不叠加变体池。
+  const CHOICE_REPLY_VARIANTS = ['嗯。', '好。', '我记住了。', '这样啊。', '嗯，听你的。', '你这么说我很开心。', '好，我记下了。', '嗯，我在。', '知道了。', '嗯嗯。', '你说得对。', '我懂。', '好呀。', '嗯，是这样。'];
   window.chatChooseReply = function (msgIdx, answer, opt, match) {
     // v3.6.x：不再调用 loadMsgs()——该函数是异步读 IDB，其合并回调会在同步代码
     // 执行完后用【旧 IDB 数据】全量重渲染，把刚更新为 answered 的卡片刷回未作答。
     // 这些函数只由用户在聊天页点卡片/弹窗触发，此时 msgs 已加载且为最新。
     const rec = msgs[msgIdx];
     if (!rec || rec.special !== 'ask-choose' || rec.choiceStatus === 'answered') return;
-    const preset = (opt && typeof opt.reply === 'string' && opt.reply.trim()) ? opt.reply.trim() : '';
+    // v3.7.x：选项 reply 支持多条（数组）——随机抽；单条字符串合并变体池；空则纯变体池
+    const ownReplies = (function () {
+      if (!opt) return [];
+      if (Array.isArray(opt.reply) && opt.reply.length) return opt.reply.filter(s => typeof s === 'string' && s.trim()).map(s => s.trim());
+      if (typeof opt.reply === 'string' && opt.reply.trim()) return [opt.reply.trim()];
+      return [];
+    })();
+    let pool = [];
+    if (ownReplies.length === 1) pool.push(ownReplies[0], ownReplies[0]); // 单条加权，保留选项个性
+    else if (ownReplies.length > 1) pool.push.apply(pool, ownReplies); // 多条原样
+    CHOICE_REPLY_VARIANTS.forEach(v => { if (pool.indexOf(v) < 0) pool.push(v); });
+    // v3.7.x：用户已在「系统预设字卡 → 互动回应」关闭的话术不参与抽取
+    pool = pool.filter(c => !(window.isDefaultCardOff && window.isDefaultCardOff('interact', c)));
+    if (!pool.length) pool = CHOICE_REPLY_VARIANTS.slice();
     const liked = !!(opt && (opt.liked === true || opt.liked === 'true'));
     const matched = typeof match === 'string' && match.indexOf('刚好想到在了一起') >= 0;
-    // v3.7.x：用户已在「系统预设字卡 → 互动回应」关闭该话术时，默契命中也不使用
-    const presetOff = preset && !!(window.isDefaultCardOff && window.isDefaultCardOff('interact', preset));
     let reply;
-    if (preset && !presetOff && (matched || liked)) {
-      reply = preset; // 默契命中：保留选项预设回应
-    } else if (preset) {
-      reply = (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset); // 预设回应 + 字卡库混合
+    if (matched || liked) {
+      // 默契命中/心仪答案：从合并池随机抽（不再 100% 固定单条），不混字卡库保持仪式感
+      reply = pool[Math.floor(Math.random() * pool.length)];
     } else {
-      reply = (window.pickAskCardReply ? window.pickAskCardReply() : '…');
+      // 未命中：从合并池随机抽一条作预设，再 90%预设/10%字卡库 混合
+      const preset = pool[Math.floor(Math.random() * pool.length)];
+      reply = (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset);
     }
     rec.choiceStatus = 'answered';
     rec.choiceAnswer = answer;
@@ -1888,7 +1914,14 @@
     if (!rec || rec.special !== 'ask-card' || rec.askStatus === 'answered') return;
     rec.askStatus = 'answered';
     rec.askAnswer = answer;
-    const preset = (reply && String(reply).trim()) ? String(reply).trim() : '';
+    // v3.7.x：reply 支持数组（多条）——随机抽一条；字符串原样；空则不预设
+    let preset = '';
+    if (Array.isArray(reply) && reply.length) {
+      const arr = reply.filter(s => typeof s === 'string' && s.trim()).map(s => s.trim());
+      if (arr.length) preset = arr[Math.floor(Math.random() * arr.length)];
+    } else if (typeof reply === 'string' && reply.trim()) {
+      preset = reply.trim();
+    }
     const taReply = preset
       ? (window.pickAskCardReply ? window.pickAskCardReply([preset]) : preset)
       : (window.pickAskCardReply ? window.pickAskCardReply() : '收到你的回答。');
@@ -2675,8 +2708,9 @@ function partialRetractMsg(msgEl, side) {
       // 字卡含"我"（如"弹了一下我的额头"）："我"指被拍对象，替换成联系人昵称，如"我 弹了一下TA的额头"
       text = '我 ' + action.replace(/我/g, name);
     } else {
-      // 字卡不含"你/我"：在末尾补联系人昵称，如"戳一戳"→"我 戳一戳 TA"
-      text = '我 ' + action + ' ' + name;
+      // 字卡不含"你/我"：直接"我 + 字卡"，不再末尾补联系人昵称（v3.7.x 修复：
+      // 中性自述类字卡如"闷闷垂头"补昵称会变成「我 闷闷垂头 景元」）
+      text = '我 ' + action;
     }
     addRec({ side: 'in', text: text, special: 'poke' });
     if (window.logFish) window.logFish();
@@ -2744,13 +2778,70 @@ function partialRetractMsg(msgEl, side) {
     });
     return out;
   }
-  function pokeCardEl(c) {
+  function pokeCardEl(c, opts) {
     const d = document.createElement('div');
     d.className = 'cc-item glass';
     d.innerHTML = '<div class="cc-txt"><div class="t">' + c + '</div></div>';
     // 两个 tab 点卡片都发送"我 拍联系人"（sendPoke 把字卡里的"我/你"换成联系人昵称）
     d.addEventListener('click', () => { sendPoke(c); closePokeCard(); });
+    // v3.7.x：我的拍一拍·用户分组字卡支持修改/删除（预设/联系人的只读，不显示按钮）
+    if (opts && opts.editable) {
+      const ops = document.createElement('div');
+      ops.className = 'poke-card-ops';
+      const eb = document.createElement('button');
+      eb.type = 'button';
+      eb.className = 'poke-card-op poke-op-edit';
+      eb.title = '修改';
+      eb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>';
+      eb.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pokeEditCard(opts.groupKey, opts.idx, c);
+      });
+      const db = document.createElement('button');
+      db.type = 'button';
+      db.className = 'poke-card-op poke-op-del';
+      db.title = '删除';
+      db.textContent = '✕';
+      db.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pokeDelCard(opts.groupKey, opts.idx, c);
+      });
+      ops.appendChild(eb);
+      ops.appendChild(db);
+      d.appendChild(ops);
+    }
     return d;
+  }
+  // 修改/删除用户新增的拍一拍（仅我的拍一拍·用户分组；预设/联系人的只读）
+  function pokeEditCard(groupKey, idx, old) {
+    const groups = pokeUserGroups.mine;
+    const g = groups.find(x => x[0] === groupKey);
+    if (!g || !Array.isArray(g[1]) || idx < 0 || idx >= g[1].length) return;
+    window.openModal('修改拍一拍', old, (v) => {
+      v = (v || '').trim();
+      if (!v) { toast('请输入拍一拍文字'); return; }
+      const g2 = groups.find(x => x[0] === groupKey);
+      if (!g2 || !Array.isArray(g2[1]) || idx < 0 || idx >= g2[1].length) return;
+      if (g2[1][idx] === v) { toast('内容未变化'); return; }
+      if (g2[1].indexOf(v) >= 0) { toast('该分组已有相同的拍一拍'); return; }
+      g2[1][idx] = v;
+      pokeUserGroupsSave('mine');
+      renderPokeCard();
+      toast('已修改');
+    });
+  }
+  function pokeDelCard(groupKey, idx, c) {
+    const groups = pokeUserGroups.mine;
+    const g = groups.find(x => x[0] === groupKey);
+    if (!g || !Array.isArray(g[1]) || idx < 0 || idx >= g[1].length) return;
+    window.openModal('删除这条拍一拍？', '', () => {
+      const g2 = groups.find(x => x[0] === groupKey);
+      if (!g2 || !Array.isArray(g2[1]) || idx < 0 || idx >= g2[1].length) return;
+      g2[1].splice(idx, 1);
+      pokeUserGroupsSave('mine');
+      renderPokeCard();
+      toast('已删除');
+    }, { noInput: true, staticText: '「' + c + '」\n\n删除后无法恢复。' });
   }
   function renderPokeGroupsBar(groups) {
     if (!pokeGroupsBar) return;
@@ -2797,7 +2888,10 @@ function partialRetractMsg(msgEl, side) {
         : '<div class="cc-empty">该分组暂无拍一拍<br>点击「＋ 新增拍一拍」添加到该分组</div>';
       return;
     }
-    cur.cards.forEach(c => pokeList.appendChild(pokeCardEl(c)));
+    cur.cards.forEach((c, i) => {
+      const editable = pokeMode === 'mine' && cur.key !== '__preset' && cur.user;
+      pokeList.appendChild(pokeCardEl(c, editable ? { editable: true, groupKey: cur.key, idx: i } : null));
+    });
   }
   function closePokeCard() {
     if (pokeCard) pokeCard.hidden = true;

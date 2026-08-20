@@ -714,7 +714,7 @@
       '</select>' +
       '<input id="ta-new-' + blockKey + '" type="text" placeholder="添加问题…">' +
       '<button class="ta-add-btn" data-key="' + blockKey + '" data-cat="' + (cat || 'daily') + '" data-grp="' + (grp || '') + '">添加</button>' +
-      '<textarea id="ta-opts-' + blockKey + '" class="ta-opts tc-input" rows="3" placeholder="单选题选项：每行一个；可写 选项~TA回应，TA会用该回应回复" hidden></textarea>' +
+      '<textarea id="ta-opts-' + blockKey + '" class="ta-opts tc-input" rows="3" placeholder="每行一个选项。可写 选项~TA回应；多条回应用 ; 分隔，如 听我说说话~好，我在听。;嗯，你慢慢说。" hidden></textarea>' +
       '</div>';
   }
   function renderAskMineWithForms() {
@@ -798,7 +798,10 @@
           const optsEl = document.getElementById('ta-opts-' + key);
           const opts = (optsEl ? optsEl.value : '').split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(line => {
             const i = line.indexOf('~');
-            return i >= 0 ? { t: line.slice(0, i).trim(), reply: line.slice(i + 1).trim() } : { t: line, reply: '' };
+            if (i < 0) return { t: line, reply: '' };
+            const t = line.slice(0, i).trim();
+            const replies = line.slice(i + 1).split(';').map(s => s.trim()).filter(Boolean);
+            return { t: t, reply: replies.length > 1 ? replies : (replies[0] || '') };
           });
           if (!opts.length) { toast('单选题请填写选项，每行一个'); return; }
           q.type = 'single';
@@ -1501,6 +1504,18 @@ window.openTCPanel = openTCPanel;
     if (favBtn) favBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><path d="M12 2l2.4 5 5.6.8-4 4 .9 5.6-4.9-2.6-4.9 2.6.9-5.6-4-4 5.6-.8z"/></svg>' + '收藏（' + d.favs.length + '）';
   }
   function escT(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  // v3.7.x：选项 reply 展示文本——数组显示"回应1 等3条"，字符串原样
+  function optReplyLabel(o) {
+    if (!o) return '';
+    if (Array.isArray(o.reply) && o.reply.length) {
+      const arr = o.reply.filter(s => typeof s === 'string' && s.trim()).map(s => s.trim());
+      if (arr.length === 1) return arr[0];
+      if (arr.length > 1) return arr[0] + ' 等' + arr.length + '条';
+      return '';
+    }
+    if (typeof o.reply === 'string' && o.reply.trim()) return o.reply.trim();
+    return '';
+  }
   // v3.7.x：系统预设分类切换——顶部标签栏点击切换，避免全部分类堆叠导致页面过长
   let tcSysCat = null;
   function renderTCCatsInto(container, presetOnly) {
@@ -1524,7 +1539,7 @@ window.openTCPanel = openTCPanel;
         html += '<div class="tc-qrow' + (q.enabled === false || !useDefault ? ' off' : '') + '">' +
           '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
           '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + ' <span class="tc-known">系统</span></div>' +
-          '<div class="tc-qopts">选项：' + q.options.map(o => escT(o.t) + (o.reply ? ' <span class="tc-opt-reply">→ ' + escT(o.reply) + '</span>' : '')).join(' / ') + '</div></div>' +
+          '<div class="tc-qopts">选项：' + q.options.map(o => escT(o.t) + (optReplyLabel(o) ? ' <span class="tc-opt-reply">→ ' + escT(optReplyLabel(o)) + '</span>' : '')).join(' / ') + '</div></div>' +
           '</div>';
       });
       container.innerHTML = html;
@@ -1553,7 +1568,7 @@ window.openTCPanel = openTCPanel;
         html += '<div class="tc-qrow' + (q.enabled === false || (preset && !useDefault) ? ' off' : '') + '">' +
           '<label class="toggle"><input type="checkbox" data-idx="' + idx + '"' + (q.enabled !== false ? ' checked' : '') + '><span class="tk"></span></label>' +
           '<div class="tc-qmain"><div class="tc-qtext">' + escT(q.text) + (preset ? ' <span class="tc-known">系统</span>' : '') + '</div>' +
-          '<div class="tc-qopts">选项：' + q.options.map(o => escT(o.t) + (o.reply ? ' <span class="tc-opt-reply">→ ' + escT(o.reply) + '</span>' : '')).join(' / ') + '</div></div>' +
+          '<div class="tc-qopts">选项：' + q.options.map(o => escT(o.t) + (optReplyLabel(o) ? ' <span class="tc-opt-reply">→ ' + escT(optReplyLabel(o)) + '</span>' : '')).join(' / ') + '</div></div>' +
           delBtn +
           '</div>';
       });
@@ -1775,7 +1790,11 @@ window.openTCPanel = openTCPanel;
       const options = parts.map(p => {
         let t = p, reply = '';
         const ti = p.indexOf('~');
-        if (ti > 0) { t = p.slice(0, ti).trim(); reply = p.slice(ti + 1).trim(); }
+        if (ti > 0) {
+          t = p.slice(0, ti).trim();
+          const replies = p.slice(ti + 1).split(';').map(s => s.trim()).filter(Boolean);
+          reply = replies.length > 1 ? replies : (replies[0] || '');
+        }
         if (!t) return null;
         if (!reply) reply = '嗯，听你的。';
         return { t: t, reply: reply, liked: false };

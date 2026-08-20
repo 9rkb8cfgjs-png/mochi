@@ -620,11 +620,27 @@
 .poke-tools {
   display:flex; gap:6px; margin-bottom:8px; flex-shrink:0;
 }
+/* display:flex 会覆盖 hidden 属性，必须显式补 [hidden] 才真正隐藏（v3.7.x：联系人的拍一拍隐藏工具行/输入行） */
+.poke-tools[hidden], .poke-input-row[hidden] { display:none; }
 .poke-tools .emoji-tool { flex:1; }
 /* 拍一拍列表：预设/自定义 小节标题 */
 .poke-sec-label {
   font-size:11px; color:var(--muted); padding:8px 2px 4px; flex-shrink:0;
 }
+/* 拍一拍卡片：我的拍一拍·用户分组字卡的修改/删除按钮（预设/联系人的只读，不显示） */
+.poke-card-ops {
+  display:flex; gap:6px; flex-shrink:0; align-items:center; margin-left:auto;
+}
+.poke-card-op {
+  width:26px; height:26px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(0,0,0,.06); color:#999; font-size:12px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  -webkit-tap-highlight-color:transparent; font-family:inherit; padding:0;
+}
+.poke-card-op svg { width:13px; height:13px; }
+.poke-card-op:active { background:rgba(0,0,0,.12); }
+.poke-op-edit:active { color:var(--ink); }
+.poke-op-del:active { background:rgba(224,85,85,.15); color:#e05555; }
 /* 表情包面板：底部半框，露出顶部聊天消息，高度随内容自适应（最多半屏，空态紧凑）
    v3.5.110：bottom 加 safe-area，全面屏全屏模式下与输入栏同步上移，不错位 */
 .emoji-card {

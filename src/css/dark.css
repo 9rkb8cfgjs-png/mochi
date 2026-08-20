@@ -111,6 +111,9 @@
   .poke-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
   .poke-input:focus { border-color:var(--ink); background:var(--dark-card); }
   .poke-input-go { background:var(--btn-bg); color:var(--btn-ink); }
+  .poke-card-op { background:rgba(255,255,255,.12); color:var(--dark-soft); }
+  .poke-card-op:active { background:rgba(255,255,255,.2); }
+  .poke-op-del:active { background:rgba(224,85,85,.3); color:#ff8080; }
 
   .emoji-card { background:var(--dark-card-97); border-color:var(--dark-border); }
   .emoji-g-chip { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
@@ -203,6 +206,7 @@
   .cal-month-btn:active { background:var(--ink); color:#111; }
   .cal-grid .cal-cell { background:var(--dark-hover); color:var(--dark-soft); }
   .cal-grid .cal-cell.today { background:var(--ink); color:#111; }
+  .cal-grid .cal-cell.sel { background:var(--ink); color:#111; }
   .cal-edit-btn { background:var(--dark-card-92); color:var(--ink); }
   .cal-edit-btn:active { background:rgba(255,255,255,.08); }
   .cal-nav { background:var(--dark-card-92); color:var(--ink); }
