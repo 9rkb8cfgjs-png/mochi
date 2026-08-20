@@ -2916,6 +2916,13 @@ padding:16px;
 .tc-body { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; padding:2px; }
 .tc-body::-webkit-scrollbar { display:none; }
 .tc-hint { text-align:center; font-size:11px; color:var(--muted); letter-spacing:1px; }
+.cc-export-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:4px; }
+.cc-export-grps { display:flex; flex-direction:column; gap:10px; }
+.ce-grp-sec { display:flex; flex-direction:column; gap:6px; }
+.ce-grp-cat { font-size:11px; font-weight:700; color:var(--muted); letter-spacing:.5px; padding-left:2px; }
+.ce-summary { text-align:center; font-size:12px; color:var(--muted); margin:12px 0 2px; }
+.ce-btn { margin-top:12px; }
+.cc-tool[disabled] { opacity:.45; pointer-events:none; }
 .tc-q { font-size:16px; font-weight:700; color:var(--ink); line-height:1.7; text-align:center; margin:10px 0 18px; }
 .tc-opt {
 padding:13px 14px; margin-bottom:10px; border:1px solid rgba(0,0,0,.1);
@@ -4136,7 +4143,7 @@ color: var(--muted);
       </div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver" data-build-ts="1787224673891">Mochi 字卡传讯 v3.6.165 · 部署于 2026-08-20 19:17</div>
+      <div class="splash-ver" id="splash-ver" data-build-ts="1787225629802">Mochi 字卡传讯 v3.6.166 · 部署于 2026-08-20 19:33</div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
            只显示加载提示；就绪后按钮才出现（clock.js 控制显隐） -->
       <div class="splash-loading" id="splash-loading">正在加载数据…</div>
@@ -4905,7 +4912,7 @@ color: var(--muted);
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.6.165</div>
+      <div class="ver">Mochi 字卡传讯 v3.6.166</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -6817,6 +6824,21 @@ color: var(--muted);
   <div class="tc-panel">
     <div class="mg-head"><span id="tc-panel-title">TA的小问题</span><button class="mg-close" id="tc-mask-close">✕</button></div>
     <div class="tc-body" id="tc-body"></div>
+  </div>
+</div>
+
+<!-- 导出字卡数据选择弹层（v3.7.x：分类 + 分组多选后导出 json） -->
+<div class="tc-mask" id="cc-export-mask" hidden>
+  <div class="tc-panel">
+    <div class="mg-head"><span>导出字卡数据</span><button class="mg-close" id="ce-close">✕</button></div>
+    <div class="tc-body">
+      <div class="gs-title">选择分类</div>
+      <div class="cc-export-row" id="ce-cats"></div>
+      <div class="gs-title">选择分组</div>
+      <div class="cc-export-grps" id="ce-grps"></div>
+      <div class="ce-summary" id="ce-summary"></div>
+    </div>
+    <button class="cc-tool ce-btn" id="ce-do">导出选中字卡</button>
   </div>
 </div>
 
@@ -11652,11 +11674,12 @@ a.addEventListener('ended', stopChatVoice);
 a.addEventListener('error', () => { stopChatVoice(); toast('语音播放失败'); });
 a.play().catch(() => { stopChatVoice(); toast('语音播放失败'); });
 }
+const QUOTE_PLACEHOLDER = /^(图片|表情包|\[图片\]|\[表情包\])$/;
 function quoteHtml(q, side) {
 if (q && typeof q === 'object') {
 const imgs = (q.imgs || []).filter(s => typeof s === 'string' && s.indexOf('data:') === 0).slice(0, 3);
 const t = String(q.t || '');
-const tHtml = (t && t.indexOf('data:') !== 0) ? escTxtBr(t) : '';
+const tHtml = (t && t.indexOf('data:') !== 0 && !(imgs.length && QUOTE_PLACEHOLDER.test(t))) ? escTxtBr(t) : '';
 let inner = '';
 if (imgs.length) inner += '<span class="msg-quote-imgs">' + imgs.map(s => '<img class="msg-quote-img" src="' + attrEsc(s) + '" alt="图片">').join('') + '</span>';
 if (tHtml) inner += '<span class="msg-quote-text">' + tHtml + '</span>';
@@ -15518,9 +15541,10 @@ bar.appendChild(img);
 const t = document.createElement('span');
 t.className = 'chat-draft-quote-text';
 const raw = lastQuote.text || '';
+const hidePh = !!(thumb && QUOTE_PLACEHOLDER.test(raw));
 t.textContent = (raw.indexOf('data:') === 0 && raw.length > 64)
 ? (lastQuote.type === 'sticker' ? '表情包' : '图片')
-: (raw || '图片');
+: (hidePh ? '' : (raw || '图片'));
 bar.appendChild(t);
 const xBtn = document.createElement('button');
 xBtn.className = 'chat-draft-x chat-draft-quote-x';
@@ -16612,9 +16636,105 @@ staticText: '将删除同一分组内内容完全相同的重复字卡（每种�
 }
 const ccExport = document.getElementById('cc-export');
 if (ccExport) {
-ccExport.addEventListener('click', () => {
+const EXPORT_CATS = [
+['text', '主字卡'], ['kaomoji', '颜文字'], ['emoji', 'emoji'],
+['sticker', '表情包'], ['image', '图片'], ['poke', '拍一拍'], ['voice', '语音']
+];
+const ceMask = document.getElementById('cc-export-mask');
+const ceCats = document.getElementById('ce-cats');
+const ceGrps = document.getElementById('ce-grps');
+const ceSummary = document.getElementById('ce-summary');
+const ceDo = document.getElementById('ce-do');
+const ceClose = document.getElementById('ce-close');
+let ceState = {};
+if (ceMask && ceCats && ceGrps) {
+function ceInit() {
+ceState = {};
+EXPORT_CATS.forEach(([key]) => {
+const gs = groups[key] || [];
+const st = { on: gs.length > 0, grps: {} };
+gs.forEach(([name]) => { st.grps[name] = true; });
+ceState[key] = st;
+});
+}
+function ceRender() {
+ceCats.innerHTML = '';
+EXPORT_CATS.forEach(([key, name]) => {
+const gs = groups[key] || [];
+const n = gs.reduce((s, g) => s + (Array.isArray(g[1]) ? g[1].length : 0), 0);
+const b = document.createElement('span');
+b.className = 'cc-g-chip' + (ceState[key] && ceState[key].on ? ' sel' : '');
+b.textContent = name + ' ' + n;
+b.addEventListener('click', () => {
+const st = ceState[key];
+st.on = !st.on;
+if (st.on) Object.keys(st.grps).forEach(g => { st.grps[g] = true; });
+ceRender();
+});
+ceCats.appendChild(b);
+});
+ceGrps.innerHTML = '';
+const grpCats = EXPORT_CATS.filter(([key]) => ceState[key] && ceState[key].on && (groups[key] || []).length);
+if (!grpCats.length) {
+const e = document.createElement('div');
+e.className = 'cc-empty';
+e.textContent = '所选分类暂无分组，请先选择有字卡的分类';
+ceGrps.appendChild(e);
+} else {
+grpCats.forEach(([key, cname]) => {
+const gs = groups[key] || [];
+const sec = document.createElement('div');
+sec.className = 'ce-grp-sec';
+const secName = document.createElement('div');
+secName.className = 'ce-grp-cat';
+secName.textContent = cname;
+sec.appendChild(secName);
+const chips = document.createElement('div');
+chips.className = 'cc-groups-bar';
+gs.forEach(([gname, cards]) => {
+const n = Array.isArray(cards) ? cards.length : 0;
+const b = document.createElement('span');
+b.className = 'cc-g-chip' + (ceState[key].grps[gname] ? ' sel' : '');
+b.textContent = gname + ' ' + n;
+b.addEventListener('click', () => {
+ceState[key].grps[gname] = !ceState[key].grps[gname];
+ceRender();
+});
+chips.appendChild(b);
+});
+sec.appendChild(chips);
+ceGrps.appendChild(sec);
+});
+}
+let cards = 0, grps = 0, cats = 0;
+EXPORT_CATS.forEach(([key]) => {
+const st = ceState[key];
+if (!st || !st.on) return;
+cats++;
+(groups[key] || []).forEach(([gname, cs]) => {
+if (st.grps[gname]) { grps++; cards += Array.isArray(cs) ? cs.length : 0; }
+});
+});
+ceSummary.textContent = '已选 ' + cats + ' 个分类 · ' + grps + ' 个分组 · ' + cards + ' 张字卡';
+if (ceDo) ceDo.disabled = cards === 0;
+}
+function ceOpen() { ceInit(); ceRender(); ceMask.hidden = false; }
+function ceCloseFn() { ceMask.hidden = true; }
+ccExport.addEventListener('click', ceOpen);
+if (ceClose) ceClose.addEventListener('click', ceCloseFn);
+ceMask.addEventListener('click', (e) => { if (e.target === ceMask) ceCloseFn(); });
+if (ceDo) {
+ceDo.addEventListener('click', () => {
 try {
-const data = JSON.stringify(groups, null, 2);
+const out = { text: [], kaomoji: [], emoji: [], sticker: [], image: [], poke: [], voice: [] };
+EXPORT_CATS.forEach(([key]) => {
+const st = ceState[key];
+if (!st || !st.on) return;
+(groups[key] || []).forEach(([gname, cs]) => {
+if (st.grps[gname]) out[key].push([gname, Array.isArray(cs) ? cs.slice() : []]);
+});
+});
+const data = JSON.stringify(out, null, 2);
 const blob = new Blob([data], { type: 'application/json' });
 const a = document.createElement('a');
 a.href = URL.createObjectURL(blob);
@@ -16622,9 +16742,12 @@ a.download = 'mochi字卡库数据.json';
 document.body.appendChild(a);
 a.click();
 setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 300);
-toast('已导出字卡库数据');
+ceCloseFn();
+toast('已导出所选字卡');
 } catch (e) { toast('导出失败'); }
 });
+}
+}
 }
 const ccImportData = document.getElementById('cc-import-data');
 if (ccImportData) {
@@ -32579,7 +32702,7 @@ if (_kbActive && !isTextEl(document.activeElement)) restoreKb();
 });
 } catch (e) {}
 }
-const FLOAT_SELECTORS = ['#tc-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#chat-rps-panel', '#chat-call-panel', '#chat-pong-panel', '#chat-snake-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions', '#desk-image-viewer', '.desk-lib'];
+const FLOAT_SELECTORS = ['#tc-mask', '#cc-export-mask', '#call-mask', '#feed-notice-panel', '#poke-card', '#emoji-panel', '#chat-ask-panel', '#qa-mask', '#chat-more-panel', '#chat-search', '#chat-decision-panel', '#chat-divine-panel', '#chat-rps-panel', '#chat-call-panel', '#chat-pong-panel', '#chat-snake-panel', '#avlib-card', '#ck-panel', '.mg-mask', '#modal-mask', '#msg-actions', '#desk-image-viewer', '.desk-lib'];
 let locked = false;
 function applyLock() {
 const anyOpen = FLOAT_SELECTORS.some(function (sel) {

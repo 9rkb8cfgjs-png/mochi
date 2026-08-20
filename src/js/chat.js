@@ -648,6 +648,8 @@
     a.addEventListener('error', () => { stopChatVoice(); toast('语音播放失败'); });
     a.play().catch(() => { stopChatVoice(); toast('语音播放失败'); });
   }
+  // v3.7.x：图片/表情包消息的引用占位文案——已有缩略图时不再重复显示文字（用户反馈）
+  const QUOTE_PLACEHOLDER = /^(图片|表情包|\[图片\]|\[表情包\])$/;
   function quoteHtml(q, side) {
     // side = 被引用消息的发送方（'out'=我发，'in'=TA发）
     // v3.5.82：不再显示「引用 XX」标签行，只显示被引用的内容（方向也不再展示）
@@ -656,7 +658,8 @@
       const imgs = (q.imgs || []).filter(s => typeof s === 'string' && s.indexOf('data:') === 0).slice(0, 3);
       const t = String(q.t || '');
       // t 若是 dataURL（纯表情包消息的 text 就是图片），不当作文字显示，避免 base64 乱码
-      const tHtml = (t && t.indexOf('data:') !== 0) ? escTxtBr(t) : '';
+      // v3.7.x：t 是占位文案（图片/表情包）且有缩略图时同样不显示——引用块只留图，去掉重复文字
+      const tHtml = (t && t.indexOf('data:') !== 0 && !(imgs.length && QUOTE_PLACEHOLDER.test(t))) ? escTxtBr(t) : '';
       let inner = '';
       if (imgs.length) inner += '<span class="msg-quote-imgs">' + imgs.map(s => '<img class="msg-quote-img" src="' + attrEsc(s) + '" alt="图片">').join('') + '</span>';
       if (tHtml) inner += '<span class="msg-quote-text">' + tHtml + '</span>';
@@ -5137,9 +5140,11 @@ function partialRetractMsg(msgEl, side) {
     t.className = 'chat-draft-quote-text';
     // v3.7.x：保险——text 若是 base64 dataURL（长乱码）换成占位，防其他路径传入
     const raw = lastQuote.text || '';
+    // v3.7.x：图片/表情包引用——已有缩略图时占位文案（图片/表情包）不再重复显示
+    const hidePh = !!(thumb && QUOTE_PLACEHOLDER.test(raw));
     t.textContent = (raw.indexOf('data:') === 0 && raw.length > 64)
       ? (lastQuote.type === 'sticker' ? '表情包' : '图片')
-      : (raw || '图片');
+      : (hidePh ? '' : (raw || '图片'));
     bar.appendChild(t);
     const xBtn = document.createElement('button');
     xBtn.className = 'chat-draft-x chat-draft-quote-x';
